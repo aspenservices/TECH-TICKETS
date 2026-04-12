@@ -1,23 +1,10 @@
-// ═══════════════════════════════════════════════
-// FIREBASE CONFIG - Aspen Spas Service Tickets
-// ═══════════════════════════════════════════════
-// 
-// INSTRUCTIONS:
-// 1. Go to https://console.firebase.google.com
-// 2. Create a new project (or use existing)
-// 3. Go to Project Settings > General > Your apps > Web app
-// 4. Copy your config values below
-// 5. Enable Firestore: Build > Firestore Database > Create database > Start in test mode
-//    (Storage is NOT needed — photos are compressed and stored in Firestore)
-//
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc",
+  authDomain: "tech-tickets-a9485.firebaseapp.com",
+  projectId: "tech-tickets-a9485",
+  storageBucket: "tech-tickets-a9485.appspot.com",
+  messagingSenderId: "680308339087",
+  appId: "1:680308339087:web:3d18766c4b0e465a1a9bfa"
 };
 
-// Admin PIN - change this to your preferred PIN
 const ADMIN_PIN = "5050";
