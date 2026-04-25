@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aspen Spas">
+<meta name="application-name" content="Aspen Spas">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a1a1a">
 <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <meta name="x-apple-disable-message-reformatting" content="yes">
@@ -351,6 +355,10 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 </style>
 </head>
 <body>
+<!-- Offline status indicator (shown only when device is offline) -->
+<div id="onlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:8px">
+  <span style="font-size:14px">📴</span><span>Offline Mode — Changes will sync when reconnected</span>
+</div>
 <!-- ══ LOGIN SCREEN ══ -->
 <div class="login-bg" id="loginScreen">
 <div class="login-box">
@@ -706,14 +714,66 @@ const ADMIN_PIN = "5050";
 <script>
 // ═══ FIREBASE INIT ═══
 let db;
+let _offlineReady=false;
 try{
   if(!FIREBASE_CONFIG||FIREBASE_CONFIG.apiKey==="YOUR_API_KEY_HERE")throw new Error("config");
   firebase.initializeApp(FIREBASE_CONFIG);
   db=firebase.firestore();
+  // Enable offline persistence — caches data locally so app works without internet
+  // Writes made offline are queued and synced automatically when connection returns
+  db.enablePersistence({synchronizeTabs:true}).then(function(){
+    _offlineReady=true;
+    console.log("✓ Offline mode ready — app works without internet");
+  }).catch(function(err){
+    if(err.code==="failed-precondition"){
+      console.warn("Offline persistence: multiple tabs open. Close other tabs for offline support.");
+    }else if(err.code==="unimplemented"){
+      console.warn("Offline persistence: browser does not support it.");
+    }
+  });
 }catch(e){
   document.getElementById("cfgErr").style.display="block";
   document.getElementById("cfgErr").innerHTML=`<div class="cfg-err"><h2>⚠️ Firebase Not Configured</h2><p>Edit <b>firebase-config.js</b> with your Firebase project credentials.</p><code>const FIREBASE_CONFIG = {\n  apiKey: "your-key",\n  authDomain: "your-project.firebaseapp.com",\n  projectId: "your-project-id",\n  storageBucket: "your-project.appspot.com",\n  ...\n};</code><p style="margin-top:16px;font-size:13px;color:#999">See README.md for full setup instructions.</p></div>`;
 }
+
+// ═══ SERVICE WORKER REGISTRATION (PWA / Offline support) ═══
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").then(function(reg){
+      console.log("✓ Service Worker registered — app installable & works offline");
+      // Auto-update when a new version is available
+      reg.addEventListener("updatefound",function(){
+        var nw=reg.installing;
+        if(nw){
+          nw.addEventListener("statechange",function(){
+            if(nw.state==="installed"&&navigator.serviceWorker.controller){
+              if(typeof toast==="function")toast("New version available — refresh to update","info");
+            }
+          });
+        }
+      });
+    }).catch(function(err){console.warn("Service Worker registration failed:",err)});
+  });
+}
+
+// ═══ ONLINE/OFFLINE STATUS INDICATOR ═══
+function updateOnlineStatus(){
+  var ind=document.getElementById("onlineIndicator");
+  if(!ind)return;
+  if(navigator.onLine){
+    ind.style.display="none";
+  }else{
+    ind.style.display="flex";
+  }
+}
+window.addEventListener("online",function(){
+  updateOnlineStatus();
+  if(typeof toast==="function")toast("✓ Back online — syncing data","ok");
+});
+window.addEventListener("offline",function(){
+  updateOnlineStatus();
+  if(typeof toast==="function")toast("📴 Offline — changes will sync when reconnected","warn");
+});
 
 let TECHS=["Jeremy","Robert","Pedro","Jarred","Fernando"];
 const DEFAULT_TECHS=["Jeremy","Robert","Pedro","Jarred","Fernando"];
@@ -966,6 +1026,7 @@ function updAdmin(){
   // pg4 cal-side (To-Do list): ONLY admin sees it
   document.querySelectorAll("#pg4 .cal-side").forEach(cs=>cs.style.display=isAdminRole?"":"none");
   if(!currentUser)showTab(0);
+  else if(isTechRole){calView="day";calSelectedDate=fmtD(new Date());showTab(4)}
   else if(!isAdmin){calView="list";calSelectedDate=fmtD(new Date());showTab(4)}
 }
 // ═══ USER MANAGEMENT (Admin Tab) ═══
@@ -1013,10 +1074,13 @@ function rndrAdminStats(){
     if(w.has===true&&w.type&&(w.type==="full"||w.type==="half"))return"warranty";
     return"nowarranty";
   }
-  // Filter tickets: only count tech-submitted field reports (not dispatch tickets)
+  // Filter tickets: ONLY count tickets the tech has filled out AND completed
+  // - Excludes: dispatch tickets (no tech work yet), canceled, reschedule, pending
+  // - Includes: status "complete" (tech submitted field report) + "done" (admin closed)
   var pool=[...active,...done].filter(function(t){
     if(t.source==="dispatch")return false;
     if(t.status==="canceled")return false;
+    if(t.status!=="complete"&&t.status!=="done")return false;
     if(startDate&&(t.date||"")<startDate)return false;
     return true;
   });
@@ -1439,7 +1503,7 @@ async function init(){
   document.getElementById("fDate").value=new Date().toISOString().split("T")[0];
   loadTechs().then(()=>buildTechPills());
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
-  mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();
+  mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();updateOnlineStatus();
   document.getElementById("loginPinIn").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
   document.getElementById("newTechName").addEventListener("keydown",e=>{if(e.key==="Enter")addTech()});
   document.addEventListener("change",e=>{if(e.target.id==="fArr"||e.target.id==="fDep"){checkGate();upWR();rndr()}});
@@ -1864,12 +1928,38 @@ function rndrA(){
   }
   
   document.getElementById("tab1").innerHTML="Daily "+(pool.length?`<span class="badge" id="bdg1">${pool.length}</span>`:`<span class="badge" id="bdg1" style="display:none">0</span>`);
-  if(!pool.length){el.innerHTML='<div class="no-tkt"><h3>No active tickets</h3></div>';return}
+  // Canceled visits by techs — shown at top so admin can see and follow up
+  var techCanceled=active.filter(function(t){return t.status==="canceled"&&t.canceledByTech});
+  if(q)techCanceled=techCanceled.filter(function(t){return tktMatchesSearch(t,q)});
+  techCanceled.sort(function(a,b){return(b.canceledAt||"").localeCompare(a.canceledAt||"")});
+  let canceledHTML="";
+  if(techCanceled.length){
+    canceledHTML='<div style="margin-bottom:18px">';
+    canceledHTML+='<div class="lbl" style="color:#b45309;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase">🚫 Canceled Visits <span style="background:#dc2626;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700">'+techCanceled.length+'</span></div>';
+    canceledHTML+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">';
+    techCanceled.forEach(function(t){
+      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      canceledHTML+='<div onclick="openTktDetail(\''+t.id+'\')" style="background:#fff;border:1px solid #fcd34d;border-left:4px solid #dc2626;border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03)">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">'+
+          '<div style="font-weight:700;font-size:14px;color:#1d1d1f;line-height:1.3">'+esc(t.customer||'—')+'</div>'+
+          '<span style="background:#dc2626;color:#fff;font-size:9px;padding:2px 7px;border-radius:5px;font-weight:700;white-space:nowrap">CANCELED</span>'+
+        '</div>'+
+        (t.canceledBy?'<div style="font-size:11px;color:var(--i3);margin-bottom:4px">By '+esc(t.canceledBy)+(t.canceledAt?' · '+esc(t.canceledAt):'')+'</div>':'')+
+        (t.date?'<div style="font-size:11px;color:var(--i3);margin-bottom:4px">📅 Original date: '+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
+        (t.phone?'<div style="font-size:11px;color:var(--ac);margin-bottom:4px">📞 '+esc(t.phone)+'</div>':'')+
+        (addrLine?'<div style="font-size:11px;color:var(--i3);margin-bottom:6px;line-height:1.3">📍 '+addrLine+'</div>':'')+
+        (t.cancelReason?'<div style="margin-top:8px;padding:8px 10px;background:#fff3e0;border-radius:6px;font-size:12px;color:#92400e;line-height:1.4"><b>Reason:</b> '+esc(t.cancelReason)+'</div>':'')+
+      '</div>';
+    });
+    canceledHTML+='</div></div>';
+  }
+  if(!pool.length&&!techCanceled.length){el.innerHTML='<div class="no-tkt"><h3>No active tickets</h3></div>';return}
+  if(!pool.length){el.innerHTML=canceledHTML;return}
   const techMap={};pool.forEach(t=>{const key=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";if(!techMap[key])techMap[key]=[];techMap[key].push(t)});
   const techNames=Object.keys(techMap).sort((a,b)=>{if(a==="Unassigned")return 1;if(b==="Unassigned")return-1;return a.localeCompare(b)});
   let h='<div class="tech-cols">';
   techNames.forEach(tn=>{const items=techMap[tn];const dayMap={};items.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));h+=`<div class="tech-col"><div class="tech-col-hdr"><span class="tech-col-name">${esc(tn)}</span><span class="tech-col-cnt">${items.length}</span></div>`;days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});h+='</div>'});
-  h+='</div>';el.innerHTML=h;
+  h+='</div>';el.innerHTML=canceledHTML+h;
 }
 let slogZone="all";
 function rndrD(){
@@ -1971,6 +2061,48 @@ async function cancelVisit(docId){
       canceledBy:(currentUser&&currentUser.name)||""
     });
     toast("Visit canceled — customer info kept ✓");
+    closeTktDetail();
+    setTimeout(refreshAll,500);
+  }catch(e){toast("Error: "+e.message,"err")}
+}
+// Tech-initiated cancellation requires a reason; appears in Daily for admin to see
+function showTechCancelForm(docId){
+  var actions=document.getElementById("tktDetailActions");
+  if(!actions)return;
+  actions.innerHTML='<div style="width:100%;background:#fff3e0;border:2px solid #f59e0b;border-radius:10px;padding:14px">'+
+    '<div style="font-size:14px;font-weight:700;color:#b45309;margin-bottom:6px">🚫 Why are you canceling this visit?</div>'+
+    '<div style="font-size:11px;color:#92400e;margin-bottom:10px">Customer info will stay — this just notifies the office that the visit didn\'t happen.</div>'+
+    '<textarea id="techCancelReason" placeholder="e.g., Customer not home, customer rescheduled, no access to spa, weather, parts not available..." style="width:100%;min-height:90px;padding:10px;border:1.5px solid #f59e0b;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box"></textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:10px">'+
+      '<button onclick="submitTechCancel(\''+docId+'\')" style="flex:1;padding:14px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Submit Cancellation</button>'+
+      '<button onclick="hideTechCancelForm(\''+docId+'\')" style="padding:14px 22px;background:#fff;color:var(--i2);border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Back</button>'+
+    '</div></div>';
+  setTimeout(function(){var ta=document.getElementById("techCancelReason");if(ta)ta.focus()},80);
+}
+function hideTechCancelForm(docId){
+  // Re-render the detail to restore the original action buttons
+  closeTktDetail();
+  setTimeout(function(){openTktDetail(docId)},60);
+}
+async function submitTechCancel(docId){
+  var reasonEl=document.getElementById("techCancelReason");
+  if(!reasonEl)return;
+  var reason=reasonEl.value.trim();
+  if(!reason){
+    toast("Please enter a reason for canceling","warn");
+    reasonEl.focus();
+    return;
+  }
+  if(!db)return;
+  try{
+    await db.collection("tickets").doc(docId).update({
+      status:"canceled",
+      canceledByTech:true,
+      cancelReason:reason,
+      canceledAt:new Date().toLocaleString(),
+      canceledBy:(currentUser&&currentUser.name)||""
+    });
+    toast("Visit canceled — admin notified ✓");
     closeTktDetail();
     setTimeout(refreshAll,500);
   }catch(e){toast("Error: "+e.message,"err")}
@@ -2759,10 +2891,18 @@ function openTktDetail(id){
   h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
   h+='<div style="font-size:10px;color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
   // Actions
-  h+='<div style="margin-top:16px;padding-top:16px;border-top:2px solid var(--ln)"><div class="lbl">Actions</div><div style="display:flex;gap:8px;flex-wrap:wrap">';
+  h+='<div id="tktDetailActionsWrap" style="margin-top:16px;padding-top:16px;border-top:2px solid var(--ln)"><div class="lbl">Actions</div><div id="tktDetailActions" style="display:flex;gap:8px;flex-wrap:wrap">';
+  var _isTech=currentUser&&currentUser.role==="tech";
   h+='<button onclick="startTicketFrom(\''+t.id+'\')" style="padding:12px 18px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700">Field Report</button>';
   h+='<button onclick="startEstimateFrom(\''+t.id+'\')" style="padding:12px 18px;background:var(--cd);color:var(--ac);border:2px solid var(--ac);border-radius:10px;font-size:13px;font-weight:700">Estimate</button>';
-  h+='<button onclick="addTicketToTodo(\''+t.id+'\')" style="padding:12px 18px;background:#fef3c7;color:#92400e;border:2px solid #f59e0b;border-radius:10px;font-size:13px;font-weight:700">✓ Add to To-Do</button>';
+  // Add to To-Do: only admin/organizer (NOT tech)
+  if(!_isTech){
+    h+='<button onclick="addTicketToTodo(\''+t.id+'\')" style="padding:12px 18px;background:#fef3c7;color:#92400e;border:2px solid #f59e0b;border-radius:10px;font-size:13px;font-weight:700">✓ Add to To-Do</button>';
+  }
+  // Cancel Visit: techs see it (with reason prompt); admin sees it (no prompt)
+  if(_isTech&&t.status!=="canceled"){
+    h+='<button onclick="showTechCancelForm(\''+t.id+'\')" style="padding:12px 18px;background:#fff3e0;color:#b45309;border:2px solid #f59e0b;border-radius:10px;font-size:13px;font-weight:700">🚫 Cancel Visit</button>';
+  }
   if(isAdmin){
     if(t.status==="canceled"){
       h+='<button onclick="uncancelVisit(\''+t.id+'\')" style="padding:12px 18px;background:#d1fae5;color:#065f46;border:none;border-radius:10px;font-size:13px;font-weight:700">↻ Reactivate Visit</button>';
@@ -2773,7 +2913,12 @@ function openTktDetail(id){
   }
   h+='</div>';
   if(isAdmin)h+='<div style="font-size:10px;color:var(--i3);margin-top:8px;line-height:1.5"><b>Cancel Visit</b> keeps all customer info — just removes it from the calendar. <b>Delete</b> permanently removes this ticket and its info from customer history.</div>';
-  if(t.status==="canceled")h+='<div style="margin-top:10px;padding:8px 12px;background:#fff3e0;border-left:3px solid #f59e0b;border-radius:6px;font-size:12px;color:#b45309">🚫 This visit was canceled'+(t.canceledAt?" on "+esc(t.canceledAt):"")+'. It won\'t show in the calendar.</div>';
+  if(t.status==="canceled"){
+    h+='<div style="margin-top:10px;padding:10px 12px;background:#fff3e0;border-left:3px solid #f59e0b;border-radius:6px;font-size:12px;color:#b45309">';
+    h+='🚫 <b>This visit was canceled</b>'+(t.canceledBy?' by '+esc(t.canceledBy):'')+(t.canceledAt?' on '+esc(t.canceledAt):'')+'.';
+    if(t.cancelReason)h+='<br><br><b>Reason:</b> '+esc(t.cancelReason);
+    h+='</div>';
+  }
   h+='</div>';
   document.getElementById("tktDetailBody").innerHTML=h;
   document.getElementById("tktDetailBg").classList.add("open");
