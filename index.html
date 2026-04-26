@@ -1580,7 +1580,7 @@ async function init(){
   if(isEstLink)return;
   // Mount any static Lucide icons in the HTML (replaces .lucide-mount spans with SVG)
   mountLucideIcons();
-  document.getElementById("fDate").value=new Date().toISOString().split("T")[0];
+  document.getElementById("fDate").value=localDateStr();
   loadTechs().then(()=>buildTechPills());
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
   mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();updateOnlineStatus();
@@ -1702,6 +1702,18 @@ function mkCh(){const r=document.getElementById("cR");r.innerHTML="";["All",...C
 function openPk(){document.getElementById("mBg").classList.add("open");document.getElementById("sI").value="";cat="All";mkCh();doFlt();setTimeout(()=>document.getElementById("sI").focus(),150)}
 function closePk(){document.getElementById("mBg").classList.remove("open")}
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+// Returns YYYY-MM-DD for the given date in LOCAL time (not UTC).
+// We previously used localDateStr() which is buggy:
+// at 8 PM in St. Louis (UTC-5), toISOString() returns the NEXT day in UTC.
+// This helper guarantees we always get the user's local calendar date.
+function localDateStr(d){
+  d=d||new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+day;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ICON SYSTEM — generates inline Lucide SVG icons from kebab-case names
@@ -1904,7 +1916,7 @@ async function submitTkt(st){
 }
 
 let editingDocId=null;
-function resetForm(){editingDocId=null;if(typeof _backToTktId!=="undefined")_backToTktId=null;techs=[];wTypes=[];sel=[];mediaFiles=[];videoLinks=[];wHas=null;wMod="";wYr=0;visitNum=1;noLabor=false;wcType="";document.querySelectorAll(".pill,.wt").forEach(b=>b.classList.remove("on"));document.getElementById("warYes").className="wb yes";document.getElementById("warNo").className="wb no";document.querySelectorAll(".w-model").forEach(b=>b.className=b.className.replace(/ on-m/g,""));document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.getElementById("wS2").classList.remove("show");document.getElementById("wS3").classList.remove("show");document.getElementById("wR").style.display="none";document.getElementById("wcSubPanel").classList.remove("show");document.getElementById("wcChemBtn").className="wb yes";document.getElementById("wcNoChemBtn").className="wb no";document.getElementById("wcInfo").style.display="none";document.getElementById("visitInfo").style.display="none";document.getElementById("visitBtn1").className="wb yes";document.getElementById("visitBtn2").className="wb no";var _vb3=document.getElementById("visitBtn3");if(_vb3){_vb3.className="wb";_vb3.style.cssText="flex:1;background:#f0fdf4;border-color:#86efac;color:#166534"}var _vb4=document.getElementById("visitBtn4");if(_vb4){_vb4.className="wb";_vb4.style.cssText="flex:1;background:#fef2f2;border-color:#fca5a5;color:#991b1b"}var _vb5=document.getElementById("visitBtn5");if(_vb5){_vb5.className="wb";_vb5.style.cssText="flex:1;background:#dbeafe;border-color:#93c5fd;color:#1e40af"}var _wCard=document.getElementById("warrantyCard");if(_wCard){_wCard.style.opacity="";_wCard.style.pointerEvents=""}var _wBlk=document.getElementById("warrantyBlocker");if(_wBlk)_wBlk.style.display="none";document.getElementById("fCust").value="";document.getElementById("fDate").value=new Date().toISOString().split("T")[0];document.getElementById("fArr").value="";document.getElementById("fDep").value="";document.getElementById("fNotes").value="";rndr();rndrMedia();rndrVideoLinks();buildWTPills();document.getElementById("formGate").style.display="none";document.getElementById("gateHint").style.display="block";document.getElementById("editBanner").style.display="none";document.getElementById("btnSend").textContent="Send ✓";document.getElementById("btnResched").style.display="";var bb=document.getElementById("backToTktBtn");if(bb)bb.remove();window.scrollTo({top:0,behavior:"smooth"})}
+function resetForm(){editingDocId=null;if(typeof _backToTktId!=="undefined")_backToTktId=null;techs=[];wTypes=[];sel=[];mediaFiles=[];videoLinks=[];wHas=null;wMod="";wYr=0;visitNum=1;noLabor=false;wcType="";document.querySelectorAll(".pill,.wt").forEach(b=>b.classList.remove("on"));document.getElementById("warYes").className="wb yes";document.getElementById("warNo").className="wb no";document.querySelectorAll(".w-model").forEach(b=>b.className=b.className.replace(/ on-m/g,""));document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.getElementById("wS2").classList.remove("show");document.getElementById("wS3").classList.remove("show");document.getElementById("wR").style.display="none";document.getElementById("wcSubPanel").classList.remove("show");document.getElementById("wcChemBtn").className="wb yes";document.getElementById("wcNoChemBtn").className="wb no";document.getElementById("wcInfo").style.display="none";document.getElementById("visitInfo").style.display="none";document.getElementById("visitBtn1").className="wb yes";document.getElementById("visitBtn2").className="wb no";var _vb3=document.getElementById("visitBtn3");if(_vb3){_vb3.className="wb";_vb3.style.cssText="flex:1;background:#f0fdf4;border-color:#86efac;color:#166534"}var _vb4=document.getElementById("visitBtn4");if(_vb4){_vb4.className="wb";_vb4.style.cssText="flex:1;background:#fef2f2;border-color:#fca5a5;color:#991b1b"}var _vb5=document.getElementById("visitBtn5");if(_vb5){_vb5.className="wb";_vb5.style.cssText="flex:1;background:#dbeafe;border-color:#93c5fd;color:#1e40af"}var _wCard=document.getElementById("warrantyCard");if(_wCard){_wCard.style.opacity="";_wCard.style.pointerEvents=""}var _wBlk=document.getElementById("warrantyBlocker");if(_wBlk)_wBlk.style.display="none";document.getElementById("fCust").value="";document.getElementById("fDate").value=localDateStr();document.getElementById("fArr").value="";document.getElementById("fDep").value="";document.getElementById("fNotes").value="";rndr();rndrMedia();rndrVideoLinks();buildWTPills();document.getElementById("formGate").style.display="none";document.getElementById("gateHint").style.display="block";document.getElementById("editBanner").style.display="none";document.getElementById("btnSend").textContent="Send ✓";document.getElementById("btnResched").style.display="";var bb=document.getElementById("backToTktBtn");if(bb)bb.remove();window.scrollTo({top:0,behavior:"smooth"})}
 function toast(m,t){const e=document.getElementById("toast");e.textContent=m;e.className="toast show"+(t==="warn"?" warn":t==="err"?" err":"");setTimeout(()=>e.classList.remove("show"),2500)}
 
 // ═══ MARK DONE ═══
@@ -1919,7 +1931,7 @@ function editTkt(i,isDone){
 
   // Populate form fields
   document.getElementById("fCust").value=t.customer||"";
-  document.getElementById("fDate").value=t.date||new Date().toISOString().split("T")[0];
+  document.getElementById("fDate").value=t.date||localDateStr();
   document.getElementById("fArr").value=t.arrival||"";
   document.getElementById("fDep").value=t.departure||"";
   document.getElementById("fNotes").value=t.notes||"";
@@ -2392,7 +2404,7 @@ function setMode(m){
   document.querySelectorAll(".mode-btn").forEach((b,i)=>{b.classList.toggle("on",i===0&&m==="ticket"||i===1&&m==="estimate")});
   document.getElementById("ticketMode").style.display=m==="ticket"?"block":"none";
   document.getElementById("estMode").style.display=m==="estimate"?"block":"none";
-  if(m==="estimate"){document.getElementById("eDate").value=new Date().toISOString().split("T")[0];buildETechPills();eRndr()}
+  if(m==="estimate"){document.getElementById("eDate").value=localDateStr();buildETechPills();eRndr()}
 }
 
 
@@ -2719,7 +2731,7 @@ function copyEstimate(){
   txt+=`\nThis is an estimate. Final charges may vary.`;
   navigator.clipboard.writeText(txt).then(()=>toast("Estimate copied ✓")).catch(()=>{const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);toast("Copied ✓")});
 }
-function resetEst(){if(estUnsub){estUnsub();estUnsub=null}eWHas=null;eWMod="";eWYr=0;eSel=[];eTechs=[];eHrsVal=0;sigData=null;sigHasStrokes=false;custSigData=null;localSigPad=null;document.getElementById("eCust").value="";var _ep=document.getElementById("eCustPhone");if(_ep)_ep.value="";var _ea=document.getElementById("eCustAddr");if(_ea)_ea.value="";var _ec=document.getElementById("eCustCity");if(_ec)_ec.value="";var _ez=document.getElementById("eCustZip");if(_ez)_ez.value="";document.getElementById("eDate").value=new Date().toISOString().split("T")[0];document.getElementById("eNotes").value="";document.getElementById("eWarYes").className="wb yes";document.getElementById("eWarNo").className="wb no";document.getElementById("eWS2").classList.remove("show");document.getElementById("eWS3").classList.remove("show");document.getElementById("eWR").style.display="none";document.getElementById("eHrsInfo").style.display="none";document.getElementById("eHrsCustom").style.display="none";document.getElementById("eHrsRow").querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.getElementById("estPreviewArea").innerHTML="";buildETechPills();eRndr()}
+function resetEst(){if(estUnsub){estUnsub();estUnsub=null}eWHas=null;eWMod="";eWYr=0;eSel=[];eTechs=[];eHrsVal=0;sigData=null;sigHasStrokes=false;custSigData=null;localSigPad=null;document.getElementById("eCust").value="";var _ep=document.getElementById("eCustPhone");if(_ep)_ep.value="";var _ea=document.getElementById("eCustAddr");if(_ea)_ea.value="";var _ec=document.getElementById("eCustCity");if(_ec)_ec.value="";var _ez=document.getElementById("eCustZip");if(_ez)_ez.value="";document.getElementById("eDate").value=localDateStr();document.getElementById("eNotes").value="";document.getElementById("eWarYes").className="wb yes";document.getElementById("eWarNo").className="wb no";document.getElementById("eWS2").classList.remove("show");document.getElementById("eWS3").classList.remove("show");document.getElementById("eWR").style.display="none";document.getElementById("eHrsInfo").style.display="none";document.getElementById("eHrsCustom").style.display="none";document.getElementById("eHrsRow").querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.getElementById("estPreviewArea").innerHTML="";buildETechPills();eRndr()}
 
 // ═══ CALENDAR ═══
 const TECH_COLORS=["#D4772C","#3D2B1F","#2563eb","#059669","#d946ef","#dc2626","#0891b2","#ca8a04"];
@@ -2842,8 +2854,9 @@ else if(calView==="week"){const sel=calSelectedDate?new Date(calSelectedDate+"T1
 else if(calView==="day"){const sel=calSelectedDate||today;const d=new Date(sel+"T12:00:00");document.getElementById("calTitle").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});document.getElementById("calGrid").className="";rndrCalDay(sel,byDate)}
 else if(calView==="list"){document.getElementById("calTitle").textContent=MN[calMonth]+" "+calYear;document.getElementById("calGrid").className="";rndrCalList(allTkts.filter(t=>{const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];if(isTech)return techs.includes(currentUser.name);return techs.some(tn=>!calHiddenTechs.has(_resolveTechPill(tn)))}),"",q)}
 else if(calView==="team"){const sel=calSelectedDate||today;const d=new Date(sel+"T12:00:00");document.getElementById("calTitle").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});document.getElementById("calGrid").className="";rndrCalTeam(sel,allTkts)}
-if(calView!=="list"&&calView!=="team"&&calSelectedDate)rndrCalDetail(calSelectedDate,allTkts);else if(calView!=="list"&&calView!=="team")document.getElementById("calDetail").style.display="none";
-if(calView==="list"||calView==="team")document.getElementById("calDetail").style.display="none";
+// Show day-detail panel only in MONTH or WEEK view (when user clicks a day cell from a higher-level view).
+// In DAY view, calGrid already renders the tickets — adding calDetail would render them twice.
+if((calView==="month"||calView==="week")&&calSelectedDate)rndrCalDetail(calSelectedDate,allTkts);else document.getElementById("calDetail").style.display="none";
 rndrCalQueue();rndrCcReminders()}
 function rndrCalMonth(byDate,today){const firstDay=new Date(calYear,calMonth,1).getDay();const daysInMonth=new Date(calYear,calMonth+1,0).getDate();const daysInPrev=new Date(calYear,calMonth,0).getDate();const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=firstDay-1;i>=0;i--){const d=daysInPrev-i;const pm=calMonth===0?11:calMonth-1;const py=calMonth===0?calYear-1:calYear;const ds=py+"-"+String(pm+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,true)}for(let d=1;d<=daysInMonth;d++){const ds=calYear+"-"+String(calMonth+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,false)}const totalCells=firstDay+daysInMonth;const remaining=totalCells%7===0?0:7-(totalCells%7);for(let d=1;d<=remaining;d++){const nm=calMonth===11?0:calMonth+1;const ny=calMonth===11?calYear+1:calYear;const ds=ny+"-"+String(nm+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,true)}document.getElementById("calGrid").innerHTML=h}
 function calDayCell(d,ds,tkts,today,isOther){
@@ -3484,7 +3497,7 @@ function startTicketFrom(id){
   _backToTktId=id;closeTktDetail();showTab(0);setMode("ticket");
   setTimeout(()=>{
     document.getElementById("fCust").value=t.customer||"";
-    document.getElementById("fDate").value=t.date||new Date().toISOString().split("T")[0];
+    document.getElementById("fDate").value=t.date||localDateStr();
     document.getElementById("fNotes").value=(t.notes||"")+"\n\n--- Service Update ---\n";
     // Auto-select current user as technician
     if(currentUser&&TECHS.includes(currentUser.name)&&!techs.includes(currentUser.name)){techs.push(currentUser.name);buildTechPills()}
@@ -3499,7 +3512,7 @@ function startEstimateFrom(id){
   _backToTktId=id;closeTktDetail();showTab(0);setMode("estimate");
   setTimeout(()=>{
     document.getElementById("eCust").value=t.customer||"";
-    document.getElementById("eDate").value=t.date||new Date().toISOString().split("T")[0];
+    document.getElementById("eDate").value=t.date||localDateStr();
     document.getElementById("eNotes").value=t.notes||"";
     // Show back button
     let bb=document.getElementById("backToEstBtn");
