@@ -665,6 +665,25 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
   <div style="padding:16px;overflow-y:auto;flex:1" id="tktDetailBody"></div></div>
 </div>
 
+<!-- ══ ROUTE MAP MODAL ══ -->
+<div class="mbg" id="routeMapBg" onclick="if(event.target===this)closeRouteMap()">
+  <div class="modal" style="height:90dvh">
+    <div class="mt"><div class="mt-bar"></div>
+      <div class="mt-t"><h3 id="routeMapTitle">Today's Route</h3><button class="mcl" onclick="closeRouteMap()">×</button></div>
+    </div>
+    <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div id="routeMapContainer" style="height:50%;min-height:280px;background:#eee;position:relative">
+        <div id="routeMapStatus" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;color:var(--i3);background:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.1);z-index:500">Loading map…</div>
+      </div>
+      <div id="routeMapStops" style="flex:1;overflow-y:auto;padding:12px;background:#fafaf6"></div>
+      <div style="padding:12px;border-top:1px solid var(--ln);background:#fff;display:flex;gap:8px;flex-wrap:wrap">
+        <button id="routeMapAppleBtn" onclick="openRouteInExternalMaps('apple')" style="flex:1;min-width:140px;padding:12px;background:#000;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">🗺️ Apple Maps</button>
+        <button id="routeMapGoogleBtn" onclick="openRouteInExternalMaps('google')" style="flex:1;min-width:140px;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">🗺️ Google Maps</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ PICKER ══ -->
 <div class="mbg" id="mBg" onclick="if(event.target===this)closePk()"><div class="modal"><div class="mt"><div class="mt-bar"></div><div class="mt-t"><h3>Select Part</h3><button class="mcl" onclick="closePk()">×</button></div><input class="si" id="sI" placeholder="Search parts..." oninput="doFlt()" autocomplete="off" autocorrect="off" spellcheck="false"><div class="chips" id="cR"></div></div><div class="rl" id="rB"></div></div></div>
 
@@ -699,7 +718,11 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Leaflet (free maps, no API key) for route visualization -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc",
@@ -713,12 +736,14 @@ const ADMIN_PIN = "5050";
 </script>
 <script>
 // ═══ FIREBASE INIT ═══
-let db;
+let db,storage;
 let _offlineReady=false;
 try{
   if(!FIREBASE_CONFIG||FIREBASE_CONFIG.apiKey==="YOUR_API_KEY_HERE")throw new Error("config");
   firebase.initializeApp(FIREBASE_CONFIG);
   db=firebase.firestore();
+  // Initialize Firebase Storage for photo uploads (much more efficient than base64)
+  try{storage=firebase.storage()}catch(_se){console.warn("Storage init failed:",_se)}
   // Enable offline persistence — caches data locally so app works without internet
   // Writes made offline are queued and synced automatically when connection returns
   db.enablePersistence({synchronizeTabs:true}).then(function(){
@@ -1553,12 +1578,37 @@ function rndrVideoLinks(){
 function remMedia(i){try{URL.revokeObjectURL(mediaFiles[i].url)}catch(e){}mediaFiles.splice(i,1);rndrMedia()}
 function rndrMedia(){const g=document.getElementById("mGrid");let h=mediaFiles.map((m,i)=>`<div class="media-wrap"><img class="media-thumb" src="${m.url}"><button class="media-x" onclick="remMedia(${i})">×</button></div>`).join("");if(mediaFiles.length<8)h+=`<label class="media-add"><span class="ico">📷</span><span>Add</span><input type="file" accept="image/*" multiple class="media-input" onchange="addMedia(event)"></label>`;g.innerHTML=h}
 
-function compressPhoto(file,maxW=800,quality=0.6){
+function compressPhoto(file,maxW=1200,quality=0.72){
+  // Returns a Blob (better than base64 for Storage upload). Higher quality since Storage isn't size-limited like Firestore.
   return new Promise((res,rej)=>{
     const img=new Image();
-    img.onload=()=>{const c=document.createElement("canvas"),r=Math.min(1,maxW/img.width);c.width=img.width*r;c.height=img.height*r;c.getContext("2d").drawImage(img,0,0,c.width,c.height);res({data:c.toDataURL("image/jpeg",quality),type:"photo"});URL.revokeObjectURL(img.src)};
+    img.onload=()=>{
+      const c=document.createElement("canvas"),r=Math.min(1,maxW/img.width);
+      c.width=img.width*r;c.height=img.height*r;
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      c.toBlob(function(blob){
+        if(!blob){rej("blob err");return}
+        // Also produce a base64 fallback so we have it if Storage upload fails
+        const fr=new FileReader();
+        fr.onload=function(){res({blob:blob,dataUrl:fr.result,type:"photo"})};
+        fr.onerror=()=>rej("fr err");
+        fr.readAsDataURL(blob);
+        URL.revokeObjectURL(img.src);
+      },"image/jpeg",quality);
+    };
     img.onerror=()=>rej("img err");img.src=URL.createObjectURL(file);
   });
+}
+
+// Upload a single photo blob to Firebase Storage. Returns {url, path, type:"photo"}.
+async function uploadPhotoToStorage(blob,ticketKey,idx){
+  if(!storage)throw new Error("Storage not initialized");
+  if(!navigator.onLine)throw new Error("offline");
+  const path="tickets/"+ticketKey+"/"+Date.now()+"_"+idx+".jpg";
+  const ref=storage.ref().child(path);
+  const snap=await ref.put(blob,{contentType:"image/jpeg"});
+  const url=await snap.ref.getDownloadURL();
+  return{url:url,path:path,type:"photo",storage:true};
 }
 
 async function compressAllMedia(){
@@ -1566,9 +1616,27 @@ async function compressAllMedia(){
   const prog=document.getElementById("uploadProg"),bar=document.getElementById("uploadBar");
   prog.classList.add("show");
   const results=[];
+  // Use a stable ticket key for the storage folder. Use editingDocId if editing, else timestamp.
+  const ticketKey=(typeof editingDocId!=="undefined"&&editingDocId)?editingDocId:("new_"+Date.now());
+  let storageWorks=!!storage&&navigator.onLine;
   for(let i=0;i<mediaFiles.length;i++){
     bar.style.width=((i+1)/mediaFiles.length*100)+"%";
-    try{const r=await compressPhoto(mediaFiles[i].file);results.push(r)}catch(e){console.warn("Skip",e)}
+    try{
+      const compressed=await compressPhoto(mediaFiles[i].file);
+      // Try Storage upload first. If it fails, fall back to base64 (older approach).
+      if(storageWorks){
+        try{
+          const uploaded=await uploadPhotoToStorage(compressed.blob,ticketKey,i);
+          results.push(uploaded);
+          continue;
+        }catch(upErr){
+          console.warn("Storage upload failed, falling back to base64 for photo "+i,upErr);
+          storageWorks=false; // stop trying for the rest
+        }
+      }
+      // Fallback: save as base64 in the document (old behavior)
+      results.push({data:compressed.dataUrl,type:"photo"});
+    }catch(e){console.warn("Skip photo "+i,e)}
   }
   setTimeout(()=>prog.classList.remove("show"),400);
   return results;
@@ -1808,11 +1876,23 @@ async function dlZip(ticketIdx,list){
   try{
     const zip=new JSZip();
     const folder=zip.folder(t.customer.replace(/[^a-zA-Z0-9 _-]/g,"").replace(/\s+/g,"_")+"_"+t.date);
-    t.media.forEach((m,i)=>{
-      const b64=m.data.split(",")[1];
+    // Process each photo: either fetch from Storage URL or decode base64
+    for(let i=0;i<t.media.length;i++){
+      const m=t.media[i];
       const ext="jpg";
-      folder.file(`${i+1}_${m.type}.${ext}`,b64,{base64:true});
-    });
+      try{
+        if(m.url){
+          // Storage-hosted: fetch as blob
+          const resp=await fetch(m.url);
+          const blob=await resp.blob();
+          folder.file(`${i+1}_${m.type||"photo"}.${ext}`,blob);
+        }else if(m.data){
+          // Base64 fallback (legacy tickets)
+          const b64=m.data.split(",")[1];
+          folder.file(`${i+1}_${m.type||"photo"}.${ext}`,b64,{base64:true});
+        }
+      }catch(fetchErr){console.warn("Photo "+(i+1)+" failed to fetch:",fetchErr)}
+    }
     const blob=await zip.generateAsync({type:"blob"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`${t.customer.replace(/\s+/g,"_")}_${t.date}.zip`;
@@ -1824,6 +1904,14 @@ async function dlZip(ticketIdx,list){
         const ok=confirm("✅ ZIP downloaded with "+originalCount+" photo"+(originalCount!==1?"s":"")+".\n\nDelete these photos from Firebase to save storage space?\n\n(The ZIP is already saved on your computer — deleting only removes them from the cloud database.)");
         if(!ok)return;
         try{
+          // Delete from Storage if any photos were stored there
+          if(storage){
+            for(const m of t.media){
+              if(m.path){
+                try{await storage.ref().child(m.path).delete()}catch(_de){console.warn("Storage delete:",_de)}
+              }
+            }
+          }
           await db.collection("tickets").doc(t.id).update({media:[]});
           toast("Photos removed from cloud ✓");
         }catch(err){console.error(err);toast("Could not delete from cloud","err")}
@@ -1853,7 +1941,7 @@ ${lb&&lb.free?`<div style="display:flex;justify-content:space-between;font-size:
 ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:11px;color:#999;margin-top:4px">Internal RDA: $${t.totalRda.toFixed(2)}</div>`:""}
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:12px;color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
-${(t.media||[]).length?`<div class="tkt-media">${t.media.map(m=>`<img src="${m.data}">`).join("")}</div><button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
+${(t.media||[]).length?`<div class="tkt-media">${t.media.map(m=>`<img src="${m.url||m.data}" loading="lazy">`).join("")}</div><button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
 <div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:12px;font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:12px;font-weight:600;color:var(--acd)">✏️ Edit Ticket</button>
@@ -2658,7 +2746,7 @@ function calDayCell(d,ds,tkts,today,isOther){
   return '<div class="cal-day'+(isToday?" today":"")+(isSel?" selected":"")+(isOther?" other":"")+'" onclick="calSelectDay(\''+ds+'\')" ondragover="event.preventDefault();this.classList.add(\'drop-over\')" ondragleave="this.classList.remove(\'drop-over\')" ondrop="calDropOnDay(event,\''+ds+'\')"><div class="dn">'+d+'</div><div class="cal-events">'+events+'</div></div>';
 }
 function rndrCalWeek(sun,byDate,today){const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=0;i<7;i++){const dt=new Date(sun);dt.setDate(sun.getDate()+i);const ds=fmtD(dt);h+=calDayCell(dt.getDate(),ds,byDate[ds]||[],today,false)}document.getElementById("calGrid").innerHTML=h}
-function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';if(!tkts.length)h+='<div style="padding:40px;text-align:center;color:var(--i3);border:2px dashed var(--ln);border-radius:12px">No tickets for this day<br><span style="font-size:11px;opacity:.6">Drop a ticket here to schedule it</span></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
+function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),#d4772c);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">🗺️ View Route Map ('+tkts.length+' stops)</button></div>'}if(!tkts.length)h+='<div style="padding:40px;text-align:center;color:var(--i3);border:2px dashed var(--ln);border-radius:12px">No tickets for this day<br><span style="font-size:11px;opacity:.6">Drop a ticket here to schedule it</span></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
 function rndrCalTeam(sel,allTkts){
   const tkts=allTkts.filter(t=>t.date===sel);
   const isTech=currentUser&&currentUser.role==="tech";
@@ -2941,6 +3029,189 @@ async function saveDetailEdits(id){
   try{await db.collection("tickets").doc(id).update(upd);toast("Saved ✓");closeTktDetail();setTimeout(refreshAll,500)}catch(e){toast("Error","err")}
 }
 function closeTktDetail(){document.getElementById("tktDetailBg").classList.remove("open")}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ROUTE MAP — visualizes the day's stops on a map + opens in Apple/Google Maps
+// ═══════════════════════════════════════════════════════════════════════
+let _routeMapInstance=null;
+let _routeMapStops=[]; // [{tkt, lat, lng, address}]
+
+// Geocoding cache (address → {lat, lng}). Persisted in localStorage so we don't re-geocode the same address.
+function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache")||"{}")}catch(e){return{}}}
+function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache",JSON.stringify(c))}catch(e){}}
+
+// Geocode an address using OpenStreetMap Nominatim (free, no API key).
+// Cached in localStorage forever — same address never gets geocoded twice.
+async function geocodeAddress(addr){
+  if(!addr||!addr.trim())return null;
+  const key=addr.trim().toLowerCase();
+  const cache=_getGeoCache();
+  if(cache[key])return cache[key]; // cache hit
+  try{
+    // Be polite to Nominatim — they require User-Agent and rate limit to ~1 req/sec.
+    const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(addr);
+    const resp=await fetch(url,{headers:{"Accept":"application/json"}});
+    if(!resp.ok)return null;
+    const data=await resp.json();
+    if(!data||!data.length)return null;
+    const result={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+    cache[key]=result;
+    _setGeoCache(cache);
+    return result;
+  }catch(e){console.warn("Geocode failed for:",addr,e);return null}
+}
+
+function _addrFromTkt(t){
+  if(!t)return"";
+  const parts=[];
+  if(t.address)parts.push(t.address);
+  if(t.city)parts.push(t.city);
+  parts.push("MO");
+  if(t.zip)parts.push(t.zip);
+  return parts.join(", ");
+}
+
+async function openRouteMap(dateStr){
+  // Find tickets for this date (matching current calendar filter — same as Day view)
+  const isTech=currentUser&&currentUser.role==="tech";
+  const allTkts=[...active,...done];
+  let tkts=allTkts.filter(function(t){
+    if(t.status==="canceled")return false;
+    if(t.date!==dateStr)return false;
+    if(isTech)return(t.techs||[]).includes(currentUser.name);
+    // For admin: respect the same hidden-techs filter as the calendar
+    const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];
+    return techs.some(tn=>!calHiddenTechs.has(tn));
+  });
+  // Sort by arrival time (the natural visit order)
+  tkts.sort(function(a,b){return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});
+  if(!tkts.length){toast("No stops for this day","warn");return}
+
+  // Open modal & show loading state
+  document.getElementById("routeMapBg").classList.add("open");
+  const dateLabel=new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  document.getElementById("routeMapTitle").textContent="Route — "+dateLabel;
+  document.getElementById("routeMapStatus").textContent="📍 Looking up addresses…";
+  document.getElementById("routeMapStatus").style.display="block";
+  document.getElementById("routeMapStops").innerHTML='<div style="text-align:center;padding:20px;color:var(--i3);font-size:13px">Loading stops…</div>';
+
+  // Geocode each stop. Cached addresses are instant; new ones take ~1 second each.
+  _routeMapStops=[];
+  let geocodedCount=0,failedCount=0;
+  for(let i=0;i<tkts.length;i++){
+    const t=tkts[i];
+    const addr=_addrFromTkt(t);
+    if(!addr){failedCount++;_routeMapStops.push({tkt:t,lat:null,lng:null,address:""});continue}
+    document.getElementById("routeMapStatus").textContent="📍 Geocoding "+(i+1)+" of "+tkts.length+"…";
+    const coords=await geocodeAddress(addr);
+    if(coords){
+      _routeMapStops.push({tkt:t,lat:coords.lat,lng:coords.lng,address:addr});
+      geocodedCount++;
+    }else{
+      _routeMapStops.push({tkt:t,lat:null,lng:null,address:addr});
+      failedCount++;
+    }
+    // Throttle: Nominatim asks for max 1 req/sec. Skip wait if it was a cache hit (instant).
+    if(i<tkts.length-1)await new Promise(function(r){setTimeout(r,1100)});
+  }
+
+  document.getElementById("routeMapStatus").style.display="none";
+  _renderRouteMap();
+  _renderRouteStopsList();
+}
+
+function _renderRouteMap(){
+  const validStops=_routeMapStops.filter(function(s){return s.lat&&s.lng});
+  // Tear down previous map instance if any
+  if(_routeMapInstance){try{_routeMapInstance.remove()}catch(e){}_routeMapInstance=null}
+  if(!validStops.length){
+    document.getElementById("routeMapStatus").style.display="block";
+    document.getElementById("routeMapStatus").textContent="⚠️ Couldn't locate any addresses on the map";
+    return;
+  }
+  // Init Leaflet map
+  if(typeof L==="undefined"){document.getElementById("routeMapStatus").style.display="block";document.getElementById("routeMapStatus").textContent="Map library failed to load (offline?)";return}
+  _routeMapInstance=L.map("routeMapContainer",{zoomControl:true,attributionControl:true});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:19,
+    attribution:'© OpenStreetMap'
+  }).addTo(_routeMapInstance);
+  // Add numbered pins for each stop
+  const bounds=[];
+  validStops.forEach(function(s,i){
+    const stopNum=i+1;
+    const techCol=(s.tkt.techs&&s.tkt.techs.length&&TECHS.indexOf(s.tkt.techs[0])>=0)?TECH_COLORS[TECHS.indexOf(s.tkt.techs[0])%TECH_COLORS.length]:"#d4772c";
+    const icon=L.divIcon({
+      className:"",
+      html:'<div style="background:'+techCol+';color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+stopNum+'</div>',
+      iconSize:[32,32],
+      iconAnchor:[16,16]
+    });
+    const m=L.marker([s.lat,s.lng],{icon:icon}).addTo(_routeMapInstance);
+    const popup='<b>'+esc(s.tkt.customer||"—")+'</b><br>'+(s.tkt.arrival?esc(s.tkt.arrival)+' · ':'')+esc((s.tkt.techs||[]).join(", ")||"Unassigned")+'<br><small>'+esc(s.address)+'</small>';
+    m.bindPopup(popup);
+    m.on("click",function(){_routeMapInstance.setView([s.lat,s.lng],15)});
+    bounds.push([s.lat,s.lng]);
+  });
+  // Connect stops with a polyline showing the order (straight lines, not driving route)
+  if(bounds.length>1){
+    L.polyline(bounds,{color:"#d4772c",weight:3,opacity:.6,dashArray:"6,8"}).addTo(_routeMapInstance);
+  }
+  _routeMapInstance.fitBounds(bounds,{padding:[40,40]});
+  // Fix Leaflet's "tiles don't render" bug when modal opens
+  setTimeout(function(){if(_routeMapInstance)_routeMapInstance.invalidateSize()},250);
+}
+
+function _renderRouteStopsList(){
+  let h="";
+  _routeMapStops.forEach(function(s,i){
+    const t=s.tkt;
+    const stopNum=i+1;
+    const techCol=(t.techs&&t.techs.length&&TECHS.indexOf(t.techs[0])>=0)?TECH_COLORS[TECHS.indexOf(t.techs[0])%TECH_COLORS.length]:"#999";
+    const noLocation=(!s.lat||!s.lng);
+    h+='<div style="display:flex;gap:10px;padding:10px;background:#fff;border-radius:10px;margin-bottom:8px;border:1px solid var(--ln);'+(noLocation?'opacity:.65':'')+'" onclick="_focusStop('+i+')" role="button">';
+    h+='<div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:'+techCol+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px">'+stopNum+'</div>';
+    h+='<div style="flex:1;min-width:0">';
+    h+='<div style="font-weight:700;font-size:13px;color:var(--ink);line-height:1.3">'+esc(t.customer||"—")+'</div>';
+    h+='<div style="font-size:11px;color:var(--i3);margin-top:2px">'+(t.arrival?'<b style="color:var(--ac)">'+esc(t.arrival)+'</b> · ':'')+esc((t.techs||[]).join(", ")||"Unassigned")+'</div>';
+    if(s.address)h+='<div style="font-size:11px;color:var(--i3);margin-top:2px;line-height:1.3">📍 '+esc(s.address)+'</div>';
+    if(noLocation)h+='<div style="font-size:10px;color:#dc2626;margin-top:4px">⚠️ Address not found on map</div>';
+    h+='</div></div>';
+  });
+  document.getElementById("routeMapStops").innerHTML=h||'<div style="text-align:center;padding:20px;color:var(--i3);font-size:13px">No stops</div>';
+}
+
+function _focusStop(i){
+  const s=_routeMapStops[i];
+  if(!s||!s.lat||!s.lng||!_routeMapInstance)return;
+  _routeMapInstance.setView([s.lat,s.lng],15);
+}
+
+function closeRouteMap(){
+  document.getElementById("routeMapBg").classList.remove("open");
+  if(_routeMapInstance){try{_routeMapInstance.remove()}catch(e){}_routeMapInstance=null}
+}
+
+function openRouteInExternalMaps(provider){
+  const stops=_routeMapStops.filter(function(s){return s.address});
+  if(!stops.length){toast("No addresses to navigate to","warn");return}
+  // Apple Maps and Google Maps both have multi-stop URL schemes
+  if(provider==="apple"){
+    // Apple Maps: daddr=Address1+to:Address2+to:Address3
+    const addrs=stops.map(function(s){return s.address}).join(" to:");
+    const url="https://maps.apple.com/?daddr="+encodeURIComponent(addrs);
+    window.open(url,"_blank");
+  }else{
+    // Google Maps: max 9 waypoints + 1 destination = 10 total in free direct link
+    if(stops.length>10){toast("Google Maps free link supports up to 10 stops — only first 10 will open","warn")}
+    const limited=stops.slice(0,10);
+    const destination=limited[limited.length-1].address;
+    const waypoints=limited.slice(0,-1).map(function(s){return s.address}).join("|");
+    let url="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+encodeURIComponent(destination);
+    if(waypoints)url+="&waypoints="+encodeURIComponent(waypoints);
+    window.open(url,"_blank");
+  }
+}
 async function dtUpdateCC(id){if(!db)return;try{var upd={ccOnFile:document.getElementById("dtCcFile").checked,ccRequested:document.getElementById("dtCcReq").checked};var rp=document.getElementById("dtRepeat");if(rp)upd.isRepeat=rp.checked;var ck=document.getElementById("dtCheck");if(ck)upd.payCheck=ck.checked;var cr=document.getElementById("dtCredit");if(cr)upd.payCredit=cr.checked;await db.collection("tickets").doc(id).update(upd);toast("CC updated ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
 async function saveTktNotes(id){if(!db)return;try{await db.collection("tickets").doc(id).update({notes:document.getElementById("tktDetailNotes").value});toast("Saved ✓")}catch(e){toast("Error","err")}}
 async function saveTktSpaDesc(id){if(!db)return;try{await db.collection("tickets").doc(id).update({spaDesc:document.getElementById("tktDetailSpaDesc").value});toast("Spa desc saved ✓")}catch(e){toast("Error","err")}}
