@@ -3036,40 +3036,140 @@ function closeTktDetail(){document.getElementById("tktDetailBg").classList.remov
 let _routeMapInstance=null;
 let _routeMapStops=[]; // [{tkt, lat, lng, address}]
 
-// Geocoding cache (address → {lat, lng}). Persisted in localStorage so we don't re-geocode the same address.
+// Geocoding cache (query → {lat, lng} or "MISS"). Persisted in localStorage so we don't re-geocode the same address.
 function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache")||"{}")}catch(e){return{}}}
 function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache",JSON.stringify(c))}catch(e){}}
 
-// Geocode an address using OpenStreetMap Nominatim (free, no API key).
-// Cached in localStorage forever — same address never gets geocoded twice.
+// Common St. Louis area cities that often get appended to street fields by accident in CSV imports.
+// If the street ends with one of these names, strip it.
+const _STL_CITIES_RE=/\s+(saint\s+louis|st\.?\s+louis|webster\s+groves|ballwin|chesterfield|wildwood|kirkwood|st\.?\s+charles|saint\s+charles|manchester|florissant|hazelwood|bridgeton|maryland\s+heights|creve\s+coeur|ladue|clayton|university\s+city|affton|concord|fenton|arnold|edwardsville|belleville|o'?fallon|wentzville|st\.?\s+peters|saint\s+peters|cottleville|brentwood|maplewood|richmond\s+heights|shrewsbury|crestwood|sunset\s+hills|glendale|ellisville|valley\s+park|eureka|pacific|high\s+ridge|hillsboro|festus|crystal\s+city|imperial|de\s+soto|town\s+and\s+country|town\s+&\s+country|columbia|elsah|godfrey|alton|granite\s+city|town\s+&\s+country|chesterfield|des\s+peres|olivette|overland|jennings|bellefontaine\s+neighbors|black\s+jack|spanish\s+lake|moline\s+acres|berkeley|kinloch|riverview|ferguson|dellwood|country\s+club\s+hills|pine\s+lawn|wellston|northwoods|normandy|pasadena\s+hills|pasadena\s+park|cool\s+valley|beverly\s+hills|hanley\s+hills|velda\s+city|velda\s+village\s+hills|edmundson|woodson\s+terrace|st\.?\s+ann|st\.?\s+john|sycamore\s+hills|charlack|breckenridge\s+hills|vinita\s+park|vinita\s+terrace|uplands\s+park|wilbur\s+park|grantwood\s+village|green\s+park|lakeshire|marlborough|crestwood|webster\s+groves)\s*$/i;
+
+// Pull just the street out of a possibly-dirty address field.
+// Example input: "1339 Lanvale Drive St. Louis, MO 63119"  →  output: "1339 Lanvale Drive"
+function _extractStreetFromAddr(addr){
+  if(!addr)return"";
+  let s=String(addr).trim();
+  // 1. Take everything before the first comma (drops "St. Louis, MO 63119" suffix if present)
+  const ci=s.indexOf(",");
+  if(ci>0)s=s.substring(0,ci).trim();
+  // 2. Strip trailing city name that got appended to the street (multi-pass for stubborn cases)
+  for(let i=0;i<3;i++){
+    const before=s;
+    s=s.replace(_STL_CITIES_RE,"").trim();
+    // Also strip trailing "MO" or state abbreviations
+    s=s.replace(/\s+(MO|Missouri|IL|Illinois)\s*$/i,"").trim();
+    // Strip trailing ZIP
+    s=s.replace(/\s+\d{5}(-\d{4})?\s*$/,"").trim();
+    if(s===before)break; // no more changes, stop
+  }
+  return s;
+}
+
+// Clean a city field that may have ZIP appended ("Webster Groves 63119" → "Webster Groves")
+function _extractCityFromCity(city){
+  if(!city)return"";
+  return String(city).replace(/\s+\d{5}(-\d{4})?\s*$/,"").trim();
+}
+
+// Build a clean human-readable address for display + Apple/Google Maps URL.
+// This is what Apple Maps will actually parse — Apple/Google handle messy strings well, but cleaner is faster.
+function _cleanDisplayAddr(t){
+  if(!t)return"";
+  const street=_extractStreetFromAddr(t.address);
+  const city=_extractCityFromCity(t.city);
+  const zip=(t.zip||"").toString().trim();
+  const parts=[];
+  if(street)parts.push(street);
+  if(city)parts.push(city);
+  parts.push("MO");
+  if(zip)parts.push(zip);
+  return parts.join(", ");
+}
+
+// Try Photon (Komoot's geocoder, OSM-based, very good for messy US addresses)
+async function _geocodePhoton(q){
+  try{
+    const url="https://photon.komoot.io/api?lang=en&limit=1&q="+encodeURIComponent(q);
+    const resp=await fetch(url);
+    if(!resp.ok)return null;
+    const data=await resp.json();
+    if(data&&data.features&&data.features.length){
+      const c=data.features[0].geometry.coordinates;
+      return{lat:c[1],lng:c[0]};
+    }
+  }catch(e){console.warn("Photon error:",e)}
+  return null;
+}
+
+// Try Nominatim (OpenStreetMap's geocoder, slower & rate-limited but often works as fallback)
+async function _geocodeNominatim(q){
+  try{
+    const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q="+encodeURIComponent(q);
+    const resp=await fetch(url,{headers:{"Accept":"application/json"}});
+    if(!resp.ok)return null;
+    const data=await resp.json();
+    if(data&&data.length)return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+  }catch(e){console.warn("Nominatim error:",e)}
+  return null;
+}
+
+// Geocode a ticket using cleaned address. Tries multiple query formats, with both Photon and Nominatim.
+// Caches every attempt (positive AND negative) to avoid re-querying the same bad address.
+async function geocodeTicket(t){
+  if(!t)return null;
+  const street=_extractStreetFromAddr(t.address);
+  const city=_extractCityFromCity(t.city);
+  const zip=(t.zip||"").toString().replace(/[^\d]/g,"").substring(0,5);
+  if(!street&&!zip&&!city)return null;
+  // Build candidate queries in order of best→worst likelihood of matching
+  const candidates=[];
+  if(street&&zip)candidates.push(street+", "+zip+", USA");        // most precise: street + ZIP
+  if(street&&city&&zip)candidates.push(street+", "+city+", MO "+zip+", USA");
+  if(street&&city)candidates.push(street+", "+city+", MO, USA");
+  if(street&&zip)candidates.push(street+" "+zip);
+  if(zip)candidates.push(zip+", USA"); // zip-only fallback (centroid of ZIP area)
+  for(let i=0;i<candidates.length;i++){
+    const q=candidates[i];
+    const key=q.toLowerCase();
+    const cache=_getGeoCache();
+    if(cache[key]){
+      if(cache[key]==="MISS")continue; // negative cache, skip and try next format
+      return cache[key];
+    }
+    // Try Photon first (better for messy US addresses, no rate limit)
+    let result=await _geocodePhoton(q);
+    // Fallback to Nominatim if Photon misses
+    if(!result){
+      await new Promise(function(r){setTimeout(r,400)});
+      result=await _geocodeNominatim(q);
+    }
+    if(result){
+      cache[key]=result;
+      _setGeoCache(cache);
+      return result;
+    }
+    cache[key]="MISS";
+    _setGeoCache(cache);
+    // Small pause between candidates to be polite to the geocoders
+    if(i<candidates.length-1)await new Promise(function(r){setTimeout(r,400)});
+  }
+  return null;
+}
+
+// Legacy geocodeAddress (string-based) kept for compatibility
 async function geocodeAddress(addr){
   if(!addr||!addr.trim())return null;
   const key=addr.trim().toLowerCase();
   const cache=_getGeoCache();
-  if(cache[key])return cache[key]; // cache hit
-  try{
-    // Be polite to Nominatim — they require User-Agent and rate limit to ~1 req/sec.
-    const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(addr);
-    const resp=await fetch(url,{headers:{"Accept":"application/json"}});
-    if(!resp.ok)return null;
-    const data=await resp.json();
-    if(!data||!data.length)return null;
-    const result={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
-    cache[key]=result;
-    _setGeoCache(cache);
-    return result;
-  }catch(e){console.warn("Geocode failed for:",addr,e);return null}
+  if(cache[key]&&cache[key]!=="MISS")return cache[key];
+  let result=await _geocodePhoton(addr);
+  if(!result){await new Promise(r=>setTimeout(r,400));result=await _geocodeNominatim(addr)}
+  if(result){cache[key]=result;_setGeoCache(cache);return result}
+  return null;
 }
 
-function _addrFromTkt(t){
-  if(!t)return"";
-  const parts=[];
-  if(t.address)parts.push(t.address);
-  if(t.city)parts.push(t.city);
-  parts.push("MO");
-  if(t.zip)parts.push(t.zip);
-  return parts.join(", ");
-}
+// Used by the route map list (display) and Apple/Google Maps URLs
+function _addrFromTkt(t){return _cleanDisplayAddr(t)}
 
 async function openRouteMap(dateStr){
   // Find tickets for this date (matching current calendar filter — same as Day view)
@@ -3100,19 +3200,18 @@ async function openRouteMap(dateStr){
   let geocodedCount=0,failedCount=0;
   for(let i=0;i<tkts.length;i++){
     const t=tkts[i];
-    const addr=_addrFromTkt(t);
-    if(!addr){failedCount++;_routeMapStops.push({tkt:t,lat:null,lng:null,address:""});continue}
+    const displayAddr=_cleanDisplayAddr(t);
     document.getElementById("routeMapStatus").textContent="📍 Geocoding "+(i+1)+" of "+tkts.length+"…";
-    const coords=await geocodeAddress(addr);
+    const coords=await geocodeTicket(t);
     if(coords){
-      _routeMapStops.push({tkt:t,lat:coords.lat,lng:coords.lng,address:addr});
+      _routeMapStops.push({tkt:t,lat:coords.lat,lng:coords.lng,address:displayAddr});
       geocodedCount++;
     }else{
-      _routeMapStops.push({tkt:t,lat:null,lng:null,address:addr});
+      _routeMapStops.push({tkt:t,lat:null,lng:null,address:displayAddr});
       failedCount++;
     }
-    // Throttle: Nominatim asks for max 1 req/sec. Skip wait if it was a cache hit (instant).
-    if(i<tkts.length-1)await new Promise(function(r){setTimeout(r,1100)});
+    // Be nice to the free geocoders — small pause between tickets (cache hits are instant though)
+    if(i<tkts.length-1)await new Promise(function(r){setTimeout(r,300)});
   }
 
   document.getElementById("routeMapStatus").style.display="none";
@@ -3126,7 +3225,7 @@ function _renderRouteMap(){
   if(_routeMapInstance){try{_routeMapInstance.remove()}catch(e){}_routeMapInstance=null}
   if(!validStops.length){
     document.getElementById("routeMapStatus").style.display="block";
-    document.getElementById("routeMapStatus").textContent="⚠️ Couldn't locate any addresses on the map";
+    document.getElementById("routeMapStatus").innerHTML='<div style="text-align:center;line-height:1.5"><div style="font-size:14px;font-weight:700;color:#b45309;margin-bottom:6px">⚠️ Couldn\'t locate addresses on map</div><div style="font-size:12px;color:var(--i3)">No problem — Apple Maps &amp; Google Maps below<br>handle the addresses directly and will open with full navigation.</div></div>';
     return;
   }
   // Init Leaflet map
@@ -3193,6 +3292,7 @@ function closeRouteMap(){
 }
 
 function openRouteInExternalMaps(provider){
+  // Use ALL stops with cleaned addresses (Apple/Google Maps parse messy addresses well — they don't need our geocoding)
   const stops=_routeMapStops.filter(function(s){return s.address});
   if(!stops.length){toast("No addresses to navigate to","warn");return}
   // Apple Maps and Google Maps both have multi-stop URL schemes
