@@ -921,7 +921,7 @@ wr.querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.
 const WT_AUTO={"Platinium Flush":"Service - Flush Platinum","Platinum Flush":"Service - Flush Platinum","Platinum Flush Swim":"Service - Flush Platinum Swim","Water Change":"Service - Flush Platinum"};
 function onWTAdd(w){if(w==="Water Change"){document.getElementById("wcSubPanel").classList.add("show");return}const pn=WT_AUTO[w];if(!pn)return;const part=P.find(p=>p.n===pn);if(part&&!sel.some(s=>s.n===pn)){sel.push({...part,qty:1,id:Date.now(),auto:true});noLabor=true;rndr()}}
 function onWTRemove(w){if(w==="Water Change"){wcType="";document.getElementById("wcSubPanel").classList.remove("show");document.getElementById("wcChemBtn").className="wb yes";document.getElementById("wcNoChemBtn").className="wb no";document.getElementById("wcInfo").style.display="none";const pn=WT_AUTO[w];if(pn)sel=sel.filter(s=>s.n!==pn);const hasAuto=wTypes.some(wt=>wt!=="Water Change"&&WT_AUTO[wt]);noLabor=hasAuto;rndr();return}const pn=WT_AUTO[w];if(!pn)return;sel=sel.filter(s=>s.n!==pn);const hasAuto=wTypes.some(wt=>{if(wt==="Water Change")return wcType==="chem";return !!WT_AUTO[wt]});noLabor=hasAuto;rndr()}
-function setWCType(t){wcType=t;document.getElementById("wcChemBtn").className="wb yes"+(t==="chem"?" on-y":"");document.getElementById("wcNoChemBtn").className="wb no"+(t==="nochem"?" on-n":"");const info=document.getElementById("wcInfo");const pn=WT_AUTO["Water Change"];if(t==="chem"){const part=P.find(p=>p.n===pn);if(part&&!sel.some(s=>s.n===pn)){sel.push({...part,qty:1,id:Date.now(),auto:true})}noLabor=true;info.style.display="block";info.className="w-result full-cov";info.innerHTML="<b>Chemical Maintenance</b><br>✓ Water change <b>100% covered</b> under warranty. No labor charge."}else{sel=sel.filter(s=>s.n!==pn);const hasAuto=wTypes.some(wt=>{if(wt==="Water Change")return false;return !!WT_AUTO[wt]});noLabor=hasAuto;info.style.display="block";info.className="w-result no-cov";info.innerHTML="<b>No Chemical Maintenance</b><br>No warranty coverage. Labor charged by time."}rndr()}
+function setWCType(t){wcType=t;document.getElementById("wcChemBtn").className="wb yes"+(t==="chem"?" on-y":"");document.getElementById("wcNoChemBtn").className="wb no"+(t==="nochem"?" on-n":"");const info=document.getElementById("wcInfo");const pn=WT_AUTO["Water Change"];if(t==="chem"){/* Customer HAS chemical maintenance plan → water change AND flush are covered, no charges */sel=sel.filter(s=>s.n!==pn);noLabor=true;info.style.display="block";info.className="w-result full-cov";info.innerHTML="<b>Chemical Maintenance</b><br>✓ Water change <b>100% covered</b> under maintenance plan. No charges."}else{/* Customer has NO chemical maintenance → charge for the Flush part AND labor */const part=P.find(p=>p.n===pn);if(part&&!sel.some(s=>s.n===pn)){sel.push({...part,qty:1,id:Date.now(),auto:true})}/* Labor IS charged unless other no-labor work types are present */const hasAuto=wTypes.some(wt=>{if(wt==="Water Change")return false;return !!WT_AUTO[wt]});noLabor=hasAuto;info.style.display="block";info.className="w-result no-cov";info.innerHTML="<b>No Chemical Maintenance</b><br>Flush product <b>and</b> labor charged."}rndr()}
 function quickAddWT(){const name=prompt("New work type:");if(!name||!name.trim())return;const n=name.trim();if(WT.some(t=>t.toLowerCase()===n.toLowerCase())){toast("Already exists","warn");return}WT.push(n);saveWT();buildWTPills();toast(n+" added ✓")}
 function gPL(){const w=gWT();return w==="full"?"Total (100% Warranty)":w==="half"?"Total (50% Retail)":"Total RDA"}
 function gWL(){if(!wHas)return"N/W";if(!wMod)return"Warranty";const m=wMod.toUpperCase(),y=wYr>5?"5+":wYr;if(wYr>5)return`${m} Yr${y} No warranty`;const w=gWT();return w==="full"?`${m} Yr${y} 100%`:w==="half"?`${m} Yr${y} 50%`:`${m} Yr${y} RDA`}
@@ -3037,8 +3037,22 @@ let _routeMapInstance=null;
 let _routeMapStops=[]; // [{tkt, lat, lng, address}]
 
 // Geocoding cache (query → {lat, lng} or "MISS"). Persisted in localStorage so we don't re-geocode the same address.
-function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache")||"{}")}catch(e){return{}}}
-function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache",JSON.stringify(c))}catch(e){}}
+// v2: bumped key to invalidate stale entries from before bounding box was added
+function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache_v2")||"{}")}catch(e){return{}}}
+function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache_v2",JSON.stringify(c))}catch(e){}}
+
+// St. Louis metro bounding box — covers all of St. Louis County MO, St. Charles County, Jefferson County,
+// plus Madison/St. Clair Counties in Illinois (where Aspen Spas serves). The geocoder will ONLY return
+// results within these bounds, so "Lanvale Drive" can't accidentally match somewhere in Georgia.
+const STL_BBOX_PHOTON="-91.10,38.20,-89.50,39.20";          // minLon,minLat,maxLon,maxLat
+const STL_VIEWBOX_NOMINATIM="-91.10,39.20,-89.50,38.20";    // lonLeft,latTop,lonRight,latBottom
+const STL_CENTER={lat:38.627,lng:-90.199};                  // downtown St. Louis (used as bias)
+
+// Sanity check: is this coord actually in the St. Louis metro area?
+function _isInSTL(coords){
+  if(!coords||typeof coords.lat!=="number"||typeof coords.lng!=="number")return false;
+  return coords.lat>38.0&&coords.lat<39.5&&coords.lng>-91.5&&coords.lng<-89.3;
+}
 
 // Common St. Louis area cities that often get appended to street fields by accident in CSV imports.
 // If the street ends with one of these names, strip it.
@@ -3086,48 +3100,70 @@ function _cleanDisplayAddr(t){
   return parts.join(", ");
 }
 
-// Try Photon (Komoot's geocoder, OSM-based, very good for messy US addresses)
+// Try Photon (Komoot's geocoder, OSM-based, very good for messy US addresses).
+// Constrained to St. Louis metro bounding box — won't return matches from other states.
 async function _geocodePhoton(q){
   try{
-    const url="https://photon.komoot.io/api?lang=en&limit=1&q="+encodeURIComponent(q);
+    const url="https://photon.komoot.io/api?lang=en&limit=3"+
+              "&bbox="+STL_BBOX_PHOTON+
+              "&lat="+STL_CENTER.lat+"&lon="+STL_CENTER.lng+
+              "&q="+encodeURIComponent(q);
     const resp=await fetch(url);
     if(!resp.ok)return null;
     const data=await resp.json();
     if(data&&data.features&&data.features.length){
-      const c=data.features[0].geometry.coordinates;
-      return{lat:c[1],lng:c[0]};
+      // Return the first result that's actually in the STL metro area
+      for(const f of data.features){
+        const c=f.geometry&&f.geometry.coordinates;
+        if(c){
+          const result={lat:c[1],lng:c[0]};
+          if(_isInSTL(result))return result;
+        }
+      }
     }
   }catch(e){console.warn("Photon error:",e)}
   return null;
 }
 
-// Try Nominatim (OpenStreetMap's geocoder, slower & rate-limited but often works as fallback)
+// Try Nominatim (OpenStreetMap's geocoder), constrained to St. Louis metro viewbox.
 async function _geocodeNominatim(q){
   try{
-    const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q="+encodeURIComponent(q);
+    const url="https://nominatim.openstreetmap.org/search?format=json&limit=3&countrycodes=us"+
+              "&viewbox="+STL_VIEWBOX_NOMINATIM+"&bounded=1"+
+              "&q="+encodeURIComponent(q);
     const resp=await fetch(url,{headers:{"Accept":"application/json"}});
     if(!resp.ok)return null;
     const data=await resp.json();
-    if(data&&data.length)return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+    if(data&&data.length){
+      // Return the first result that's actually in the STL metro area
+      for(const item of data){
+        const result={lat:parseFloat(item.lat),lng:parseFloat(item.lon)};
+        if(_isInSTL(result))return result;
+      }
+    }
   }catch(e){console.warn("Nominatim error:",e)}
   return null;
 }
 
 // Geocode a ticket using cleaned address. Tries multiple query formats, with both Photon and Nominatim.
 // Caches every attempt (positive AND negative) to avoid re-querying the same bad address.
+// All queries are constrained to the St. Louis metro area so we never pin to wrong cities.
 async function geocodeTicket(t){
   if(!t)return null;
   const street=_extractStreetFromAddr(t.address);
   const city=_extractCityFromCity(t.city);
   const zip=(t.zip||"").toString().replace(/[^\d]/g,"").substring(0,5);
   if(!street&&!zip&&!city)return null;
-  // Build candidate queries in order of best→worst likelihood of matching
+  // Build candidate queries in order of best→worst likelihood of matching.
+  // Always include "Saint Louis" or "Missouri" context so the geocoders know the region.
   const candidates=[];
-  if(street&&zip)candidates.push(street+", "+zip+", USA");        // most precise: street + ZIP
-  if(street&&city&&zip)candidates.push(street+", "+city+", MO "+zip+", USA");
-  if(street&&city)candidates.push(street+", "+city+", MO, USA");
+  if(street&&city&&zip)candidates.push(street+", "+city+", MO "+zip);
+  if(street&&zip)candidates.push(street+", Saint Louis, MO "+zip);
+  if(street&&city)candidates.push(street+", "+city+", Missouri");
   if(street&&zip)candidates.push(street+" "+zip);
-  if(zip)candidates.push(zip+", USA"); // zip-only fallback (centroid of ZIP area)
+  if(street)candidates.push(street+", Saint Louis, MO");
+  if(zip&&city)candidates.push(city+", MO "+zip); // fallback to city center
+  if(zip)candidates.push(zip+", Missouri");        // last resort: ZIP centroid
   for(let i=0;i<candidates.length;i++){
     const q=candidates[i];
     const key=q.toLowerCase();
@@ -3143,7 +3179,7 @@ async function geocodeTicket(t){
       await new Promise(function(r){setTimeout(r,400)});
       result=await _geocodeNominatim(q);
     }
-    if(result){
+    if(result&&_isInSTL(result)){
       cache[key]=result;
       _setGeoCache(cache);
       return result;
@@ -3164,7 +3200,7 @@ async function geocodeAddress(addr){
   if(cache[key]&&cache[key]!=="MISS")return cache[key];
   let result=await _geocodePhoton(addr);
   if(!result){await new Promise(r=>setTimeout(r,400));result=await _geocodeNominatim(addr)}
-  if(result){cache[key]=result;_setGeoCache(cache);return result}
+  if(result&&_isInSTL(result)){cache[key]=result;_setGeoCache(cache);return result}
   return null;
 }
 
