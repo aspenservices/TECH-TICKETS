@@ -88,6 +88,8 @@ input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor
 
 /* Layout */
 .wrap{max-width:100%;margin:0 auto;padding:14px 16px;padding-bottom:calc(14px + var(--sb));display:none}.wrap.show{display:block}
+#pg6.wrap{padding:0}
+#pg6.wrap.show{display:block}
 .card{background:var(--cd);border-radius:var(--rad);padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);border:1px solid #f0ece8}
 .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--brl);font-weight:700;margin-bottom:8px}.lbl .sub{font-weight:400;color:#bbb;text-transform:none;letter-spacing:0}
 
@@ -375,27 +377,104 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .assign-area{margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)}
 .assign-area .pill{padding:8px 14px;font-size:12px}
 .time-input{padding:8px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;min-height:40px;font-family:inherit}
-.cust-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start}
-.cust-card{background:var(--cd);border:1px solid #f0ece8;border-radius:var(--rad);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .15s,border-color .15s}
-.cust-card:hover{border-color:#e0d8d0}
-.cust-card.open{box-shadow:0 4px 14px rgba(0,0,0,.08);border-color:var(--ac)}
-.cust-card-hdr{padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.cust-card-hdr:hover{background:#fafaf8}
-.cust-card.open .cust-card-hdr{background:var(--acl);border-bottom:1px solid #f0ece8}
-.cust-card-hdr-info{flex:1;min-width:0}
-.cust-card-hdr h5{font-size:14px;font-weight:700;color:var(--br);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:text;-webkit-user-select:text;cursor:text}
-.cust-card-hdr p{font-size:11px;color:var(--i3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;user-select:text;-webkit-user-select:text}
-.cust-card-hdr p .phone-txt{user-select:text;-webkit-user-select:text;cursor:text}
-.cust-visits{color:var(--i3);font-weight:500}
-.cust-card-chev{font-size:11px;color:var(--i3);transition:transform .2s;flex-shrink:0}
-.cust-card.open .cust-card-chev{transform:rotate(90deg);color:var(--ac)}
-.cust-card-body{padding:14px;display:none}
-.cust-card.open .cust-card-body{display:block;animation:fu .22s ease-out}
-.cust-card-body .time-input{font-size:13px!important;padding:6px 8px!important;min-height:36px!important}
-.cust-card-body .lbl{font-size:9px!important}
-.cust-zone-pill{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;user-select:text;-webkit-user-select:text}
-.cust-empty{grid-column:1/-1;padding:40px 20px;text-align:center;color:var(--i3);font-size:14px}
-@media(max-width:700px){.cust-grid{grid-template-columns:1fr}}
+/* ═══ CUSTOMERS — QuickBooks-style master/detail layout ═══ */
+.qb-cust-shell{display:flex;height:calc(100dvh - 180px);min-height:560px;background:var(--cd);border-top:1px solid var(--ln)}
+.qb-cust-side{width:340px;flex-shrink:0;border-right:1px solid var(--ln);display:flex;flex-direction:column;background:#fafaf8;overflow:hidden}
+.qb-cust-side-hdr{padding:12px 14px 8px;border-bottom:1px solid var(--ln);background:var(--cd)}
+.qb-cust-side-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--i3);margin-bottom:8px}
+.qb-cust-search-wrap{position:relative;margin-bottom:8px}
+.qb-cust-search-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;opacity:.5;pointer-events:none}
+.qb-cust-search{width:100%;padding:8px 10px 8px 30px;border:1.5px solid var(--ln);border-radius:6px;font-size:13px;background:#fff;outline:none;transition:border-color .12s}
+.qb-cust-search:focus{border-color:var(--ac)}
+.qb-cust-side-meta{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--i3);font-weight:600}
+.qb-cust-sort{font-size:10.5px;border:1px solid var(--ln);background:#fff;padding:3px 6px;border-radius:4px;color:var(--i2);outline:none;cursor:pointer}
+.qb-cust-list-hdr{display:flex;align-items:center;gap:8px;padding:7px 14px;background:#f0ece8;border-bottom:1px solid var(--ln);font-size:9.5px;font-weight:700;color:var(--i3);letter-spacing:.6px;text-transform:uppercase}
+.qb-cust-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.qb-cust-list::-webkit-scrollbar{width:8px}
+.qb-cust-list::-webkit-scrollbar-thumb{background:#d4cdc4;border-radius:4px}
+.qb-cust-row{display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;border-bottom:1px solid #f0ece8;font-size:12.5px;color:var(--ink);transition:background .08s;user-select:none}
+.qb-cust-row:hover{background:#f0ece8}
+.qb-cust-row.active{background:#dcfce7;border-left:3px solid #16a34a;padding-left:11px;font-weight:600}
+.qb-cust-row.active .qb-cust-row-name{color:#166534}
+.qb-cust-row-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-cust-row-visits{width:48px;text-align:right;font-size:11px;color:var(--i3);font-weight:600;font-variant-numeric:tabular-nums}
+.qb-cust-row-zone{width:70px;text-align:right;font-size:9.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-cust-empty{padding:40px 20px;text-align:center;color:var(--i3);font-size:13px}
+.qb-cust-main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--cd);min-width:0}
+.qb-cust-back{display:none;padding:10px 14px;background:#f0ece8;border:none;border-bottom:1px solid var(--ln);text-align:left;font-size:13px;font-weight:600;color:var(--ac);cursor:pointer}
+.qb-cust-detail{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.qb-cust-empty-state{padding:80px 30px;text-align:center;color:var(--i3)}
+.qb-empty-icon{font-size:54px;opacity:.3;margin-bottom:12px}
+.qb-cust-empty-state h3{font-size:18px;color:var(--i2);margin-bottom:8px;font-weight:600}
+.qb-cust-empty-state p{font-size:13px;color:var(--i3);max-width:340px;margin:0 auto;line-height:1.5}
+
+/* Detail pane — QB-style "Customer Information" header card */
+.qb-cust-info-hdr{padding:18px 24px 10px;border-bottom:1px solid var(--ln);background:var(--cd)}
+.qb-cust-info-title{font-size:22px;font-weight:300;color:var(--ink);margin:0;letter-spacing:-.2px}
+.qb-cust-info-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:18px 32px;padding:18px 24px;border-bottom:1px solid var(--ln);background:#fafaf8}
+.qb-cust-info-cell{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start;font-size:12.5px}
+.qb-cust-info-cell label{color:var(--i3);font-weight:600;padding-top:7px;text-align:right}
+.qb-cust-info-cell input,.qb-cust-info-cell textarea{width:100%;padding:6px 8px;border:1px solid transparent;background:transparent;font-size:12.5px;color:var(--ink);border-radius:4px;outline:none;resize:none;font-family:inherit;transition:background .1s,border-color .1s}
+.qb-cust-info-cell input:hover,.qb-cust-info-cell textarea:hover{background:#fff;border-color:#e8e2db}
+.qb-cust-info-cell input:focus,.qb-cust-info-cell textarea:focus{background:#fff;border-color:var(--ac);box-shadow:0 0 0 2px rgba(212,119,44,.12)}
+.qb-cust-info-cell .qb-link{color:var(--ac);text-decoration:none;padding-top:7px;font-weight:600}
+.qb-cust-info-cell .qb-link:hover{text-decoration:underline}
+.qb-cust-action-bar{display:flex;gap:8px;padding:10px 24px;background:#fafaf8;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.qb-cust-btn{padding:8px 14px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid var(--ln);background:#fff;color:var(--i2);cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:5px}
+.qb-cust-btn:hover{border-color:var(--ac);color:var(--ac);background:#fff}
+.qb-cust-btn.primary{background:var(--ac);color:#fff;border-color:var(--ac)}
+.qb-cust-btn.primary:hover{background:var(--acd);color:#fff}
+.qb-cust-btn.brand{background:var(--br);color:#fff;border-color:var(--br)}
+.qb-cust-btn.brand:hover{background:#2a1d15;color:#fff}
+
+/* QB-style tabs in the detail pane */
+.qb-cust-tabs{display:flex;gap:0;padding:0 24px;border-bottom:1px solid var(--ln);background:var(--cd)}
+.qb-cust-tab{padding:11px 16px;font-size:11.5px;font-weight:600;color:var(--i3);text-transform:uppercase;letter-spacing:.6px;cursor:pointer;border-bottom:3px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:color .12s}
+.qb-cust-tab:hover{color:var(--i2)}
+.qb-cust-tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+.qb-cust-tab-badge{display:inline-block;background:var(--ln);color:var(--i2);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:5px;font-weight:700}
+.qb-cust-tab.on .qb-cust-tab-badge{background:var(--acl);color:var(--acd)}
+.qb-cust-tab-body{padding:18px 24px}
+
+/* Notes/history list in QB style */
+.qb-notes-tbl-hdr{display:flex;gap:12px;padding:7px 12px;background:#f0ece8;border:1px solid var(--ln);border-radius:5px 5px 0 0;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--i3)}
+.qb-notes-tbl-hdr span:first-child{width:90px;flex-shrink:0}
+.qb-note-row{display:flex;gap:12px;padding:10px 12px;border:1px solid var(--ln);border-top:none;font-size:12.5px;background:#fff;cursor:pointer;align-items:flex-start}
+.qb-note-row:hover{background:#fafaf8}
+.qb-note-row:last-child{border-radius:0 0 5px 5px}
+.qb-note-row.active{background:#fff7ed;border-left:3px solid var(--ac);padding-left:9px}
+.qb-note-row.canceled{opacity:.6}
+.qb-note-row.done{background:#f7fdf9}
+.qb-note-date{width:90px;flex-shrink:0;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;font-size:11.5px}
+.qb-note-text{flex:1;min-width:0;color:var(--i2);line-height:1.45}
+.qb-note-pin{width:14px;color:var(--ac);font-size:11px;flex-shrink:0;text-align:center}
+.qb-note-status{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.4px;margin-left:6px;display:inline-block;vertical-align:middle}
+
+/* Spa description box */
+.qb-spa-desc-box{border:1px solid var(--ln);border-radius:6px;background:#fff;padding:12px;font-size:12.5px;color:var(--ink);line-height:1.55;white-space:pre-wrap;font-family:inherit;width:100%;min-height:140px;resize:vertical;outline:none;transition:border-color .12s}
+.qb-spa-desc-box:focus{border-color:var(--ac);box-shadow:0 0 0 2px rgba(212,119,44,.12)}
+.qb-saved-flash{display:inline-block;color:var(--c-money-strong);font-size:11px;font-weight:600;margin-left:8px;opacity:0;transition:opacity .2s}
+.qb-saved-flash.show{opacity:1}
+
+/* Mobile fallback — stack list & detail */
+@media(max-width:840px){
+  .qb-cust-shell{flex-direction:column;height:auto;min-height:0}
+  .qb-cust-side{width:100%;border-right:none;border-bottom:1px solid var(--ln);height:auto;max-height:50dvh}
+  .qb-cust-side.hidden-mobile{display:none}
+  .qb-cust-main.fullscreen-mobile{display:flex}
+  .qb-cust-back{display:block}
+  .qb-cust-info-grid{grid-template-columns:1fr;gap:12px;padding:14px 16px}
+  .qb-cust-info-cell{grid-template-columns:80px 1fr;font-size:12px}
+  .qb-cust-info-cell label{padding-top:6px;font-size:10.5px}
+  .qb-cust-info-hdr{padding:14px 16px 8px}
+  .qb-cust-info-title{font-size:18px}
+  .qb-cust-action-bar{padding:10px 16px}
+  .qb-cust-tabs{padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .qb-cust-tabs::-webkit-scrollbar{display:none}
+  .qb-cust-tab{padding:10px 10px;font-size:10.5px;flex-shrink:0}
+  .qb-cust-tab-body{padding:14px 16px}
+  .qb-notes-tbl-hdr span:first-child,.qb-note-date{width:74px}
+}
 .zone-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .zone-card{background:var(--cd);border-radius:var(--rad);border:1px solid #f0ece8;overflow:hidden}
 .zone-card-hdr{padding:10px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
@@ -707,10 +786,46 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
   </div>
 </div>
 
-<!-- ══ CUSTOMERS ══ -->
-<div class="wrap" id="pg6">
-  <div class="search-wrap"><input class="search-bar" id="searchCust" placeholder="Search customers..." oninput="rndrCust()"></div>
-  <div id="custGrid" class="cust-grid"></div>
+<!-- ══ CUSTOMERS — QB-style two-pane layout ══ -->
+<div class="wrap" id="pg6" style="padding:0">
+  <div class="qb-cust-shell">
+    <!-- LEFT: customer list -->
+    <aside class="qb-cust-side" id="qbCustSide">
+      <div class="qb-cust-side-hdr">
+        <div class="qb-cust-side-title">Customers &amp; Jobs</div>
+        <div class="qb-cust-search-wrap">
+          <span class="qb-cust-search-ico">🔍</span>
+          <input class="qb-cust-search" id="searchCust" placeholder="Search customers..." oninput="rndrCust()">
+        </div>
+        <div class="qb-cust-side-meta">
+          <span id="qbCustCount">0 customers</span>
+          <select class="qb-cust-sort" id="qbCustSort" onchange="rndrCust()">
+            <option value="name">Name (A→Z)</option>
+            <option value="visits">Most visits</option>
+            <option value="recent">Recently visited</option>
+          </select>
+        </div>
+      </div>
+      <div class="qb-cust-list-hdr">
+        <span style="flex:1">NAME</span>
+        <span style="width:48px;text-align:right">VISITS</span>
+        <span style="width:70px;text-align:right">ZONE</span>
+      </div>
+      <div id="custGrid" class="qb-cust-list"></div>
+    </aside>
+
+    <!-- RIGHT: customer detail panel -->
+    <section class="qb-cust-main" id="qbCustMain">
+      <button class="qb-cust-back" id="qbCustBack" onclick="qbCustCloseDetail()">‹ Back to list</button>
+      <div id="qbCustDetail" class="qb-cust-detail">
+        <div class="qb-cust-empty-state">
+          <div class="qb-empty-icon">👥</div>
+          <h3>Select a customer</h3>
+          <p>Pick a customer from the list to see their information, spa details, and full service history.</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <!-- ══ TICKET DETAIL MODAL ══ -->
@@ -3549,111 +3664,218 @@ function startEstimateFrom(id){
   },200);
 }
 
-// ═══ CUSTOMER DATABASE ═══
+// ═══ CUSTOMER DATABASE — QB-style master/detail ═══
 let selectedCustKey=null;
+let qbCustTab="info"; // 'info' | 'spa' | 'history'
+
 function rndrCust(){
   const q=(document.getElementById("searchCust")||{}).value||"";
+  const sortMode=(document.getElementById("qbCustSort")||{}).value||"name";
   const allTkts=[...active,...done];const custMap={};
-  allTkts.forEach(t=>{const key=(t.customer||"").trim().toLowerCase();if(!key)return;if(!custMap[key])custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[]};custMap[key].tickets.push(t);if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;if(t.address&&!custMap[key].address)custMap[key].address=t.address;if(t.city&&!custMap[key].city)custMap[key].city=t.city;if(t.zip&&!custMap[key].zip)custMap[key].zip=t.zip;if(t.zone&&!custMap[key].zone)custMap[key].zone=t.zone});
-  let customers=Object.entries(custMap).map(([k,v])=>({key:k,...v}));
-  if(q){const s=q.toLowerCase();customers=customers.filter(c=>c.name.toLowerCase().includes(s)||c.phone.includes(s)||(c.address||"").toLowerCase().includes(s)||(c.zone||"").toLowerCase().includes(s))}
-  customers.sort((a,b)=>a.name.localeCompare(b.name));
-  const grid=document.getElementById("custGrid");
-  if(!customers.length){grid.innerHTML='<div class="cust-empty">No customers</div>';return}
-  grid.innerHTML=customers.map(c=>{
-    const zc=ZONE_COLORS[c.zone]||{bg:"#f0f0f0",text:"#555"};
-    const isOpen=selectedCustKey===c.key;
-    const zonePill=c.zone?'<span class="cust-zone-pill" style="background:'+zc.bg+';color:'+zc.text+'">'+esc(c.zone)+'</span>':"";
-    const keyEsc=c.key.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-    let html='<div class="cust-card'+(isOpen?" open":"")+'" id="cust_'+c.key.replace(/[^a-z0-9]/g,"_")+'">';
-    html+='<div class="cust-card-hdr" onclick="custHdrClick(event,\''+keyEsc+'\')">';
-    html+='<div class="cust-card-hdr-info"><h5 onclick="event.stopPropagation()">'+esc(c.name)+'</h5>';
-    html+='<p>'+zonePill+'<span class="cust-visits">'+c.tickets.length+' visit'+(c.tickets.length!==1?"s":"")+'</span></p></div>';
-    html+='<div class="cust-card-chev">▶</div></div>';
-    if(isOpen){
-      html+='<div class="cust-card-body">'+renderCustDetail(c)+'</div>';
-    }
-    html+='</div>';
-    return html;
-  }).join("");
-}
-function custHdrClick(ev,key){
-  // Allow text selection: if user just selected text, don't toggle the card
-  var sel=window.getSelection?window.getSelection().toString():"";
-  if(sel&&sel.length>0)return;
-  // Also ignore clicks on text elements that stopped propagation
-  toggleCustCard(key);
-}
-function toggleCustCard(key){
-  if(selectedCustKey===key)selectedCustKey=null;
-  else selectedCustKey=key;
-  rndrCust();
-  if(selectedCustKey){
-    setTimeout(function(){
-      const el=document.getElementById("cust_"+selectedCustKey.replace(/[^a-z0-9]/g,"_"));
-      if(el)el.scrollIntoView({behavior:"smooth",block:"nearest"});
-    },50);
-  }
-}
-function renderCustDetail(c){
-  const sorted=c.tickets.slice().sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});
-  const latest=sorted[0];
-  let spaDesc="";sorted.forEach(function(t){if(t.spaDesc&&t.spaDesc.length>spaDesc.length)spaDesc=t.spaDesc});
-  if(!spaDesc)sorted.forEach(function(t){if(t.notes&&t.notes.length>200&&!t.source&&t.notes.length>spaDesc.length)spaDesc=t.notes});
-  const fullAddr=(c.address||"")+(c.city?", "+c.city:"")+(c.zip?" "+c.zip:"");
-  let h='';
-  // Editable customer name (at top, more prominent)
-  h+='<div style="margin-bottom:10px"><div class="lbl" style="font-size:10px">Customer Name</div><input id="custName" value="'+esc(c.name||"")+'" class="time-input" style="width:100%;font-size:15px;font-weight:700;color:var(--br)"></div>';
-  // Editable customer info grid
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
-  h+='<div><div class="lbl" style="font-size:10px">Phone</div><input id="custPhone" value="'+esc(c.phone||"")+'" class="time-input" style="width:100%;font-size:14px;color:var(--ac)"></div>';
-  h+='<div><div class="lbl" style="font-size:10px">Zone</div><input id="custZone" value="'+esc(c.zone||"")+'" class="time-input" style="width:100%"></div>';
-  // Secondary phone — shown if exists, or hidden with "+" button to add
-  var hasPhone2=!!(c.phone2&&c.phone2.trim());
-  h+='<div id="custPhone2Row" style="grid-column:1/-1;'+(hasPhone2?"":"display:none")+'"><div class="lbl" style="font-size:10px;display:flex;justify-content:space-between;align-items:center">Phone 2<button type="button" onclick="custTogglePhone2(false)" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:14px;padding:0 4px" title="Remove">×</button></div><input id="custPhone2" value="'+esc(c.phone2||"")+'" class="time-input" style="width:100%;font-size:14px;color:var(--ac)"></div>';
-  h+='<div id="custAddPhoneRow" style="grid-column:1/-1;'+(hasPhone2?"display:none":"")+'"><button type="button" onclick="custTogglePhone2(true)" style="padding:6px 10px;background:none;border:1px dashed var(--ac);color:var(--ac);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ Add another phone</button></div>';
-  h+='<div style="grid-column:1/-1"><div class="lbl" style="font-size:10px">Address</div><input id="custAddr" value="'+esc(c.address||"")+'" class="time-input" style="width:100%"></div>';
-  h+='<div><div class="lbl" style="font-size:10px">City</div><input id="custCity" value="'+esc(c.city||"")+'" class="time-input" style="width:100%"></div>';
-  h+='<div><div class="lbl" style="font-size:10px">ZIP</div><input id="custZip" value="'+esc(c.zip||"")+'" class="time-input" style="width:100%" maxlength="5" oninput="var z=ZIP_ZONES[this.value];if(z)document.getElementById(\'custZone\').value=z"></div>';
-  h+='</div>';
-  h+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">';
-  h+='<button onclick="custSaveInfo()" style="flex:1;min-width:140px;padding:12px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700">💾 Save Customer Info</button>';
-  h+='<button onclick="custCreateTicket()" style="flex:1;min-width:140px;padding:12px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700">+ Schedule Service Call</button>';
-  if(fullAddr)h+='<a href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank" style="padding:12px 14px;background:var(--cd);color:var(--ac);border:2px solid var(--ac);border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">📍 Map</a>';
-  h+='</div>';
-  // Section 1: Spa Description (EDITABLE)
-  h+='<div style="border-top:2px solid var(--ln);padding-top:12px;margin-bottom:14px">';
-  h+='<div class="lbl" style="margin-bottom:6px">🛁 Spa / Equipment Description</div>';
-  h+='<textarea id="custSpaDescEdit" class="notes" style="min-height:100px;font-size:13px;background:#f0f7ff;border:2px solid var(--ac)" placeholder="Spa model, serial number, equipment details...">'+esc(spaDesc||"")+'</textarea>';
-  h+='<button onclick="custSaveSpaDesc()" style="margin-top:8px;padding:10px 18px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700">💾 Save Spa Description</button>';
-  h+='</div>';
-  // Section 2: Most Recent Visit
-  if(latest){
-    var recentNotes=latest.notes||"No notes";
-    h+='<div style="border-top:2px solid var(--ln);padding-top:12px;margin-bottom:14px"><div class="lbl" style="margin-bottom:6px">📋 Most Recent Visit</div>';
-    h+='<div style="padding:10px;background:#f0f7ff;border-radius:8px;border-left:3px solid var(--ac);font-size:12px;cursor:pointer" onclick="openTktDetail(\''+latest.id+'\')">';
-    h+='<div style="font-weight:700;margin-bottom:4px">'+(latest.date||"—")+" · "+((latest.techs||[]).join(", ")||"—")+'</div>';
-    h+='<div style="color:var(--i3);margin-bottom:4px">'+((latest.workTypes||[]).join(", "))+'</div>';
-    h+='<div style="color:var(--i2);white-space:pre-wrap">'+esc(recentNotes.substring(0,300))+(recentNotes.length>300?"...":"")+'</div>';
-    h+='</div></div>';
-  }
-  // Section 3: Full History
-  h+='<div style="border-top:2px solid var(--ln);padding-top:12px"><div class="lbl" style="margin-bottom:8px">📅 Service History ('+c.tickets.length+')</div>';
-  sorted.forEach(function(t){
-    var isDone=t.status==="done";
-    var isCanceled=t.status==="canceled";
-    var col=isCanceled?"#b45309":(isDone?"#059669":"var(--ac)");
-    var label=isCanceled?"CANCELED":(isDone?"DONE":"ACTIVE");
-    var opacity=isCanceled?";opacity:.7":"";
-    var notesHtml=t.notes?"<div style=\"margin-top:4px;color:var(--i2);font-style:italic\">"+esc(t.notes.substring(0,150))+(t.notes.length>150?"...":"")+"</div>":"";
-    h+="<div style=\"padding:10px;background:#fafaf8;border-radius:8px;margin-bottom:6px;font-size:12px;cursor:pointer;border-left:3px solid "+col+opacity+"\" onclick=\"openTktDetail('"+t.id+"')\">";
-    h+="<div style=\"display:flex;justify-content:space-between\"><span style=\"font-weight:700\">"+(t.date||"—")+" · "+((t.techs||[]).join(", ")||"—")+"</span><span style=\"font-size:10px;color:"+col+";font-weight:600\">"+label+"</span></div>";
-    h+="<div style=\"color:var(--i3);margin-top:2px\">"+((t.workTypes||[]).join(", "))+"</div>";
-    h+=notesHtml+"</div>";
+  allTkts.forEach(t=>{
+    const key=(t.customer||"").trim().toLowerCase();if(!key)return;
+    if(!custMap[key])custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[],lastDate:""};
+    custMap[key].tickets.push(t);
+    if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
+    if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
+    if(t.address&&!custMap[key].address)custMap[key].address=t.address;
+    if(t.city&&!custMap[key].city)custMap[key].city=t.city;
+    if(t.zip&&!custMap[key].zip)custMap[key].zip=t.zip;
+    if(t.zone&&!custMap[key].zone)custMap[key].zone=t.zone;
+    if(t.date&&t.date>custMap[key].lastDate)custMap[key].lastDate=t.date;
   });
-  h+='</div>';
-  return h;
+  let customers=Object.entries(custMap).map(([k,v])=>({key:k,...v}));
+  if(q){const s=q.toLowerCase();customers=customers.filter(c=>c.name.toLowerCase().includes(s)||c.phone.includes(s)||(c.address||"").toLowerCase().includes(s)||(c.zone||"").toLowerCase().includes(s)||(c.city||"").toLowerCase().includes(s)||(c.zip||"").includes(s))}
+  // sort
+  if(sortMode==="visits")customers.sort((a,b)=>b.tickets.length-a.tickets.length||a.name.localeCompare(b.name));
+  else if(sortMode==="recent")customers.sort((a,b)=>(b.lastDate||"").localeCompare(a.lastDate||"")||a.name.localeCompare(b.name));
+  else customers.sort((a,b)=>a.name.localeCompare(b.name));
+
+  // header count
+  var cntEl=document.getElementById("qbCustCount");
+  if(cntEl)cntEl.textContent=customers.length+" customer"+(customers.length!==1?"s":"");
+
+  // render the LIST (left sidebar)
+  const grid=document.getElementById("custGrid");
+  if(!grid)return;
+  if(!customers.length){grid.innerHTML='<div class="qb-cust-empty">No customers found</div>'}
+  else{
+    grid.innerHTML=customers.map(c=>{
+      const zc=ZONE_COLORS[c.zone]||{bg:"transparent",text:"var(--i3)"};
+      const isActive=selectedCustKey===c.key;
+      const keyEsc=c.key.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+      const zoneTag=c.zone?'<span class="qb-cust-row-zone" style="color:'+zc.text+'">'+esc(c.zone)+'</span>':'<span class="qb-cust-row-zone"></span>';
+      return '<div class="qb-cust-row'+(isActive?" active":"")+'" onclick="qbCustSelect(\''+keyEsc+'\')">'+
+             '<span class="qb-cust-row-name">'+esc(c.name)+'</span>'+
+             '<span class="qb-cust-row-visits">'+c.tickets.length+'</span>'+
+             zoneTag+
+             '</div>';
+    }).join("");
+  }
+
+  // render the DETAIL (right pane)
+  qbCustRenderDetail(customers);
 }
+
+function qbCustSelect(key){
+  selectedCustKey=key;
+  qbCustTab="info";
+  rndrCust();
+  // mobile: show detail full-screen
+  if(window.innerWidth<=840){
+    var side=document.getElementById("qbCustSide");
+    var main=document.getElementById("qbCustMain");
+    if(side)side.classList.add("hidden-mobile");
+    if(main)main.classList.add("fullscreen-mobile");
+  }
+}
+
+function qbCustCloseDetail(){
+  selectedCustKey=null;
+  var side=document.getElementById("qbCustSide");
+  var main=document.getElementById("qbCustMain");
+  if(side)side.classList.remove("hidden-mobile");
+  if(main)main.classList.remove("fullscreen-mobile");
+  rndrCust();
+}
+
+function qbCustSetTab(tab){
+  qbCustTab=tab;
+  // re-render only the detail (faster)
+  const allTkts=[...active,...done];const custMap={};
+  allTkts.forEach(t=>{const key=(t.customer||"").trim().toLowerCase();if(!key)return;
+    if(!custMap[key])custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[]};
+    custMap[key].tickets.push(t);
+    if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
+    if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
+    if(t.address&&!custMap[key].address)custMap[key].address=t.address;
+    if(t.city&&!custMap[key].city)custMap[key].city=t.city;
+    if(t.zip&&!custMap[key].zip)custMap[key].zip=t.zip;
+    if(t.zone&&!custMap[key].zone)custMap[key].zone=t.zone;
+  });
+  const customers=Object.entries(custMap).map(([k,v])=>({key:k,...v}));
+  qbCustRenderDetail(customers);
+}
+
+function qbCustRenderDetail(customers){
+  const detail=document.getElementById("qbCustDetail");
+  if(!detail)return;
+  if(!selectedCustKey){
+    detail.innerHTML='<div class="qb-cust-empty-state"><div class="qb-empty-icon">👥</div><h3>Select a customer</h3><p>Pick a customer from the list to see their information, spa details, and full service history.</p></div>';
+    return;
+  }
+  const c=customers.find(x=>x.key===selectedCustKey);
+  if(!c){
+    detail.innerHTML='<div class="qb-cust-empty-state"><div class="qb-empty-icon">⚠️</div><h3>Customer not found</h3><p>This customer may have been deleted. Pick another from the list.</p></div>';
+    return;
+  }
+  const sorted=c.tickets.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  let spaDesc="";sorted.forEach(t=>{if(t.spaDesc&&t.spaDesc.length>spaDesc.length)spaDesc=t.spaDesc});
+  const fullAddr=(c.address||"")+(c.city?", "+c.city:"")+(c.zip?" "+c.zip:"");
+  const hasPhone2=!!(c.phone2&&c.phone2.trim());
+  const zc=ZONE_COLORS[c.zone]||{bg:"#f0f0f0",text:"#555"};
+
+  let h='';
+  // ── HEADER: "Customer Information" (mimics QB)
+  h+='<div class="qb-cust-info-hdr"><h2 class="qb-cust-info-title">'+esc(c.name)+'</h2></div>';
+
+  // ── INFO GRID (two columns, label-on-left like QB)
+  h+='<div class="qb-cust-info-grid">';
+  // Left column
+  h+='<div>';
+  h+='<div class="qb-cust-info-cell"><label>Customer Name</label><input id="custName" value="'+esc(c.name||"")+'"></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label>Bill To</label><textarea id="custAddr" rows="1" style="min-height:30px" placeholder="Street address">'+esc(c.address||"")+'</textarea></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label></label><div style="display:flex;gap:6px"><input id="custCity" value="'+esc(c.city||"")+'" placeholder="City" style="flex:2"><input id="custZip" value="'+esc(c.zip||"")+'" placeholder="ZIP" style="flex:1" maxlength="5" oninput="var z=ZIP_ZONES[this.value];if(z)document.getElementById(\'custZone\').value=z"></div></div>';
+  if(fullAddr)h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label></label><a class="qb-link" href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank">Map · Directions</a></div>';
+  h+='</div>';
+  // Right column
+  h+='<div>';
+  h+='<div class="qb-cust-info-cell"><label>Main Phone</label><input id="custPhone" value="'+esc(c.phone||"")+'" placeholder="(555) 555-5555"></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px" id="custPhone2Row"'+(hasPhone2?'':' hidden')+'><label>Alt Phone</label><div style="display:flex;gap:4px;align-items:center"><input id="custPhone2" value="'+esc(c.phone2||"")+'" style="flex:1"><button type="button" onclick="custTogglePhone2(false)" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:16px;padding:0 4px" title="Remove">×</button></div></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px" id="custAddPhoneRow"'+(hasPhone2?' hidden':'')+'><label></label><button type="button" onclick="custTogglePhone2(true)" style="padding:5px 10px;background:none;border:1px dashed var(--ac);color:var(--ac);border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-start;margin-top:5px">+ Add another phone</button></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label>Zone</label><input id="custZone" value="'+esc(c.zone||"")+'" placeholder="e.g. West, St. Charles"></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label>Visits</label><div style="padding-top:7px;font-weight:700;color:var(--ink)">'+c.tickets.length+' service call'+(c.tickets.length!==1?"s":"")+'</div></div>';
+  h+='</div>';
+  h+='</div>';
+
+  // ── ACTION BAR
+  h+='<div class="qb-cust-action-bar">';
+  h+='<button class="qb-cust-btn primary" onclick="custSaveInfo()">💾 Save Customer Info</button>';
+  h+='<button class="qb-cust-btn brand" onclick="custCreateTicket()">+ Schedule Service Call</button>';
+  if(c.phone)h+='<a class="qb-cust-btn" href="tel:'+esc(c.phone)+'">📞 Call</a>';
+  if(fullAddr)h+='<a class="qb-cust-btn" href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank">📍 Map</a>';
+  h+='<span class="qb-saved-flash" id="qbSavedFlash">✓ Saved</span>';
+  h+='</div>';
+
+  // ── TABS (mimics QB Transactions/Notes/etc.)
+  h+='<div class="qb-cust-tabs">';
+  h+='<button class="qb-cust-tab'+(qbCustTab==="info"?" on":"")+'" onclick="qbCustSetTab(\'info\')">Notes</button>';
+  h+='<button class="qb-cust-tab'+(qbCustTab==="spa"?" on":"")+'" onclick="qbCustSetTab(\'spa\')">Spa Description</button>';
+  h+='<button class="qb-cust-tab'+(qbCustTab==="history"?" on":"")+'" onclick="qbCustSetTab(\'history\')">Service History<span class="qb-cust-tab-badge">'+c.tickets.length+'</span></button>';
+  h+='</div>';
+
+  // ── TAB BODY
+  h+='<div class="qb-cust-tab-body">';
+  if(qbCustTab==="info"){
+    // Notes — show all visits as a QB-style notes table
+    if(!sorted.length){
+      h+='<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:13px">No notes yet for this customer.</div>';
+    }else{
+      h+='<div class="qb-notes-tbl-hdr"><span>DATE</span><span style="flex:1">NOTES</span></div>';
+      sorted.forEach((t,idx)=>{
+        const isCanceled=t.status==="canceled";
+        const isDone=t.status==="done";
+        const cls=isCanceled?"canceled":(isDone?"done":"");
+        const pin=idx===0?'<span class="qb-note-pin">📌</span>':'<span class="qb-note-pin"></span>';
+        const status=isCanceled?'<span class="qb-note-status" style="background:#fef3c7;color:#92400e">CANCELED</span>':(isDone?'<span class="qb-note-status" style="background:var(--c-success-bg);color:var(--c-success-fg)">DONE</span>':'<span class="qb-note-status" style="background:var(--acl);color:var(--acd)">ACTIVE</span>');
+        const techs=(t.techs||[]).join(", ")||"—";
+        const wt=(t.workTypes||[]).join(", ");
+        const noteTxt=(t.notes||"").substring(0,260)+((t.notes||"").length>260?"...":"");
+        h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
+        h+=pin;
+        h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
+        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+esc(techs)+(wt?' · <span style="font-weight:500;color:var(--i3)">'+esc(wt)+'</span>':'')+status+'</div>';
+        if(noteTxt)h+='<div>'+esc(noteTxt)+'</div>';
+        h+='</div>';
+        h+='</div>';
+      });
+    }
+  }else if(qbCustTab==="spa"){
+    h+='<div style="margin-bottom:8px;font-size:11px;color:var(--i3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">🛁 Spa / Equipment Description</div>';
+    h+='<textarea id="custSpaDescEdit" class="qb-spa-desc-box" placeholder="Spa model, serial number, jets, equipment details, install date, color...">'+esc(spaDesc||"")+'</textarea>';
+    h+='<div style="margin-top:10px"><button class="qb-cust-btn primary" onclick="custSaveSpaDesc()">💾 Save Spa Description</button><span class="qb-saved-flash" id="qbSpaSavedFlash">✓ Saved on all tickets</span></div>';
+  }else if(qbCustTab==="history"){
+    if(!sorted.length){
+      h+='<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:13px">No service history yet.</div>';
+    }else{
+      h+='<div class="qb-notes-tbl-hdr"><span>DATE</span><span style="flex:1">VISIT</span></div>';
+      sorted.forEach(t=>{
+        const isCanceled=t.status==="canceled";
+        const isDone=t.status==="done";
+        const cls=isCanceled?"canceled":(isDone?"done":"");
+        const status=isCanceled?'<span class="qb-note-status" style="background:#fef3c7;color:#92400e">CANCELED</span>':(isDone?'<span class="qb-note-status" style="background:var(--c-success-bg);color:var(--c-success-fg)">DONE</span>':'<span class="qb-note-status" style="background:var(--acl);color:var(--acd)">ACTIVE</span>');
+        const techs=(t.techs||[]).join(", ")||"—";
+        const wt=(t.workTypes||[]).join(", ");
+        h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
+        h+='<span class="qb-note-pin"></span>';
+        h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
+        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+esc(techs)+status+'</div>';
+        if(wt)h+='<div style="color:var(--i3);font-size:11.5px;margin-bottom:3px">'+esc(wt)+'</div>';
+        if(t.notes)h+='<div>'+esc(t.notes.substring(0,200))+(t.notes.length>200?"...":"")+'</div>';
+        h+='</div>';
+        h+='</div>';
+      });
+    }
+  }
+  h+='</div>';
+
+  detail.innerHTML=h;
+}
+
+// kept for back-compat with any code that referenced these — they now route to the new flow
+function custHdrClick(ev,key){qbCustSelect(key)}
+function toggleCustCard(key){qbCustSelect(key)}
+function renderCustDetail(c){return ''} // no longer used; right pane is rendered by qbCustRenderDetail
 async function custSaveSpaDesc(){
   if(!db||!selectedCustKey)return;
   var el=document.getElementById("custSpaDescEdit");
@@ -3702,8 +3924,8 @@ function custTogglePhone2(show){
   var row=document.getElementById("custPhone2Row");
   var add=document.getElementById("custAddPhoneRow");
   if(!row||!add)return;
-  if(show){row.style.display="";add.style.display="none";setTimeout(function(){var p=document.getElementById("custPhone2");if(p)p.focus()},50)}
-  else{row.style.display="none";add.style.display="";var p=document.getElementById("custPhone2");if(p)p.value=""}
+  if(show){row.style.display="";row.removeAttribute("hidden");add.style.display="none";add.setAttribute("hidden","");setTimeout(function(){var p=document.getElementById("custPhone2");if(p)p.focus()},50)}
+  else{row.style.display="none";row.setAttribute("hidden","");add.style.display="";add.removeAttribute("hidden");var p=document.getElementById("custPhone2");if(p)p.value=""}
 }
 async function custCreateTicket(){
   if(!db||!selectedCustKey)return;
