@@ -851,6 +851,21 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
   <div style="padding:16px;overflow-y:auto;flex:1" id="tktDetailBody"></div></div>
 </div>
 
+<!-- ══ ATTACHMENT PREVIEW MODAL — full-screen viewer for photos & PDFs ══ -->
+<div class="mbg" id="attPreviewBg" onclick="if(event.target===this)closeAttPreview()" style="z-index:9999">
+  <div class="modal" style="max-width:1100px;width:96vw;height:92vh;display:flex;flex-direction:column">
+    <div class="mt"><div class="mt-bar"></div><div class="mt-t">
+      <h3 id="attPreviewTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw">Preview</h3>
+      <button class="mcl" onclick="closeAttPreview()">×</button>
+    </div></div>
+    <div id="attPreviewBody" style="flex:1;overflow:auto;padding:8px;background:#1a1a1a;display:flex;align-items:center;justify-content:center"></div>
+    <div style="padding:12px 16px;border-top:1px solid var(--ln);display:flex;gap:8px;justify-content:flex-end;background:#fff;flex-shrink:0">
+      <a id="attPreviewOpen" href="#" target="_blank" rel="noopener" style="padding:10px 16px;background:#fafaf8;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;color:var(--i2);text-decoration:none">↗ Open in tab</a>
+      <a id="attPreviewDownload" href="#" download style="padding:10px 16px;background:var(--ac);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">⬇ Download</a>
+    </div>
+  </div>
+</div>
+
 <!-- ══ ROUTE MAP MODAL ══ -->
 <div class="mbg" id="routeMapBg" onclick="if(event.target===this)closeRouteMap()">
   <div class="modal" style="height:90dvh">
@@ -1956,6 +1971,36 @@ function slClearMedia(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ATTACHMENT PREVIEW — fullscreen viewer for both photos and PDFs
+// ═══════════════════════════════════════════════════════════════
+// Photos render as <img>, PDFs as <iframe> (browsers render PDFs natively in iframes).
+// Both have Open-in-tab and Download links. Closing clears the body so the iframe
+// stops loading.
+function previewAttachment(url,type,name){
+  if(!url)return;
+  const body=document.getElementById("attPreviewBody");
+  const title=document.getElementById("attPreviewTitle");
+  const open=document.getElementById("attPreviewOpen");
+  const dl=document.getElementById("attPreviewDownload");
+  title.textContent=name||(type==="pdf"?"PDF Document":"Photo");
+  open.href=url;dl.href=url;
+  if(type==="pdf"){
+    body.innerHTML='<iframe src="'+esc(url)+'" style="width:100%;height:100%;border:none;background:#fff;border-radius:6px"></iframe>';
+  }else{
+    body.innerHTML='<img src="'+esc(url)+'" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;display:block">';
+  }
+  document.getElementById("attPreviewBg").classList.add("open");
+}
+function closeAttPreview(){
+  document.getElementById("attPreviewBg").classList.remove("open");
+  // Clear body to stop iframe rendering / free memory
+  setTimeout(function(){var b=document.getElementById("attPreviewBody");if(b)b.innerHTML=""},250);
+}
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&document.getElementById("attPreviewBg")&&document.getElementById("attPreviewBg").classList.contains("open"))closeAttPreview();
+});
+
+// ═══════════════════════════════════════════════════════════════
 // TICKET-DETAIL ATTACHMENTS — admin-only upload/delete on existing tickets
 // ═══════════════════════════════════════════════════════════════
 // tdAddMedia: append new photos/PDFs to a ticket that's already in Firestore.
@@ -2018,8 +2063,12 @@ async function tdAddMedia(ticketId,e){
   try{
     const newMedia=existing.concat(uploaded);
     await db.collection("tickets").doc(ticketId).update({media:newMedia});
-    // Update local copy so re-render shows the new files immediately
-    t.media=newMedia;
+    // Force-update local arrays so the re-render shows new files immediately,
+    // without waiting for the snapshot listener (which rebuilds active/done from scratch).
+    const idxA=active.findIndex(x=>x.id===ticketId);
+    const idxD=done.findIndex(x=>x.id===ticketId);
+    if(idxA>=0)active[idxA]=Object.assign({},active[idxA],{media:newMedia});
+    if(idxD>=0)done[idxD]=Object.assign({},done[idxD],{media:newMedia});
     toast("Added "+uploaded.length+" file"+(uploaded.length===1?"":"s")+" ✓");
     openTktDetail(ticketId);
   }catch(err){console.error(err);toast("Saved files but failed to update ticket: "+err.message,"err")}
@@ -2040,7 +2089,11 @@ async function tdRemoveMedia(ticketId,mediaIdx){
     }
     const newMedia=t.media.slice(0,mediaIdx).concat(t.media.slice(mediaIdx+1));
     await db.collection("tickets").doc(ticketId).update({media:newMedia});
-    t.media=newMedia;
+    // Force-update local arrays for immediate re-render
+    const idxA=active.findIndex(x=>x.id===ticketId);
+    const idxD=done.findIndex(x=>x.id===ticketId);
+    if(idxA>=0)active[idxA]=Object.assign({},active[idxA],{media:newMedia});
+    if(idxD>=0)done[idxD]=Object.assign({},done[idxD],{media:newMedia});
     toast("Removed ✓");
     openTktDetail(ticketId);
   }catch(err){console.error(err);toast("Could not remove: "+err.message,"err")}
@@ -3540,34 +3593,39 @@ function openTktDetail(id){
   h+='<div class="lbl">Spa Description</div>';
   h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(t.spaDesc||'')+'</textarea>';
   h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
-  // Attachments (photos + PDFs) — visible to all, editable by admin only
-  if((t.media||[]).length||isAdmin){
-    h+='<div class="lbl" style="margin-top:10px">Attachments'+((t.media||[]).length?' ('+t.media.length+')':'')+'</div>';
-    if((t.media||[]).length){
-      h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">';
+  // Attachments (photos + PDFs) — visible to all, editable by admin only.
+  // Layout: large card grid (120x120 thumbs). Clicking any card opens the preview modal.
+  var hasMedia=(t.media||[]).length>0;
+  if(hasMedia||isAdmin){
+    h+='<div class="lbl" style="margin-top:14px;display:flex;align-items:center;gap:6px"><span style="font-size:14px">📎</span><span>Attachments'+(hasMedia?' ('+t.media.length+')':'')+'</span></div>';
+    if(hasMedia){
+      h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:10px">';
       t.media.forEach(function(m,mi){
+        var safeUrl=esc(m.url||m.data||"");
+        var fileName=m.name||(m.type==="pdf"?"document.pdf":"photo.jpg");
+        var safeName=esc(fileName);
+        var rawForJs=fileName.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
+        var kind=m.type==="pdf"?"pdf":"photo";
+        h+='<div class="att-card" onclick="previewAttachment(\''+safeUrl+'\',\''+kind+'\',\''+rawForJs+'\')" style="position:relative;background:#fff;border:2px solid var(--ln);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .12s" onmouseover="this.style.borderColor=\'var(--ac)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--ln)\';this.style.transform=\'\'">';
         if(m.type==="pdf"){
-          var safeName=esc(m.name||"PDF");
-          h+='<div style="position:relative;display:inline-block">';
-          h+='<a href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" class="tkt-att-pdf" style="text-decoration:none">📄 '+safeName+'</a>';
-          if(isAdmin)h+='<button onclick="tdRemoveMedia(\''+t.id+'\','+mi+')" title="Remove" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--r);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;padding:0">×</button>';
-          h+='</div>';
+          h+='<div style="height:120px;background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b91c1c"><div style="font-size:46px;line-height:1">📄</div><div style="font-size:10px;font-weight:800;letter-spacing:1.5px;margin-top:4px">PDF</div></div>';
+          h+='<div style="padding:6px 8px;font-size:11px;font-weight:600;color:#7f1d1d;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff" title="'+safeName+'">'+safeName+'</div>';
         }else{
-          var src=m.url||m.data||"";
-          h+='<div style="position:relative;display:inline-block">';
-          h+='<a href="'+esc(src)+'" target="_blank" rel="noopener"><img src="'+esc(src)+'" loading="lazy" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--ln);display:block"></a>';
-          if(isAdmin)h+='<button onclick="tdRemoveMedia(\''+t.id+'\','+mi+')" title="Remove" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--r);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;padding:0">×</button>';
-          h+='</div>';
+          h+='<img src="'+safeUrl+'" loading="lazy" style="width:100%;height:120px;object-fit:cover;display:block;background:#f0f0f0">';
+          h+='<div style="padding:5px 8px;font-size:10px;color:var(--i2);text-align:center;background:#fff;display:flex;align-items:center;justify-content:center;gap:4px"><span>📷</span><span>Photo</span></div>';
         }
+        if(isAdmin){
+          h+='<button onclick="event.stopPropagation();tdRemoveMedia(\''+t.id+'\','+mi+')" title="Remove" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(220,38,38,.95);color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:0;line-height:1">×</button>';
+        }
+        h+='</div>';
       });
       h+='</div>';
     }
     if(isAdmin){
-      h+='<label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;margin-bottom:12px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer"><span style="font-size:18px">📎</span><span>Add Photos / PDFs</span><input type="file" accept="image/*,application/pdf,.pdf" multiple style="display:none" onchange="tdAddMedia(\''+t.id+'\',event)"></label>';
-      h+='<div id="tdUploadProg_'+t.id+'" style="display:none;height:6px;background:#eee;border-radius:3px;margin:-6px 0 12px;overflow:hidden"><div id="tdUploadBar_'+t.id+'" style="height:100%;width:0;background:var(--ac);transition:width .2s"></div></div>';
-    }else if(!(t.media||[]).length){
-      // Tech viewing a ticket with no attachments — keep clean, hide the empty section
-      h=h.substring(0,h.lastIndexOf('<div class="lbl" style="margin-top:10px">Attachments'));
+      h+='<label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;margin-bottom:8px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer"><span style="font-size:18px">📎</span><span>Add Photos / PDFs</span><input type="file" accept="image/*,application/pdf,.pdf" multiple style="display:none" onchange="tdAddMedia(\''+t.id+'\',event)"></label>';
+      h+='<div id="tdUploadProg_'+t.id+'" style="display:none;height:6px;background:#eee;border-radius:3px;margin:0 0 12px;overflow:hidden"><div id="tdUploadBar_'+t.id+'" style="height:100%;width:0;background:var(--ac);transition:width .2s"></div></div>';
+    }else{
+      h+='<div style="font-size:11px;color:var(--i3);margin-bottom:10px;font-style:italic">Tap any file to preview</div>';
     }
   }
   h+='<div class="lbl">Notes / Updates</div>';
