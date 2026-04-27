@@ -131,6 +131,14 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .media-wrap{position:relative}.media-x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--r);color:#fff;border:none;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 
 .media-add{width:80px;height:80px;border-radius:10px;border:2px dashed #ddd;background:#fafaf8;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--i3);font-size:11px;font-weight:600;gap:2px}.media-add:active{border-color:var(--ac);background:var(--acl);color:var(--ac)}.media-add .ico{font-size:20px}.media-input{display:none}
+/* PDF thumbnail tile (re-uses media-thumb dimensions) */
+.media-pdf{width:80px;height:80px;border-radius:10px;border:2px solid var(--ln);background:#fff5f5;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b91c1c;text-decoration:none;padding:6px;text-align:center;cursor:pointer;overflow:hidden}
+.media-pdf .pdf-ico{font-size:22px;line-height:1;margin-bottom:2px}
+.media-pdf .pdf-lbl{font-size:9px;font-weight:700;letter-spacing:.5px}
+.media-pdf .pdf-name{font-size:9px;color:#7f1d1d;margin-top:2px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tkt-att{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.tkt-att-pdf{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:#fff5f5;border:1.5px solid #fecaca;border-radius:8px;font-size:12px;font-weight:600;color:#b91c1c;text-decoration:none;max-width:100%}
+.tkt-att-pdf:hover{background:#fef2f2}
 
 /* Notes & Actions */
 .notes{width:100%;min-height:80px;border:2px solid var(--ln);border-radius:12px;padding:12px;font-size:16px;resize:vertical;outline:none;background:#fafaf8;-webkit-appearance:none;font-family:inherit}.notes:focus{border-color:var(--ac)}.notes::placeholder{color:#bbb;font-size:14px}
@@ -655,6 +663,15 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
         <div style="margin-bottom:10px">
           <div class="lbl" style="margin-bottom:4px">Notes</div>
           <textarea id="slNotes" rows="4" placeholder="Notes, instructions..." style="width:100%;padding:10px;border:2px solid var(--ln);border-radius:10px;font-size:14px;resize:vertical;outline:none;font-family:inherit;background:#fafaf8"></textarea>
+        </div>
+        <!-- Photos / PDFs for technicians -->
+        <div style="margin-bottom:10px">
+          <div class="lbl" style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+            <span>Photos / PDFs <span style="font-weight:500;color:var(--i3);text-transform:none;letter-spacing:0">(visible to techs)</span></span>
+            <span id="slMediaCount" style="font-size:10px;color:var(--i3);font-weight:600"></span>
+          </div>
+          <div id="slMediaGrid"></div>
+          <div id="slUploadProg" style="display:none;height:6px;background:#eee;border-radius:3px;margin-top:8px;overflow:hidden"><div id="slUploadBar" style="height:100%;width:0;background:var(--ac);transition:width .2s"></div></div>
         </div>
         <button onclick="slCreateCall()" style="width:100%;padding:14px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;min-height:48px">+ Create Ticket</button>
         <button onclick="slClearForm()" style="width:100%;padding:10px;background:none;border:1.5px solid #d1d1d6;border-radius:10px;font-size:13px;font-weight:600;color:#8e8e93;margin-top:6px">🔄 Clear Form</button>
@@ -1207,7 +1224,7 @@ function doLogin(){
   document.getElementById("loginScreen").style.display="none";
   updAdmin();
   // Refresh views so tech sees their own tickets, admin sees all
-  try{rndrA();rndrD();if(typeof rndrSlog==="function")rndrSlog();if(typeof rndrCal==="function")rndrCal()}catch(_e){}
+  try{rndrA();rndrD();if(typeof rndrSlog==="function")rndrSlog();if(typeof rndrCal==="function")rndrCal();if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
   toast(`Welcome, ${currentUser.name}`);
 }
 function logout(){currentUser=null;isAdmin=false;sessionStorage.removeItem("aspUser");document.getElementById("loginScreen").style.display="flex";updAdmin();cancelLogin();renderLoginScreen()}
@@ -1669,7 +1686,7 @@ if(i===0&&!editingDocId&&currentUser&&currentUser.role==="tech"&&TECHS.indexOf(c
   techs=[currentUser.name];
   if(typeof buildTechPills==="function")buildTechPills();
 }
-if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5)rndrSlog();if(i===6)rndrCust()}
+if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust()}
 
 // ═══ TECH MANAGEMENT ═══
 async function loadTechs(){
@@ -1735,7 +1752,7 @@ async function init(){
   TECHS.forEach(t=>{if(!allUsers.find(u=>u.name===t)){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});
   if(synced)await saveUsers();
   initTodoCollapse();
-  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin()}
+  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}}
   else{renderLoginScreen()}
 }
 
@@ -1835,6 +1852,107 @@ async function compressAllMedia(){
   }
   setTimeout(()=>prog.classList.remove("show"),400);
   return results;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DISPATCH TICKET ATTACHMENTS — photos + PDFs uploaded at ticket creation
+// ═══════════════════════════════════════════════════════════════
+// Allows the dispatcher to attach photos and PDF documents (manuals, invoices,
+// quotes, etc.) when creating a service ticket. Files are uploaded to Firebase
+// Storage at tickets/{ticketId}/ and the resulting URLs are saved on the ticket
+// document so technicians can view them in the field.
+// Limits: 8 files total, photos compressed to ~1200px JPEG, PDFs up to 10 MB.
+let slMediaFiles=[];
+const SL_MEDIA_MAX=8;
+const SL_PDF_MAX_BYTES=10*1024*1024; // 10 MB per PDF
+function slAddMedia(e){
+  const files=Array.from(e.target.files);e.target.value="";
+  files.forEach(f=>{
+    if(slMediaFiles.length>=SL_MEDIA_MAX){toast("Max "+SL_MEDIA_MAX+" files","warn");return}
+    const isImg=f.type.startsWith("image");
+    const isPdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name||"");
+    if(!isImg&&!isPdf){toast("Only photos and PDFs are allowed","warn");return}
+    if(isPdf&&f.size>SL_PDF_MAX_BYTES){toast("PDF too large (max 10 MB): "+f.name,"warn");return}
+    if(isImg){
+      const url=URL.createObjectURL(f);
+      slMediaFiles.push({file:f,url:url,type:"photo",name:f.name||"photo.jpg"});
+    }else{
+      slMediaFiles.push({file:f,url:null,type:"pdf",name:f.name||"document.pdf"});
+    }
+  });
+  slRndrMedia();
+}
+function slRemMedia(i){
+  const m=slMediaFiles[i];if(!m)return;
+  if(m.url){try{URL.revokeObjectURL(m.url)}catch(_e){}}
+  slMediaFiles.splice(i,1);slRndrMedia();
+}
+function slRndrMedia(){
+  const g=document.getElementById("slMediaGrid");if(!g)return;
+  let h="";
+  if(slMediaFiles.length){
+    h+='<div class="media-grid">'+slMediaFiles.map(function(m,i){
+      if(m.type==="pdf"){
+        const safe=esc(m.name||"document.pdf");
+        return '<div class="media-wrap"><div class="media-pdf" title="'+safe+'"><span class="pdf-ico">📄</span><span class="pdf-lbl">PDF</span><span class="pdf-name">'+safe+'</span></div><button class="media-x" onclick="slRemMedia('+i+')">×</button></div>';
+      }
+      return '<div class="media-wrap"><img class="media-thumb" src="'+m.url+'"><button class="media-x" onclick="slRemMedia('+i+')">×</button></div>';
+    }).join("")+'</div>';
+  }
+  if(slMediaFiles.length<SL_MEDIA_MAX){
+    h+='<label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;margin-top:'+(slMediaFiles.length?"10px":"4px")+';background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer"><span style="font-size:18px">📎</span><span>Add Photos / PDFs</span><input type="file" accept="image/*,application/pdf,.pdf" multiple style="display:none" onchange="slAddMedia(event)"></label>';
+  }
+  g.innerHTML=h;
+  const c=document.getElementById("slMediaCount");
+  if(c)c.textContent=slMediaFiles.length?(slMediaFiles.length+"/"+SL_MEDIA_MAX):"";
+}
+// Upload all attached files to Firebase Storage under tickets/{ticketKey}/.
+// Photos are compressed first (re-using compressPhoto). PDFs are uploaded as-is.
+// Returns an array of media descriptors to save on the ticket document.
+async function slUploadAllMedia(ticketKey){
+  if(!slMediaFiles.length)return[];
+  if(!storage)throw new Error("Firebase Storage is not initialized");
+  if(!navigator.onLine)throw new Error("You're offline — connect and try again");
+  const prog=document.getElementById("slUploadProg"),bar=document.getElementById("slUploadBar");
+  if(prog){prog.style.display="block";bar.style.width="0"}
+  const results=[];
+  for(let i=0;i<slMediaFiles.length;i++){
+    if(bar)bar.style.width=((i+0.3)/slMediaFiles.length*100)+"%";
+    const m=slMediaFiles[i];
+    try{
+      if(m.type==="pdf"){
+        const path="tickets/"+ticketKey+"/"+Date.now()+"_"+i+".pdf";
+        const ref=storage.ref().child(path);
+        const snap=await ref.put(m.file,{contentType:"application/pdf"});
+        const url=await snap.ref.getDownloadURL();
+        results.push({url:url,path:path,type:"pdf",name:m.name||"document.pdf",storage:true});
+      }else{
+        const compressed=await compressPhoto(m.file);
+        const path="tickets/"+ticketKey+"/"+Date.now()+"_"+i+".jpg";
+        const ref=storage.ref().child(path);
+        const snap=await ref.put(compressed.blob,{contentType:"image/jpeg"});
+        const url=await snap.ref.getDownloadURL();
+        results.push({url:url,path:path,type:"photo",storage:true});
+      }
+    }catch(err){
+      console.warn("Upload failed for file "+i,err);
+      // Photos can fall back to base64 (small enough). PDFs cannot — skip with warning.
+      if(m.type==="pdf"){toast("Failed to upload PDF: "+(m.name||""),"warn")}
+      else{
+        try{
+          const compressed=await compressPhoto(m.file);
+          results.push({data:compressed.dataUrl,type:"photo"});
+        }catch(_e2){console.warn("Photo fallback also failed",_e2)}
+      }
+    }
+    if(bar)bar.style.width=((i+1)/slMediaFiles.length*100)+"%";
+  }
+  if(prog)setTimeout(()=>{prog.style.display="none";bar.style.width="0"},400);
+  return results;
+}
+function slClearMedia(){
+  slMediaFiles.forEach(m=>{if(m.url){try{URL.revokeObjectURL(m.url)}catch(_e){}}});
+  slMediaFiles=[];slRndrMedia();
 }
 
 // ═══ PICKER ═══
@@ -2159,8 +2277,9 @@ async function dlZip(ticketIdx,list){
     const a=document.createElement("a");a.href=url;a.download=`${t.customer.replace(/\s+/g,"_")}_${t.date}.zip`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
     toast("ZIP downloaded ✓");
-    // After successful download, ask to delete photos from Firebase to save space
-    if(db&&t.id){
+    // After successful download, ask to delete photos from Firebase to save space.
+    // Admin-only: techs can download but never delete media.
+    if(db&&t.id&&isAdmin){
       setTimeout(async ()=>{
         const ok=confirm("✅ ZIP downloaded with "+originalCount+" photo"+(originalCount!==1?"s":"")+".\n\nDelete these photos from Firebase to save storage space?\n\n(The ZIP is already saved on your computer — deleting only removes them from the cloud database.)");
         if(!ok)return;
@@ -2202,7 +2321,7 @@ ${lb&&lb.free?`<div style="display:flex;justify-content:space-between;font-size:
 ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:11px;color:#999;margin-top:4px">Internal RDA: $${t.totalRda.toFixed(2)}</div>`:""}
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:12px;color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
-${(t.media||[]).length?`<div class="tkt-media">${t.media.map(m=>`<img src="${m.url||m.data}" loading="lazy">`).join("")}</div><button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
+${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${m.url||m.data}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
 <div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:12px;font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:12px;font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
@@ -2537,7 +2656,80 @@ function slResetWarranty(){slWHas=null;slWMod="";slWYr=0;
 }
 
 function slAutoZone(){const zip=document.getElementById("slCustZip").value.trim();const badge=document.getElementById("slZoneBadge");const zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";const city=ZIP_CITIES[zip]||customZips[zip+"_city"]||"";if(zip.length===5&&zone){const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};badge.style.display="block";badge.innerHTML='<span style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span>';if(!document.getElementById("slCustCity").value&&city)document.getElementById("slCustCity").value=city}else if(zip.length===5){badge.style.display="block";badge.innerHTML='<input id="slManualZone" placeholder="Enter zone" class="time-input" style="width:120px;font-size:12px">'}else{badge.style.display="none"}}
-async function slCreateCall(){if(!db){toast("Firebase not configured","err");return}const cu=document.getElementById("slCustName").value.trim();const ph=document.getElementById("slCustPhone").value.trim();const ph2=(document.getElementById("slCustPhone2")||{}).value||"";const addr=document.getElementById("slCustAddr").value.trim();const city=document.getElementById("slCustCity").value.trim();const zip=document.getElementById("slCustZip").value.trim();const dt=document.getElementById("slDate").value;const notes=document.getElementById("slNotes").value.trim();var zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";var manZ=document.getElementById("slManualZone");if(manZ&&manZ.value.trim())zone=manZ.value.trim();if(zip&&city&&!ZIP_CITIES[zip]){customZips[zip+"_city"]=city;if(zone)customZips[zip+"_zone"]=zone;saveCustomZips()}const ccFile=document.getElementById("slCcFile").checked;const ccReq=document.getElementById("slCcReq").checked;var _slP=document.getElementById("slPaid");var paid=_slP?_slP.checked:false;if(!cu){toast("Enter customer name","warn");return}var warrantyObj={has:slWHas,model:slWMod||"",year:slWYr||0,type:slGWT(),label:slGWL()};try{await db.collection("tickets").add({customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:warrantyObj,visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,spaDesc:(document.getElementById("slSpaDesc")||{}).value||"",notes:notes,phone:ph,phone2:ph2.trim(),address:addr,city:city,zip:zip,zone:zone,ccOnFile:ccFile,ccRequested:ccReq,paid:paid,paidAt:paid?new Date().toLocaleString():null,isRepeat:document.getElementById("slRepeat").checked,payCheck:document.getElementById("slCheck").checked,payCredit:document.getElementById("slCredit").checked,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created ✓");document.getElementById("slRepeat").checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;if(_slP)_slP.checked=false;document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _sd1=document.getElementById("slSpaDesc");if(_sd1)_sd1.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;slResetWarranty();rndrSlog()}catch(e){toast("Error: "+e.message,"err")}}
+async function slCreateCall(){
+  if(!db){toast("Firebase not configured","err");return}
+  const cu=document.getElementById("slCustName").value.trim();
+  const ph=document.getElementById("slCustPhone").value.trim();
+  const ph2=(document.getElementById("slCustPhone2")||{}).value||"";
+  const addr=document.getElementById("slCustAddr").value.trim();
+  const city=document.getElementById("slCustCity").value.trim();
+  const zip=document.getElementById("slCustZip").value.trim();
+  const dt=document.getElementById("slDate").value;
+  const notes=document.getElementById("slNotes").value.trim();
+  var zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";
+  var manZ=document.getElementById("slManualZone");if(manZ&&manZ.value.trim())zone=manZ.value.trim();
+  if(zip&&city&&!ZIP_CITIES[zip]){customZips[zip+"_city"]=city;if(zone)customZips[zip+"_zone"]=zone;saveCustomZips()}
+  const ccFile=document.getElementById("slCcFile").checked;
+  const ccReq=document.getElementById("slCcReq").checked;
+  var _slP=document.getElementById("slPaid");var paid=_slP?_slP.checked:false;
+  if(!cu){toast("Enter customer name","warn");return}
+  var warrantyObj={has:slWHas,model:slWMod||"",year:slWYr||0,type:slGWT(),label:slGWL()};
+  // Disable the create button while we work so the user doesn't double-tap.
+  var createBtn=document.querySelector('button[onclick="slCreateCall()"]');
+  var origLabel=createBtn?createBtn.textContent:"";
+  if(createBtn){createBtn.disabled=true;createBtn.style.opacity=".7"}
+  try{
+    if(createBtn&&slMediaFiles.length)createBtn.textContent="Creating ticket...";
+    const docRef=await db.collection("tickets").add({
+      customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:warrantyObj,
+      visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
+      spaDesc:(document.getElementById("slSpaDesc")||{}).value||"",notes:notes,
+      phone:ph,phone2:ph2.trim(),address:addr,city:city,zip:zip,zone:zone,
+      ccOnFile:ccFile,ccRequested:ccReq,paid:paid,paidAt:paid?new Date().toLocaleString():null,
+      isRepeat:document.getElementById("slRepeat").checked,
+      payCheck:document.getElementById("slCheck").checked,
+      payCredit:document.getElementById("slCredit").checked,
+      media:[],videoLinks:null,source:"dispatch",status:"pending",
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      submitted:new Date().toLocaleString()
+    });
+    // If files are attached, upload them under the new ticket's ID and update the doc.
+    if(slMediaFiles.length){
+      if(createBtn)createBtn.textContent="Uploading "+slMediaFiles.length+" file(s)...";
+      try{
+        const uploaded=await slUploadAllMedia(docRef.id);
+        if(uploaded.length)await docRef.update({media:uploaded});
+      }catch(uErr){
+        console.warn("Media upload failed:",uErr);
+        toast("Ticket created, but file upload failed: "+uErr.message,"warn");
+      }
+    }
+    toast("Ticket created ✓");
+    // Reset the form
+    document.getElementById("slRepeat").checked=false;
+    document.getElementById("slCheck").checked=false;
+    document.getElementById("slCredit").checked=false;
+    if(_slP)_slP.checked=false;
+    document.getElementById("slCustName").value="";
+    document.getElementById("slCustPhone").value="";
+    var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";
+    document.getElementById("slCustAddr").value="";
+    document.getElementById("slCustCity").value="";
+    document.getElementById("slCustZip").value="";
+    document.getElementById("slNotes").value="";
+    var _sd1=document.getElementById("slSpaDesc");if(_sd1)_sd1.value="";
+    document.getElementById("slZoneBadge").style.display="none";
+    document.getElementById("slCcFile").checked=false;
+    document.getElementById("slCcReq").checked=false;
+    slResetWarranty();
+    slClearMedia();
+    rndrSlog();
+  }catch(e){
+    toast("Error: "+e.message,"err");
+  }finally{
+    if(createBtn){createBtn.disabled=false;createBtn.style.opacity="";createBtn.textContent=origLabel||"+ Create Ticket"}
+  }
+}
 function tog(p,i){document.getElementById(p+"b"+i).classList.toggle("open")}
 
 // ═══ MODE SELECTOR ═══
@@ -3257,6 +3449,20 @@ function openTktDetail(id){
   h+='<div class="lbl">Spa Description</div>';
   h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(t.spaDesc||'')+'</textarea>';
   h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
+  // Attachments (photos + PDFs) — visible to technicians
+  if((t.media||[]).length){
+    h+='<div class="lbl" style="margin-top:10px">Attachments ('+t.media.length+')</div>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">';
+    t.media.forEach(function(m){
+      if(m.type==="pdf"){
+        h+='<a href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" class="tkt-att-pdf" style="text-decoration:none">📄 '+esc(m.name||"PDF")+'</a>';
+      }else{
+        var src=m.url||m.data||"";
+        h+='<a href="'+esc(src)+'" target="_blank" rel="noopener" style="display:block"><img src="'+esc(src)+'" loading="lazy" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--ln)"></a>';
+      }
+    });
+    h+='</div>';
+  }
   h+='<div class="lbl">Notes / Updates</div>';
   h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
   h+='<div style="font-size:10px;color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
@@ -3938,7 +4144,7 @@ async function custCreateTicket(){
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
-function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();toast("Form cleared")}
+function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();slClearMedia();toast("Form cleared")}
 function calClearForm(){document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;var sd=document.getElementById("calSpaDesc");if(sd)sd.value="";toast("Form cleared")}
 function showCustSuggest(prefix){
   var input=document.getElementById(prefix+"CustName");
