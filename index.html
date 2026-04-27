@@ -1955,6 +1955,97 @@ function slClearMedia(){
   slMediaFiles=[];slRndrMedia();
 }
 
+// ═══════════════════════════════════════════════════════════════
+// TICKET-DETAIL ATTACHMENTS — admin-only upload/delete on existing tickets
+// ═══════════════════════════════════════════════════════════════
+// tdAddMedia: append new photos/PDFs to a ticket that's already in Firestore.
+// tdRemoveMedia: remove a single attachment (and its Storage file if any).
+// Both are admin-only — the click handlers are only rendered when isAdmin.
+async function tdAddMedia(ticketId,e){
+  if(!isAdmin){toast("Admin only","err");return}
+  const files=Array.from(e.target.files);e.target.value="";
+  if(!files.length)return;
+  if(!db||!ticketId){toast("Cannot upload right now","err");return}
+  if(!storage){toast("Firebase Storage is not initialized","err");return}
+  if(!navigator.onLine){toast("You're offline — connect and try again","warn");return}
+  // Validate & build a queue
+  const queue=[];
+  files.forEach(f=>{
+    const isImg=f.type.startsWith("image");
+    const isPdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name||"");
+    if(!isImg&&!isPdf){toast("Skipped (not photo/PDF): "+f.name,"warn");return}
+    if(isPdf&&f.size>SL_PDF_MAX_BYTES){toast("PDF too large (max 10 MB): "+f.name,"warn");return}
+    queue.push({file:f,isPdf:isPdf,name:f.name||(isPdf?"document.pdf":"photo.jpg")});
+  });
+  if(!queue.length)return;
+  // Look up the current ticket so we can append (don't overwrite existing attachments)
+  const t=[...active,...done].find(x=>x.id===ticketId);
+  if(!t){toast("Ticket not found","err");return}
+  if(((t.media||[]).length+queue.length)>SL_MEDIA_MAX){
+    toast("Too many files (max "+SL_MEDIA_MAX+" total per ticket)","warn");return;
+  }
+  const prog=document.getElementById("tdUploadProg_"+ticketId);
+  const bar=document.getElementById("tdUploadBar_"+ticketId);
+  if(prog){prog.style.display="block";bar.style.width="0"}
+  const existing=Array.isArray(t.media)?t.media.slice():[];
+  const uploaded=[];
+  for(let i=0;i<queue.length;i++){
+    if(bar)bar.style.width=((i+0.3)/queue.length*100)+"%";
+    const q=queue[i];
+    try{
+      if(q.isPdf){
+        const path="tickets/"+ticketId+"/"+Date.now()+"_"+i+".pdf";
+        const ref=storage.ref().child(path);
+        const snap=await ref.put(q.file,{contentType:"application/pdf"});
+        const url=await snap.ref.getDownloadURL();
+        uploaded.push({url:url,path:path,type:"pdf",name:q.name,storage:true});
+      }else{
+        const compressed=await compressPhoto(q.file);
+        const path="tickets/"+ticketId+"/"+Date.now()+"_"+i+".jpg";
+        const ref=storage.ref().child(path);
+        const snap=await ref.put(compressed.blob,{contentType:"image/jpeg"});
+        const url=await snap.ref.getDownloadURL();
+        uploaded.push({url:url,path:path,type:"photo",storage:true});
+      }
+    }catch(err){
+      console.warn("Upload failed for "+q.name,err);
+      toast("Upload failed: "+q.name,"warn");
+    }
+    if(bar)bar.style.width=((i+1)/queue.length*100)+"%";
+  }
+  if(prog)setTimeout(()=>{prog.style.display="none";bar.style.width="0"},400);
+  if(!uploaded.length){toast("No files uploaded","err");return}
+  try{
+    const newMedia=existing.concat(uploaded);
+    await db.collection("tickets").doc(ticketId).update({media:newMedia});
+    // Update local copy so re-render shows the new files immediately
+    t.media=newMedia;
+    toast("Added "+uploaded.length+" file"+(uploaded.length===1?"":"s")+" ✓");
+    openTktDetail(ticketId);
+  }catch(err){console.error(err);toast("Saved files but failed to update ticket: "+err.message,"err")}
+}
+
+async function tdRemoveMedia(ticketId,mediaIdx){
+  if(!isAdmin){toast("Admin only","err");return}
+  if(!db||!ticketId)return;
+  const t=[...active,...done].find(x=>x.id===ticketId);
+  if(!t||!Array.isArray(t.media)||!t.media[mediaIdx])return;
+  const m=t.media[mediaIdx];
+  const labelName=m.type==="pdf"?(m.name||"this PDF"):"this photo";
+  if(!confirm("Remove "+labelName+" from this ticket?\n\nThis will permanently delete the file."))return;
+  try{
+    // Delete from Storage if it lives there
+    if(m.path&&storage){
+      try{await storage.ref().child(m.path).delete()}catch(_de){console.warn("Storage delete:",_de)}
+    }
+    const newMedia=t.media.slice(0,mediaIdx).concat(t.media.slice(mediaIdx+1));
+    await db.collection("tickets").doc(ticketId).update({media:newMedia});
+    t.media=newMedia;
+    toast("Removed ✓");
+    openTktDetail(ticketId);
+  }catch(err){console.error(err);toast("Could not remove: "+err.message,"err")}
+}
+
 // ═══ PICKER ═══
 function mkCh(){const r=document.getElementById("cR");r.innerHTML="";["All",...CS].forEach(k=>{const c=document.createElement("button");c.className="ch"+(cat===k?" on":"");c.textContent=k;c.onclick=()=>{cat=k;mkCh();doFlt()};r.appendChild(c)})}
 function openPk(){document.getElementById("mBg").classList.add("open");document.getElementById("sI").value="";cat="All";mkCh();doFlt();setTimeout(()=>document.getElementById("sI").focus(),150)}
@@ -3449,19 +3540,35 @@ function openTktDetail(id){
   h+='<div class="lbl">Spa Description</div>';
   h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(t.spaDesc||'')+'</textarea>';
   h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
-  // Attachments (photos + PDFs) — visible to technicians
-  if((t.media||[]).length){
-    h+='<div class="lbl" style="margin-top:10px">Attachments ('+t.media.length+')</div>';
-    h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">';
-    t.media.forEach(function(m){
-      if(m.type==="pdf"){
-        h+='<a href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" class="tkt-att-pdf" style="text-decoration:none">📄 '+esc(m.name||"PDF")+'</a>';
-      }else{
-        var src=m.url||m.data||"";
-        h+='<a href="'+esc(src)+'" target="_blank" rel="noopener" style="display:block"><img src="'+esc(src)+'" loading="lazy" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--ln)"></a>';
-      }
-    });
-    h+='</div>';
+  // Attachments (photos + PDFs) — visible to all, editable by admin only
+  if((t.media||[]).length||isAdmin){
+    h+='<div class="lbl" style="margin-top:10px">Attachments'+((t.media||[]).length?' ('+t.media.length+')':'')+'</div>';
+    if((t.media||[]).length){
+      h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">';
+      t.media.forEach(function(m,mi){
+        if(m.type==="pdf"){
+          var safeName=esc(m.name||"PDF");
+          h+='<div style="position:relative;display:inline-block">';
+          h+='<a href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" class="tkt-att-pdf" style="text-decoration:none">📄 '+safeName+'</a>';
+          if(isAdmin)h+='<button onclick="tdRemoveMedia(\''+t.id+'\','+mi+')" title="Remove" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--r);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;padding:0">×</button>';
+          h+='</div>';
+        }else{
+          var src=m.url||m.data||"";
+          h+='<div style="position:relative;display:inline-block">';
+          h+='<a href="'+esc(src)+'" target="_blank" rel="noopener"><img src="'+esc(src)+'" loading="lazy" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--ln);display:block"></a>';
+          if(isAdmin)h+='<button onclick="tdRemoveMedia(\''+t.id+'\','+mi+')" title="Remove" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--r);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;padding:0">×</button>';
+          h+='</div>';
+        }
+      });
+      h+='</div>';
+    }
+    if(isAdmin){
+      h+='<label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;margin-bottom:12px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer"><span style="font-size:18px">📎</span><span>Add Photos / PDFs</span><input type="file" accept="image/*,application/pdf,.pdf" multiple style="display:none" onchange="tdAddMedia(\''+t.id+'\',event)"></label>';
+      h+='<div id="tdUploadProg_'+t.id+'" style="display:none;height:6px;background:#eee;border-radius:3px;margin:-6px 0 12px;overflow:hidden"><div id="tdUploadBar_'+t.id+'" style="height:100%;width:0;background:var(--ac);transition:width .2s"></div></div>';
+    }else if(!(t.media||[]).length){
+      // Tech viewing a ticket with no attachments — keep clean, hide the empty section
+      h=h.substring(0,h.lastIndexOf('<div class="lbl" style="margin-top:10px">Attachments'));
+    }
   }
   h+='<div class="lbl">Notes / Updates</div>';
   h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
