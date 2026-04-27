@@ -965,22 +965,39 @@ try{
 }
 
 // ═══ SERVICE WORKER REGISTRATION (PWA / Offline support) ═══
+// Auto-checks for updates every 60s. When a new version is detected, prompts
+// the user to reload immediately — prevents the "stale cached version" problem
+// where Alberto deploys new code but his browser keeps showing the old HTML.
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
     navigator.serviceWorker.register("sw.js").then(function(reg){
       console.log("✓ Service Worker registered — app installable & works offline");
-      // Auto-update when a new version is available
+      // Check for new versions every 60 seconds while the app is open
+      setInterval(function(){try{reg.update()}catch(_e){}},60000);
       reg.addEventListener("updatefound",function(){
         var nw=reg.installing;
         if(nw){
           nw.addEventListener("statechange",function(){
             if(nw.state==="installed"&&navigator.serviceWorker.controller){
-              if(typeof toast==="function")toast("New version available — refresh to update","info");
+              // New version waiting — prompt user to reload right now
+              if(confirm("✨ A new version of the app is available.\n\nReload now to get the latest features?")){
+                if(nw.postMessage){try{nw.postMessage({type:"SKIP_WAITING"})}catch(_e){}}
+                location.reload();
+              }else if(typeof toast==="function"){
+                toast("New version available — reload anytime to update","info");
+              }
             }
           });
         }
       });
     }).catch(function(err){console.warn("Service Worker registration failed:",err)});
+    // Auto-reload when a new SW takes control (prevents mismatched-asset errors)
+    var _swRefreshing=false;
+    navigator.serviceWorker.addEventListener("controllerchange",function(){
+      if(_swRefreshing)return;
+      _swRefreshing=true;
+      location.reload();
+    });
   });
 }
 
@@ -2013,6 +2030,7 @@ async function tdAddMedia(ticketId,e){
   if(!db||!ticketId){toast("Cannot upload right now","err");return}
   if(!storage){toast("Firebase Storage is not initialized","err");return}
   if(!navigator.onLine){toast("You're offline — connect and try again","warn");return}
+  console.log("[tdAddMedia] Starting upload of "+files.length+" file(s) to ticket "+ticketId);
   // Validate & build a queue
   const queue=[];
   files.forEach(f=>{
@@ -2032,11 +2050,16 @@ async function tdAddMedia(ticketId,e){
   const prog=document.getElementById("tdUploadProg_"+ticketId);
   const bar=document.getElementById("tdUploadBar_"+ticketId);
   if(prog){prog.style.display="block";bar.style.width="0"}
+  // Disable the Add button while uploading
+  const addLabels=document.querySelectorAll('label input[onchange*="tdAddMedia(\''+ticketId+'\'"]');
+  addLabels.forEach(inp=>{if(inp.parentElement){inp.parentElement.style.pointerEvents="none";inp.parentElement.style.opacity=".6"}});
   const existing=Array.isArray(t.media)?t.media.slice():[];
   const uploaded=[];
+  let failedCount=0;
   for(let i=0;i<queue.length;i++){
     if(bar)bar.style.width=((i+0.3)/queue.length*100)+"%";
     const q=queue[i];
+    console.log("[tdAddMedia] Uploading "+(i+1)+"/"+queue.length+": "+q.name+" ("+(q.isPdf?"PDF":"photo")+", "+Math.round(q.file.size/1024)+" KB)");
     try{
       if(q.isPdf){
         const path="tickets/"+ticketId+"/"+Date.now()+"_"+i+".pdf";
@@ -2044,6 +2067,7 @@ async function tdAddMedia(ticketId,e){
         const snap=await ref.put(q.file,{contentType:"application/pdf"});
         const url=await snap.ref.getDownloadURL();
         uploaded.push({url:url,path:path,type:"pdf",name:q.name,storage:true});
+        console.log("[tdAddMedia] ✓ PDF uploaded: "+url);
       }else{
         const compressed=await compressPhoto(q.file);
         const path="tickets/"+ticketId+"/"+Date.now()+"_"+i+".jpg";
@@ -2051,26 +2075,52 @@ async function tdAddMedia(ticketId,e){
         const snap=await ref.put(compressed.blob,{contentType:"image/jpeg"});
         const url=await snap.ref.getDownloadURL();
         uploaded.push({url:url,path:path,type:"photo",storage:true});
+        console.log("[tdAddMedia] ✓ Photo uploaded: "+url);
       }
     }catch(err){
-      console.warn("Upload failed for "+q.name,err);
-      toast("Upload failed: "+q.name,"warn");
+      failedCount++;
+      console.error("[tdAddMedia] ✗ Upload failed for "+q.name,err);
+      toast("Upload failed: "+q.name+" — "+(err.code||err.message||"unknown error"),"err");
     }
     if(bar)bar.style.width=((i+1)/queue.length*100)+"%";
   }
   if(prog)setTimeout(()=>{prog.style.display="none";bar.style.width="0"},400);
-  if(!uploaded.length){toast("No files uploaded","err");return}
+  // Re-enable Add button
+  addLabels.forEach(inp=>{if(inp.parentElement){inp.parentElement.style.pointerEvents="";inp.parentElement.style.opacity=""}});
+  if(!uploaded.length){
+    toast(failedCount?"All "+failedCount+" upload(s) failed — check Firebase Storage rules":"No files uploaded","err");
+    return;
+  }
   try{
     const newMedia=existing.concat(uploaded);
+    console.log("[tdAddMedia] Updating Firestore doc with "+newMedia.length+" total files");
     await db.collection("tickets").doc(ticketId).update({media:newMedia});
-    // Force-update local arrays so the re-render shows new files immediately,
-    // without waiting for the snapshot listener (which rebuilds active/done from scratch).
+    // Re-fetch the fresh ticket data directly from Firestore to be authoritative.
+    // This avoids race conditions with the snapshot listener.
+    let freshData=null;
+    try{
+      const freshDoc=await db.collection("tickets").doc(ticketId).get();
+      if(freshDoc.exists)freshData={id:freshDoc.id,...freshDoc.data()};
+    }catch(_ge){console.warn("Could not re-fetch ticket, using local merge",_ge)}
+    if(!freshData)freshData=Object.assign({},t,{media:newMedia});
+    // Force-update local arrays
     const idxA=active.findIndex(x=>x.id===ticketId);
     const idxD=done.findIndex(x=>x.id===ticketId);
-    if(idxA>=0)active[idxA]=Object.assign({},active[idxA],{media:newMedia});
-    if(idxD>=0)done[idxD]=Object.assign({},done[idxD],{media:newMedia});
+    if(idxA>=0)active[idxA]=freshData;
+    if(idxD>=0)done[idxD]=freshData;
+    console.log("[tdAddMedia] ✓ Saved. Ticket now has "+(freshData.media||[]).length+" attachment(s)");
     toast("Added "+uploaded.length+" file"+(uploaded.length===1?"":"s")+" ✓");
+    // Re-render the modal and scroll to the attachments
     openTktDetail(ticketId);
+    setTimeout(function(){
+      const lblNodes=document.querySelectorAll("#tktDetailBody .lbl");
+      for(let i=0;i<lblNodes.length;i++){
+        if(lblNodes[i].textContent.indexOf("Attachments")===0||lblNodes[i].textContent.indexOf("📎")>=0){
+          lblNodes[i].scrollIntoView({behavior:"smooth",block:"start"});
+          break;
+        }
+      }
+    },120);
   }catch(err){console.error(err);toast("Saved files but failed to update ticket: "+err.message,"err")}
 }
 
@@ -3595,6 +3645,7 @@ function openTktDetail(id){
   h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
   // Attachments (photos + PDFs) — visible to all, editable by admin only.
   // Layout: large card grid (120x120 thumbs). Clicking any card opens the preview modal.
+  // [v2-attachments] — if you don't see this section, your browser is showing a cached old version.
   var hasMedia=(t.media||[]).length>0;
   if(hasMedia||isAdmin){
     h+='<div class="lbl" style="margin-top:14px;display:flex;align-items:center;gap:6px"><span style="font-size:14px">📎</span><span>Attachments'+(hasMedia?' ('+t.media.length+')':'')+'</span></div>';
