@@ -244,7 +244,6 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 /* Tech Columns */
 .tech-cols{display:flex;gap:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:none}.tech-cols::-webkit-scrollbar{display:none}
-.mt-col.drop-over-col{outline:3px dashed var(--ac);outline-offset:-3px;background:#fff7ed}
 .cal-day.drop-over{outline:3px dashed var(--ac);outline-offset:-3px;background:#fff7ed}
 .cal-tkt-mini.dragging{opacity:.4}
 .tech-col{width:380px;min-width:380px;max-width:380px;flex-shrink:0;flex-grow:0;scroll-snap-align:start;box-sizing:border-box}
@@ -489,20 +488,28 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .zone-card-body{max-height:400px;overflow-y:auto;padding:0 10px 10px}
 .zone-card-item{padding:8px 10px;background:#fafaf8;border-radius:8px;margin-bottom:4px;font-size:12px;cursor:pointer}.zone-card-item:hover{background:var(--acl)}
 .zone-card-item h6{font-size:12px;font-weight:700;color:var(--br);margin:0}.zone-card-item p{font-size:10px;color:var(--i3);margin:2px 0 0}
-.mt-cal{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:8px;touch-action:pan-x pan-y;scroll-padding-left:4px}
-.mt-col{flex:0 0 auto;min-width:240px;scroll-snap-align:start;display:flex;flex-direction:column}
-.mt-col-hdr{text-align:center;padding:10px 8px;font-size:13px;font-weight:700;color:#fff;border-radius:8px 8px 0 0;position:sticky;top:0;z-index:2}
+/* ═══ TEAM VIEW ═══
+   Desktop (>680px): horizontal scrolling columns (drag-and-drop friendly).
+   Mobile (≤680px):  vertical stack with collapsible accordion headers.
+   No horizontal scroll on mobile — each tech becomes a tap-to-expand section.
+*/
+.mt-cal{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.mt-col{flex:0 0 auto;min-width:240px;display:flex;flex-direction:column;background:#fff;border-radius:8px;overflow:hidden}
+.mt-col-hdr{text-align:center;padding:10px 8px;font-size:13px;font-weight:700;color:#fff;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;gap:8px}
+.mt-col-body{display:flex;flex-direction:column;background:#fafaf8}
+.mt-col.drop-over-col{outline:3px dashed var(--ac);outline-offset:-3px;background:#fff7ed}
+.mt-col-toggle{display:none;font-size:14px;line-height:1;transition:transform .2s;flex-shrink:0}
+
 @media(max-width:680px){
-  .mt-cal{scroll-snap-type:x proximity;padding:0 4px 12px}
-  .mt-col{min-width:78vw;max-width:78vw}
-  .mt-col-hdr{font-size:14px;padding:12px 8px}
-  /* Hint that there's more content to the right */
-  .mt-cal::after{content:"";flex:0 0 8px}
-}
-/* Visual scroll indicator below the team grid on mobile */
-.mt-scroll-hint{display:none}
-@media(max-width:680px){
-  .mt-scroll-hint{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 0;font-size:11px;color:var(--i3);font-weight:600}
+  /* Stack columns vertically — no horizontal scroll */
+  .mt-cal{flex-direction:column;overflow-x:visible;gap:10px;padding:0 0 12px}
+  .mt-col{min-width:100%;max-width:100%;width:100%;border:1px solid var(--ln)}
+  /* Make header a tap target with visible toggle indicator */
+  .mt-col-hdr{cursor:pointer;font-size:15px;padding:14px 16px;justify-content:space-between;-webkit-tap-highlight-color:transparent;user-select:none}
+  .mt-col-toggle{display:inline-block}
+  .mt-col.collapsed .mt-col-toggle{transform:rotate(-90deg)}
+  .mt-col.collapsed .mt-col-body{display:none}
+  .mt-col.collapsed .mt-col-hdr{border-radius:8px}
 }
 </style>
 </head>
@@ -3524,39 +3531,55 @@ function calDayCell(d,ds,tkts,today,isOther){
 }
 function rndrCalWeek(sun,byDate,today){const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=0;i<7;i++){const dt=new Date(sun);dt.setDate(sun.getDate()+i);const ds=fmtD(dt);h+=calDayCell(dt.getDate(),ds,byDate[ds]||[],today,false)}document.getElementById("calGrid").innerHTML=h}
 function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),#d4772c);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div style="padding:40px;text-align:center;color:var(--i3);border:2px dashed var(--ln);border-radius:12px">No tickets for this day<br><span style="font-size:11px;opacity:.6">Drop a ticket here to schedule it</span></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
+// Collapsed-state per-tech for the mobile accordion layout. Persists across
+// re-renders within the session so toggling one section doesn't reset others.
+let _calTeamCollapsed=new Set();
+function calToggleTeamSection(techName){
+  if(_calTeamCollapsed.has(techName))_calTeamCollapsed.delete(techName);
+  else _calTeamCollapsed.add(techName);
+  // Toggle in place — no full re-render needed (preserves scroll position)
+  const safe=techName.replace(/[^a-zA-Z0-9_-]/g,"_");
+  const col=document.getElementById("mtCol_"+safe);
+  if(col)col.classList.toggle("collapsed");
+}
 function rndrCalTeam(sel,allTkts){
   const tkts=allTkts.filter(t=>t.date===sel);
   const isTech=currentUser&&currentUser.role==="tech";
-  // Count visible columns to decide if scroll hint is needed
-  let visibleCols=0;
-  TECHS.forEach(tn=>{
-    if(!isTech&&calHiddenTechs.has(tn))return;
-    if(isTech&&tn!==currentUser.name)return;
-    visibleCols++;
-  });
-  if(!isTech&&!calHiddenTechs.has(CAL_UNASSIGNED))visibleCols++;
   let h='<div class="mt-cal">';
+  // Helper to render one column (tech or unassigned). Same HTML structure on
+  // desktop and mobile — CSS media queries change the layout. Header is always
+  // tappable; on desktop the toggle arrow is hidden via CSS.
+  function buildCol(tnLabel,tnKey,bgColor,colTickets){
+    const safeKey=tnKey.replace(/[^a-zA-Z0-9_-]/g,"_");
+    const collapsed=_calTeamCollapsed.has(tnKey);
+    const dropTarget=tnKey===CAL_UNASSIGNED?"":tnKey.replace(/'/g,"\\'");
+    let inner='<div id="mtCol_'+safeKey+'" class="mt-col'+(collapsed?" collapsed":"")+'"';
+    inner+=' ondragover="event.preventDefault();this.classList.add(\'drop-over-col\')"';
+    inner+=' ondragleave="this.classList.remove(\'drop-over-col\')"';
+    inner+=' ondrop="calDropOnTech(event,\''+dropTarget+'\',\''+sel+'\')">';
+    inner+='<div class="mt-col-hdr" style="background:'+bgColor+'" onclick="calToggleTeamSection(\''+tnKey.replace(/'/g,"\\'")+'\')">';
+    inner+='<span>'+esc(tnLabel)+' ('+colTickets.length+')</span>';
+    inner+='<span class="mt-col-toggle">▼</span>';
+    inner+='</div>';
+    inner+='<div class="mt-col-body">';
+    if(!colTickets.length)inner+='<div style="padding:16px;text-align:center;color:var(--i3);font-size:12px">— No tickets —</div>';
+    else colTickets.forEach(t=>{inner+=calTktCard(t)});
+    inner+='</div></div>';
+    return inner;
+  }
   TECHS.forEach((tn,ti)=>{
     if(!isTech&&calHiddenTechs.has(tn))return;
     if(isTech&&tn!==currentUser.name)return;
     const col=TECH_COLORS[ti%TECH_COLORS.length];
-    const my=tkts.filter(t=>(t.techs||[]).some(tt=>_resolveTechPill(tt)===tn)).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));
-    h+='<div class="mt-col" ondragover="event.preventDefault();this.classList.add(\'drop-over-col\')" ondragleave="this.classList.remove(\'drop-over-col\')" ondrop="calDropOnTech(event,\''+esc(tn).replace(/\'/g,"\\\'")+'\',\''+sel+'\')"><div class="mt-col-hdr" style="background:'+col+'">'+esc(tn)+' ('+my.length+')</div>';
-    if(!my.length)h+='<div style="padding:16px;text-align:center;color:var(--i3);font-size:12px;background:#fafaf8">— Drop here —</div>';
-    else my.forEach(t=>{h+=calTktCard(t)});
-    h+='</div>';
+    const my=tkts.filter(t=>(t.techs||[]).some(tt=>_resolveTechPill(tt)===tn))
+                 .sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));
+    h+=buildCol(tn,tn,col,my);
   });
-  // Unassigned column (hidden if tech role, or if unassigned pill is off)
   if(!isTech&&!calHiddenTechs.has(CAL_UNASSIGNED)){
     const un=tkts.filter(t=>!t.techs||!t.techs.length);
-    h+='<div class="mt-col" ondragover="event.preventDefault();this.classList.add(\'drop-over-col\')" ondragleave="this.classList.remove(\'drop-over-col\')" ondrop="calDropOnTech(event,\'\',\''+sel+'\')"><div class="mt-col-hdr" style="background:var(--r)">Unassigned ('+un.length+')</div>';
-    if(!un.length)h+='<div style="padding:16px;text-align:center;color:var(--i3);font-size:12px;background:#fafaf8">— Drop here —</div>';
-    else un.forEach(t=>{h+=calTktCard(t)});
-    h+='</div>';
+    h+=buildCol("Unassigned",CAL_UNASSIGNED,"var(--r)",un);
   }
   h+='</div>';
-  // Scroll hint for mobile users — only show when there's more than one column
-  if(visibleCols>1)h+='<div class="mt-scroll-hint">← Swipe to see all '+visibleCols+' columns →</div>';
   document.getElementById("calGrid").innerHTML=h;
 }
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
