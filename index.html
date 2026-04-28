@@ -1480,7 +1480,7 @@ async function cleanupStaleDispatchTickets(){
     }
   });
   // Find dispatch tickets that should be marked as resolved.
-  // Match if: same customer AND a field report exists within ±7 days (handles tech visiting on a different day).
+  // Match if: same customer AND a field report exists within ±14 days (handles tech visiting on a different day).
   var stale=[...active,...done].filter(function(t){
     if(t.source!=="dispatch")return false;
     if(t.fieldReportSubmitted)return false;
@@ -1488,7 +1488,7 @@ async function cleanupStaleDispatchTickets(){
     var c=_norm(t.customer);var d=(t.date||"").trim();
     if(!c||!d)return false;
     var dates=fieldReportsByCust[c];if(!dates)return false;
-    return dates.some(function(fd){return _daysBetween(d,fd)<=7});
+    return dates.some(function(fd){return _daysBetween(d,fd)<=14});
   });
   if(!stale.length){
     if(resEl)resEl.textContent="✓ Nothing to clean — calendar is already in sync.";
@@ -1508,6 +1508,66 @@ async function cleanupStaleDispatchTickets(){
   }
   if(resEl)resEl.textContent="✓ Cleaned "+ok+" ticket"+(ok!==1?"s":"")+(fail?" ("+fail+" failed)":"")+".";
   toast(ok+" ticket"+(ok!==1?"s":"")+" cleaned ✓");
+}
+
+// Silent auto-cleanup: runs once after initial load, no UI/toast. Same matching logic as cleanupStaleDispatchTickets.
+let _autoCleanupRan=false;
+async function autoCleanupSilent(){
+  if(_autoCleanupRan)return;
+  if(!db)return;
+  if(!currentUser||currentUser.role==="tech")return; // only admin/organizer triggers cleanup
+  _autoCleanupRan=true;
+  function _norm(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+  function _daysBetween(d1,d2){
+    if(!d1||!d2)return 999;
+    var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
+    if(isNaN(t1)||isNaN(t2))return 999;
+    return Math.abs(Math.round((t1-t2)/86400000));
+  }
+  var fieldReportsByCust={};
+  [...active,...done].forEach(function(t){
+    if(t.source==="dispatch")return;
+    var c=_norm(t.customer);var d=(t.date||"").trim();
+    if(c&&d){
+      if(!fieldReportsByCust[c])fieldReportsByCust[c]=[];
+      fieldReportsByCust[c].push(d);
+    }
+  });
+  var stale=[...active,...done].filter(function(t){
+    if(t.source!=="dispatch")return false;
+    if(t.fieldReportSubmitted)return false;
+    if(t.status==="canceled")return false;
+    var c=_norm(t.customer);var d=(t.date||"").trim();
+    if(!c||!d)return false;
+    var dates=fieldReportsByCust[c];if(!dates)return false;
+    return dates.some(function(fd){return _daysBetween(d,fd)<=14});
+  });
+  if(!stale.length)return;
+  console.log("[autoCleanup] Cleaning "+stale.length+" stale dispatch ticket(s)");
+  for(var i=0;i<stale.length;i++){
+    try{
+      await db.collection("tickets").doc(stale[i].id).update({
+        fieldReportSubmitted:true,
+        fieldReportSubmittedAt:new Date().toLocaleString(),
+        cleanedUpBy:"auto-cleanup"
+      });
+    }catch(e){console.warn("[autoCleanup] Could not clean "+stale[i].id+":",e)}
+  }
+}
+
+// Manual dismiss from calendar: lets admin remove a single dispatch ticket with no field report match.
+async function calDismissTicket(id,custName,ev){
+  if(ev){ev.stopPropagation();ev.preventDefault()}
+  if(!db){toast("Firebase not configured","err");return}
+  if(!confirm('Remove "'+custName+'" from the calendar?\n\nThis marks the dispatch ticket as resolved without creating a field report. Use this only when the ticket is a duplicate or no longer relevant.'))return;
+  try{
+    await db.collection("tickets").doc(id).update({
+      fieldReportSubmitted:true,
+      fieldReportSubmittedAt:new Date().toLocaleString(),
+      cleanedUpBy:"manual-dismiss-"+(currentUser?currentUser.name:"unknown")
+    });
+    toast("Removed from calendar ✓");
+  }catch(e){toast("Error: "+e.message,"err")}
 }
 function rndrAdminTechs(){
   const el=document.getElementById("adminTechList");
@@ -1592,6 +1652,8 @@ function initFirebase(){
       return tb-ta;
     };
     active.sort(sortFn);done.sort(sortFn);
+    // Auto-cleanup any stale dispatch tickets (runs once per page load, admin/organizer only)
+    try{autoCleanupSilent()}catch(_e){console.warn("autoCleanup error:",_e)}
     // Update badges — count only what actually shows in Daily tab (field reports with status complete/reschedule)
     const b1=document.getElementById("bdg1"),b2=document.getElementById("bdg2");
     const dailyPool=active.filter(t=>t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule"));
@@ -2428,7 +2490,7 @@ async function submitTkt(st){
               !t.fieldReportSubmitted &&
               t.status!=="canceled" &&
               _normCustMatchE(t.customer)===targetCustE &&
-              _daysBetweenE((t.date||"").trim(),targetDateE)<=7
+              _daysBetweenE((t.date||"").trim(),targetDateE)<=14
             );
             for(const dt of matchesE){
               try{
@@ -2484,7 +2546,7 @@ async function submitTkt(st){
               !t.fieldReportSubmitted &&
               t.status!=="canceled" &&
               _normCustMatch(t.customer)===targetCust &&
-              _daysBetweenC((t.date||"").trim(),targetDate)<=7
+              _daysBetweenC((t.date||"").trim(),targetDate)<=14
             );
             for(const dt of matches){
               try{
@@ -3610,7 +3672,7 @@ function rndrCalTeam(sel,allTkts){
 }
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
-function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';let h=`<div class="cal-tkt-mini"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}"><h5>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role!=="tech"&&t.source==="dispatch"&&!t.fieldReportSubmitted;let h=`<div class="cal-tkt-mini"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:#dc2626;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='#dc2626'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket
 async function togglePaid(id,currentlyPaid){
