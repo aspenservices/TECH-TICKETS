@@ -1456,26 +1456,39 @@ function rndrAdminStats(){
   visitsEl.innerHTML=vh;
 }
 // Backfill cleanup: mark any dispatch ticket as fieldReportSubmitted=true if there's already a
-// matching field report (same customer + date). Useful for legacy tickets created before auto-match.
+// matching field report (same customer, with date within ±7 days). Useful for legacy tickets
+// created before auto-match, and handles cases where the tech visited on a different day than scheduled.
 async function cleanupStaleDispatchTickets(){
   if(!db){toast("Firebase not configured","err");return}
   var resEl=document.getElementById("cleanupResult");
   if(resEl)resEl.textContent="Scanning...";
   function _norm(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-  // Build set of "cust|date" keys for which a field report exists (non-dispatch tickets)
-  var keys=new Set();
+  function _daysBetween(d1,d2){
+    if(!d1||!d2)return 999;
+    var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
+    if(isNaN(t1)||isNaN(t2))return 999;
+    return Math.abs(Math.round((t1-t2)/86400000));
+  }
+  // Build map of customer -> [dates] for which a field report exists (non-dispatch tickets)
+  var fieldReportsByCust={};
   [...active,...done].forEach(function(t){
     if(t.source==="dispatch")return;
     var c=_norm(t.customer);var d=(t.date||"").trim();
-    if(c&&d)keys.add(c+"|"+d);
+    if(c&&d){
+      if(!fieldReportsByCust[c])fieldReportsByCust[c]=[];
+      fieldReportsByCust[c].push(d);
+    }
   });
-  // Find dispatch tickets that should be marked as resolved
+  // Find dispatch tickets that should be marked as resolved.
+  // Match if: same customer AND a field report exists within ±7 days (handles tech visiting on a different day).
   var stale=[...active,...done].filter(function(t){
     if(t.source!=="dispatch")return false;
     if(t.fieldReportSubmitted)return false;
     if(t.status==="canceled")return false;
     var c=_norm(t.customer);var d=(t.date||"").trim();
-    return c&&d&&keys.has(c+"|"+d);
+    if(!c||!d)return false;
+    var dates=fieldReportsByCust[c];if(!dates)return false;
+    return dates.some(function(fd){return _daysBetween(d,fd)<=7});
   });
   if(!stale.length){
     if(resEl)resEl.textContent="✓ Nothing to clean — calendar is already in sync.";
@@ -2401,6 +2414,12 @@ async function submitTkt(st){
       if(st==="complete"){
         try{
           function _normCustMatchE(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+          function _daysBetweenE(d1,d2){
+            if(!d1||!d2)return 999;
+            var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
+            if(isNaN(t1)||isNaN(t2))return 999;
+            return Math.abs(Math.round((t1-t2)/86400000));
+          }
           const targetCustE=_normCustMatchE(cleanData.customer);
           const targetDateE=(cleanData.date||"").trim();
           if(targetCustE&&targetDateE){
@@ -2409,7 +2428,7 @@ async function submitTkt(st){
               !t.fieldReportSubmitted &&
               t.status!=="canceled" &&
               _normCustMatchE(t.customer)===targetCustE &&
-              (t.date||"").trim()===targetDateE
+              _daysBetweenE((t.date||"").trim(),targetDateE)<=7
             );
             for(const dt of matchesE){
               try{
@@ -2445,11 +2464,18 @@ async function submitTkt(st){
         }catch(linkErr){console.warn("Could not mark dispatch ticket as submitted:",linkErr)}
         _backToTktId=null;
       }
-      // Auto-match: find ANY pending dispatch ticket with matching customer+date and mark it complete.
-      // Ensures the dispatch ticket disappears from BOTH assigned techs' calendars when any of them fills the report.
+      // Auto-match: find ANY pending dispatch ticket with matching customer (and date within ±7 days)
+      // and mark it complete. Ensures the dispatch ticket disappears from BOTH assigned techs' calendars
+      // when any of them fills the report, even if the visit happened on a different day than scheduled.
       if(st==="complete"){
         try{
           function _normCustMatch(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+          function _daysBetweenC(d1,d2){
+            if(!d1||!d2)return 999;
+            var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
+            if(isNaN(t1)||isNaN(t2))return 999;
+            return Math.abs(Math.round((t1-t2)/86400000));
+          }
           const targetCust=_normCustMatch(cleanData.customer);
           const targetDate=(cleanData.date||"").trim();
           if(targetCust&&targetDate){
@@ -2458,7 +2484,7 @@ async function submitTkt(st){
               !t.fieldReportSubmitted &&
               t.status!=="canceled" &&
               _normCustMatch(t.customer)===targetCust &&
-              (t.date||"").trim()===targetDate
+              _daysBetweenC((t.date||"").trim(),targetDate)<=7
             );
             for(const dt of matches){
               try{
