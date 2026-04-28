@@ -489,10 +489,21 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .zone-card-body{max-height:400px;overflow-y:auto;padding:0 10px 10px}
 .zone-card-item{padding:8px 10px;background:#fafaf8;border-radius:8px;margin-bottom:4px;font-size:12px;cursor:pointer}.zone-card-item:hover{background:var(--acl)}
 .zone-card-item h6{font-size:12px;font-weight:700;color:var(--br);margin:0}.zone-card-item p{font-size:10px;color:var(--i3);margin:2px 0 0}
-.mt-cal{display:flex;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
-.mt-col{flex:1;min-width:220px;scroll-snap-align:start}
-.mt-col-hdr{text-align:center;padding:8px;font-size:12px;font-weight:700;color:#fff;border-radius:8px 8px 0 0}
-@media(max-width:680px){.mt-col{min-width:85vw}}
+.mt-cal{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:8px;touch-action:pan-x pan-y;scroll-padding-left:4px}
+.mt-col{flex:0 0 auto;min-width:240px;scroll-snap-align:start;display:flex;flex-direction:column}
+.mt-col-hdr{text-align:center;padding:10px 8px;font-size:13px;font-weight:700;color:#fff;border-radius:8px 8px 0 0;position:sticky;top:0;z-index:2}
+@media(max-width:680px){
+  .mt-cal{scroll-snap-type:x proximity;padding:0 4px 12px}
+  .mt-col{min-width:78vw;max-width:78vw}
+  .mt-col-hdr{font-size:14px;padding:12px 8px}
+  /* Hint that there's more content to the right */
+  .mt-cal::after{content:"";flex:0 0 8px}
+}
+/* Visual scroll indicator below the team grid on mobile */
+.mt-scroll-hint{display:none}
+@media(max-width:680px){
+  .mt-scroll-hint{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 0;font-size:11px;color:var(--i3);font-weight:600}
+}
 </style>
 </head>
 <body>
@@ -3364,6 +3375,10 @@ const ZIP_CITIES={"63114":"Overland","63031":"Florissant","63135":"Ferguson","63
 function calAutoZone(){const zip=document.getElementById("calCustZip").value.trim();const badge=document.getElementById("calZoneBadge");const zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";const city=ZIP_CITIES[zip]||customZips[zip+"_city"]||"";if(zip.length===5&&zone){const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};badge.style.display="block";badge.innerHTML='<span style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span>';if(!document.getElementById("calCustCity").value&&city)document.getElementById("calCustCity").value=city}else if(zip.length===5){badge.style.display="block";badge.innerHTML='<input id="calManualZone" placeholder="Enter zone" class="time-input" style="width:120px;font-size:12px">'}else{badge.style.display="none"}}
 let customZips={};
 let calYear,calMonth,calSelectedDate="",calView="month",calQueueZone="all",dragTktId=null;
+// Detect touch-primary devices once on load. On mobile, native HTML5 drag can
+// hijack touch events and break horizontal scrolling in the Team view, so we
+// disable draggable on cards. Drag-and-drop is mainly a desktop feature anyway.
+const IS_TOUCH=("ontouchstart" in window)||navigator.maxTouchPoints>0;
 function calInit(){const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth()}
 function calNav(dir){if(calView==="month"){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++}if(calMonth<0){calMonth=11;calYear--}}else if(calView==="week"){const d=new Date((calSelectedDate||fmtD(new Date()))+"T12:00:00");d.setDate(d.getDate()+dir*7);calSelectedDate=fmtD(d);calYear=d.getFullYear();calMonth=d.getMonth()}else{const d=new Date((calSelectedDate||fmtD(new Date()))+"T12:00:00");d.setDate(d.getDate()+dir);calSelectedDate=fmtD(d);calYear=d.getFullYear();calMonth=d.getMonth()}rndrCal()}
 function calToday(){const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth();calSelectedDate=fmtD(d);rndrCal()}
@@ -3512,6 +3527,14 @@ function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arri
 function rndrCalTeam(sel,allTkts){
   const tkts=allTkts.filter(t=>t.date===sel);
   const isTech=currentUser&&currentUser.role==="tech";
+  // Count visible columns to decide if scroll hint is needed
+  let visibleCols=0;
+  TECHS.forEach(tn=>{
+    if(!isTech&&calHiddenTechs.has(tn))return;
+    if(isTech&&tn!==currentUser.name)return;
+    visibleCols++;
+  });
+  if(!isTech&&!calHiddenTechs.has(CAL_UNASSIGNED))visibleCols++;
   let h='<div class="mt-cal">';
   TECHS.forEach((tn,ti)=>{
     if(!isTech&&calHiddenTechs.has(tn))return;
@@ -3532,11 +3555,13 @@ function rndrCalTeam(sel,allTkts){
     h+='</div>';
   }
   h+='</div>';
+  // Scroll hint for mobile users — only show when there's more than one column
+  if(visibleCols>1)h+='<div class="mt-scroll-hint">← Swipe to see all '+visibleCols+' columns →</div>';
   document.getElementById("calGrid").innerHTML=h;
 }
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
-function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");let h=`<div class="cal-tkt-mini" draggable="true" ondragstart="calDragStart(event,'${t.id}')" onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}"><h5>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';let h=`<div class="cal-tkt-mini"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}"><h5>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket
 async function togglePaid(id,currentlyPaid){
