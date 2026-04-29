@@ -1497,6 +1497,14 @@ async function cleanupStaleDispatchTickets(){
     if(isNaN(t1)||isNaN(t2))return 999;
     return Math.abs(Math.round((t1-t2)/86400000));
   }
+  // Returns days that FR is AFTER dispatch (positive means FR is later). Used for matching.
+  // A tech can only file a field report ON or AFTER the scheduled date — never before it.
+  function _daysFrAfterDispatch(dispatchDate, frDate){
+    if(!dispatchDate||!frDate)return -999;
+    var t1=Date.parse(dispatchDate+"T00:00:00");var t2=Date.parse(frDate+"T00:00:00");
+    if(isNaN(t1)||isNaN(t2))return -999;
+    return Math.round((t2-t1)/86400000);
+  }
   // Build map of customer -> [dates] for which a field report exists (non-dispatch tickets)
   var fieldReportsByCust={};
   [...active,...done].forEach(function(t){
@@ -1508,7 +1516,9 @@ async function cleanupStaleDispatchTickets(){
     }
   });
   // Find dispatch tickets that should be marked as resolved.
-  // Match if: same customer AND a field report exists within ±14 days (handles tech visiting on a different day).
+  // Match ONLY if: same customer AND a field report exists ON OR AFTER the dispatch date,
+  // within 14 days. This prevents OLD field reports (e.g. from a previous visit a few weeks ago)
+  // from auto-cleaning a NEW future-scheduled dispatch ticket for the same customer.
   var stale=[...active,...done].filter(function(t){
     if(t.source!=="dispatch")return false;
     if(t.fieldReportSubmitted)return false;
@@ -1516,7 +1526,10 @@ async function cleanupStaleDispatchTickets(){
     var c=_norm(t.customer);var d=(t.date||"").trim();
     if(!c||!d)return false;
     var dates=fieldReportsByCust[c];if(!dates)return false;
-    return dates.some(function(fd){return _daysBetween(d,fd)<=14});
+    return dates.some(function(fd){
+      var diff=_daysFrAfterDispatch(d,fd);
+      return diff>=0&&diff<=14; // FR is on/after dispatch and within 14 days
+    });
   });
   if(!stale.length){
     if(resEl)resEl.textContent="✓ Nothing to clean — calendar is already in sync.";
@@ -1540,17 +1553,70 @@ async function cleanupStaleDispatchTickets(){
 
 // Silent auto-cleanup: runs once after initial load, no UI/toast. Same matching logic as cleanupStaleDispatchTickets.
 let _autoCleanupRan=false;
+// Repair function: undo any erroneous auto-cleanups from the buggy ±14 days bidirectional logic.
+// A dispatch ticket was wrongly cleaned if it was marked by "auto-cleanup" but no field report
+// exists for the same customer ON or AFTER its dispatch date (within 14 days).
+let _repairCleanupRan=false;
+async function repairBadAutoCleanups(){
+  if(_repairCleanupRan)return;
+  if(!db||!currentUser||currentUser.role==="tech")return;
+  _repairCleanupRan=true;
+  function _norm(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+  function _frAfter(dispatchDate, frDate){
+    if(!dispatchDate||!frDate)return -999;
+    var t1=Date.parse(dispatchDate+"T00:00:00");var t2=Date.parse(frDate+"T00:00:00");
+    if(isNaN(t1)||isNaN(t2))return -999;
+    return Math.round((t2-t1)/86400000);
+  }
+  // Build map of customer -> [field report dates]
+  var fieldReportsByCust={};
+  [...active,...done].forEach(function(t){
+    if(t.source==="dispatch")return;
+    var c=_norm(t.customer);var d=(t.date||"").trim();
+    if(c&&d){
+      if(!fieldReportsByCust[c])fieldReportsByCust[c]=[];
+      fieldReportsByCust[c].push(d);
+    }
+  });
+  // Find dispatch tickets that were marked by auto-cleanup but shouldn't have been
+  var bad=[...active,...done].filter(function(t){
+    if(t.source!=="dispatch")return false;
+    if(!t.fieldReportSubmitted)return false;
+    if(t.cleanedUpBy!=="auto-cleanup")return false; // only undo auto-cleanup, not manual dismiss or real reports
+    if(t.fieldReportId)return false; // never undo if linked to an actual field report
+    var c=_norm(t.customer);var d=(t.date||"").trim();
+    if(!c||!d)return true; // bad data, restore to be safe
+    var dates=fieldReportsByCust[c];
+    if(!dates||!dates.length)return true; // no FR exists for this customer at all — clearly wrong cleanup
+    // Check if ANY FR is on/after dispatch date within 14 days. If yes, cleanup was correct.
+    var hasValidFR=dates.some(function(fd){var diff=_frAfter(d,fd);return diff>=0&&diff<=14});
+    return !hasValidFR; // restore if no valid FR justifies the cleanup
+  });
+  if(!bad.length)return;
+  console.log("[repairCleanup] Restoring "+bad.length+" wrongly-cleaned dispatch ticket(s)");
+  for(var i=0;i<bad.length;i++){
+    try{
+      await db.collection("tickets").doc(bad[i].id).update({
+        fieldReportSubmitted:firebase.firestore.FieldValue.delete(),
+        fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
+        cleanedUpBy:firebase.firestore.FieldValue.delete(),
+        repairedAt:new Date().toLocaleString()
+      });
+    }catch(e){console.warn("[repairCleanup] Could not repair "+bad[i].id+":",e)}
+  }
+}
+
 async function autoCleanupSilent(){
   if(_autoCleanupRan)return;
   if(!db)return;
   if(!currentUser||currentUser.role==="tech")return; // only admin/organizer triggers cleanup
   _autoCleanupRan=true;
   function _norm(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-  function _daysBetween(d1,d2){
-    if(!d1||!d2)return 999;
-    var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
-    if(isNaN(t1)||isNaN(t2))return 999;
-    return Math.abs(Math.round((t1-t2)/86400000));
+  function _daysFrAfterDispatch(dispatchDate, frDate){
+    if(!dispatchDate||!frDate)return -999;
+    var t1=Date.parse(dispatchDate+"T00:00:00");var t2=Date.parse(frDate+"T00:00:00");
+    if(isNaN(t1)||isNaN(t2))return -999;
+    return Math.round((t2-t1)/86400000);
   }
   var fieldReportsByCust={};
   [...active,...done].forEach(function(t){
@@ -1568,7 +1634,12 @@ async function autoCleanupSilent(){
     var c=_norm(t.customer);var d=(t.date||"").trim();
     if(!c||!d)return false;
     var dates=fieldReportsByCust[c];if(!dates)return false;
-    return dates.some(function(fd){return _daysBetween(d,fd)<=14});
+    // Match ONLY if a field report exists ON OR AFTER the dispatch date, within 14 days.
+    // Prevents OLD field reports from clearing NEW dispatches scheduled for the future.
+    return dates.some(function(fd){
+      var diff=_daysFrAfterDispatch(d,fd);
+      return diff>=0&&diff<=14;
+    });
   });
   if(!stale.length)return;
   console.log("[autoCleanup] Cleaning "+stale.length+" stale dispatch ticket(s)");
@@ -1683,7 +1754,12 @@ function initFirebase(){
     };
     active.sort(sortFn);done.sort(sortFn);
     // Auto-cleanup any stale dispatch tickets (runs once per page load, admin/organizer only)
-    try{autoCleanupSilent()}catch(_e){console.warn("autoCleanup error:",_e)}
+    try{
+      // Step 1: undo any erroneous auto-cleanups from the buggy bidirectional date logic
+      repairBadAutoCleanups();
+      // Step 2: run the (corrected) silent cleanup
+      autoCleanupSilent();
+    }catch(_e){console.warn("autoCleanup error:",_e)}
     // Update badges — count only what actually shows in Daily tab (field reports with status complete/reschedule)
     const b1=document.getElementById("bdg1"),b2=document.getElementById("bdg2");
     const dailyPool=active.filter(t=>t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule"));
@@ -2543,22 +2619,24 @@ async function submitTkt(st){
       if(st==="complete"){
         try{
           function _normCustMatchE(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-          function _daysBetweenE(d1,d2){
-            if(!d1||!d2)return 999;
-            var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
-            if(isNaN(t1)||isNaN(t2))return 999;
-            return Math.abs(Math.round((t1-t2)/86400000));
+          function _frAfterDispatchE(dispatchDate, frDate){
+            if(!dispatchDate||!frDate)return -999;
+            var t1=Date.parse(dispatchDate+"T00:00:00");var t2=Date.parse(frDate+"T00:00:00");
+            if(isNaN(t1)||isNaN(t2))return -999;
+            return Math.round((t2-t1)/86400000);
           }
           const targetCustE=_normCustMatchE(cleanData.customer);
           const targetDateE=(cleanData.date||"").trim();
           if(targetCustE&&targetDateE){
-            const matchesE=[...active,...done].filter(t=>
-              t.source==="dispatch" &&
-              !t.fieldReportSubmitted &&
-              t.status!=="canceled" &&
-              _normCustMatchE(t.customer)===targetCustE &&
-              _daysBetweenE((t.date||"").trim(),targetDateE)<=14
-            );
+            const matchesE=[...active,...done].filter(function(t){
+              if(t.source!=="dispatch")return false;
+              if(t.fieldReportSubmitted)return false;
+              if(t.status==="canceled")return false;
+              if(_normCustMatchE(t.customer)!==targetCustE)return false;
+              // Field report date must be ON or AFTER dispatch date (and within 14 days)
+              var diff=_frAfterDispatchE((t.date||"").trim(),targetDateE);
+              return diff>=0&&diff<=14;
+            });
             for(const dt of matchesE){
               try{
                 await db.collection("tickets").doc(dt.id).update({
@@ -2599,22 +2677,24 @@ async function submitTkt(st){
       if(st==="complete"){
         try{
           function _normCustMatch(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-          function _daysBetweenC(d1,d2){
-            if(!d1||!d2)return 999;
-            var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
-            if(isNaN(t1)||isNaN(t2))return 999;
-            return Math.abs(Math.round((t1-t2)/86400000));
+          function _frAfterDispatchC(dispatchDate, frDate){
+            if(!dispatchDate||!frDate)return -999;
+            var t1=Date.parse(dispatchDate+"T00:00:00");var t2=Date.parse(frDate+"T00:00:00");
+            if(isNaN(t1)||isNaN(t2))return -999;
+            return Math.round((t2-t1)/86400000);
           }
           const targetCust=_normCustMatch(cleanData.customer);
           const targetDate=(cleanData.date||"").trim();
           if(targetCust&&targetDate){
-            const matches=[...active,...done].filter(t=>
-              t.source==="dispatch" &&
-              !t.fieldReportSubmitted &&
-              t.status!=="canceled" &&
-              _normCustMatch(t.customer)===targetCust &&
-              _daysBetweenC((t.date||"").trim(),targetDate)<=14
-            );
+            const matches=[...active,...done].filter(function(t){
+              if(t.source!=="dispatch")return false;
+              if(t.fieldReportSubmitted)return false;
+              if(t.status==="canceled")return false;
+              if(_normCustMatch(t.customer)!==targetCust)return false;
+              // Field report date must be ON or AFTER dispatch date (and within 14 days)
+              var diff=_frAfterDispatchC((t.date||"").trim(),targetDate);
+              return diff>=0&&diff<=14;
+            });
             for(const dt of matches){
               try{
                 await db.collection("tickets").doc(dt.id).update({
@@ -3988,7 +4068,18 @@ async function saveDetailEdits(id){
   var techs=[];document.querySelectorAll("#tktDetailBody .pill.on").forEach(function(b){techs.push(b.textContent)});
   var date=document.getElementById("dtDate").value;
   var arrival=document.getElementById("dtArrival").value;
-  var upd={techs:techs,date:date,arrival:arrival,status:techs.length?"complete":"pending"};
+  // Find the original ticket to preserve its source-specific status semantics.
+  // For dispatch tickets, status stays "pending" until a field report is filed.
+  // Setting status:"complete" here would falsely flag the dispatch as a submitted report.
+  var orig=[...active,...done].find(function(x){return x.id===id});
+  var upd={techs:techs,date:date,arrival:arrival};
+  if(orig&&orig.source==="dispatch"){
+    // Dispatch tickets keep status="pending" — they only become "complete" when a field report is submitted
+    upd.status=orig.status==="canceled"?"canceled":"pending";
+  }else{
+    // Field reports: legacy behavior (techs.length toggles complete/pending)
+    upd.status=techs.length?"complete":"pending";
+  }
   if(isAdmin){
     var ce=document.getElementById("dtCust");if(ce)upd.customer=ce.value.trim();
     var pe=document.getElementById("dtPhone");if(pe)upd.phone=pe.value.trim();
