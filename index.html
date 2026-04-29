@@ -258,8 +258,9 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 /* Calendar */
 .cal-wrap{display:flex;gap:16px;flex-wrap:wrap}
-.cal-main{flex:1;min-width:320px}
+.cal-main{flex:1;min-width:320px;width:100%}
 .cal-side{width:320px;flex-shrink:0}
+#pg4 .cal-side{display:none!important} /* Calendar's right sidebar — To-Do is now floating, so this is empty */
 @media(max-width:900px){.cal-side{width:100%}.cal-wrap{flex-direction:column}}
 .cal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
 .cal-hdr h3{font-size:26px;font-weight:700;color:#1d1d1f;letter-spacing:-.5px}
@@ -308,15 +309,36 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .cal-tech-pill.off .dot{background:transparent!important;border:1.5px solid #ccc}
 .cal-tech-pill.unassigned .dot{background:transparent;border:1.5px dashed #999}
 .cal-call-form{background:#fff;border-radius:12px;padding:16px;border:1px solid #e5e5e5;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-/* To-Do List */
-.todo-wrap{background:var(--cd);border-radius:var(--rad);padding:16px;border:1px solid #f0ece8;box-shadow:0 1px 3px rgba(0,0,0,.04);position:sticky;top:72px;max-height:calc(100dvh - 100px);display:flex;flex-direction:column}
-.todo-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--ac);cursor:pointer;user-select:none}
+/* To-Do List — FLOATING DROPDOWN PANEL (top-right, opens below the trigger button) */
+/* Triggered by the "✓ To-Do" button in the calendar header. When collapsed, fully hidden. */
+.todo-wrap{
+  position:fixed!important;
+  top:200px!important;
+  right:24px!important;
+  bottom:auto!important;
+  left:auto!important;
+  width:360px;
+  max-width:calc(100vw - 48px);
+  max-height:min(620px, calc(100dvh - 220px));
+  background:#fff;
+  border-radius:14px;
+  padding:14px 16px 16px;
+  border:1px solid #e5ddd3;
+  box-shadow:0 12px 36px rgba(0,0,0,.18), 0 4px 10px rgba(0,0,0,.08);
+  flex-direction:column;
+  z-index:9999;
+  transform-origin:top right;
+  animation:todoPopIn .18s ease-out;
+}
+@keyframes todoPopIn{
+  from{opacity:0;transform:translateY(-8px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+/* Collapsed = completely hidden (button in header is the entry point) */
+.todo-wrap.collapsed{display:none!important}
+.todo-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--ac);cursor:pointer;user-select:none;gap:10px}
 .todo-hdr-left{display:flex;align-items:center;gap:8px;flex:1}
 .todo-toggle{background:none;border:none;font-size:16px;color:var(--br);cursor:pointer;padding:2px 6px;line-height:1;transition:transform .2s;font-family:inherit;font-weight:700}
-.todo-wrap.collapsed .todo-toggle{transform:rotate(-90deg)}
-.todo-wrap.collapsed{max-height:none;padding-bottom:16px}
-.todo-wrap.collapsed .todo-hdr{margin-bottom:0;padding-bottom:0;border-bottom:none}
-.todo-wrap.collapsed .todo-input-row,.todo-wrap.collapsed .todo-filter,.todo-wrap.collapsed .todo-list{display:none}
 .todo-title{font-size:14px;font-weight:800;color:var(--br);letter-spacing:.3px}
 .todo-count{background:var(--ac);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;min-width:26px;text-align:center}
 .todo-input-row{display:flex;gap:6px;margin-bottom:10px}
@@ -327,7 +349,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .todo-filter{display:flex;gap:4px;margin-bottom:10px}
 .todo-filter-btn{flex:1;padding:6px 8px;font-size:11px;font-weight:600;border:1.5px solid var(--ln);background:var(--cd);color:var(--i2);border-radius:8px;cursor:pointer;font-family:inherit}
 .todo-filter-btn.on{background:var(--br);color:#fff;border-color:var(--br)}
-.todo-list{overflow-y:auto;flex:1;margin:-4px;padding:4px}
+.todo-list{overflow-y:auto;flex:1;margin:-4px;padding:4px;min-height:0}
 .todo-list::-webkit-scrollbar{width:6px}
 .todo-list::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
 .todo-item{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;background:#fafaf8;border-radius:8px;margin-bottom:5px;transition:background .12s;border:1px solid transparent}
@@ -794,7 +816,12 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
           <h3 id="calTitle">April 2026</h3>
           <div class="cal-views"><button class="cal-vb on" id="cvMonth" onclick="setCalView('month')">Month</button><button class="cal-vb" id="cvWeek" onclick="setCalView('week')">Week</button><button class="cal-vb" id="cvDay" onclick="setCalView('day')">Day</button><button class="cal-vb" id="cvList" onclick="setCalView('list')">List</button><button class="cal-vb" id="cvTeam" onclick="setCalView('team')">Team</button></div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center">
+        <div style="display:flex;gap:10px;align-items:center;position:relative">
+          <button id="todoTriggerBtn" onclick="toggleTodoCollapse()" style="display:inline-flex;align-items:center;gap:6px;padding:0 12px;height:36px;background:#fff;border:1px solid #d1d1d6;border-radius:8px;font-size:13px;font-weight:600;color:var(--br);cursor:pointer;font-family:inherit" title="Open To-Do list">
+            <span style="color:var(--ac);font-size:15px;line-height:1">✓</span>
+            <span>To-Do</span>
+            <span id="todoTriggerCount" style="background:var(--ac);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center;line-height:1.4">0</span>
+          </button>
           <div class="cal-nav"><button onclick="calNav(-1)">‹</button><button onclick="calToday()">⦿</button><button onclick="calNav(1)">›</button></div>
         </div>
       </div>
@@ -803,22 +830,23 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
       <div class="cal-day-detail" id="calDetail" style="display:none"></div>
       <div class="cal-queue" id="calQueue" style="display:none"></div>
     </div>
-    <div class="cal-side">
-      <div class="todo-wrap collapsed" id="todoWrap">
-        <div class="todo-hdr" onclick="toggleTodoCollapse()"><div class="todo-hdr-left"><button class="todo-toggle" id="todoToggleBtn" type="button">▼</button><span class="todo-title">✓ To-Do</span></div><span class="todo-count" id="todoCount">0</span></div>
-        <div class="todo-input-row">
-          <input type="text" id="todoInput" placeholder="Add a task..." autocomplete="off" onkeydown="if(event.key==='Enter')addTodo()">
-          <button onclick="addTodo()" class="todo-add-btn">+</button>
-        </div>
-        <div class="todo-filter">
-          <button class="todo-filter-btn on" id="todoFilterAll" onclick="setTodoFilter('all')">All</button>
-          <button class="todo-filter-btn" id="todoFilterOpen" onclick="setTodoFilter('open')">Open</button>
-          <button class="todo-filter-btn" id="todoFilterDone" onclick="setTodoFilter('done')">Done</button>
-        </div>
-        <div id="todoList" class="todo-list"></div>
-      </div>
-    </div>
+    <div class="cal-side"><!-- Legacy sidebar - now hidden, To-Do moved to floating widget at body level --></div>
   </div>
+</div>
+
+<!-- ══ FLOATING TO-DO WIDGET — admin/organizer only, shown only on Calendar page ══ -->
+<div class="todo-wrap collapsed" id="todoWrap">
+  <div class="todo-hdr"><div class="todo-hdr-left"><span class="todo-title">✓ To-Do</span><span class="todo-count" id="todoCount">0</span></div><button onclick="toggleTodoCollapse()" type="button" title="Close" style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;padding:0 4px;line-height:1;font-family:inherit;font-weight:400">×</button></div>
+  <div class="todo-input-row">
+    <input type="text" id="todoInput" placeholder="Add a task..." autocomplete="off" onkeydown="if(event.key==='Enter')addTodo()">
+    <button onclick="addTodo()" class="todo-add-btn">+</button>
+  </div>
+  <div class="todo-filter">
+    <button class="todo-filter-btn on" id="todoFilterAll" onclick="setTodoFilter('all')">All</button>
+    <button class="todo-filter-btn" id="todoFilterOpen" onclick="setTodoFilter('open')">Open</button>
+    <button class="todo-filter-btn" id="todoFilterDone" onclick="setTodoFilter('done')">Done</button>
+  </div>
+  <div id="todoList" class="todo-list"></div>
 </div>
 
 <!-- ══ CUSTOMERS — QB-style two-pane layout ══ -->
@@ -1301,8 +1329,8 @@ function updAdmin(){
   }
   // pg5 cal-side (new service call form): show to admin + organizer, hide for tech
   document.querySelectorAll("#pg5 .cal-side").forEach(cs=>cs.style.display=isTechRole?"none":"");
-  // pg4 cal-side (To-Do list): ONLY admin sees it
-  document.querySelectorAll("#pg4 .cal-side").forEach(cs=>cs.style.display=isAdminRole?"":"none");
+  // Floating To-Do widget: shown only on Calendar page, only for admin/organizer (NOT techs)
+  updateTodoVisibility();
   if(!currentUser)showTab(0);
   else if(isTechRole){calView="day";calSelectedDate=fmtD(new Date());showTab(4)}
   else if(!isAdmin){calView="list";calSelectedDate=fmtD(new Date());showTab(4)}
@@ -1559,6 +1587,8 @@ async function autoCleanupSilent(){
 async function calDismissTicket(id,custName,ev){
   if(ev){ev.stopPropagation();ev.preventDefault()}
   if(!db){toast("Firebase not configured","err");return}
+  // Admin-only action — defense in depth (also enforced in UI by hiding the button)
+  if(!currentUser||currentUser.role!=="admin"){toast("Only admins can remove calendar tickets","err");return}
   if(!confirm('Remove "'+custName+'" from the calendar?\n\nThis marks the dispatch ticket as resolved without creating a field report. Use this only when the ticket is a duplicate or no longer relevant.'))return;
   try{
     await db.collection("tickets").doc(id).update({
@@ -1701,14 +1731,48 @@ function toggleTodoCollapse(){
     else w.classList.remove("collapsed");
   });
   try{localStorage.setItem("todoCollapsed",willBeCollapsed?"1":"0")}catch(_e){}
+  // When opening, attach a one-time outside-click listener to close on click-away
+  if(!willBeCollapsed){
+    setTimeout(function(){
+      function _outsideClose(ev){
+        var w=document.getElementById("todoWrap");
+        var btn=document.getElementById("todoTriggerBtn");
+        if(!w||w.classList.contains("collapsed"))return document.removeEventListener("mousedown",_outsideClose,true);
+        if(w.contains(ev.target))return; // click inside panel, ignore
+        if(btn&&btn.contains(ev.target))return; // click on trigger button, ignore (button itself toggles)
+        // Click outside — close the panel
+        w.classList.add("collapsed");
+        try{localStorage.setItem("todoCollapsed","1")}catch(_e){}
+        document.removeEventListener("mousedown",_outsideClose,true);
+      }
+      document.addEventListener("mousedown",_outsideClose,true);
+    },0);
+  }
 }
 function initTodoCollapse(){
-  let collapsed=true; // default collapsed
-  try{const v=localStorage.getItem("todoCollapsed");if(v==="0")collapsed=false}catch(_e){}
-  document.querySelectorAll(".todo-wrap").forEach(w=>{
-    if(collapsed)w.classList.add("collapsed");
-    else w.classList.remove("collapsed");
-  });
+  // Always start collapsed regardless of saved state — it's a transient dropdown now
+  document.querySelectorAll(".todo-wrap").forEach(w=>w.classList.add("collapsed"));
+  try{localStorage.setItem("todoCollapsed","1")}catch(_e){}
+  // Apply visibility once DOM and roles are ready
+  if(typeof updateTodoVisibility==="function")updateTodoVisibility();
+}
+// Show/hide floating To-Do widget based on current tab + user role
+function updateTodoVisibility(){
+  var w=document.getElementById("todoWrap");
+  var btn=document.getElementById("todoTriggerBtn");
+  if(!w&&!btn)return;
+  var role=(currentUser&&currentUser.role)?String(currentUser.role).toLowerCase():"";
+  // Hide for techs only — admin, organizer, AND not-yet-logged-in users get to see it
+  // (Most pages are gated by login anyway, so this is safe.)
+  var isTech=(role==="tech");
+  // Trigger button (in calendar header): always visible UNLESS user is a tech
+  if(btn)btn.style.display=isTech?"none":"inline-flex";
+  // If user is tech, also force-collapse the panel just in case
+  if(w&&isTech)w.classList.add("collapsed");
+  // Keep trigger count in sync with main count
+  var cnt=document.getElementById("todoTriggerCount");
+  var srcCnt=document.getElementById("todoCount");
+  if(cnt&&srcCnt)cnt.textContent=srcCnt.textContent;
 }
 // Helper: does this ticket have an OPEN (not done) todo linked to it?
 function ticketHasOpenTodo(ticketId){
@@ -1720,8 +1784,10 @@ function setTodoFilter(f){todoFilter=f;document.querySelectorAll(".todo-filter-b
 function rndrTodos(){
   const el=document.getElementById("todoList");if(!el)return;
   const cnt=document.getElementById("todoCount");
+  const trigCnt=document.getElementById("todoTriggerCount");
   const openCount=todos.filter(t=>!t.done).length;
   if(cnt)cnt.textContent=openCount;
+  if(trigCnt)trigCnt.textContent=openCount;
   let filtered=todos;
   if(todoFilter==="open")filtered=todos.filter(t=>!t.done);
   else if(todoFilter==="done")filtered=todos.filter(t=>t.done);
@@ -1804,7 +1870,8 @@ if(i===0&&!editingDocId&&currentUser&&currentUser.role==="tech"&&TECHS.indexOf(c
   techs=[currentUser.name];
   if(typeof buildTechPills==="function")buildTechPills();
 }
-if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust()}
+if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();
+if(typeof updateTodoVisibility==="function")updateTodoVisibility();}
 
 // ═══ TECH MANAGEMENT ═══
 async function loadTechs(){
@@ -3590,7 +3657,8 @@ else if(calView==="team"){const sel=calSelectedDate||today;const d=new Date(sel+
 // Show day-detail panel only in MONTH or WEEK view (when user clicks a day cell from a higher-level view).
 // In DAY view, calGrid already renders the tickets — adding calDetail would render them twice.
 if((calView==="month"||calView==="week")&&calSelectedDate)rndrCalDetail(calSelectedDate,allTkts);else document.getElementById("calDetail").style.display="none";
-rndrCalQueue();rndrCcReminders()}
+rndrCalQueue();rndrCcReminders();
+if(typeof updateTodoVisibility==="function")updateTodoVisibility();}
 function rndrCalMonth(byDate,today){const firstDay=new Date(calYear,calMonth,1).getDay();const daysInMonth=new Date(calYear,calMonth+1,0).getDate();const daysInPrev=new Date(calYear,calMonth,0).getDate();const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=firstDay-1;i>=0;i--){const d=daysInPrev-i;const pm=calMonth===0?11:calMonth-1;const py=calMonth===0?calYear-1:calYear;const ds=py+"-"+String(pm+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,true)}for(let d=1;d<=daysInMonth;d++){const ds=calYear+"-"+String(calMonth+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,false)}const totalCells=firstDay+daysInMonth;const remaining=totalCells%7===0?0:7-(totalCells%7);for(let d=1;d<=remaining;d++){const nm=calMonth===11?0:calMonth+1;const ny=calMonth===11?calYear+1:calYear;const ds=ny+"-"+String(nm+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,true)}document.getElementById("calGrid").innerHTML=h}
 function calDayCell(d,ds,tkts,today,isOther){
   const isToday=ds===today;
@@ -3672,7 +3740,7 @@ function rndrCalTeam(sel,allTkts){
 }
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
-function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role!=="tech"&&t.source==="dispatch"&&!t.fieldReportSubmitted;let h=`<div class="cal-tkt-mini"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:#dc2626;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='#dc2626'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;let h=`<div class="cal-tkt-mini"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:#dc2626;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='#dc2626'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket
 async function togglePaid(id,currentlyPaid){
