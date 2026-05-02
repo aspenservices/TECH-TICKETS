@@ -1172,6 +1172,11 @@ const FIREBASE_CONFIG = {
   appId: "1:680308339087:web:3d18766c4b0e465a1a9bfa"
 };
 const ADMIN_PIN = "5050";
+// Service Manager contact info — used in auto-generated customer SMS when assigning appointments.
+// IMPORTANT: Replace the placeholder phone below with Alberto's actual number.
+const SERVICE_MGR_NAME = "Alberto";
+const SERVICE_MGR_TITLE = "Service Manager";
+const SERVICE_MGR_PHONE = "557-233-7119"; // Alberto's number for customer SMS replies
 </script>
 <script>
 // ═══ FIREBASE INIT ═══
@@ -2604,11 +2609,18 @@ function renderTdAttachments(ticketId){
   var _t=[...active,...done].find(function(x){return x.id===ticketId});
   var _canUp=isAdmin||(currentUser&&currentUser.role==="tech"&&_t&&(_t.techs||[]).includes(currentUser.name));
   if(_canUp){
+    var _isTechRole=currentUser&&currentUser.role==="tech";
     h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
-    h+='<button type="button" class="cam-btn" style="flex:1;min-width:140px" onclick="document.getElementById(\'tdCamInput_'+ticketId+'\').click()">'+icon("camera",17,{color:"#fff"})+'<span>Take Photo</span></button>';
-    h+='<button type="button" onclick="document.getElementById(\'tdFileInput_'+ticketId+'\').click()" style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer">'+icon("paperclip",16,{color:"var(--ac)"})+'<span>Add Files</span></button>';
+    if(_isTechRole){
+      // Techs in field: prominent camera button + secondary file picker
+      h+='<button type="button" class="cam-btn" style="flex:1;min-width:140px" onclick="document.getElementById(\'tdCamInput_'+ticketId+'\').click()">'+icon("camera",17,{color:"#fff"})+'<span>Take Photo</span></button>';
+      h+='<button type="button" onclick="document.getElementById(\'tdFileInput_'+ticketId+'\').click()" style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer">'+icon("paperclip",16,{color:"var(--ac)"})+'<span>Add Files</span></button>';
+    }else{
+      // Admin/organizer: just one full-width Add Files button (no camera — they're not in the field)
+      h+='<button type="button" onclick="document.getElementById(\'tdFileInput_'+ticketId+'\').click()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer">'+icon("paperclip",16,{color:"var(--ac)"})+'<span>Add Photos / PDFs</span></button>';
+    }
     h+='</div>';
-    h+='<input type="file" id="tdCamInput_'+ticketId+'" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0" onchange="tdAddMedia(\''+ticketId+'\',event)">';
+    if(_isTechRole)h+='<input type="file" id="tdCamInput_'+ticketId+'" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0" onchange="tdAddMedia(\''+ticketId+'\',event)">';
     h+='<input type="file" id="tdFileInput_'+ticketId+'" accept="image/*,application/pdf,.pdf" multiple style="position:absolute;left:-9999px;opacity:0" onchange="tdAddMedia(\''+ticketId+'\',event)">';
     h+='<div id="tdUploadProg_'+ticketId+'" style="display:none;height:6px;background:#eee;border-radius:3px;margin:0 0 6px;overflow:hidden"><div id="tdUploadBar_'+ticketId+'" style="height:100%;width:0;background:var(--ac);transition:width .2s"></div></div>';
     h+='<div id="tdUploadStatus_'+ticketId+'" style="font-size:11px;color:var(--i3);margin-bottom:10px;min-height:14px"></div>';
@@ -4575,7 +4587,20 @@ function openTktDetail(id){
   if(isAdmin){
     h+='<div style="margin-bottom:12px"><div class="lbl" style="font-size:10px">Customer</div><input id="dtCust" value="'+esc(t.customer)+'" class="time-input" style="width:100%;font-size:14px;font-weight:700"></div>';
     h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
-    h+='<div><div class="lbl" style="font-size:10px">Phone</div><input id="dtPhone" value="'+esc(t.phone||'')+'" class="time-input" style="width:100%"></div>';
+    // Build phone list: legacy phone + phone2 + any in phones[] array (deduped)
+    var _phList=[];
+    if(t.phone)_phList.push(t.phone);
+    if(t.phone2&&t.phone2!==t.phone)_phList.push(t.phone2);
+    if(Array.isArray(t.phones))t.phones.forEach(function(p){if(p&&_phList.indexOf(p)<0)_phList.push(p)});
+    if(!_phList.length)_phList.push("");
+    h+='<div><div class="lbl" style="font-size:10px;display:flex;align-items:center;justify-content:space-between"><span>Phones</span><button type="button" id="dtAddPhBtn" onclick="dtAddPhone()" style="padding:2px 8px;background:transparent;border:1px dashed var(--ac);color:var(--ac);border-radius:5px;font-size:10px;font-weight:600;cursor:pointer">+ Add</button></div><div id="dtPhWrap" style="display:flex;flex-direction:column;gap:5px">';
+    _phList.forEach(function(p,i){
+      h+='<div class="dt-ph-row" style="display:flex;gap:4px;align-items:center"><input class="dt-ph time-input" value="'+esc(p)+'" placeholder="Phone '+(i+1)+'" style="flex:1;width:100%">';
+      // Show remove button on every row except the first (always keep at least one input)
+      if(i>0)h+='<button type="button" onclick="dtRemovePhone(this)" title="Remove" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:18px;padding:0 6px;line-height:1">×</button>';
+      h+='</div>';
+    });
+    h+='</div></div>';
     h+='<div><div class="lbl" style="font-size:10px">Zone</div><input id="dtZone" value="'+esc(zone)+'" class="time-input" style="width:100%" readonly onclick="this.removeAttribute(\'readonly\')"></div></div>';
     h+='<div style="margin-bottom:8px"><div class="lbl" style="font-size:10px">Address</div><input id="dtAddr" value="'+esc(t.address||'')+'" class="time-input" style="width:100%"></div>';
     h+='<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">';
@@ -4583,7 +4608,14 @@ function openTktDetail(id){
     h+='<div><div class="lbl" style="font-size:10px">ZIP</div><input id="dtZip" value="'+esc(t.zip||'')+'" class="time-input" style="width:100%" maxlength="5" oninput="var z=ZIP_ZONES[this.value];if(z)document.getElementById(\'dtZone\').value=z"></div></div>';
   }else{
     h+='<div class="tp-row"><span>Customer</span><span>'+esc(t.customer)+'</span></div>';
-    if(t.phone)h+='<div class="tp-row"><span>Phone</span><span><a href="tel:'+t.phone+'" style="color:var(--ac);text-decoration:underline">'+esc(t.phone)+'</a></span></div>';
+    // Build phone list (legacy phone + phone2 + phones[] array, deduped)
+    var _phList=[];
+    if(t.phone)_phList.push(t.phone);
+    if(t.phone2&&t.phone2!==t.phone)_phList.push(t.phone2);
+    if(Array.isArray(t.phones))t.phones.forEach(function(p){if(p&&_phList.indexOf(p)<0)_phList.push(p)});
+    _phList.forEach(function(p,i){
+      h+='<div class="tp-row"><span>'+(i===0?'Phone':'Phone '+(i+1))+'</span><span><a href="tel:'+p+'" style="color:var(--ac);text-decoration:underline">'+esc(p)+'</a></span></div>';
+    });
     if(fullAddr)h+='<div class="tp-row"><span>Address</span><span><a href="'+mapsUrl+'" target="_blank" style="color:var(--ac);text-decoration:underline">'+esc(fullAddr)+'</a></span></div>';
     if(zone)h+='<div class="tp-row"><span>Zone</span><span><span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span></span></div>';
   }
@@ -4620,13 +4652,15 @@ function openTktDetail(id){
     h+='<a href="tel:'+_phClean+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
     h+='<a href="'+_smsHref(_tpl.onway)+'" style="flex:1;min-width:140px;padding:12px 14px;background:#16a34a;color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
     h+='</div>';
-    // Secondary template buttons (smaller, less prominent)
-    h+='<div class="sms-tpl-row">';
-    h+='<a class="sms-tpl late" href="'+_smsHref(_tpl.late)+'" title="Send: Running 15 min late">'+icon("clock",13,{color:"currentColor"})+'Running Late</a>';
-    h+='<a class="sms-tpl noans" href="'+_smsHref(_tpl.noans)+'" title="Send: At your door, no answer">'+icon("door-closed",13,{color:"currentColor"})+'No Answer</a>';
-    h+='<a class="sms-tpl done" href="'+_smsHref(_tpl.done)+'" title="Send: Job complete">'+icon("check-circle",13,{color:"currentColor"})+'Job Done</a>';
-    h+='<a class="sms-tpl resched" href="'+_smsHref(_tpl.resched)+'" title="Send: Need to reschedule">'+icon("calendar-x",13,{color:"currentColor"})+'Reschedule</a>';
-    h+='</div>';
+    // Secondary template buttons — only for techs (admin doesn't need these in field)
+    if(!isAdmin){
+      h+='<div class="sms-tpl-row">';
+      h+='<a class="sms-tpl late" href="'+_smsHref(_tpl.late)+'" title="Send: Running 15 min late">'+icon("clock",13,{color:"currentColor"})+'Running Late</a>';
+      h+='<a class="sms-tpl noans" href="'+_smsHref(_tpl.noans)+'" title="Send: At your door, no answer">'+icon("door-closed",13,{color:"currentColor"})+'No Answer</a>';
+      h+='<a class="sms-tpl done" href="'+_smsHref(_tpl.done)+'" title="Send: Job complete">'+icon("check-circle",13,{color:"currentColor"})+'Job Done</a>';
+      h+='<a class="sms-tpl resched" href="'+_smsHref(_tpl.resched)+'" title="Send: Need to reschedule">'+icon("calendar-x",13,{color:"currentColor"})+'Reschedule</a>';
+      h+='</div>';
+    }
   }
   // Editable fields
   // Tech assignment: show only assigned tech(s); admin gets "Change" to expand the full roster
@@ -4723,6 +4757,78 @@ function openTktDetail(id){
   document.getElementById("tktDetailBg").classList.add("open");
 }
 function dtToggleTech(btn,name){btn.classList.toggle("on")}
+function dtAddPhone(){
+  var wrap=document.getElementById("dtPhWrap");if(!wrap)return;
+  var idx=wrap.querySelectorAll(".dt-ph-row").length;
+  var row=document.createElement("div");
+  row.className="dt-ph-row";
+  row.style.cssText="display:flex;gap:4px;align-items:center";
+  row.innerHTML='<input class="dt-ph time-input" placeholder="Phone '+(idx+1)+'" style="flex:1;width:100%"><button type="button" onclick="dtRemovePhone(this)" title="Remove" style="background:none;border:none;color:var(--r);cursor:pointer;font-size:18px;padding:0 6px;line-height:1">×</button>';
+  wrap.appendChild(row);
+  var inp=row.querySelector("input");if(inp)inp.focus();
+}
+function dtRemovePhone(btn){
+  var row=btn.closest(".dt-ph-row");if(row)row.remove();
+}
+// Format a YYYY-MM-DD into "M/D" (e.g. "5/4")
+function _fmtMD(dateStr){
+  if(!dateStr)return "";
+  try{var d=new Date(dateStr+"T12:00:00");if(isNaN(d))return dateStr;return(d.getMonth()+1)+"/"+d.getDate()}
+  catch(e){return dateStr}
+}
+// Format HH:MM (24h) → "9:00 AM" / "2:30 PM"
+function _fmt12h(t){
+  if(!t)return "";
+  var m=t.match(/^(\d{1,2}):(\d{2})/);if(!m)return t;
+  var h=parseInt(m[1],10),mm=m[2];
+  var suffix=h>=12?"PM":"AM";
+  var h12=h%12;if(h12===0)h12=12;
+  return h12+":"+mm+" "+suffix;
+}
+// Compute a 2-hour arrival window from a single arrival time (e.g. "12:00" → "12:00 PM and 2:00 PM")
+function _arrivalWindow(arrival){
+  if(!arrival)return "";
+  var m=arrival.match(/^(\d{1,2}):(\d{2})/);if(!m)return _fmt12h(arrival);
+  var h=parseInt(m[1],10),mm=m[2];
+  var endH=(h+2)%24;
+  var startStr=_fmt12h(arrival);
+  var endStr=_fmt12h(String(endH).padStart(2,"0")+":"+mm);
+  return startStr+" and "+endStr;
+}
+// Build the appointment notification SMS body
+function buildAppointmentSMS(t,techs,date,arrival){
+  var techList=(techs||[]).filter(Boolean);
+  var techNames=techList.length?techList.join(" / "):"a technician";
+  var isDelivery=(t.workTypes||[]).some(function(w){return /deliver/i.test(w)});
+  var actionLine=isDelivery
+    ?"we have availability to deliver to your home on "+_fmtMD(date)
+    :"we have availability to send "+techNames+" to service your spa on "+_fmtMD(date);
+  if(arrival)actionLine+=" between "+_arrivalWindow(arrival);
+  var body="Good afternoon,\n\nMy name is "+SERVICE_MGR_NAME+",\n"+SERVICE_MGR_TITLE+" at Aspen Spas.\nI am reaching out to let you know that "+actionLine+".\n\nTo confirm your appointment, there is no need to call us — simply replying by text message to "+SERVICE_MGR_PHONE+" is enough.\n\nIf this date or time does not work for you, please let us know by text message at the same number, and we will be glad to reschedule for a day that fits your availability.\n\nOnce your appointment is confirmed, our technician will contact you with a reminder call before heading to your home.\nPlease note that if the technician is unable to arrive within the scheduled window, you will be notified in advance of a delayed arrival or a possible rescheduling of your appointment.\n\nWe appreciate your patience and look forward to servicing your spa.\nKind regards,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
+  return body;
+}
+// Did the assignment meaningfully change? (techs added, date set/changed, or arrival set/changed)
+function _assignmentChanged(orig,newTechs,newDate,newArrival){
+  var origTechs=(orig.techs||[]).slice().sort().join(",");
+  var nuTechs=(newTechs||[]).slice().sort().join(",");
+  if(origTechs!==nuTechs)return true;
+  if((orig.date||"")!==(newDate||""))return true;
+  if((orig.arrival||"")!==(newArrival||""))return true;
+  return false;
+}
+// Open the SMS app with the appointment notification pre-filled
+function openAppointmentSMS(ticket,techs,date,arrival){
+  // Use the FIRST available phone on the ticket
+  var phones=[];
+  if(ticket.phone)phones.push(ticket.phone);
+  if(ticket.phone2)phones.push(ticket.phone2);
+  if(Array.isArray(ticket.phones))ticket.phones.forEach(function(p){if(p)phones.push(p)});
+  if(!phones.length){toast("No phone on ticket to text","warn");return}
+  var phClean=phones[0].replace(/[^0-9+]/g,"");
+  var body=buildAppointmentSMS(ticket,techs,date,arrival);
+  var href="sms:"+phClean+"?&body="+encodeURIComponent(body);
+  window.location.href=href;
+}
 function dtToggleTechList(btn){
   var row=document.getElementById("dtTechRow");if(!row)return;
   var pills=row.querySelectorAll(".pill");
@@ -4759,13 +4865,39 @@ async function saveDetailEdits(id){
   }
   if(isAdmin){
     var ce=document.getElementById("dtCust");if(ce)upd.customer=ce.value.trim();
-    var pe=document.getElementById("dtPhone");if(pe)upd.phone=pe.value.trim();
+    // Collect all phones from the dynamic list
+    var _phs=[];
+    document.querySelectorAll("#dtPhWrap .dt-ph").forEach(function(inp){
+      var v=(inp.value||"").trim();
+      if(v&&_phs.indexOf(v)<0)_phs.push(v);
+    });
+    upd.phone=_phs[0]||"";
+    upd.phone2=_phs[1]||"";
+    upd.phones=_phs.slice(2); // any beyond the first 2 go in array
     var ae=document.getElementById("dtAddr");if(ae)upd.address=ae.value.trim();
     var ci=document.getElementById("dtCity");if(ci)upd.city=ci.value.trim();
     var zi=document.getElementById("dtZip");if(zi)upd.zip=zi.value.trim();
     var zo=document.getElementById("dtZone");if(zo)upd.zone=zo.value.trim();
   }
-  try{await db.collection("tickets").doc(id).update(upd);toast("Saved ✓");closeTktDetail();setTimeout(refreshAll,500)}catch(e){toast("Error","err")}
+  try{
+    await db.collection("tickets").doc(id).update(upd);
+    toast("Saved ✓");
+    // If admin made a meaningful assignment change AND the customer has a phone,
+    // offer to send the appointment notification SMS.
+    if(isAdmin&&orig&&_assignmentChanged(orig,techs,date,arrival)&&techs.length&&date){
+      // Build a fresh ticket-like object that includes the just-saved phone updates
+      var freshTkt=Object.assign({},orig,upd);
+      var hasPhone=freshTkt.phone||freshTkt.phone2||(Array.isArray(freshTkt.phones)&&freshTkt.phones.length);
+      if(hasPhone){
+        // Confirm before opening SMS app — don't surprise the user
+        if(confirm("Assignment saved. Send appointment notification SMS to the customer?")){
+          openAppointmentSMS(freshTkt,techs,date,arrival);
+        }
+      }
+    }
+    closeTktDetail();
+    setTimeout(refreshAll,500);
+  }catch(e){toast("Error","err")}
 }
 function closeTktDetail(){document.getElementById("tktDetailBg").classList.remove("open")}
 
