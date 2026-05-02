@@ -2226,6 +2226,54 @@ async function adminSaveZipOverride(){
   document.getElementById("adminZipNewZone").value="";
   rndrAdminZips();
   toast("ZIP "+zip+" saved ✓");
+  // ── Apply to existing tickets ──
+  // Resolve what the ticket should now show (built-in still wins for zone)
+  var resolvedZone=ZIP_ZONES[zip]||zone||"";
+  var resolvedCity=city||ZIP_CITIES[zip]||"";
+  // (A) Refresh the currently-open ticket modal in-place if it uses this ZIP
+  var openTkt=null;
+  if(_curOpenTktId){
+    openTkt=[].concat(active||[],done||[]).find(function(x){return x.id===_curOpenTktId});
+    if(openTkt&&openTkt.zip===zip){
+      try{
+        var modalUpd={};
+        if(resolvedZone&&openTkt.zone!==resolvedZone)modalUpd.zone=resolvedZone;
+        if(resolvedCity&&!openTkt.city)modalUpd.city=resolvedCity;
+        if(Object.keys(modalUpd).length){
+          await db.collection("tickets").doc(openTkt.id).update(modalUpd);
+          // Update local state so re-render reflects it without waiting for snapshot
+          Object.assign(openTkt,modalUpd);
+          // Re-render the modal with fresh data
+          closeTktDetail();
+          setTimeout(function(){openTktDetail(openTkt.id)},80);
+        }
+      }catch(e){console.error("Modal refresh failed:",e)}
+    }
+  }
+  // (B) Find OTHER tickets using this ZIP that need updating (skip the one already handled in A)
+  if(!db)return;
+  var allTkts=[].concat(active||[],done||[]);
+  var candidates=allTkts.filter(function(t){
+    if(t.zip!==zip)return false;
+    if(openTkt&&t.id===openTkt.id)return false; // already handled in A
+    var needsZone=resolvedZone&&t.zone!==resolvedZone;
+    var needsCity=resolvedCity&&!t.city;
+    return needsZone||needsCity;
+  });
+  if(!candidates.length)return;
+  if(!confirm("Update "+candidates.length+" existing ticket"+(candidates.length===1?"":"s")+" that use ZIP "+zip+"?"))return;
+  var ok=0,fail=0;
+  for(var i=0;i<candidates.length;i++){
+    var t=candidates[i];
+    var u={};
+    if(resolvedZone&&t.zone!==resolvedZone)u.zone=resolvedZone;
+    if(resolvedCity&&!t.city)u.city=resolvedCity;
+    if(!Object.keys(u).length)continue;
+    try{await db.collection("tickets").doc(t.id).update(u);Object.assign(t,u);ok++}
+    catch(e){console.error("Failed to update "+t.id,e);fail++}
+  }
+  toast("Updated "+ok+" ticket"+(ok===1?"":"s")+(fail?" · "+fail+" failed":"")+" ✓");
+  if(typeof refreshAll==="function")refreshAll();
 }
 function adminEditZipOverride(zip){
   // Switch to manage tab, prefill the form, scroll into view
@@ -2382,6 +2430,38 @@ async function adminZipConfirmImport(includeDups){
   var fi=document.getElementById("zipFileIn");if(fi)fi.value="";
   rndrAdminZips();
   toast("Imported "+toAdd.length+" ZIP"+(toAdd.length===1?"":"s")+" ✓");
+  // After bulk import: scan existing tickets that could now resolve a zone/city from these ZIPs
+  if(!db)return;
+  var allTkts=[].concat(active||[],done||[]);
+  // Build a quick lookup for the imported set
+  var importedByZip={};
+  toAdd.forEach(function(r){
+    importedByZip[r.zip]={
+      zone:ZIP_ZONES[r.zip]||r.zone||"", // built-in still wins
+      city:r.city||ZIP_CITIES[r.zip]||""
+    };
+  });
+  var candidates=allTkts.filter(function(t){
+    var imp=importedByZip[t.zip];if(!imp)return false;
+    var needsZone=imp.zone&&t.zone!==imp.zone;
+    var needsCity=imp.city&&!t.city;
+    return needsZone||needsCity;
+  });
+  if(!candidates.length)return;
+  if(!confirm("Update "+candidates.length+" existing ticket"+(candidates.length===1?"":"s")+" that use the imported ZIP codes?"))return;
+  var ok=0,fail=0;
+  for(var i=0;i<candidates.length;i++){
+    var t=candidates[i];
+    var imp=importedByZip[t.zip];
+    var u={};
+    if(imp.zone&&t.zone!==imp.zone)u.zone=imp.zone;
+    if(imp.city&&!t.city)u.city=imp.city;
+    if(!Object.keys(u).length)continue;
+    try{await db.collection("tickets").doc(t.id).update(u);Object.assign(t,u);ok++}
+    catch(e){console.error("Failed to update "+t.id,e);fail++}
+  }
+  toast("Updated "+ok+" ticket"+(ok===1?"":"s")+(fail?" · "+fail+" failed":"")+" ✓");
+  if(typeof refreshAll==="function")refreshAll();
 }
 function adminZipCancelImport(){
   _zipPendingImport=[];
@@ -5099,8 +5179,12 @@ async function calDropOnTech(e,techName,ds){
 async function calCreateCall(){if(!db){toast("Firebase not configured","err");return}const cu=document.getElementById("calCustName").value.trim();const ph=document.getElementById("calCustPhone").value.trim();const addr=document.getElementById("calCustAddr").value.trim();const city=document.getElementById("calCustCity").value.trim();const zip=document.getElementById("calCustZip").value.trim();const dt=document.getElementById("calDate").value;const notes=document.getElementById("calNotes").value.trim();var zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";var manZ=document.getElementById("calManualZone");if(manZ&&manZ.value.trim())zone=manZ.value.trim();if(zip&&city&&!ZIP_CITIES[zip]){customZips[zip+"_city"]=city;if(zone)customZips[zip+"_zone"]=zone;saveCustomZips()}const ccFile=document.getElementById("calCcFile").checked;const ccReq=document.getElementById("calCcReq").checked;if(!cu){toast("Enter customer name","warn");return}try{await db.collection("tickets").add({customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,spaDesc:(document.getElementById("calSpaDesc")||{}).value||"",notes:notes,phone:ph,address:addr,city:city,zip:zip,zone:zone,ccOnFile:ccFile,ccRequested:ccReq,isRepeat:document.getElementById("calRepeat").checked,payCheck:document.getElementById("calCheck").checked,payCredit:document.getElementById("calCredit").checked,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created ✓");document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";var _sd2=document.getElementById("calSpaDesc");if(_sd2)_sd2.value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;rndrCal()}catch(e){console.error(e);toast("Error: "+e.message,"err")}}
 
 // ═══ TICKET DETAIL MODAL ═══
+// Tracks which ticket is currently visible in the detail modal (used by features
+// that need to refresh it in place, like ZIP override saves).
+var _curOpenTktId=null;
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
+  _curOpenTktId=id;
   document.getElementById("tktDetailTitle").textContent=t.customer||"Ticket";
   const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};
   const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");
@@ -5421,7 +5505,7 @@ async function saveDetailEdits(id){
     setTimeout(refreshAll,500);
   }catch(e){toast("Error","err")}
 }
-function closeTktDetail(){document.getElementById("tktDetailBg").classList.remove("open")}
+function closeTktDetail(){_curOpenTktId=null;document.getElementById("tktDetailBg").classList.remove("open")}
 
 // ═══════════════════════════════════════════════════════════════════════
 // ROUTE MAP — visualizes the day's stops on a map + opens in Apple/Google Maps
