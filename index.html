@@ -670,6 +670,60 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .attn-collapsed{padding:10px 16px}
 .attn-collapsed .attn-hdr{margin-bottom:0}
 
+/* ── ZIP Codes section: tabs, search, table, import ── */
+.zsub-tabs{display:flex;gap:2px;border-bottom:1px solid var(--ln);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.zsub-tab{flex:0 0 auto;padding:9px 14px;background:none;border:none;border-bottom:2px solid transparent;font-size:12.5px;font-weight:600;color:var(--i3);cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .12s,border-color .12s;-webkit-tap-highlight-color:transparent}
+.zsub-tab:hover{color:var(--i1)}
+.zsub-tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+.zsub-page{animation:fi .15s ease}
+@keyframes fi{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+.zip-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.zip-stat{background:#fafaf8;border:1px solid var(--ln);border-radius:10px;padding:9px 12px}
+.zip-stat-num{font-size:20px;font-weight:700;color:var(--i1);line-height:1.1}
+.zip-stat-lbl{font-size:10px;color:var(--i3);margin-top:2px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.zip-search-wrap{position:relative;margin-bottom:10px}
+.zip-search-input{width:100%;padding:11px 38px 11px 38px;font-size:15px;font-weight:600;letter-spacing:1px;border:1.5px solid var(--ln);border-radius:10px;background:#fff;color:var(--i1);outline:none;font-family:inherit}
+.zip-search-input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(212,119,44,.12)}
+.zip-search-input::placeholder{font-size:13px;font-weight:400;letter-spacing:0;color:var(--i3)}
+.zip-search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--i3);pointer-events:none}
+.zip-search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#f0ece8;border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;color:var(--i2);display:none;align-items:center;justify-content:center;font-family:inherit}
+.zip-search-clear.show{display:flex}
+.zip-zone-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.zip-zone-btn{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:transform .1s}
+.zip-zone-btn:hover{transform:translateY(-1px)}
+.zip-zone-btn.on{outline:2px solid currentColor;outline-offset:1px}
+.zip-sep{font-size:10.5px;color:var(--i3);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.zip-rcard{background:#fff;border:1px solid var(--ln);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;animation:fi .15s ease}
+.zip-rcard-zip{font-size:18px;font-weight:700;color:var(--i1);font-family:'SF Mono',ui-monospace,monospace;min-width:64px}
+.zip-rcard-city{flex:1;font-size:13px;color:var(--i2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zip-rcard .zip-badge{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:5px}
+.zip-rcard .zip-src{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.3px;text-transform:uppercase}
+.zip-rcard .zip-src.builtin{background:#dbeafe;color:#1e40af}
+.zip-rcard .zip-src.custom{background:#ddd6fe;color:#5b21b6}
+.zip-empty{padding:28px 16px;text-align:center;color:var(--i3);font-size:13px;background:#fafaf8;border:1px dashed var(--ln);border-radius:10px}
+.zip-table{width:100%;border-collapse:collapse;font-size:13px}
+.zip-table th{text-align:left;padding:9px 12px;background:#fafaf8;font-size:10px;font-weight:700;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--ln)}
+.zip-table td{padding:8px 12px;border-bottom:1px solid #f0eee9;vertical-align:middle}
+.zip-table tr:last-child td{border-bottom:none}
+.zip-table tr:hover{background:#fafaf8}
+.zip-table .td-zip{font-family:'SF Mono',ui-monospace,monospace;font-weight:700;color:var(--i1);font-size:13px}
+.zip-table .zip-row-input{width:100%;padding:5px 8px;border:1px solid var(--ln);border-radius:6px;font-size:12.5px;font-family:inherit;outline:none;background:#fff}
+.zip-table .zip-row-input:focus{border-color:var(--ac)}
+.zip-table .zip-row-btn{padding:5px 10px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--ln);background:#fafaf8;color:var(--i2);margin-right:4px}
+.zip-table .zip-row-btn.primary{background:var(--ac);color:#fff;border-color:var(--ac)}
+.zip-table .zip-row-btn.danger{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.zip-table .zip-row-btn:disabled{opacity:.4;cursor:not-allowed}
+.zip-drop{padding:32px 20px;text-align:center;background:#fafaf8;border:2px dashed var(--ln);border-radius:14px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.zip-drop:hover,.zip-drop.over{background:#fff7eb;border-color:var(--ac)}
+.zip-notice{padding:10px 14px;border-radius:8px;font-size:12.5px;margin-bottom:10px;line-height:1.5}
+.zip-notice-success{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}
+.zip-notice-error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.zip-notice-info{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}
+.zip-tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.3px;text-transform:uppercase}
+.zip-tag-new{background:#d1fae5;color:#065f46}
+.zip-tag-dup{background:#fef3c7;color:#92400e}
+.zip-tag-skip{background:#fee2e2;color:#991b1b}
+
 /* Today's Capacity — compact card grid, collapsible */
 .cap-panel{background:#fff;border:1px solid var(--ln);border-radius:12px;margin-bottom:14px;overflow:hidden}
 .cap-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;transition:background .12s}
@@ -959,30 +1013,83 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
       </div>
     </div>
   </div>
-  <!-- ZIP Code Overrides — admin can force a ZIP into a zone/city -->
+  <!-- ZIP Code Overrides — admin can force a ZIP into a zone/city, browse, edit, and bulk-import -->
   <div class="card" style="margin-bottom:12px">
     <div onclick="adminToggleSection('Zip')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:2px solid var(--ac)" id="adminZipHdr">
       <div style="display:flex;align-items:center;gap:8px">
         <span class="lucide-mount" data-lucide="map-pin" data-size="18" data-color="var(--ac)"></span>
-        <span style="font-size:13px;font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">ZIP Code Overrides</span>
+        <span style="font-size:13px;font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">ZIP Codes &amp; Zones</span>
         <span id="adminZipCount" style="background:var(--ac);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px">0</span>
       </div>
       <span id="adminZipArrow" style="font-size:14px;color:var(--i2);transition:transform .2s">▼</span>
     </div>
     <div id="adminZipBody" style="padding-top:12px">
-      <div style="font-size:12px;color:var(--i3);margin-bottom:10px;line-height:1.5">Add a ZIP code that isn't recognized so the system learns its zone and city for future tickets. <b>Built-in ZIPs take priority</b> — overrides for already-recognized ZIPs will be ignored.</div>
-      <!-- Add new override -->
-      <div style="background:#fafaf8;border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:14px">
-        <div class="lbl" style="margin-bottom:8px">Add or Update ZIP</div>
-        <div style="display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;align-items:end">
-          <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">ZIP</div><input type="text" id="adminZipNewCode" placeholder="63146" maxlength="5" inputmode="numeric" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff" autocomplete="off"></div>
-          <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">City</div><input type="text" id="adminZipNewCity" placeholder="Maryland Heights" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff" autocomplete="off"></div>
-          <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">Zone</div><select id="adminZipNewZone" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff;cursor:pointer"></select></div>
-          <button onclick="adminSaveZipOverride()" style="padding:10px 16px;background:var(--br);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer">Save</button>
-        </div>
+      <!-- Sub-tab navigation -->
+      <div class="zsub-tabs" role="tablist">
+        <button class="zsub-tab on" data-tab="search" onclick="adminZipShowTab('search')" type="button">🔍 Search</button>
+        <button class="zsub-tab" data-tab="manage" onclick="adminZipShowTab('manage')" type="button">✏️ Manage</button>
+        <button class="zsub-tab" data-tab="import" onclick="adminZipShowTab('import')" type="button">📂 Import</button>
       </div>
-      <!-- Existing overrides list -->
-      <div id="adminZipList"></div>
+      <!-- ── SEARCH TAB ── -->
+      <div class="zsub-page" data-page="search" style="display:block">
+        <!-- Stats -->
+        <div class="zip-stats">
+          <div class="zip-stat"><div class="zip-stat-num" id="zipStatTotal">0</div><div class="zip-stat-lbl">Total ZIPs</div></div>
+          <div class="zip-stat"><div class="zip-stat-num" id="zipStatZones">0</div><div class="zip-stat-lbl">Zones</div></div>
+          <div class="zip-stat"><div class="zip-stat-num" id="zipStatMo">0</div><div class="zip-stat-lbl">Missouri</div></div>
+          <div class="zip-stat"><div class="zip-stat-num" id="zipStatIl">0</div><div class="zip-stat-lbl">Illinois</div></div>
+        </div>
+        <!-- Search input -->
+        <div class="zip-search-wrap">
+          <span class="zip-search-icon">🔍</span>
+          <input type="text" id="zipSearch" class="zip-search-input" placeholder="Search by ZIP code or city name..." oninput="adminZipDoSearch(this.value)" autocomplete="off">
+          <button class="zip-search-clear" id="zipSearchClear" type="button" onclick="adminZipClearSearch()">✕</button>
+        </div>
+        <!-- Zone filter pills -->
+        <div class="zip-zone-grid" id="zipZoneBtns"></div>
+        <!-- Results -->
+        <div id="zipSearchResults"></div>
+      </div>
+      <!-- ── MANAGE TAB ── -->
+      <div class="zsub-page" data-page="manage" style="display:none">
+        <div style="font-size:12px;color:var(--i3);margin-bottom:10px;line-height:1.5">Add a ZIP code that isn't recognized, or override the city for one that is. <b>Built-in zones take priority</b> over custom zone overrides. Built-in entries are read-only — only custom overrides can be edited or deleted.</div>
+        <!-- Add new override -->
+        <div style="background:#fafaf8;border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:14px">
+          <div class="lbl" style="margin-bottom:8px">Add or Update ZIP</div>
+          <div style="display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;align-items:end">
+            <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">ZIP</div><input type="text" id="adminZipNewCode" placeholder="63146" maxlength="5" inputmode="numeric" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff" autocomplete="off"></div>
+            <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">City</div><input type="text" id="adminZipNewCity" placeholder="Maryland Heights" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff" autocomplete="off"></div>
+            <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">Zone</div><select id="adminZipNewZone" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff;cursor:pointer"></select></div>
+            <button onclick="adminSaveZipOverride()" style="padding:10px 16px;background:var(--br);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer">Save</button>
+          </div>
+        </div>
+        <!-- Filters + export -->
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <input type="text" id="adminZipFilter" placeholder="Filter by ZIP or city..." oninput="renderAdminZipTable()" style="flex:1;min-width:160px;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;outline:none;background:#fff">
+          <select id="adminZipZoneFilter" onchange="renderAdminZipTable()" style="padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer"><option value="">All zones</option></select>
+          <select id="adminZipSourceFilter" onchange="renderAdminZipTable()" style="padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer"><option value="">All sources</option><option value="builtIn">Built-in only</option><option value="custom">Custom only</option></select>
+          <button onclick="adminZipExportCSV()" style="padding:9px 14px;background:#fafaf8;color:var(--i2);border:1px solid var(--ln);border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap">⬇ Export CSV</button>
+        </div>
+        <!-- Table -->
+        <div style="overflow-x:auto;border:1px solid var(--ln);border-radius:10px;background:#fff">
+          <table class="zip-table" id="adminZipTable"><thead><tr><th>ZIP</th><th>City</th><th>Zone</th><th>Source</th><th></th></tr></thead><tbody id="adminZipTableBody"></tbody></table>
+        </div>
+        <div id="adminZipTfoot" style="font-size:11px;color:var(--i3);margin-top:8px;text-align:right"></div>
+      </div>
+      <!-- ── IMPORT TAB ── -->
+      <div class="zsub-page" data-page="import" style="display:none">
+        <div style="background:#f0f7ff;border:1px solid #cfe1f7;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#0c447c;line-height:1.55;margin-bottom:14px"><b>Expected format:</b> 3 columns in this order — <code style="background:#fff;padding:1px 5px;border-radius:3px;font-size:11px">ZIP</code> · <code style="background:#fff;padding:1px 5px;border-radius:3px;font-size:11px">City</code> · <code style="background:#fff;padding:1px 5px;border-radius:3px;font-size:11px">Zone</code><br>First row can be a header (auto-detected). Accepts <b>.xlsx</b>, <b>.xls</b>, and <b>.csv</b>. Duplicates of built-in ZIPs are skipped automatically.</div>
+        <div id="adminZipImportNotice"></div>
+        <!-- Drop zone -->
+        <div class="zip-drop" id="zipDropArea" onclick="document.getElementById('zipFileIn').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="adminZipHandleDrop(event)">
+          <div style="font-size:36px">📂</div>
+          <div style="font-size:14px;font-weight:600;color:var(--i1);margin-top:6px">Drag a file here or click to select</div>
+          <div style="font-size:11px;color:var(--i3);margin-top:3px">Excel (.xlsx / .xls) or CSV</div>
+        </div>
+        <input type="file" id="zipFileIn" accept=".xlsx,.xls,.csv" style="display:none" onchange="adminZipHandleFile(this.files[0])">
+        <div id="adminZipImportPreview"></div>
+        <div id="adminZipImportActions"></div>
+      </div>
     </div>
   </div>
   <!-- Stats: Tickets per Tech + Visit Type Breakdown side by side, both collapsible -->
@@ -1186,6 +1293,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Leaflet (free maps, no API key) for route visualization -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -1928,57 +2036,178 @@ async function adminToggleHideTech(i){
 }
 
 // ═══ ZIP CODE OVERRIDES (admin) ═══
-// customZips schema (existing): { "63146_zone": "West", "63146_city": "Maryland Heights" }
-// Helper: extract overrides as a flat list of {zip, city, zone, builtIn}
-function _listZipOverrides(){
+// Combines built-in ZIP_ZONES + ZIP_CITIES with customZips overrides into a unified list.
+// Built-in entries are read-only; only custom overrides can be edited or deleted.
+// State for the UI
+var _zipActiveTab="search";
+var _zipActiveZone=null;
+var _zipPendingImport=[];
+
+// Build the full list: every ZIP from ZIP_ZONES (built-in) + every distinct ZIP referenced in customZips.
+// Each entry: {zip, city, zone, source: "builtIn"|"custom"|"both", builtInZone, builtInCity, customZone, customCity}
+function _buildZipList(){
   var byZip={};
-  // Pull from customZips
+  // Seed built-ins
+  Object.keys(ZIP_ZONES).forEach(function(z){
+    if(!byZip[z])byZip[z]={zip:z};
+    byZip[z].builtInZone=ZIP_ZONES[z];
+    byZip[z].builtInCity=ZIP_CITIES[z]||"";
+  });
+  // Layer custom overrides
   Object.keys(customZips||{}).forEach(function(k){
     var m=k.match(/^(\d{5})_(zone|city)$/);if(!m)return;
-    var z=m[1];if(!byZip[z])byZip[z]={zip:z,zone:"",city:"",builtIn:false};
-    byZip[z][m[2]]=customZips[k];
+    var z=m[1];if(!byZip[z])byZip[z]={zip:z};
+    if(m[2]==="zone")byZip[z].customZone=customZips[k];
+    else byZip[z].customCity=customZips[k];
   });
   return Object.keys(byZip).sort().map(function(z){
-    var rec=byZip[z];
-    rec.builtIn=!!ZIP_ZONES[z];
-    rec.builtInZone=ZIP_ZONES[z]||"";
-    rec.builtInCity=ZIP_CITIES[z]||"";
-    return rec;
+    var r=byZip[z];
+    var hasBuiltIn=!!(r.builtInZone||r.builtInCity);
+    var hasCustom=!!(r.customZone||r.customCity);
+    // Built-in always wins for zone (per Alberto's rule)
+    r.zone=r.builtInZone||r.customZone||"";
+    r.city=r.customCity||r.builtInCity||""; // custom city takes priority (built-in city map is incomplete anyway)
+    r.source=hasBuiltIn&&hasCustom?"both":(hasBuiltIn?"builtIn":"custom");
+    r.editable=!hasBuiltIn||!!hasCustom; // built-in-only rows aren't editable; rows with any custom data are
+    return r;
   });
 }
+// Legacy alias kept for back-compat
+function _listZipOverrides(){return _buildZipList().filter(function(r){return r.source!=="builtIn"})}
+
 function rndrAdminZips(){
-  // Populate the zone dropdown options
-  var sel=document.getElementById("adminZipNewZone");
-  if(sel&&!sel.options.length){
-    var zones=Object.keys(ZONE_COLORS);
-    sel.innerHTML='<option value="">— Select zone —</option>'+zones.map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+'</option>'}).join("");
+  // Populate zone dropdowns once
+  var zones=Object.keys(ZONE_COLORS);
+  var sel1=document.getElementById("adminZipNewZone");
+  if(sel1&&!sel1.options.length){
+    sel1.innerHTML='<option value="">— Select zone —</option>'+zones.map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+'</option>'}).join("");
   }
-  var rows=_listZipOverrides();
-  var el=document.getElementById("adminZipList");
+  var sel2=document.getElementById("adminZipZoneFilter");
+  if(sel2&&sel2.options.length<=1){
+    sel2.innerHTML='<option value="">All zones</option>'+zones.map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+'</option>'}).join("");
+  }
+  // Update count badge — show only custom overrides count (the actionable additions)
   var cnt=document.getElementById("adminZipCount");
-  if(cnt)cnt.textContent=rows.length;
-  if(!el)return;
-  if(!rows.length){
-    el.innerHTML='<div style="padding:24px 16px;text-align:center;color:var(--i3);font-size:12px;background:#fafaf8;border:1px dashed var(--ln);border-radius:10px">No custom ZIP overrides yet — add one above.</div>';
-    return;
+  if(cnt){
+    var customCount=_buildZipList().filter(function(r){return r.source!=="builtIn"}).length;
+    cnt.textContent=customCount;
   }
-  var h='<div style="display:flex;flex-direction:column;gap:6px">';
-  rows.forEach(function(r){
-    var zc=ZONE_COLORS[r.zone]||{bg:"#f0f0f0",text:"#555"};
-    var conflict=r.builtIn&&r.zone&&r.zone!==r.builtInZone;
-    h+='<div class="usr-card" style="display:grid;grid-template-columns:80px 1fr 130px auto;gap:10px;align-items:center">';
-    h+='<div style="font-family:\'SF Mono\',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--i1)">'+esc(r.zip)+'</div>';
-    h+='<div style="font-size:13px;color:var(--i2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.city||"—")+(r.builtIn?'<span style="margin-left:6px;font-size:9px;font-weight:700;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;letter-spacing:.3px">BUILT-IN</span>':'')+'</div>';
-    h+='<div>'+(r.zone?'<span style="padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+esc(r.zone)+'</span>':'<span style="font-size:11px;color:var(--i3);font-style:italic">No zone</span>')+'</div>';
-    h+='<div class="usr-actions"><button class="usr-edit" onclick="adminEditZipOverride(\''+r.zip+'\')" title="Edit">✏️</button><button class="usr-del" onclick="adminDelZipOverride(\''+r.zip+'\')" title="Delete">✕</button></div>';
-    h+='</div>';
-    if(conflict){
-      h+='<div style="font-size:10.5px;color:#92400e;background:#fef3c7;padding:5px 10px;border-radius:6px;margin-top:-2px;margin-bottom:2px">⚠ This ZIP is already recognized as "<b>'+esc(r.builtInZone)+'</b>" (built-in). Your override "<b>'+esc(r.zone)+'</b>" will be ignored — built-in zones take priority.</div>';
-    }
-  });
-  h+='</div>';
-  el.innerHTML=h;
+  // Render the currently-active sub-tab
+  if(_zipActiveTab==="search")renderAdminZipSearch();
+  else if(_zipActiveTab==="manage")renderAdminZipTable();
 }
+function adminZipShowTab(tab){
+  _zipActiveTab=tab;
+  document.querySelectorAll(".zsub-tab").forEach(function(b){b.classList.toggle("on",b.dataset.tab===tab)});
+  document.querySelectorAll(".zsub-page").forEach(function(p){p.style.display=p.dataset.page===tab?"block":"none"});
+  if(tab==="search")renderAdminZipSearch();
+  else if(tab==="manage")renderAdminZipTable();
+}
+
+// ── SEARCH TAB ──
+function renderAdminZipSearch(){
+  var all=_buildZipList();
+  // Stats
+  var totalEl=document.getElementById("zipStatTotal");if(totalEl)totalEl.textContent=all.length;
+  var zonesUsed=new Set();all.forEach(function(r){if(r.zone)zonesUsed.add(r.zone)});
+  var zonesEl=document.getElementById("zipStatZones");if(zonesEl)zonesEl.textContent=zonesUsed.size;
+  var moEl=document.getElementById("zipStatMo");if(moEl)moEl.textContent=all.filter(function(r){return r.zip.startsWith("63")||r.zip.startsWith("65")}).length;
+  var ilEl=document.getElementById("zipStatIl");if(ilEl)ilEl.textContent=all.filter(function(r){return r.zip.startsWith("62")||r.zip.startsWith("61")}).length;
+  // Zone filter pills
+  var zoneBox=document.getElementById("zipZoneBtns");
+  if(zoneBox){
+    var zoneCounts={};all.forEach(function(r){if(!r.zone)return;zoneCounts[r.zone]=(zoneCounts[r.zone]||0)+1});
+    var zh="";
+    Object.keys(ZONE_COLORS).forEach(function(z){
+      if(!zoneCounts[z])return;
+      var zc=ZONE_COLORS[z];
+      var on=_zipActiveZone===z;
+      zh+='<button class="zip-zone-btn'+(on?" on":"")+'" style="background:'+zc.bg+';color:'+zc.text+'" onclick="adminZipToggleZone(\''+z.replace(/'/g,"\\'")+'\')">'+esc(z)+' <span style="opacity:.7;font-size:10px">·'+zoneCounts[z]+'</span></button>';
+    });
+    zoneBox.innerHTML=zh;
+  }
+  // Run search/filter
+  adminZipDoSearch((document.getElementById("zipSearch")||{value:""}).value||"");
+}
+function adminZipToggleZone(z){
+  _zipActiveZone=_zipActiveZone===z?null:z;
+  if(_zipActiveZone){var inp=document.getElementById("zipSearch");if(inp)inp.value=""}
+  renderAdminZipSearch();
+}
+function adminZipClearSearch(){
+  var inp=document.getElementById("zipSearch");if(inp)inp.value="";
+  _zipActiveZone=null;
+  renderAdminZipSearch();
+}
+function adminZipDoSearch(val){
+  var clear=document.getElementById("zipSearchClear");
+  if(clear)clear.classList.toggle("show",!!val);
+  var box=document.getElementById("zipSearchResults");if(!box)return;
+  var all=_buildZipList();
+  // Zone filter mode: show all in selected zone
+  if(_zipActiveZone){
+    var hits=all.filter(function(r){return r.zone===_zipActiveZone});
+    var h='<div class="zip-sep">'+esc(_zipActiveZone)+' — '+hits.length+' ZIP code'+(hits.length===1?'':'s')+'</div>';
+    h+=hits.map(_zipCardHTML).join("");
+    box.innerHTML=h;return;
+  }
+  var clean=String(val||"").trim();
+  if(!clean){
+    // Empty state: show grouped preview (4 per zone) + hint
+    var grouped={};all.forEach(function(r){if(!r.zone)return;if(!grouped[r.zone])grouped[r.zone]=[];grouped[r.zone].push(r)});
+    var h="";
+    Object.keys(ZONE_COLORS).forEach(function(z){
+      if(!grouped[z])return;
+      h+='<div class="zip-sep">'+esc(z)+' — '+grouped[z].length+' ZIPs</div>';
+      h+=grouped[z].slice(0,4).map(_zipCardHTML).join("");
+    });
+    h+='<div class="zip-empty" style="margin-top:10px">Type a ZIP code or city name above, or pick a zone to see all entries</div>';
+    box.innerHTML=h;return;
+  }
+  var lc=clean.toLowerCase();
+  var hits=all.filter(function(r){return r.zip.indexOf(clean)===0||(r.city||"").toLowerCase().indexOf(lc)>=0});
+  if(!hits.length){box.innerHTML='<div class="zip-empty">No results found for "'+esc(clean)+'"</div>';return}
+  box.innerHTML=hits.slice(0,200).map(_zipCardHTML).join("")+(hits.length>200?'<div class="zip-empty" style="margin-top:8px">…showing first 200 of '+hits.length+' results. Refine your search to narrow down.</div>':'');
+}
+function _zipCardHTML(r){
+  var zc=ZONE_COLORS[r.zone]||{bg:"#f0f0f0",text:"#555"};
+  var srcLabel=r.source==="builtIn"?'<span class="zip-src builtin">Built-in</span>':(r.source==="both"?'<span class="zip-src custom">Custom</span><span class="zip-src builtin" style="margin-left:4px">Built-in</span>':'<span class="zip-src custom">Custom</span>');
+  return '<div class="zip-rcard"><div class="zip-rcard-zip">'+esc(r.zip)+'</div><div class="zip-rcard-city">'+esc(r.city||"—")+'</div>'+(r.zone?'<span class="zip-badge" style="background:'+zc.bg+';color:'+zc.text+'">'+esc(r.zone)+'</span>':'')+srcLabel+'</div>';
+}
+
+// ── MANAGE TAB ──
+function renderAdminZipTable(){
+  var all=_buildZipList();
+  var filter=((document.getElementById("adminZipFilter")||{}).value||"").toLowerCase();
+  var zf=(document.getElementById("adminZipZoneFilter")||{}).value||"";
+  var sf=(document.getElementById("adminZipSourceFilter")||{}).value||"";
+  var rows=all.filter(function(r){
+    if(filter&&r.zip.indexOf(filter)<0&&(r.city||"").toLowerCase().indexOf(filter)<0)return false;
+    if(zf&&r.zone!==zf)return false;
+    if(sf==="builtIn"&&r.source==="custom")return false;
+    if(sf==="custom"&&r.source==="builtIn")return false;
+    return true;
+  });
+  var tbody=document.getElementById("adminZipTableBody");if(!tbody)return;
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--i3);font-style:italic">No ZIPs match the current filters</td></tr>';
+  }else{
+    tbody.innerHTML=rows.map(function(r){
+      var zc=ZONE_COLORS[r.zone]||{bg:"#f0f0f0",text:"#555"};
+      var srcBadge=r.source==="builtIn"?'<span class="zip-src builtin">Built-in</span>':(r.source==="both"?'<span class="zip-src custom">Custom+B-in</span>':'<span class="zip-src custom">Custom</span>');
+      var actions="";
+      if(r.editable){
+        actions='<button class="zip-row-btn primary" onclick="adminEditZipOverride(\''+r.zip+'\')">Edit</button><button class="zip-row-btn danger" onclick="adminDelZipOverride(\''+r.zip+'\')">Delete</button>';
+      }else{
+        actions='<button class="zip-row-btn" disabled title="Built-in entries can\u2019t be edited">Read-only</button>';
+      }
+      return '<tr><td class="td-zip">'+esc(r.zip)+'</td><td>'+esc(r.city||"—")+'</td><td>'+(r.zone?'<span class="zip-badge" style="background:'+zc.bg+';color:'+zc.text+';font-size:11px;padding:3px 9px;border-radius:5px;font-weight:600">'+esc(r.zone)+'</span>':'<span style="color:var(--i3);font-style:italic;font-size:11px">No zone</span>')+'</td><td>'+srcBadge+'</td><td style="text-align:right;white-space:nowrap">'+actions+'</td></tr>';
+    }).join("");
+  }
+  var tfoot=document.getElementById("adminZipTfoot");
+  if(tfoot)tfoot.textContent=rows.length+' of '+all.length+' entries';
+}
+
 async function adminSaveZipOverride(){
   var zip=(document.getElementById("adminZipNewCode").value||"").trim();
   var city=(document.getElementById("adminZipNewCity").value||"").trim();
@@ -1986,7 +2215,6 @@ async function adminSaveZipOverride(){
   if(!/^\d{5}$/.test(zip)){toast("Enter a valid 5-digit ZIP","warn");return}
   if(!city&&!zone){toast("Enter a city, zone, or both","warn");return}
   if(zone&&!ZONE_COLORS[zone]){toast("Invalid zone","warn");return}
-  // If this ZIP is already in the built-in list with a zone, warn user before saving
   if(ZIP_ZONES[zip]&&zone&&zone!==ZIP_ZONES[zip]){
     if(!confirm("ZIP "+zip+" is already recognized as zone \""+ZIP_ZONES[zip]+"\" (built-in). Built-in zones take priority, so your override will not affect zone resolution. Save anyway?"))return;
   }
@@ -2000,13 +2228,17 @@ async function adminSaveZipOverride(){
   toast("ZIP "+zip+" saved ✓");
 }
 function adminEditZipOverride(zip){
-  var city=customZips[zip+"_city"]||"";
-  var zone=customZips[zip+"_zone"]||"";
-  document.getElementById("adminZipNewCode").value=zip;
-  document.getElementById("adminZipNewCity").value=city;
-  document.getElementById("adminZipNewZone").value=zone;
-  // Scroll to the form so user sees it
-  var hdr=document.getElementById("adminZipHdr");if(hdr&&hdr.scrollIntoView)hdr.scrollIntoView({behavior:"smooth",block:"start"});
+  // Switch to manage tab, prefill the form, scroll into view
+  adminZipShowTab("manage");
+  var city=customZips[zip+"_city"]||ZIP_CITIES[zip]||"";
+  var zone=customZips[zip+"_zone"]||ZIP_ZONES[zip]||"";
+  setTimeout(function(){
+    var c=document.getElementById("adminZipNewCode");if(c)c.value=zip;
+    var ci=document.getElementById("adminZipNewCity");if(ci)ci.value=city;
+    var z=document.getElementById("adminZipNewZone");if(z)z.value=zone;
+    if(c&&c.scrollIntoView)c.scrollIntoView({behavior:"smooth",block:"center"});
+    if(c)c.focus();
+  },50);
   toast("Editing "+zip+" — make changes and tap Save");
 }
 async function adminDelZipOverride(zip){
@@ -2016,6 +2248,145 @@ async function adminDelZipOverride(zip){
   await saveCustomZips();
   rndrAdminZips();
   toast("Override removed ✓");
+}
+
+function adminZipExportCSV(){
+  var all=_buildZipList();
+  var rows=[["ZIP","City","Zone","Source"]];
+  all.forEach(function(r){rows.push([r.zip,r.city||"",r.zone||"",r.source])});
+  var csv=rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(",")}).join("\n");
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}));
+  a.download="AspenSpas_ZipCodes.csv";a.click();
+  toast("Exported "+all.length+" ZIPs ✓");
+}
+
+// ── IMPORT TAB ──
+function _zipImportNotice(msg,cls){
+  var el=document.getElementById("adminZipImportNotice");if(!el)return;
+  el.innerHTML='<div class="zip-notice zip-notice-'+cls+'">'+msg+'</div>';
+}
+function adminZipHandleDrop(e){
+  e.preventDefault();
+  var dz=document.getElementById("zipDropArea");if(dz)dz.classList.remove("over");
+  var f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)adminZipHandleFile(f);
+}
+function adminZipHandleFile(file){
+  if(!file)return;
+  if(typeof XLSX==="undefined"){_zipImportNotice("Spreadsheet library not loaded — refresh the page and try again","error");return}
+  var ext=file.name.split(".").pop().toLowerCase();
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var rows=[];
+      if(ext==="csv"){
+        rows=ev.target.result.split(/\r?\n/).map(function(l){
+          // Naive CSV split — handles quoted commas
+          var out=[],cur="",inQ=false;
+          for(var i=0;i<l.length;i++){
+            var c=l[i];
+            if(c==='"'){if(inQ&&l[i+1]==='"'){cur+='"';i++}else inQ=!inQ}
+            else if(c===","&&!inQ){out.push(cur);cur=""}
+            else cur+=c;
+          }
+          out.push(cur);
+          return out.map(function(x){return String(x).trim()});
+        }).filter(function(r){return r.length>=2&&r.some(function(x){return x})});
+      }else{
+        var wb=XLSX.read(ev.target.result,{type:"array"});
+        rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:""}).map(function(r){return r.map(function(c){return String(c).trim()})});
+      }
+      _zipProcessRows(rows,file.name);
+    }catch(err){_zipImportNotice("Error reading file: "+esc(err.message),"error")}
+  };
+  if(ext==="csv")reader.readAsText(file,"UTF-8");else reader.readAsArrayBuffer(file);
+}
+function _zipProcessRows(rows,fname){
+  if(!rows.length){_zipImportNotice("File is empty","error");return}
+  // Auto-detect header row (first row's first cell isn't numeric or contains "zip")
+  var start=0;
+  var firstCell=String((rows[0]||[])[0]||"");
+  if(isNaN(parseInt(firstCell.replace(/\D/g,"")))||firstCell.toLowerCase().indexOf("zip")>=0)start=1;
+  _zipPendingImport=[];
+  var errs=0;
+  rows.slice(start).forEach(function(r){
+    var zipRaw=String(r[0]||"").replace(/\D/g,"");
+    if(!zipRaw){errs++;return}
+    var zip=zipRaw.slice(0,5).padStart(5,"0");
+    var city=String(r[1]||"").trim();
+    var zone=String(r[2]||"").trim();
+    if(!city&&!zone){errs++;return}
+    if(zip.length!==5){errs++;return}
+    // Normalize zone to match ZONE_COLORS exactly (case-insensitive)
+    if(zone){
+      var matched=Object.keys(ZONE_COLORS).find(function(z){return z.toLowerCase()===zone.toLowerCase()});
+      if(matched)zone=matched;
+    }
+    // Determine status
+    var status="new";
+    if(ZIP_ZONES[zip])status="builtin"; // already in built-in list — would be skipped
+    else if(customZips[zip+"_zone"]||customZips[zip+"_city"])status="dup";
+    var validZone=!zone||!!ZONE_COLORS[zone];
+    if(!validZone)status="invalid";
+    _zipPendingImport.push({zip:zip,city:city,zone:zone,status:status});
+  });
+  var nNew=_zipPendingImport.filter(function(r){return r.status==="new"}).length;
+  var nDup=_zipPendingImport.filter(function(r){return r.status==="dup"}).length;
+  var nBuiltin=_zipPendingImport.filter(function(r){return r.status==="builtin"}).length;
+  var nInvalid=_zipPendingImport.filter(function(r){return r.status==="invalid"}).length;
+  _zipImportNotice("<b>"+esc(fname)+"</b> — "+nNew+" new · "+nDup+" duplicate"+(nDup===1?"":"s")+" · "+nBuiltin+" built-in (skipped) · "+nInvalid+" invalid"+(errs?" · "+errs+" rows with errors":""),"info");
+  // Preview table (first 50)
+  var preview=document.getElementById("adminZipImportPreview");
+  if(preview){
+    if(!_zipPendingImport.length){preview.innerHTML="";}
+    else{
+      var tagHTML={new:'<span class="zip-tag zip-tag-new">New</span>',dup:'<span class="zip-tag zip-tag-dup">Duplicate</span>',builtin:'<span class="zip-tag zip-tag-skip">Built-in</span>',invalid:'<span class="zip-tag zip-tag-skip">Invalid zone</span>'};
+      var trs=_zipPendingImport.slice(0,50).map(function(r){
+        var zc=ZONE_COLORS[r.zone]||{bg:"#f0f0f0",text:"#555"};
+        return '<tr><td class="td-zip">'+esc(r.zip)+'</td><td>'+esc(r.city||"—")+'</td><td>'+(r.zone?'<span class="zip-badge" style="background:'+zc.bg+';color:'+zc.text+';font-size:11px;padding:3px 9px;border-radius:5px;font-weight:600">'+esc(r.zone)+'</span>':'<span style="color:var(--i3);font-style:italic;font-size:11px">—</span>')+'</td><td>'+(tagHTML[r.status]||"")+'</td></tr>';
+      }).join("");
+      preview.innerHTML='<div style="background:#fff;border:1px solid var(--ln);border-radius:10px;margin-top:12px;overflow:hidden"><div style="padding:9px 14px;background:#fafaf8;border-bottom:1px solid var(--ln);font-size:12px;font-weight:700;color:var(--i2)">Preview ('+Math.min(_zipPendingImport.length,50)+' of '+_zipPendingImport.length+' rows)</div><div style="overflow-x:auto"><table class="zip-table"><thead><tr><th>ZIP</th><th>City</th><th>Zone</th><th>Status</th></tr></thead><tbody>'+trs+'</tbody></table></div></div>';
+    }
+  }
+  // Action buttons
+  var actions=document.getElementById("adminZipImportActions");
+  if(actions){
+    if(!_zipPendingImport.length){actions.innerHTML="";}
+    else{
+      var btns='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">';
+      if(nNew)btns+='<button onclick="adminZipConfirmImport(false)" style="padding:10px 16px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Import '+nNew+' new only</button>';
+      if(nNew||nDup)btns+='<button onclick="adminZipConfirmImport(true)" style="padding:10px 16px;background:#fafaf8;color:var(--i2);border:1px solid var(--ln);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Import all (overwrite duplicates)</button>';
+      btns+='<button onclick="adminZipCancelImport()" style="padding:10px 16px;background:#fafaf8;color:var(--i2);border:1px solid var(--ln);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
+      btns+='</div>';
+      actions.innerHTML=btns;
+    }
+  }
+}
+async function adminZipConfirmImport(includeDups){
+  var toAdd=_zipPendingImport.filter(function(r){
+    if(r.status==="builtin"||r.status==="invalid")return false; // never overwrite built-in or import invalid
+    if(r.status==="new")return true;
+    if(r.status==="dup")return!!includeDups;
+    return false;
+  });
+  if(!toAdd.length){_zipImportNotice("Nothing to import","error");return}
+  toAdd.forEach(function(r){
+    if(r.city)customZips[r.zip+"_city"]=r.city;
+    if(r.zone)customZips[r.zip+"_zone"]=r.zone;
+  });
+  await saveCustomZips();
+  _zipImportNotice(toAdd.length+" ZIP code"+(toAdd.length===1?"":"s")+" imported successfully","success");
+  _zipPendingImport=[];
+  var pv=document.getElementById("adminZipImportPreview");if(pv)pv.innerHTML="";
+  var ac=document.getElementById("adminZipImportActions");if(ac)ac.innerHTML="";
+  var fi=document.getElementById("zipFileIn");if(fi)fi.value="";
+  rndrAdminZips();
+  toast("Imported "+toAdd.length+" ZIP"+(toAdd.length===1?"":"s")+" ✓");
+}
+function adminZipCancelImport(){
+  _zipPendingImport=[];
+  ["adminZipImportPreview","adminZipImportActions","adminZipImportNotice"].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=""});
+  var fi=document.getElementById("zipFileIn");if(fi)fi.value="";
 }
 function rndrAdminUsers(){
   const el=document.getElementById("adminUserList");
