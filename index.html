@@ -959,6 +959,32 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
       </div>
     </div>
   </div>
+  <!-- ZIP Code Overrides — admin can force a ZIP into a zone/city -->
+  <div class="card" style="margin-bottom:12px">
+    <div onclick="adminToggleSection('Zip')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:2px solid var(--ac)" id="adminZipHdr">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="lucide-mount" data-lucide="map-pin" data-size="18" data-color="var(--ac)"></span>
+        <span style="font-size:13px;font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">ZIP Code Overrides</span>
+        <span id="adminZipCount" style="background:var(--ac);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px">0</span>
+      </div>
+      <span id="adminZipArrow" style="font-size:14px;color:var(--i2);transition:transform .2s">▼</span>
+    </div>
+    <div id="adminZipBody" style="padding-top:12px">
+      <div style="font-size:12px;color:var(--i3);margin-bottom:10px;line-height:1.5">Add a ZIP code that isn't recognized so the system learns its zone and city for future tickets. <b>Built-in ZIPs take priority</b> — overrides for already-recognized ZIPs will be ignored.</div>
+      <!-- Add new override -->
+      <div style="background:#fafaf8;border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div class="lbl" style="margin-bottom:8px">Add or Update ZIP</div>
+        <div style="display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;align-items:end">
+          <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">ZIP</div><input type="text" id="adminZipNewCode" placeholder="63146" maxlength="5" inputmode="numeric" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff" autocomplete="off"></div>
+          <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">City</div><input type="text" id="adminZipNewCity" placeholder="Maryland Heights" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff" autocomplete="off"></div>
+          <div><div style="font-size:10px;color:var(--i3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">Zone</div><select id="adminZipNewZone" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;outline:none;background:#fff;cursor:pointer"></select></div>
+          <button onclick="adminSaveZipOverride()" style="padding:10px 16px;background:var(--br);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer">Save</button>
+        </div>
+      </div>
+      <!-- Existing overrides list -->
+      <div id="adminZipList"></div>
+    </div>
+  </div>
   <!-- Stats: Tickets per Tech + Visit Type Breakdown side by side, both collapsible -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">
     <div class="card" style="margin:0">
@@ -1540,7 +1566,7 @@ function updAdmin(){
 // ═══ USER MANAGEMENT (Admin Tab) ═══
 function openUserMgmt(){showTab(3)}
 function closeUserMgmt(){}
-function rndrAdmin(){rndrAdminCapacity();rndrAdminTechs();rndrAdminUsers();rndrAdminStats();_applyAdminCollapse()}
+function rndrAdmin(){rndrAdminCapacity();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse()}
 function rndrAdminCapacity(){
   var el=document.getElementById("adminCapacity");if(!el)return;
   if(!isAdmin){el.innerHTML="";return}
@@ -1550,7 +1576,7 @@ function rndrAdminCapacity(){
 }
 // Apply collapsed state on render based on localStorage (default: Tech/User collapsed, Stats expanded)
 function _applyAdminCollapse(){
-  [{k:"Tech",def:true},{k:"User",def:true},{k:"StatTech",def:false},{k:"StatVisit",def:false}].forEach(function(o){
+  [{k:"Tech",def:true},{k:"User",def:true},{k:"Zip",def:true},{k:"StatTech",def:false},{k:"StatVisit",def:false}].forEach(function(o){
     var body=document.getElementById("admin"+o.k+"Body");
     var arr=document.getElementById("admin"+o.k+"Arrow");
     if(!body||!arr)return;
@@ -1899,6 +1925,97 @@ async function adminToggleHideTech(i){
   await saveTechs();buildTechPills();
   if(typeof rndrAdmin==="function")rndrAdmin();
   if(typeof refreshAll==="function")refreshAll();
+}
+
+// ═══ ZIP CODE OVERRIDES (admin) ═══
+// customZips schema (existing): { "63146_zone": "West", "63146_city": "Maryland Heights" }
+// Helper: extract overrides as a flat list of {zip, city, zone, builtIn}
+function _listZipOverrides(){
+  var byZip={};
+  // Pull from customZips
+  Object.keys(customZips||{}).forEach(function(k){
+    var m=k.match(/^(\d{5})_(zone|city)$/);if(!m)return;
+    var z=m[1];if(!byZip[z])byZip[z]={zip:z,zone:"",city:"",builtIn:false};
+    byZip[z][m[2]]=customZips[k];
+  });
+  return Object.keys(byZip).sort().map(function(z){
+    var rec=byZip[z];
+    rec.builtIn=!!ZIP_ZONES[z];
+    rec.builtInZone=ZIP_ZONES[z]||"";
+    rec.builtInCity=ZIP_CITIES[z]||"";
+    return rec;
+  });
+}
+function rndrAdminZips(){
+  // Populate the zone dropdown options
+  var sel=document.getElementById("adminZipNewZone");
+  if(sel&&!sel.options.length){
+    var zones=Object.keys(ZONE_COLORS);
+    sel.innerHTML='<option value="">— Select zone —</option>'+zones.map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+'</option>'}).join("");
+  }
+  var rows=_listZipOverrides();
+  var el=document.getElementById("adminZipList");
+  var cnt=document.getElementById("adminZipCount");
+  if(cnt)cnt.textContent=rows.length;
+  if(!el)return;
+  if(!rows.length){
+    el.innerHTML='<div style="padding:24px 16px;text-align:center;color:var(--i3);font-size:12px;background:#fafaf8;border:1px dashed var(--ln);border-radius:10px">No custom ZIP overrides yet — add one above.</div>';
+    return;
+  }
+  var h='<div style="display:flex;flex-direction:column;gap:6px">';
+  rows.forEach(function(r){
+    var zc=ZONE_COLORS[r.zone]||{bg:"#f0f0f0",text:"#555"};
+    var conflict=r.builtIn&&r.zone&&r.zone!==r.builtInZone;
+    h+='<div class="usr-card" style="display:grid;grid-template-columns:80px 1fr 130px auto;gap:10px;align-items:center">';
+    h+='<div style="font-family:\'SF Mono\',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--i1)">'+esc(r.zip)+'</div>';
+    h+='<div style="font-size:13px;color:var(--i2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.city||"—")+(r.builtIn?'<span style="margin-left:6px;font-size:9px;font-weight:700;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;letter-spacing:.3px">BUILT-IN</span>':'')+'</div>';
+    h+='<div>'+(r.zone?'<span style="padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+esc(r.zone)+'</span>':'<span style="font-size:11px;color:var(--i3);font-style:italic">No zone</span>')+'</div>';
+    h+='<div class="usr-actions"><button class="usr-edit" onclick="adminEditZipOverride(\''+r.zip+'\')" title="Edit">✏️</button><button class="usr-del" onclick="adminDelZipOverride(\''+r.zip+'\')" title="Delete">✕</button></div>';
+    h+='</div>';
+    if(conflict){
+      h+='<div style="font-size:10.5px;color:#92400e;background:#fef3c7;padding:5px 10px;border-radius:6px;margin-top:-2px;margin-bottom:2px">⚠ This ZIP is already recognized as "<b>'+esc(r.builtInZone)+'</b>" (built-in). Your override "<b>'+esc(r.zone)+'</b>" will be ignored — built-in zones take priority.</div>';
+    }
+  });
+  h+='</div>';
+  el.innerHTML=h;
+}
+async function adminSaveZipOverride(){
+  var zip=(document.getElementById("adminZipNewCode").value||"").trim();
+  var city=(document.getElementById("adminZipNewCity").value||"").trim();
+  var zone=(document.getElementById("adminZipNewZone").value||"").trim();
+  if(!/^\d{5}$/.test(zip)){toast("Enter a valid 5-digit ZIP","warn");return}
+  if(!city&&!zone){toast("Enter a city, zone, or both","warn");return}
+  if(zone&&!ZONE_COLORS[zone]){toast("Invalid zone","warn");return}
+  // If this ZIP is already in the built-in list with a zone, warn user before saving
+  if(ZIP_ZONES[zip]&&zone&&zone!==ZIP_ZONES[zip]){
+    if(!confirm("ZIP "+zip+" is already recognized as zone \""+ZIP_ZONES[zip]+"\" (built-in). Built-in zones take priority, so your override will not affect zone resolution. Save anyway?"))return;
+  }
+  if(city)customZips[zip+"_city"]=city; else delete customZips[zip+"_city"];
+  if(zone)customZips[zip+"_zone"]=zone; else delete customZips[zip+"_zone"];
+  await saveCustomZips();
+  document.getElementById("adminZipNewCode").value="";
+  document.getElementById("adminZipNewCity").value="";
+  document.getElementById("adminZipNewZone").value="";
+  rndrAdminZips();
+  toast("ZIP "+zip+" saved ✓");
+}
+function adminEditZipOverride(zip){
+  var city=customZips[zip+"_city"]||"";
+  var zone=customZips[zip+"_zone"]||"";
+  document.getElementById("adminZipNewCode").value=zip;
+  document.getElementById("adminZipNewCity").value=city;
+  document.getElementById("adminZipNewZone").value=zone;
+  // Scroll to the form so user sees it
+  var hdr=document.getElementById("adminZipHdr");if(hdr&&hdr.scrollIntoView)hdr.scrollIntoView({behavior:"smooth",block:"start"});
+  toast("Editing "+zip+" — make changes and tap Save");
+}
+async function adminDelZipOverride(zip){
+  if(!confirm("Remove override for ZIP "+zip+"?"))return;
+  delete customZips[zip+"_zone"];
+  delete customZips[zip+"_city"];
+  await saveCustomZips();
+  rndrAdminZips();
+  toast("Override removed ✓");
 }
 function rndrAdminUsers(){
   const el=document.getElementById("adminUserList");
@@ -4640,7 +4757,7 @@ function openTktDetail(id){
     h+='<div style="margin-bottom:8px"><div class="lbl" style="font-size:10px;display:flex;align-items:center;justify-content:space-between"><span>Address</span>'+(_mapsUrlAdmin?'<a href="'+_mapsUrlAdmin+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--ac);text-decoration:none;letter-spacing:.2px;text-transform:none">'+icon("map-pin",11,{color:"var(--ac)"})+'View map</a>':'')+'</div><input id="dtAddr" value="'+esc(t.address||'')+'" class="time-input" style="width:100%"></div>';
     h+='<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">';
     h+='<div><div class="lbl" style="font-size:10px">City</div><input id="dtCity" value="'+esc(t.city||'')+'" class="time-input" style="width:100%"></div>';
-    h+='<div><div class="lbl" style="font-size:10px">ZIP</div><input id="dtZip" value="'+esc(t.zip||'')+'" class="time-input" style="width:100%" maxlength="5" oninput="var z=ZIP_ZONES[this.value];if(z)document.getElementById(\'dtZone\').value=z"></div></div>';
+    h+='<div><div class="lbl" style="font-size:10px">ZIP</div><input id="dtZip" value="'+esc(t.zip||'')+'" class="time-input" style="width:100%" maxlength="5" oninput="var z=ZIP_ZONES[this.value]||customZips[this.value+\'_zone\'];if(z)document.getElementById(\'dtZone\').value=z;var c=ZIP_CITIES[this.value]||customZips[this.value+\'_city\'];var ce=document.getElementById(\'dtCity\');if(c&&ce&&!ce.value)ce.value=c"></div></div>';
   }else{
     h+='<div class="tp-row"><span>Customer</span><span>'+esc(t.customer)+'</span></div>';
     // Build phone list (legacy phone + phone2 + phones[] array, deduped)
@@ -5531,7 +5648,7 @@ function qbCustRenderDetail(customers){
   h+='<div>';
   h+='<div class="qb-cust-info-cell"><label>Customer Name</label><input id="custName" value="'+esc(c.name||"")+'"></div>';
   h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label>Bill To</label><textarea id="custAddr" rows="1" style="min-height:30px" placeholder="Street address">'+esc(c.address||"")+'</textarea></div>';
-  h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label></label><div style="display:flex;gap:6px"><input id="custCity" value="'+esc(c.city||"")+'" placeholder="City" style="flex:2"><input id="custZip" value="'+esc(c.zip||"")+'" placeholder="ZIP" style="flex:1" maxlength="5" oninput="var z=ZIP_ZONES[this.value];if(z)document.getElementById(\'custZone\').value=z"></div></div>';
+  h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label></label><div style="display:flex;gap:6px"><input id="custCity" value="'+esc(c.city||"")+'" placeholder="City" style="flex:2"><input id="custZip" value="'+esc(c.zip||"")+'" placeholder="ZIP" style="flex:1" maxlength="5" oninput="var z=ZIP_ZONES[this.value]||customZips[this.value+\'_zone\'];if(z)document.getElementById(\'custZone\').value=z;var cc=ZIP_CITIES[this.value]||customZips[this.value+\'_city\'];var ci=document.getElementById(\'custCity\');if(cc&&ci&&!ci.value)ci.value=cc"></div></div>';
   if(fullAddr)h+='<div class="qb-cust-info-cell" style="margin-top:4px"><label></label><a class="qb-link" href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank">Map · Directions</a></div>';
   h+='</div>';
   // Right column
