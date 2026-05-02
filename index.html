@@ -554,6 +554,151 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
   .mt-col.collapsed .mt-col-body{display:none}
   .mt-col.collapsed .mt-col-hdr{border-radius:8px}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PHASE 1 — POLISH VISUAL
+   ─ Status badges, day progress, empty states, bottom nav,
+     keyboard shortcut hints, lucide search icon
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Status badge (pending / complete / done / canceled / reschedule) ─── */
+.st-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;line-height:1.4;vertical-align:middle}
+.st-pending{background:#f3f4f6;color:#52525b}
+.st-complete{background:#dbeafe;color:#1e40af}
+.st-done{background:#d1fae5;color:#047857}
+.st-canceled{background:#fee2e2;color:#991b1b}
+.st-reschedule{background:#fef3c7;color:#92400e}
+.cal-tkt-mini.st-row-canceled{opacity:.6}
+.cal-tkt-mini.st-row-canceled h5{text-decoration:line-through;text-decoration-thickness:1.5px}
+
+/* ─── Day-view progress header (sub-line under calTitle) ─── */
+.day-progress{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-6px 0 14px;padding:10px 14px;background:#fafaf9;border:1px solid var(--ln);border-radius:10px;font-size:12.5px;font-weight:600;color:var(--i2)}
+.day-progress .dp-bar{flex:1;min-width:120px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;position:relative}
+.day-progress .dp-fill{height:100%;background:linear-gradient(90deg,var(--ac),#16a34a);border-radius:3px;transition:width .3s}
+.day-progress .dp-stat{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.day-progress .dp-stat b{color:var(--i1);font-weight:800}
+.day-progress .dp-sep{color:var(--i3);opacity:.5}
+.day-progress .dp-warn{color:#b45309}
+.day-progress .dp-danger{color:#991b1b}
+
+/* ─── Empty states (richer than plain "No tickets") ─── */
+.empty-state{padding:54px 24px;text-align:center;color:var(--i3);max-width:380px;margin:0 auto}
+.empty-state .es-ico{width:56px;height:56px;margin:0 auto 14px;border-radius:50%;background:#f5f5f4;display:flex;align-items:center;justify-content:center;color:#a3a3a3}
+.empty-state .es-ico svg{width:28px;height:28px}
+.empty-state h3{font-size:16px;color:var(--i1);font-weight:700;margin-bottom:6px;letter-spacing:-.2px}
+.empty-state p{font-size:13px;color:var(--i3);line-height:1.55}
+.empty-state .es-hint{margin-top:12px;font-size:11px;color:var(--i3);opacity:.75}
+.empty-state kbd{display:inline-block;padding:1px 6px;background:#fff;border:1px solid var(--ln);border-radius:4px;font-family:'SF Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--i2);box-shadow:0 1px 0 var(--ln)}
+
+/* ─── Bottom nav (mobile only) ─── */
+.bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:90;background:rgba(255,255,255,.96);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border-top:1px solid var(--ln);padding:6px 4px calc(6px + env(safe-area-inset-bottom)) 4px;justify-content:space-around;align-items:stretch;gap:0}
+.bottom-nav .bn-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 6px;background:none;border:none;cursor:pointer;color:var(--i3);font-size:10px;font-weight:600;letter-spacing:.2px;border-radius:8px;-webkit-tap-highlight-color:transparent;font-family:inherit;transition:color .12s}
+.bottom-nav .bn-btn svg{width:22px;height:22px;stroke-width:2}
+.bottom-nav .bn-btn.on{color:var(--ac)}
+.bottom-nav .bn-btn:active{background:#f5f5f4}
+@media(max-width:600px){
+  .bottom-nav{display:flex}
+  body{padding-bottom:64px}
+  /* Avoid overlap with floating to-do widget */
+  .todo-wrap{bottom:calc(64px + env(safe-area-inset-bottom))!important}
+}
+
+/* ─── Modern search icon (replace 🔍 emoji with Lucide-style SVG) ─── */
+.search-wrap::before{
+  content:""!important;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>");
+  background-size:contain;
+  background-repeat:no-repeat;
+  width:17px!important;
+  height:17px!important;
+  font-size:0!important;
+}
+
+/* ─── Keyboard shortcut toast hint ─── */
+.kbd-hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:10px 16px;border-radius:10px;font-size:12px;z-index:5000;display:none;box-shadow:0 4px 16px rgba(0,0,0,.25);font-weight:500}
+.kbd-hint.show{display:block;animation:sIn .25s}
+.kbd-hint kbd{display:inline-block;padding:1px 6px;margin:0 2px;background:#3a3a3c;border:1px solid #555;border-radius:4px;font-family:'SF Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:#fff}
+
+/* ═══════════════════════════════════════════════════════════
+   PHASE 2 — PRODUCTIVIDAD EN CAMPO
+   ═══════════════════════════════════════════════════════════ */
+
+/* Secondary SMS template buttons (smaller, less prominent than primary) */
+.sms-tpl-row{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.sms-tpl{flex:1;min-width:120px;padding:9px 10px;background:#fafaf9;color:#52525b;border:1px solid var(--ln);border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;line-height:1.2;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .12s}
+.sms-tpl:hover{background:#f5f5f4;border-color:#d4d4d4}
+.sms-tpl:active{transform:scale(.97)}
+.sms-tpl.late{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.sms-tpl.noans{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.sms-tpl.done{background:#d1fae5;color:#047857;border-color:#86efac}
+.sms-tpl.resched{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+
+/* Mic button for voice-to-text */
+.mic-btn{position:absolute;top:6px;right:6px;width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--ln);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ac);z-index:2;-webkit-tap-highlight-color:transparent;transition:all .15s;padding:0}
+.mic-btn:hover{background:#f5f5f4;border-color:var(--ac)}
+.mic-btn.recording{background:#dc2626;border-color:#dc2626;color:#fff;animation:micPulse 1.4s ease-in-out infinite}
+.mic-btn:active{transform:scale(.92)}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}50%{box-shadow:0 0 0 8px rgba(220,38,38,0)}}
+.notes-with-mic{position:relative}
+.notes-with-mic textarea{padding-right:50px}
+
+/* Take Photo button (camera-direct, distinct from "Add Files") */
+.cam-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:all .12s}
+.cam-btn:hover{background:#c4661a}
+.cam-btn:active{transform:scale(.98)}
+
+/* ═══════════════════════════════════════════════════════════
+   PHASE 3 — DISPATCH Y RUTA
+   ═══════════════════════════════════════════════════════════ */
+
+/* "Necesita atención" panel — pinned card at top of Calendar */
+.attn-panel{background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);border:1px solid #fcd34d;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(180,83,9,.06)}
+.attn-panel.empty{background:#f0fdf4;border-color:#86efac}
+.attn-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.attn-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#92400e;letter-spacing:.3px;text-transform:uppercase}
+.attn-panel.empty .attn-title{color:#047857}
+.attn-collapse{background:none;border:none;color:#92400e;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;font-weight:700;font-family:inherit}
+.attn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.attn-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(252,211,77,.6);border-radius:10px;cursor:pointer;text-decoration:none;color:inherit;transition:all .12s}
+.attn-cell:hover{background:#fff;border-color:#fbbf24;transform:translateY(-1px);box-shadow:0 2px 6px rgba(180,83,9,.1)}
+.attn-cell:active{transform:scale(.98)}
+.attn-cell-num{font-size:22px;font-weight:800;line-height:1;color:#92400e}
+.attn-cell-lbl{font-size:11px;font-weight:600;color:#78350f;letter-spacing:.2px}
+.attn-cell.ok .attn-cell-num{color:#047857}
+.attn-cell.ok .attn-cell-lbl{color:#065f46}
+.attn-collapsed .attn-grid{display:none}
+.attn-collapsed{padding:10px 16px}
+.attn-collapsed .attn-hdr{margin-bottom:0}
+
+/* Heat map — week capacity per tech */
+.heatmap-wrap{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;overflow-x:auto}
+.heatmap-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+.heatmap-title{font-size:13px;font-weight:800;color:var(--i1);text-transform:uppercase;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.heatmap-grid{display:grid;gap:3px;min-width:480px}
+.hm-row{display:grid;grid-template-columns:90px repeat(7,minmax(46px,1fr));gap:3px;align-items:stretch}
+.hm-row.hm-hdr-row .hm-cell{background:transparent;color:var(--i3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;border:none;padding:4px 0;cursor:default}
+.hm-tech{display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--i1);padding:0 8px}
+.hm-cell{aspect-ratio:1.6/1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer;border:1px solid transparent;transition:all .1s;background:#f5f5f4;color:var(--i3);text-align:center}
+.hm-cell:hover{transform:scale(1.07);border-color:var(--ac);z-index:2}
+.hm-cell .hm-sub{font-size:9px;font-weight:500;opacity:.7;margin-top:1px}
+.hm-cell.l0{background:#fafaf9;color:#bbb}
+.hm-cell.l1{background:#dcfce7;color:#166534}
+.hm-cell.l2{background:#bbf7d0;color:#166534}
+.hm-cell.l3{background:#fde68a;color:#92400e}
+.hm-cell.l4{background:#fdba74;color:#9a3412}
+.hm-cell.l5{background:#fca5a5;color:#991b1b}
+.hm-cell.today{outline:2px solid var(--ac);outline-offset:1px;font-weight:800}
+.hm-legend{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--i3);margin-top:8px;flex-wrap:wrap}
+.hm-legend .hm-sw{width:14px;height:10px;border-radius:3px}
+
+/* Optimize Route button (in route map modal) */
+.opt-route-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:all .12s;box-shadow:0 2px 6px rgba(124,58,237,.25)}
+.opt-route-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(124,58,237,.35)}
+.opt-route-btn:active{transform:scale(.97)}
+.opt-route-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.opt-applied-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#ede9fe;color:#6d28d9;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-left:6px}
+
+
 </style>
 </head>
 <body>
@@ -831,6 +976,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
   <div class="cal-wrap">
     <div class="cal-main">
       <div id="calCcReminders"></div>
+      <div id="attnPanel"></div>
       <div class="search-wrap"><input class="search-bar" id="searchCal" placeholder="Search tickets..." oninput="rndrCal()"></div>
       <div class="cal-hdr">
         <div style="display:flex;align-items:center;gap:12px">
@@ -854,6 +1000,12 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
     <div class="cal-side"><!-- Legacy sidebar - now hidden, To-Do moved to floating widget at body level --></div>
   </div>
 </div>
+
+<!-- ══ BOTTOM NAV (mobile only — populated by buildBottomNav()) ══ -->
+<nav class="bottom-nav" id="bottomNav" aria-label="Primary"></nav>
+
+<!-- ══ KEYBOARD SHORTCUT TOAST HINT ══ -->
+<div class="kbd-hint" id="kbdHint"></div>
 
 <!-- ══ FLOATING TO-DO WIDGET — admin/organizer only, shown only on Calendar page ══ -->
 <div class="todo-wrap collapsed" id="todoWrap">
@@ -942,6 +1094,11 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
     <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
       <div id="routeMapContainer" style="height:50%;min-height:280px;background:#eee;position:relative">
         <div id="routeMapStatus" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;color:var(--i3);background:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.1);z-index:500">Loading map…</div>
+      </div>
+      <div id="routeMapToolbar" style="padding:8px 12px;border-bottom:1px solid var(--ln);background:#fff;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="routeMapOptimizeBtn" class="opt-route-btn" onclick="optimizeRouteOrder()" type="button" title="Reorder stops by shortest driving distance (nearest neighbor)"><span class="lucide-mount" data-lucide="route" data-size="14" data-color="#fff"></span>Optimize Route</button>
+        <button id="routeMapResetBtn" onclick="resetRouteOrder()" type="button" style="display:none;padding:8px 12px;background:transparent;border:1px solid var(--ln);border-radius:8px;font-size:11.5px;font-weight:600;color:var(--i2);cursor:pointer;font-family:inherit">Reset to arrival time</button>
+        <span id="routeMapOptStatus" style="font-size:11.5px;color:var(--i3);margin-left:auto"></span>
       </div>
       <div id="routeMapStops" style="flex:1;overflow-y:auto;padding:12px;background:#fafaf6"></div>
       <div style="padding:12px;border-top:1px solid var(--ln);background:#fff;display:flex;gap:8px;flex-wrap:wrap">
@@ -1336,6 +1493,7 @@ function updAdmin(){
   document.getElementById("tab5").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
   document.getElementById("tab3").classList.toggle("hidden",!(currentUser&&currentUser.role==="admin"));
   document.getElementById("tab6").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
+  if(typeof buildBottomNav==="function")buildBottomNav();
   // Hide tech filter, Team view for techs; To-Do sidebar is ONLY for admin
   const isTechRole=currentUser&&currentUser.role==="tech";
   const isAdminRole=currentUser&&currentUser.role==="admin";
@@ -1966,7 +2124,32 @@ if(i===0&&!editingDocId&&currentUser&&currentUser.role==="tech"&&TECHS.indexOf(c
   if(typeof buildTechPills==="function")buildTechPills();
 }
 if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();
-if(typeof updateTodoVisibility==="function")updateTodoVisibility();}
+if(typeof updateTodoVisibility==="function")updateTodoVisibility();
+if(typeof buildBottomNav==="function")buildBottomNav();}
+function buildBottomNav(){
+  var nav=document.getElementById("bottomNav");if(!nav)return;
+  if(!currentUser){nav.style.display="none";nav.innerHTML="";return}
+  nav.style.display="";
+  var meta={
+    0:{lbl:"Field",ic:"clipboard-list"},
+    1:{lbl:currentUser.role==="tech"?"My Tickets":"Daily",ic:"list-checks"},
+    2:{lbl:"Done",ic:"check-circle"},
+    3:{lbl:"Admin",ic:"settings"},
+    4:{lbl:"Calendar",ic:"calendar"},
+    5:{lbl:"Service",ic:"phone-call"},
+    6:{lbl:"Customers",ic:"users"}
+  };
+  // Tech: 3 hot tabs. Admin/organizer: 4 hot tabs.
+  var ids=currentUser.role==="tech"?[0,1,4]:[0,1,4,5];
+  var current=-1;
+  [0,1,2,3,4,5,6].forEach(function(n){var el=document.getElementById("tab"+n);if(el&&el.classList.contains("on"))current=n});
+  var html="";
+  ids.forEach(function(n){
+    var m=meta[n];if(!m)return;
+    html+='<button class="bn-btn'+(current===n?" on":"")+'" onclick="showTab('+n+')" type="button">'+icon(m.ic,22,{color:"currentColor"})+'<span>'+m.lbl+'</span></button>';
+  });
+  nav.innerHTML=html;
+}
 
 // ═══ TECH MANAGEMENT ═══
 async function loadTechs(){
@@ -2398,9 +2581,15 @@ function renderTdAttachments(ticketId){
   }else if(isAdmin){
     h+='<div style="padding:14px;background:#fafaf8;border:2px dashed #e5e5dc;border-radius:10px;color:var(--i3);font-size:12px;text-align:center;margin-bottom:10px">No attachments yet — click below to add</div>';
   }
-  // Admin upload area
-  if(isAdmin){
-    h+='<button type="button" onclick="document.getElementById(\'tdFileInput_'+ticketId+'\').click()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;margin-bottom:8px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer"><span style="font-size:18px">📎</span><span>Add Photos / PDFs</span></button>';
+  // Permission: admin always, OR a tech who is assigned to this ticket
+  var _t=[...active,...done].find(function(x){return x.id===ticketId});
+  var _canUp=isAdmin||(currentUser&&currentUser.role==="tech"&&_t&&(_t.techs||[]).includes(currentUser.name));
+  if(_canUp){
+    h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+    h+='<button type="button" class="cam-btn" style="flex:1;min-width:140px" onclick="document.getElementById(\'tdCamInput_'+ticketId+'\').click()">'+icon("camera",17,{color:"#fff"})+'<span>Take Photo</span></button>';
+    h+='<button type="button" onclick="document.getElementById(\'tdFileInput_'+ticketId+'\').click()" style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#fafaf8;border:2px dashed #c8c8c0;border-radius:10px;font-size:13px;font-weight:700;color:var(--ac);cursor:pointer">'+icon("paperclip",16,{color:"var(--ac)"})+'<span>Add Files</span></button>';
+    h+='</div>';
+    h+='<input type="file" id="tdCamInput_'+ticketId+'" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0" onchange="tdAddMedia(\''+ticketId+'\',event)">';
     h+='<input type="file" id="tdFileInput_'+ticketId+'" accept="image/*,application/pdf,.pdf" multiple style="position:absolute;left:-9999px;opacity:0" onchange="tdAddMedia(\''+ticketId+'\',event)">';
     h+='<div id="tdUploadProg_'+ticketId+'" style="display:none;height:6px;background:#eee;border-radius:3px;margin:0 0 6px;overflow:hidden"><div id="tdUploadBar_'+ticketId+'" style="height:100%;width:0;background:var(--ac);transition:width .2s"></div></div>';
     h+='<div id="tdUploadStatus_'+ticketId+'" style="font-size:11px;color:var(--i3);margin-bottom:10px;min-height:14px"></div>';
@@ -2419,7 +2608,10 @@ function tdSetStatus(ticketId,msg,color){
 }
 
 async function tdAddMedia(ticketId,e){
-  if(!isAdmin){toast("Admin only","err");return}
+  // Auth: admin always, OR a tech assigned to this ticket
+  var _tx=[...active,...done].find(function(x){return x.id===ticketId});
+  var _allowed=isAdmin||(currentUser&&currentUser.role==="tech"&&_tx&&(_tx.techs||[]).includes(currentUser.name));
+  if(!_allowed){toast("You can only add photos to your assigned tickets","err");return}
   const files=Array.from(e.target.files);e.target.value="";
   if(!files.length)return;
   if(!db||!ticketId){toast("Cannot upload right now","err");return}
@@ -3107,7 +3299,7 @@ function rndrA(){
   if(isTech){
     pool=pool.filter(t=>(t.techs||[]).includes(currentUser.name));
     document.getElementById("tab1").innerHTML="My Tickets "+(pool.length?`<span class="badge" id="bdg1">${pool.length}</span>`:`<span class="badge" id="bdg1" style="display:none">0</span>`);
-    if(!pool.length){el.innerHTML='<div class="no-tkt"><h3>No tickets</h3></div>';return}
+    if(!pool.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("clipboard-check",28,{color:"#a3a3a3"})+'</div><h3>All caught up</h3><p>No tickets assigned to you right now. New work will show here when dispatch sends it.</p></div>';return}
     const dayMap={};pool.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});
     const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));
     let h="";days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});
@@ -3141,7 +3333,7 @@ function rndrA(){
     });
     canceledHTML+='</div></div>';
   }
-  if(!pool.length&&!techCanceled.length){el.innerHTML='<div class="no-tkt"><h3>No active tickets</h3></div>';return}
+  if(!pool.length&&!techCanceled.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("inbox",28,{color:"#a3a3a3"})+'</div><h3>No active tickets</h3><p>The team is all caught up. Field reports will appear here as techs submit them.</p></div>';return}
   if(!pool.length){el.innerHTML=canceledHTML;return}
   const techMap={};pool.forEach(t=>{const key=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";if(!techMap[key])techMap[key]=[];techMap[key].push(t)});
   const techNames=Object.keys(techMap).sort((a,b)=>{if(a==="Unassigned")return 1;if(b==="Unassigned")return-1;return a.localeCompare(b)});
@@ -3154,7 +3346,7 @@ function rndrD(){
   const el=document.getElementById("cList");
   const q=(document.getElementById("searchDone")||{}).value||"";
   let filtered=q?done.filter(t=>tktMatchesSearch(t,q)):done;
-  if(!filtered.length){el.innerHTML='<div class="no-tkt"><h3>No completed tickets</h3></div>';return}
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("archive",28,{color:"#a3a3a3"})+'</div><h3>No completed tickets</h3><p>Closed tickets will show up here. Use the search above to find one quickly.</p></div>';return}
   const groups={};
   filtered.forEach(t=>{const k=t.date||"0000-00-00";if(!groups[k])groups[k]=[];groups[k].push(t)});
   const sorted=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
@@ -3168,18 +3360,18 @@ function rndrD(){
   el.innerHTML=h;
 }
 // ═══ SERVICE LOG ═══
-function tktMatchesSearch(t,q){if(!q)return true;const s=q.toLowerCase();return(t.customer||"").toLowerCase().includes(s)||(t.phone||"").toLowerCase().includes(s)||(t.address||"").toLowerCase().includes(s)||(t.city||"").toLowerCase().includes(s)||(t.zip||"").includes(s)||(t.zone||"").toLowerCase().includes(s)||(t.notes||"").toLowerCase().includes(s)||((t.techs||[]).join(" ")).toLowerCase().includes(s)||((t.workTypes||[]).join(" ")).toLowerCase().includes(s)}
+function tktMatchesSearch(t,q){if(!q)return true;const s=q.toLowerCase();const qDigits=q.replace(/\D/g,"");if(qDigits.length>=3){const phD=(t.phone||"").replace(/\D/g,"");const ph2D=(t.phone2||"").replace(/\D/g,"");if((phD&&phD.includes(qDigits))||(ph2D&&ph2D.includes(qDigits)))return true}return(t.customer||"").toLowerCase().includes(s)||(t.phone||"").toLowerCase().includes(s)||(t.address||"").toLowerCase().includes(s)||(t.city||"").toLowerCase().includes(s)||(t.zip||"").includes(s)||(t.zone||"").toLowerCase().includes(s)||(t.notes||"").toLowerCase().includes(s)||((t.techs||[]).join(" ")).toLowerCase().includes(s)||((t.workTypes||[]).join(" ")).toLowerCase().includes(s)}
 let slogPreviewId=null;
 function rndrSlog(){
   const slDt=document.getElementById("slDate");if(slDt&&!slDt.value)slDt.value=fmtD(new Date());
   const el=document.getElementById("slogList");const sf=document.getElementById("slogFilter");
   const q=(document.getElementById("searchSlog")||{}).value||"";
   const all=[...active,...done].filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled").filter(t=>tktMatchesSearch(t,q));
-  if(!all.length){el.innerHTML='<div class="no-tkt"><h3>No tickets found</h3></div>';sf.innerHTML="";return}
+  if(!all.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"#a3a3a3"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
   const zones=new Set();all.forEach(t=>{zones.add(t.zone||"No Zone")});
   sf.innerHTML=["all",...[...zones].sort()].map(z=>`<button class="${slogZone===z?"on":""}" onclick="slogZone='${z}';rndrSlog()">${z==="all"?"All Zones":z}</button>`).join("");
   const filtered=slogZone==="all"?all:all.filter(t=>(t.zone||"No Zone")===slogZone);
-  if(!filtered.length){el.innerHTML='<div class="no-tkt"><h3>No tickets in this zone</h3></div>';return}
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("map-pin-off",28,{color:"#a3a3a3"})+'</div><h3>Nothing in this zone</h3><p>No unassigned tickets in this zone right now. Try another zone above or check back later.</p></div>';return}
   const byZone={};filtered.forEach(t=>{const z=t.zone||"No Zone";if(!byZone[z])byZone[z]=[];byZone[z].push(t)});
   Object.values(byZone).forEach(arr=>arr.sort((a,b)=>(a.date||"").localeCompare(b.date||"")));
   let h='';
@@ -3969,6 +4161,7 @@ else if(calView==="team"){const sel=calSelectedDate||today;const d=new Date(sel+
 // In DAY view, calGrid already renders the tickets — adding calDetail would render them twice.
 if((calView==="month"||calView==="week")&&calSelectedDate)rndrCalDetail(calSelectedDate,allTkts);else document.getElementById("calDetail").style.display="none";
 rndrCalQueue();rndrCcReminders();
+if(typeof rndrAttnPanel==="function")rndrAttnPanel();
 if(typeof updateTodoVisibility==="function")updateTodoVisibility();}
 function rndrCalMonth(byDate,today){const firstDay=new Date(calYear,calMonth,1).getDay();const daysInMonth=new Date(calYear,calMonth+1,0).getDate();const daysInPrev=new Date(calYear,calMonth,0).getDate();const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=firstDay-1;i>=0;i--){const d=daysInPrev-i;const pm=calMonth===0?11:calMonth-1;const py=calMonth===0?calYear-1:calYear;const ds=py+"-"+String(pm+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,true)}for(let d=1;d<=daysInMonth;d++){const ds=calYear+"-"+String(calMonth+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,false)}const totalCells=firstDay+daysInMonth;const remaining=totalCells%7===0?0:7-(totalCells%7);for(let d=1;d<=remaining;d++){const nm=calMonth===11?0:calMonth+1;const ny=calMonth===11?calYear+1:calYear;const ds=ny+"-"+String(nm+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");h+=calDayCell(d,ds,byDate[ds]||[],today,true)}document.getElementById("calGrid").innerHTML=h}
 function calDayCell(d,ds,tkts,today,isOther){
@@ -3997,7 +4190,27 @@ function calDayCell(d,ds,tkts,today,isOther){
   return '<div class="cal-day'+(isToday?" today":"")+(isSel?" selected":"")+(isOther?" other":"")+'" onclick="calSelectDay(\''+ds+'\')" ondragover="event.preventDefault();this.classList.add(\'drop-over\')" ondragleave="this.classList.remove(\'drop-over\')" ondrop="calDropOnDay(event,\''+ds+'\')"><div class="dn">'+d+'</div><div class="cal-events">'+events+'</div></div>';
 }
 function rndrCalWeek(sun,byDate,today){const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=0;i<7;i++){const dt=new Date(sun);dt.setDate(sun.getDate()+i);const ds=fmtD(dt);h+=calDayCell(dt.getDate(),ds,byDate[ds]||[],today,false)}document.getElementById("calGrid").innerHTML=h}
-function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),#d4772c);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div style="padding:40px;text-align:center;color:var(--i3);border:2px dashed var(--ln);border-radius:12px">No tickets for this day<br><span style="font-size:11px;opacity:.6">Drop a ticket here to schedule it</span></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
+function dayProgressHTML(tkts){
+  if(!tkts||!tkts.length)return "";
+  var done=0,canceled=0,needCC=0,repeats=0,paid=0;
+  tkts.forEach(function(t){
+    if(t.status==="canceled")canceled++;
+    else if(t.status==="done"||t.status==="complete")done++;
+    if(t.status!=="canceled"){
+      if(t.ccRequested&&!t.ccOnFile)needCC++;
+      if(t.isRepeat)repeats++;
+      if(t.paid)paid++;
+    }
+  });
+  var active=tkts.length-canceled;
+  var pct=active?Math.round((done/active)*100):0;
+  var stats='<span class="dp-stat"><b>'+done+'</b> of <b>'+active+'</b> done</span>';
+  if(needCC)stats+='<span class="dp-sep">·</span><span class="dp-stat dp-warn">'+needCC+' need CC</span>';
+  if(repeats)stats+='<span class="dp-sep">·</span><span class="dp-stat dp-danger">'+repeats+' repeat</span>';
+  if(canceled)stats+='<span class="dp-sep">·</span><span class="dp-stat">'+canceled+' canceled</span>';
+  return '<div class="day-progress">'+stats+'<div class="dp-bar"><div class="dp-fill" style="width:'+pct+'%"></div></div></div>';
+}
+function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';h+=dayProgressHTML(tkts);if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),#d4772c);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div class="empty-state"><div class="es-ico">'+icon("calendar-days",28,{color:"#a3a3a3"})+'</div><h3>No tickets for this day</h3><p>Drop a ticket here to schedule it, or pick another day from the calendar.</p></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
 // Collapsed-state per-tech for the mobile accordion layout. Persists across
 // re-renders within the session so toggling one section doesn't reset others.
 let _calTeamCollapsed=new Set();
@@ -4009,10 +4222,61 @@ function calToggleTeamSection(techName){
   const col=document.getElementById("mtCol_"+safe);
   if(col)col.classList.toggle("collapsed");
 }
+// ═══ HEAT MAP — 7-day capacity per technician ═══
+// Renders a grid: rows=techs, cols=next 7 days. Color intensity scales with ticket count.
+// Click a cell to jump to that tech×day in the Day view.
+function heatmapHTML(allTkts,centerDate){
+  // Build a 7-day window centered on the selected date (3 before, selected, 3 after)
+  // Actually simpler: 7 days STARTING from selected date — feels more "look ahead"
+  var start=new Date((centerDate||fmtD(new Date()))+"T12:00:00");
+  var days=[];
+  for(var i=0;i<7;i++){var d=new Date(start);d.setDate(start.getDate()+i);days.push(fmtD(d))}
+  var todayStr=fmtD(new Date());
+  // Tally: counts[tech][dateStr] = number of non-canceled tickets
+  var counts={};
+  TECHS.forEach(function(tn){counts[tn]={};days.forEach(function(d){counts[tn][d]=0})});
+  allTkts.forEach(function(t){
+    if(t.status==="canceled")return;
+    if(!t.date||!days.includes(t.date))return;
+    (t.techs||[]).forEach(function(tn){if(counts[tn])counts[tn][t.date]++});
+  });
+  // Determine heat thresholds — typical day in this shop is 1-3 stops/tech
+  function level(n){if(!n)return"l0";if(n<=1)return"l1";if(n<=2)return"l2";if(n<=3)return"l3";if(n<=4)return"l4";return"l5"}
+  var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var h='<div class="heatmap-wrap">';
+  h+='<div class="heatmap-hdr"><div class="heatmap-title">'+icon("activity",14,{color:"var(--i1)"})+'Capacity — Next 7 Days</div></div>';
+  h+='<div class="heatmap-grid">';
+  // Header row (date labels)
+  h+='<div class="hm-row hm-hdr-row"><div class="hm-cell"></div>';
+  days.forEach(function(d){
+    var dt=new Date(d+"T12:00:00");
+    h+='<div class="hm-cell">'+DOW[dt.getDay()]+'<br><span style="font-size:9px;font-weight:600;color:var(--i2)">'+(dt.getMonth()+1)+'/'+dt.getDate()+'</span></div>';
+  });
+  h+='</div>';
+  // Rows (one per tech)
+  TECHS.forEach(function(tn){
+    h+='<div class="hm-row"><div class="hm-tech">'+esc(tn)+'</div>';
+    days.forEach(function(d){
+      var n=counts[tn][d]||0;
+      var cls="hm-cell "+level(n)+(d===todayStr?" today":"");
+      h+='<div class="'+cls+'" onclick="calSelectedDate=\''+d+'\';calView=\'day\';rndrCal()" title="'+esc(tn)+' — '+d+' — '+n+' stop'+(n===1?'':'s')+'">'+(n||"·")+'</div>';
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  // Legend
+  h+='<div class="hm-legend"><span>Light</span><span class="hm-sw l0"></span><span class="hm-sw l1"></span><span class="hm-sw l2"></span><span class="hm-sw l3"></span><span class="hm-sw l4"></span><span class="hm-sw l5"></span><span>Heavy</span><span style="margin-left:auto">Click a cell to jump to that day</span></div>';
+  h+='</div>';
+  return h;
+}
+
 function rndrCalTeam(sel,allTkts){
   const tkts=allTkts.filter(t=>t.date===sel);
   const isTech=currentUser&&currentUser.role==="tech";
-  let h='<div class="mt-cal">';
+  let h='';
+  // Heat map (admin only) — 7-day capacity per technician
+  if(!isTech&&typeof heatmapHTML==="function"){h+=heatmapHTML(allTkts,sel)}
+  h+='<div class="mt-cal">';
   // Helper to render one column (tech or unassigned). Same HTML structure on
   // desktop and mobile — CSS media queries change the layout. Header is always
   // tappable; on desktop the toggle arrow is hidden via CSS.
@@ -4051,7 +4315,8 @@ function rndrCalTeam(sel,allTkts){
 }
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'#fef3c7\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
-function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;let h=`<div class="cal-tkt-mini"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:#dc2626;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='#dc2626'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓ Done":""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return "";if(s==="complete")return '<span class="st-badge st-complete">Submitted</span>';if(s==="done")return '<span class="st-badge st-done">'+icon("check",10,{color:"#047857"})+'Done</span>';if(s==="canceled")return '<span class="st-badge st-canceled">Canceled</span>';if(s==="reschedule")return '<span class="st-badge st-reschedule">Reschedule</span>';return ""}
+function calTktCard(t){const zone=t.zone||"";const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const fullAddr=(t.address||"")+(t.city?", "+t.city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;let h=`<div class="cal-tkt-mini${stRowClass}"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:#dc2626;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='#dc2626'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket
 async function togglePaid(id,currentlyPaid){
@@ -4159,6 +4424,61 @@ function rndrCcReminders(){
   h+='</div></div>';
   el.innerHTML=h;
 }
+
+// ═══ "NECESITA ATENCIÓN" PANEL — at-a-glance dispatch summary ═══
+let _attnCollapsed=false;
+function attnToggleCollapse(){_attnCollapsed=!_attnCollapsed;rndrAttnPanel()}
+function rndrAttnPanel(){
+  const el=document.getElementById("attnPanel");if(!el)return;
+  // Only admin/organizer dispatch — techs don't need this view
+  if(!currentUser||!(isAdmin||currentUser.role==="organizer")){el.innerHTML="";return}
+  const today=fmtD(new Date());
+  const allTkts=[...active,...done];
+  // Counts that warrant attention
+  const unassigned=allTkts.filter(function(t){
+    return t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled";
+  }).length;
+  const needCC=allTkts.filter(function(t){
+    return t.ccRequested&&!t.ccOnFile&&t.status!=="canceled"&&t.date&&t.date>=today;
+  }).length;
+  const repeats=allTkts.filter(function(t){
+    return t.isRepeat&&t.status!=="canceled"&&t.date&&t.date>=today;
+  }).length;
+  const techCanceled=allTkts.filter(function(t){
+    return t.status==="canceled"&&t.canceledByTech;
+  }).length;
+  const todayCount=allTkts.filter(function(t){
+    return t.date===today&&t.status!=="canceled";
+  }).length;
+  const total=unassigned+needCC+repeats+techCanceled;
+  const isClean=total===0;
+  const cls="attn-panel"+(isClean?" empty":"")+(_attnCollapsed?" attn-collapsed":"");
+  const titleIcon=isClean?icon("check-circle",16,{color:"#047857"}):icon("alert-triangle",16,{color:"#92400e"});
+  const titleTxt=isClean?"Everything looks good":"Needs attention";
+  let h='<div class="'+cls+'">';
+  h+='<div class="attn-hdr"><div class="attn-title">'+titleIcon+titleTxt+'</div>';
+  h+='<button class="attn-collapse" onclick="attnToggleCollapse()" type="button" title="'+(_attnCollapsed?"Expand":"Collapse")+'">'+(_attnCollapsed?"▾":"▴")+'</button></div>';
+  h+='<div class="attn-grid">';
+  // Today's stops — informational, navigates to Day view of today
+  h+='<a class="attn-cell'+(todayCount===0?" ok":"")+'" onclick="calSelectedDate=\''+today+'\';calView=\'day\';rndrCal()" style="cursor:pointer">';
+  h+='<span class="attn-cell-num">'+todayCount+'</span><span class="attn-cell-lbl">'+icon("calendar",11,{color:"currentColor"})+' Today\'s stops</span></a>';
+  // Unassigned — links to Service Log
+  h+='<a class="attn-cell'+(unassigned===0?" ok":"")+'" onclick="showTab(5)" style="cursor:pointer">';
+  h+='<span class="attn-cell-num">'+unassigned+'</span><span class="attn-cell-lbl">'+icon("user-x",11,{color:"currentColor"})+' Unassigned</span></a>';
+  // Need CC — informational (filter would require extra work)
+  h+='<div class="attn-cell'+(needCC===0?" ok":"")+'">';
+  h+='<span class="attn-cell-num">'+needCC+'</span><span class="attn-cell-lbl">'+icon("credit-card",11,{color:"currentColor"})+' Need CC</span></div>';
+  // Repeats — informational
+  h+='<div class="attn-cell'+(repeats===0?" ok":"")+'">';
+  h+='<span class="attn-cell-num">'+repeats+'</span><span class="attn-cell-lbl">'+icon("rotate-ccw",11,{color:"currentColor"})+' Repeats ahead</span></div>';
+  // Tech canceled — links to Daily where they're shown
+  if(techCanceled>0){
+    h+='<a class="attn-cell" onclick="showTab(1)" style="cursor:pointer">';
+    h+='<span class="attn-cell-num">'+techCanceled+'</span><span class="attn-cell-lbl">'+icon("ban",11,{color:"currentColor"})+' Tech canceled</span></a>';
+  }
+  h+='</div></div>';
+  el.innerHTML=h;
+}
 async function calSaveAssign(docId){
   if(!db)return;
   var techs=[];var prefix="qPill_"+docId+"_";
@@ -4232,14 +4552,29 @@ function openTktDetail(id){
   }
   h+='</div>';
   h+='</div>';
-  // Quick contact actions: Call + pre-written "On the way" SMS
+  // Quick contact actions: Call + pre-written SMS templates
   var _phClean=(t.phone||'').replace(/[^0-9+]/g,'');
   if(t.phone&&_phClean){
     var _smsTech=(t.techs&&t.techs.length)?t.techs[0]:(currentUser?currentUser.name:'');
-    var _smsBody="Hi, this is "+_smsTech+" with Aspen Spas. I'm on my way to your appointment and should be there shortly. Thank you!";
-    h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px">';
+    var _signoff=" — "+_smsTech+", Aspen Spas";
+    var _tpl={
+      onway:"Hi, this is "+_smsTech+" with Aspen Spas. I'm on my way to your appointment and should be there shortly. Thank you!",
+      late:"Hi, this is "+_smsTech+" with Aspen Spas. Running about 15 minutes late to your appointment — sorry for the delay. See you soon!",
+      noans:"Hi, this is "+_smsTech+" with Aspen Spas. I'm at your door but no answer. Please call me back when you can so we can get your service done. Thanks!",
+      done:"Hi, this is "+_smsTech+" with Aspen Spas. All done at your spa! Invoice will be emailed shortly. Let us know if you have any questions. Thanks for choosing Aspen Spas!",
+      resched:"Hi, this is "+_smsTech+" with Aspen Spas. We need to reschedule your appointment — I'll have the office reach out shortly with new options. Sorry for the inconvenience!"
+    };
+    function _smsHref(b){return 'sms:'+_phClean+'?&body='+encodeURIComponent(b)}
+    h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">';
     h+='<a href="tel:'+_phClean+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
-    h+='<a href="sms:'+_phClean+'?&body='+encodeURIComponent(_smsBody)+'" style="flex:1;min-width:140px;padding:12px 14px;background:#16a34a;color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
+    h+='<a href="'+_smsHref(_tpl.onway)+'" style="flex:1;min-width:140px;padding:12px 14px;background:#16a34a;color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
+    h+='</div>';
+    // Secondary template buttons (smaller, less prominent)
+    h+='<div class="sms-tpl-row">';
+    h+='<a class="sms-tpl late" href="'+_smsHref(_tpl.late)+'" title="Send: Running 15 min late">'+icon("clock",13,{color:"currentColor"})+'Running Late</a>';
+    h+='<a class="sms-tpl noans" href="'+_smsHref(_tpl.noans)+'" title="Send: At your door, no answer">'+icon("door-closed",13,{color:"currentColor"})+'No Answer</a>';
+    h+='<a class="sms-tpl done" href="'+_smsHref(_tpl.done)+'" title="Send: Job complete">'+icon("check-circle",13,{color:"currentColor"})+'Job Done</a>';
+    h+='<a class="sms-tpl resched" href="'+_smsHref(_tpl.resched)+'" title="Send: Need to reschedule">'+icon("calendar-x",13,{color:"currentColor"})+'Reschedule</a>';
     h+='</div>';
   }
   // Editable fields
@@ -4294,8 +4629,11 @@ function openTktDetail(id){
   h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
   // Attachments section (rendered separately so it can re-render in place after upload/delete)
   h+='<div id="tdAttSection_'+t.id+'"></div>';
-  h+='<div class="lbl">Notes / Updates</div>';
+  h+='<div class="lbl" style="display:flex;align-items:center;justify-content:space-between"><span>Notes / Updates</span><span style="font-size:10px;color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Tap mic to dictate</span></div>';
+  h+='<div class="notes-with-mic">';
   h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
+  h+='<button type="button" class="mic-btn" id="micBtn_tktDetailNotes" onclick="voiceToggle(\'tktDetailNotes\')" title="Dictate notes" aria-label="Voice input">'+icon("mic",17,{color:"currentColor"})+'</button>';
+  h+='</div>';
   h+='<div style="font-size:10px;color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
   // Actions
   h+='<div id="tktDetailActionsWrap" style="margin-top:16px;padding-top:16px;border-top:2px solid var(--ln)"><div class="lbl">Actions</div><div id="tktDetailActions" style="display:flex;gap:8px;flex-wrap:wrap">';
@@ -4575,6 +4913,10 @@ async function openRouteMap(dateStr){
 
   // Open modal & show loading state
   document.getElementById("routeMapBg").classList.add("open");
+  // Reset optimize state for fresh open
+  _routeOriginalOrder=null;_routeOptimized=false;
+  var _ostat=document.getElementById("routeMapOptStatus");if(_ostat)_ostat.innerHTML="";
+  var _orb=document.getElementById("routeMapResetBtn");if(_orb)_orb.style.display="none";
   const dateLabel=new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
   document.getElementById("routeMapTitle").textContent="Route — "+dateLabel;
   document.getElementById("routeMapStatus").innerHTML=icon("map-pin",13)+" Looking up addresses…";
@@ -4672,9 +5014,73 @@ function _focusStop(i){
   _routeMapInstance.setView([s.lat,s.lng],15);
 }
 
+// ═══ ROUTE OPTIMIZATION (Nearest Neighbor on _routeMapStops) ═══
+let _routeOptimized=false;
+let _routeOriginalOrder=null; // snapshot of pre-optimized order for reset
+function _haversineMi(a,b){
+  // Distance in miles between two {lat,lng} points
+  var R=3958.8;
+  var toRad=function(d){return d*Math.PI/180};
+  var dLat=toRad(b.lat-a.lat),dLng=toRad(b.lng-a.lng);
+  var s=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
+}
+function _routeTotalMi(stops){
+  var total=0;
+  for(var i=1;i<stops.length;i++){if(stops[i-1].lat&&stops[i].lat)total+=_haversineMi(stops[i-1],stops[i])}
+  return total;
+}
+function optimizeRouteOrder(){
+  if(!_routeMapStops||!_routeMapStops.length){toast("No stops to optimize","warn");return}
+  // Separate stops with valid coords from those without
+  var withCoords=_routeMapStops.filter(function(s){return s.lat&&s.lng});
+  var noCoords=_routeMapStops.filter(function(s){return!s.lat||!s.lng});
+  if(withCoords.length<3){toast("Need at least 3 located stops to optimize","warn");return}
+  // Snapshot for reset
+  if(!_routeOriginalOrder)_routeOriginalOrder=_routeMapStops.slice();
+  var beforeMi=_routeTotalMi(withCoords);
+  // Nearest-neighbor starting from the first stop (preserves the natural starting point — earliest arrival)
+  var remaining=withCoords.slice();
+  var ordered=[remaining.shift()];
+  while(remaining.length){
+    var last=ordered[ordered.length-1];
+    var bestIdx=0,bestDist=Infinity;
+    for(var i=0;i<remaining.length;i++){
+      var d=_haversineMi(last,remaining[i]);
+      if(d<bestDist){bestDist=d;bestIdx=i}
+    }
+    ordered.push(remaining.splice(bestIdx,1)[0]);
+  }
+  var afterMi=_routeTotalMi(ordered);
+  // Re-attach stops without coords at the end (still drivable, just not optimized)
+  _routeMapStops=ordered.concat(noCoords);
+  _routeOptimized=true;
+  // Update UI
+  var stEl=document.getElementById("routeMapOptStatus");
+  if(stEl){
+    var saved=Math.max(0,beforeMi-afterMi);
+    var pct=beforeMi>0?Math.round((saved/beforeMi)*100):0;
+    stEl.innerHTML='<span class="opt-applied-badge">Optimized</span> '+afterMi.toFixed(1)+' mi'+(saved>0.1?' ('+pct+'% shorter, saves '+saved.toFixed(1)+' mi)':'');
+  }
+  var rb=document.getElementById("routeMapResetBtn");if(rb)rb.style.display="";
+  _renderRouteMap();_renderRouteStopsList();
+  toast("Route optimized — "+afterMi.toFixed(1)+" mi total");
+}
+function resetRouteOrder(){
+  if(!_routeOriginalOrder)return;
+  _routeMapStops=_routeOriginalOrder.slice();
+  _routeOriginalOrder=null;_routeOptimized=false;
+  var stEl=document.getElementById("routeMapOptStatus");if(stEl)stEl.innerHTML="";
+  var rb=document.getElementById("routeMapResetBtn");if(rb)rb.style.display="none";
+  _renderRouteMap();_renderRouteStopsList();
+  toast("Reset to arrival-time order");
+}
+
 function closeRouteMap(){
   document.getElementById("routeMapBg").classList.remove("open");
   if(_routeMapInstance){try{_routeMapInstance.remove()}catch(e){}_routeMapInstance=null}
+  // Reset optimization state on close so next opening starts fresh
+  _routeOriginalOrder=null;_routeOptimized=false;
 }
 
 function openRouteInExternalMaps(provider){
@@ -4700,6 +5106,62 @@ function openRouteInExternalMaps(provider){
 }
 async function dtUpdateCC(id){if(!db)return;try{var upd={ccOnFile:document.getElementById("dtCcFile").checked,ccRequested:document.getElementById("dtCcReq").checked};var rp=document.getElementById("dtRepeat");if(rp)upd.isRepeat=rp.checked;var ck=document.getElementById("dtCheck");if(ck)upd.payCheck=ck.checked;var cr=document.getElementById("dtCredit");if(cr)upd.payCredit=cr.checked;await db.collection("tickets").doc(id).update(upd);toast("CC updated ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
 async function saveTktNotes(id){if(!db)return;try{await db.collection("tickets").doc(id).update({notes:document.getElementById("tktDetailNotes").value});toast("Saved ✓")}catch(e){toast("Error","err")}}
+
+// ═══ VOICE-TO-TEXT (WebSpeech API) ═══
+// Single-instance state — toggling on a different field stops the current session.
+var _voiceSt={recognition:null,targetId:null,initial:""};
+function _voiceSupported(){return("SpeechRecognition" in window)||("webkitSpeechRecognition" in window)}
+function voiceStop(){
+  if(!_voiceSt.recognition)return;
+  try{_voiceSt.recognition.stop()}catch(_e){}
+  _voiceSt.recognition=null;
+  if(_voiceSt.targetId){
+    var b=document.getElementById("micBtn_"+_voiceSt.targetId);
+    if(b)b.classList.remove("recording");
+    var ta=document.getElementById(_voiceSt.targetId);
+    if(ta&&typeof ta.blur==="function")ta.blur(); // trigger auto-save
+  }
+  _voiceSt.targetId=null;_voiceSt.initial="";
+}
+function voiceToggle(targetId){
+  if(!_voiceSupported()){toast("Voice input not supported on this browser","warn");return}
+  // If already recording into the same target, stop. Different target → switch.
+  if(_voiceSt.recognition){
+    var wasSame=_voiceSt.targetId===targetId;
+    voiceStop();
+    if(wasSame)return;
+  }
+  var ta=document.getElementById(targetId);if(!ta)return;
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var r=new SR();
+  r.continuous=true;r.interimResults=true;r.lang="en-US";
+  _voiceSt.recognition=r;_voiceSt.targetId=targetId;_voiceSt.initial=ta.value;
+  var btn=document.getElementById("micBtn_"+targetId);if(btn)btn.classList.add("recording");
+  var finalText="";
+  r.onresult=function(ev){
+    var interim="";
+    for(var i=ev.resultIndex;i<ev.results.length;i++){
+      var tr=ev.results[i][0].transcript;
+      if(ev.results[i].isFinal)finalText+=tr;
+      else interim+=tr;
+    }
+    var sep=_voiceSt.initial&&!/\s$/.test(_voiceSt.initial)?" ":"";
+    ta.value=_voiceSt.initial+sep+finalText+interim;
+  };
+  r.onerror=function(e){
+    var msg=e.error||"voice error";
+    if(msg==="not-allowed")toast("Microphone permission denied","err");
+    else if(msg==="no-speech")toast("No speech detected","warn");
+    else toast("Voice: "+msg,"warn");
+    voiceStop();
+  };
+  r.onend=function(){
+    // Persist the final transcript (already in ta.value via onresult)
+    voiceStop();
+  };
+  try{r.start();toast("Listening… tap mic again to stop")}
+  catch(_e){toast("Couldn't start voice","err");voiceStop()}
+}
 async function saveTktSpaDesc(id){if(!db)return;try{await db.collection("tickets").doc(id).update({spaDesc:document.getElementById("tktDetailSpaDesc").value});toast("Spa desc saved ✓")}catch(e){toast("Error","err")}}
 let _backToTktId=null;
 function startTicketFrom(id){
@@ -5039,6 +5501,42 @@ function refreshAll(){
   if(document.getElementById("pg5").classList.contains("show"))rndrSlog();
   if(document.getElementById("pg6").classList.contains("show"))rndrCust();
 }
+
+// ═══ KEYBOARD SHORTCUTS (desktop power-user nav) ═══
+function showKbdHint(){
+  var h=document.getElementById("kbdHint");if(!h)return;
+  h.innerHTML='<kbd>/</kbd> search · <kbd>n</kbd> field report · <kbd>c</kbd> calendar · <kbd>d</kbd> daily · <kbd>?</kbd> hints';
+  h.classList.add("show");
+  clearTimeout(showKbdHint._t);
+  showKbdHint._t=setTimeout(function(){h.classList.remove("show")},3500);
+}
+document.addEventListener("keydown",function(e){
+  // Ignore when user is typing in form fields
+  var tag=(e.target&&e.target.tagName)||"";
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
+  if(e.target&&e.target.isContentEditable)return;
+  // Ignore if any modifier is pressed (don't hijack browser shortcuts)
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  // Only when user is logged in
+  if(!currentUser)return;
+  switch(e.key){
+    case "/":
+      var ids=["searchActive","searchDone","searchCal","searchSlog"];
+      for(var i=0;i<ids.length;i++){
+        var inp=document.getElementById(ids[i]);
+        if(inp&&inp.offsetParent!==null){e.preventDefault();inp.focus();if(typeof inp.select==="function")inp.select();return}
+      }
+      break;
+    case "n":e.preventDefault();showTab(0);break;
+    case "c":e.preventDefault();showTab(4);break;
+    case "d":
+      var t1=document.getElementById("tab1");
+      if(t1&&!t1.classList.contains("hidden")){e.preventDefault();showTab(1)}
+      break;
+    case "?":e.preventDefault();showKbdHint();break;
+  }
+});
+
 init();</script>
 </body>
 </html>
