@@ -766,242 +766,6 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .opt-applied-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#ede9fe;color:#6d28d9;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-left:6px}
 
 
-/* ═══════════════════════════════════════════════════════════
-   GLASSMORPHISM THEME — Monarch-inspired translucent UI
-   This layer overrides the base theme. To revert: remove
-   everything between the GLASS-START and GLASS-END markers.
-   ═══════════════════════════════════════════════════════════ */
-/* GLASS-START */
-
-/* ── Background: subtle neutral gray that gives glass enough contrast ── */
-body{
-  background:
-    radial-gradient(ellipse at top left,#eef0f3 0%,transparent 60%),
-    radial-gradient(ellipse at bottom right,#e9ebee 0%,transparent 65%),
-    linear-gradient(180deg,#f0f1f4 0%,#e9eaee 100%) !important;
-  background-attachment:fixed !important;
-  min-height:100vh;
-}
-
-/* ── Header (logo + brand strip) ── */
-.hdr,.brand,header{
-  background:rgba(255,255,255,.6) !important;
-  backdrop-filter:saturate(180%) blur(20px);
-  -webkit-backdrop-filter:saturate(180%) blur(20px);
-  border-bottom:1px solid rgba(255,255,255,.6) !important;
-}
-
-/* ── Tabs row: frosted glass strip ── */
-.tabs{
-  background:rgba(255,255,255,.6) !important;
-  backdrop-filter:saturate(180%) blur(18px);
-  -webkit-backdrop-filter:saturate(180%) blur(18px);
-  border-bottom:1px solid rgba(255,255,255,.5) !important;
-}
-.tab{background:transparent !important}
-.tab.on{background:rgba(255,255,255,.5) !important;color:var(--ac)}
-
-/* ── Generic cards (.card, .gz, .zone-section) ── */
-.card,.gz,.zone-section{
-  background:rgba(255,255,255,.7) !important;
-  backdrop-filter:saturate(160%) blur(14px);
-  -webkit-backdrop-filter:saturate(160%) blur(14px);
-  border:1px solid rgba(255,255,255,.85) !important;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,.8) inset,
-    0 4px 20px rgba(50,55,65,.06),
-    0 1px 3px rgba(0,0,0,.04) !important;
-}
-
-/* ── Modal backdrop + content ── */
-.mbg{
-  background:rgba(20,25,35,.45) !important;
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-}
-.modal,.mt{
-  background:rgba(255,255,255,.85) !important;
-  backdrop-filter:saturate(180%) blur(24px);
-  -webkit-backdrop-filter:saturate(180%) blur(24px);
-  border:1px solid rgba(255,255,255,.9) !important;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,.95) inset,
-    0 12px 40px rgba(30,35,45,.18),
-    0 4px 12px rgba(0,0,0,.08) !important;
-}
-
-/* ── Search bar ── */
-.search-wrap{
-  background:rgba(255,255,255,.7) !important;
-  backdrop-filter:saturate(160%) blur(14px);
-  -webkit-backdrop-filter:saturate(160%) blur(14px);
-  border:1px solid rgba(255,255,255,.8) !important;
-  border-radius:14px !important;
-}
-.search-bar{background:transparent !important}
-
-/* ── Today's Capacity panel ── */
-.cap-panel{
-  background:rgba(255,255,255,.7) !important;
-  backdrop-filter:saturate(160%) blur(16px);
-  -webkit-backdrop-filter:saturate(160%) blur(16px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-.cap-card{
-  background:rgba(255,255,255,.65) !important;
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-.cap-card.all-done{background:rgba(220,252,231,.7) !important;border-color:rgba(134,239,172,.7) !important}
-.cap-card.overload{background:rgba(254,226,226,.7) !important;border-color:rgba(252,165,165,.7) !important}
-
-/* ── Attention panel (Calendar) ── */
-.attn-panel{
-  background:linear-gradient(135deg,rgba(255,251,235,.75) 0%,rgba(254,243,199,.7) 100%) !important;
-  backdrop-filter:saturate(160%) blur(14px);
-  -webkit-backdrop-filter:saturate(160%) blur(14px);
-  border:1px solid rgba(252,211,77,.5) !important;
-}
-.attn-panel.empty{background:rgba(240,253,244,.75) !important;border-color:rgba(134,239,172,.5) !important}
-.attn-cell{
-  background:rgba(255,255,255,.75) !important;
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
-}
-
-/* ── Calendar Team view columns ── */
-.mt-cal{background:transparent}
-.mt-col{
-  background:rgba(255,255,255,.6) !important;
-  backdrop-filter:saturate(160%) blur(12px);
-  -webkit-backdrop-filter:saturate(160%) blur(12px);
-  border:1px solid rgba(255,255,255,.75) !important;
-}
-
-/* ── Day-view ticket cards (cal-tkt-mini) ── */
-.cal-tkt-mini{
-  background:rgba(255,255,255,.78) !important;
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.85) !important;
-}
-
-/* ── Day view header / day-progress ── */
-.day-progress{
-  background:rgba(255,255,255,.65) !important;
-  backdrop-filter:saturate(160%) blur(12px);
-  -webkit-backdrop-filter:saturate(160%) blur(12px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-
-/* ── Service Log zone cards / customer cards ── */
-.zone-card-item,.cust-card,.cc-card{
-  background:rgba(255,255,255,.72) !important;
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-
-/* ── Floating to-do widget ── */
-.todo-wrap{
-  background:rgba(255,255,255,.85) !important;
-  backdrop-filter:saturate(180%) blur(20px);
-  -webkit-backdrop-filter:saturate(180%) blur(20px);
-  border:1px solid rgba(255,255,255,.9) !important;
-  box-shadow:0 8px 32px rgba(30,35,45,.18) !important;
-}
-
-/* ── Bottom nav (mobile) ── */
-.bottom-nav{
-  background:rgba(255,255,255,.78) !important;
-  backdrop-filter:saturate(180%) blur(24px);
-  -webkit-backdrop-filter:saturate(180%) blur(24px);
-}
-
-/* ── Tech management cards ── */
-.usr-card{
-  background:rgba(255,255,255,.68) !important;
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-
-/* ── ZIP section sub-tab content ── */
-.zip-stat,.zip-rcard,.cap-card{
-  background:rgba(255,255,255,.65) !important;
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-
-/* ── ZIP table ── */
-.zip-table th{background:rgba(250,250,250,.55) !important}
-.zip-table tr:hover{background:rgba(255,255,255,.5) !important}
-
-/* ── ZIP drop zone (import area) ── */
-.zip-drop{
-  background:rgba(255,255,255,.5) !important;
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:2px dashed rgba(255,255,255,.8) !important;
-}
-.zip-drop:hover,.zip-drop.over{
-  background:rgba(255,247,235,.7) !important;
-  border-color:var(--ac) !important;
-}
-
-/* ── Inputs: keep solid white for readability (don't translucent these) ── */
-input[type=text],input[type=tel],input[type=email],input[type=number],
-input[type=date],input[type=time],input[type=password],input[type=search],
-textarea,select{
-  background:rgba(255,255,255,.92) !important;
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
-}
-
-/* ── Login screen ── */
-#loginScreen{
-  background:linear-gradient(180deg,#f0f1f4 0%,#e3e5e9 100%) !important;
-}
-.login-card{
-  background:rgba(255,255,255,.8) !important;
-  backdrop-filter:saturate(180%) blur(28px);
-  -webkit-backdrop-filter:saturate(180%) blur(28px);
-  border:1px solid rgba(255,255,255,.95) !important;
-  box-shadow:0 16px 50px rgba(30,35,45,.18) !important;
-}
-
-/* ── Tabs filter row inside calendar ── */
-.cal-tech-pill{
-  background:rgba(255,255,255,.65) !important;
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  border:1.5px solid rgba(255,255,255,.8) !important;
-}
-
-/* ── Slog zone filter pills ── */
-.slog-filter button{
-  background:rgba(255,255,255,.65) !important;
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
-  border:1px solid rgba(255,255,255,.8) !important;
-}
-
-/* ── Toasts: keep visible on top of glass ── */
-.toast{
-  background:rgba(20,25,35,.85) !important;
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  border:1px solid rgba(255,255,255,.15);
-}
-
-/* ── Reduce motion preference: drop blur (perf on weak devices) ── */
-@media (prefers-reduced-motion:reduce){
-  *{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
-}
-
-/* GLASS-END */
 
 </style>
 </head>
@@ -1030,7 +794,7 @@ textarea,select{
 </div>
 <div class="hdr"><img src="data:image/png;base64,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" alt="Aspen Spas" class="hdr-logo"><button class="lock-btn" id="lockBtn" onclick="toggleAdmin()"><span class="lucide-mount" data-lucide="lock" data-size="20" data-color="currentColor"></span></button></div>
 <div class="hdr-sub">Service Ticket System</div>
-<div class="tabs" id="tabBar"><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log</div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div></div>
+<div class="tabs" id="tabBar"><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log</div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div><div class="tab hidden" id="tab7" onclick="showTab(7)">Maps</div></div>
 
 <div id="cfgErr" style="display:none"></div>
 
@@ -1356,6 +1120,43 @@ textarea,select{
   <div style="text-align:center;margin-top:20px"><button onclick="logout()" style="padding:12px 28px;background:none;border:1.5px solid var(--r);border-radius:10px;font-size:13px;font-weight:600;color:var(--r);cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="log-out" data-size="14" data-color="var(--r)"></span>Logout</button></div>
 </div>
 
+<!-- ══ MAPS PAGE ══ -->
+<div class="wrap" id="pg7">
+  <h2 style="margin:0 0 6px 0;display:flex;align-items:center;gap:10px"><span class="lucide-mount" data-lucide="map" data-size="22" data-color="var(--ac)"></span>Maps</h2>
+  <p style="color:var(--i3);margin:0 0 18px 0;font-size:14px">Daily routes per technician · Round-trip from Aspen Spas (4609 McRee Ave) · <b style="color:var(--ac)">Admin only</b></p>
+
+  <!-- Driving time summary cards (week / month / total recorded) -->
+  <div id="mapsSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px"></div>
+
+  <!-- Date picker + status -->
+  <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="mapsDate" onchange="mapsLoad()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
+    <button onclick="mapsLoad()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Refresh</button>
+    <button onclick="_mapsBackfillRecent(14)" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Compute driving time for the last 14 days that have assigned tickets but no cached route"><span class="lucide-mount" data-lucide="zap" data-size="13" data-color="var(--ac)"></span>Backfill 14d</button>
+    <div id="mapsStatus" style="font-size:13px;color:var(--i3);flex:1;min-width:200px"></div>
+  </div>
+
+  <!-- Map container -->
+  <div id="mapsMapWrap" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none">
+    <div id="mapsMapContainer" style="height:520px;width:100%"></div>
+    <div id="mapsLegend" style="padding:10px 14px;border-top:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:14px;background:#fafaf8"></div>
+  </div>
+
+  <!-- Per-tech cards for the selected day -->
+  <h3 style="margin:14px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="route" data-size="16" data-color="var(--ac)"></span>Today's Routes</h3>
+  <div id="mapsDailyCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:24px"></div>
+
+  <!-- 14-day driving time trend chart -->
+  <h3 style="margin:24px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="bar-chart-3" data-size="16" data-color="var(--ac)"></span>Last 14 Days · Driving Time</h3>
+  <p style="color:var(--i3);margin:0 0 14px 0;font-size:13px">Where the team's time has been going · Each bar stacks total drive time per tech</p>
+  <div id="mapsTrendChart" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:24px"></div>
+
+  <!-- Per-tech historical archive -->
+  <h3 style="margin:24px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="history" data-size="16" data-color="var(--ac)"></span>Historical Records</h3>
+  <p style="color:var(--i3);margin:0 0 14px 0;font-size:13px">Total miles &amp; time driven by each technician across all recorded dates</p>
+  <div id="mapsHistory"></div>
+</div>
+
 <!-- ══ CALENDAR PAGE ══ -->
 <div class="wrap" id="pg4">
   <div class="cal-wrap">
@@ -1514,8 +1315,7 @@ textarea,select{
   </div>
 </div>
 
-<!-- ══ PIN ══ -->
-<div class="pin-bg" id="pinBg"><div class="pin-box"><h3 style="display:flex;align-items:center;justify-content:center;gap:8px"><span class="lucide-mount" data-lucide="lock" data-size="18"></span>Admin Access</h3><p>Enter PIN to view all tickets</p><input class="pin-input" id="pinIn" type="password" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="····"><div class="pin-err" id="pinErr">Wrong PIN</div><div class="pin-btns"><button class="pin-cancel" onclick="closePin()">Cancel</button><button class="pin-ok" onclick="checkPin()">Unlock</button></div></div></div>
+<!-- PIN modal removed — was legacy from old ADMIN_PIN system, now using currentUser auth -->
 <div class="toast" id="toast"></div>
 
 <!-- ══ CUSTOMER ESTIMATE PAGE (loaded via ?estimate=TOKEN) ══ -->
@@ -1545,9 +1345,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "680308339087",
   appId: "1:680308339087:web:3d18766c4b0e465a1a9bfa"
 };
-const ADMIN_PIN = "5050";
 // Service Manager contact info — used in auto-generated customer SMS when assigning appointments.
-// IMPORTANT: Replace the placeholder phone below with Alberto's actual number.
 const SERVICE_MGR_NAME = "Alberto";
 const SERVICE_MGR_TITLE = "Service Manager";
 const SERVICE_MGR_PHONE = "557-233-7119"; // Alberto's number for customer SMS replies
@@ -1657,7 +1455,7 @@ function gWT(){if(!wHas||!wMod||!wYr)return"rda";if(wYr>5)return"rda";if(wMod===
 //   ES: yrs 1-5 full, >5 none
 //   GS: yr 1 full, yrs 2-5 tc-only, >5 none
 //   VS: yrs 1-3 full, yrs 4-5 none, >5 none
-function gLabWT(){if(!wHas||!wMod||!wYr)return"none";if(wYr>5)return"none";if(wMod==="es")return"full";if(wMod==="gs")return wYr===1?"full":"tc-only";if(wMod==="vs")return wYr<=3?"full":"none";return"none"}
+function gLabWT(){if(!wHas||!wMod||!wYr)return"none";if(wYr>5)return"none";if(wMod==="es")return"full";if(wMod==="gs")return wYr===1?"full":"tc-only";if(wMod==="vs")return wYr===1?"full":"none";return"none"}
 function gPr(p){if(!p||typeof p!=="object")return 0;if(p.c==="Service")return p.p||0;if(typeof visitNum!=="undefined"&&visitNum===4)return 0;const w=gWT();if(w==="full")return 0;if(w==="half")return+(gRet(p)*.5).toFixed(2);return p.p||0}
 function gPC(){const w=gWT();return w==="full"?"c-free":w==="half"?"c-half":"c-rda"}
 // Labor rules:
@@ -1785,6 +1583,7 @@ function upWR(){const e=document.getElementById("wR");if(!wHas&&wHas!==false){e.
 if(wYr>5){e.style.display="block";e.className="w-result rda-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Warranty expired. <b>RDA price</b>.`;return}
 if(w==="full"&&lw==="full"){e.style.display="block";e.className="w-result full-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>✓ 100% warranty. Parts <b>$0</b>. Labor <b>FREE</b>.`}
 else if(w==="full"&&lw==="tc-only"){e.style.display="block";e.className="w-result full-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Parts <b>$0</b>. Labor: <b>TC only</b> (additional hrs warranty).`}
+else if(w==="full"&&lw==="none"){e.style.display="block";e.className="w-result half-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Parts <b>$0</b>. Labor <b>charged in full</b> (TC + hrs).`}
 else if(w==="half"&&lw==="tc-only"){e.style.display="block";e.className="w-result half-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Parts <b>50% Retail</b>. Labor: <b>TC only</b> (additional hrs warranty).`}
 else if(w==="half"){e.style.display="block";e.className="w-result half-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Parts <b>50% Retail</b>.`}
 else{e.style.display="block";e.className="w-result rda-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Warranty expired. <b>RDA price</b>.`}}
@@ -1870,6 +1669,8 @@ function doLogin(){
   updAdmin();
   // Refresh views so tech sees their own tickets, admin sees all
   try{rndrA();rndrD();if(typeof rndrSlog==="function")rndrSlog();if(typeof rndrCal==="function")rndrCal();if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
+  // Background auto-backfill of recent driving routes (admin only) — runs without blocking UI.
+  if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,1500);
   toast(`Welcome, ${currentUser.name}`);
 }
 function logout(){currentUser=null;isAdmin=false;sessionStorage.removeItem("aspUser");document.getElementById("loginScreen").style.display="flex";updAdmin();cancelLogin();renderLoginScreen()}
@@ -1889,6 +1690,7 @@ function updAdmin(){
   document.getElementById("tab5").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
   document.getElementById("tab3").classList.toggle("hidden",!(currentUser&&currentUser.role==="admin"));
   document.getElementById("tab6").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
+  document.getElementById("tab7").classList.toggle("hidden",!(currentUser&&currentUser.role==="admin"));
   if(typeof buildBottomNav==="function")buildBottomNav();
   // Hide tech filter, Team view for techs; To-Do sidebar is ONLY for admin
   const isTechRole=currentUser&&currentUser.role==="tech";
@@ -1925,7 +1727,7 @@ function _applyAdminCollapse(){
     var body=document.getElementById("admin"+o.k+"Body");
     var arr=document.getElementById("admin"+o.k+"Arrow");
     if(!body||!arr)return;
-    var stored=localStorage.getItem("admin"+o.k+"Collapsed");
+    var stored=null;try{stored=localStorage.getItem("admin"+o.k+"Collapsed")}catch(_e){}
     var collapsed=stored===null?o.def:stored!=="0";
     body.style.display=collapsed?"none":"";
     arr.style.transform=collapsed?"rotate(-90deg)":"";
@@ -1938,7 +1740,7 @@ function adminToggleSection(k){
   var nowCollapsed=body.style.display!=="none";
   body.style.display=nowCollapsed?"none":"";
   arr.style.transform=nowCollapsed?"rotate(-90deg)":"";
-  localStorage.setItem("admin"+k+"Collapsed",nowCollapsed?"1":"0");
+  try{localStorage.setItem("admin"+k+"Collapsed",nowCollapsed?"1":"0")}catch(_e){}
 }
 function rndrAdminStats(){
   var techsEl=document.getElementById("adminStatTechs");
@@ -1986,7 +1788,7 @@ function rndrAdminStats(){
   pool.forEach(function(t){
     (t.techs||[]).forEach(function(name){
       if(!name||name==="—")return;
-      if(!byTech[name])byTech[name]={total:0,warranty:0,nowarranty:0,cm:0,repeat:0,delivery:0,pf:0,hWarr:0,hNoWarr:0,hCM:0,hRep:0,hDel:0,hPF:0,hTotal:0};
+      if(!byTech[name])byTech[name]={total:0,warranty:0,nowarranty:0,cm:0,repeat:0,delivery:0,pf:0,hWarr:0,hNoWarr:0,hCM:0,hRep:0,hDel:0,hPF:0,hTotal:0,driveSec:0};
       byTech[name].total++;
       var hrs=calcHours(t);
       byTech[name].hTotal+=hrs;
@@ -2000,6 +1802,28 @@ function rndrAdminStats(){
       else if(c==="delivery")byTech[name].hDel+=hrs;
     });
   });
+  // ─── Driving time per tech (sum across all distinct dates the tech worked in this period) ───
+  // Cache key format is "TechName_YYYY-MM-DD" (set when Maps page is loaded for that day).
+  // We iterate the pool to get the set of dates each tech actually worked, then look up the cache.
+  // This way Drive time only counts days that have route data — gracefully handles missing days.
+  if(typeof _mapsDistCache==="object"&&_mapsDistCache){
+    var datesByTech={};
+    pool.forEach(function(t){
+      if(!t.date)return;
+      (t.techs||[]).forEach(function(name){
+        if(!name||name==="—")return;
+        if(!datesByTech[name])datesByTech[name]=new Set();
+        datesByTech[name].add(t.date);
+      });
+    });
+    Object.keys(datesByTech).forEach(function(name){
+      if(!byTech[name])return;
+      datesByTech[name].forEach(function(d){
+        var entry=_mapsDistCache[name+"_"+d];
+        if(entry&&typeof entry.seconds==="number")byTech[name].driveSec+=entry.seconds;
+      });
+    });
+  }
   var techArr=Object.keys(byTech).map(function(name){return Object.assign({name:name},byTech[name])}).sort(function(a,b){return b.total-a.total});
   function _fmtH(h){if(!h)return"";if(h<1)return Math.round(h*60)+"m";return(Math.round(h*10)/10)+"h"}
   if(!techArr.length){techsEl.innerHTML='<div style="padding:14px;text-align:center;color:var(--i3);font-size:12px">No tickets in this period.</div>'}
@@ -2027,6 +1851,11 @@ function rndrAdminStats(){
       if(row.repeat)html+='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#fef2f2;color:#991b1b;display:inline-flex;align-items:center;gap:4px">'+icon("repeat",11,{color:"#991b1b"})+row.repeat+' Rep'+(row.hRep?' · '+_fmtH(row.hRep):'')+'</span>';
       if(row.delivery)html+='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af;display:inline-flex;align-items:center;gap:4px">'+icon("package",11,{color:"#1e40af"})+row.delivery+' Del'+(row.hDel?' · '+_fmtH(row.hDel):'')+'</span>';
       if(row.pf)html+='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af;display:inline-flex;align-items:center;gap:4px">'+icon("droplets",11,{color:"#1e40af"})+row.pf+' PF'+(row.hPF?' · '+_fmtH(row.hPF):'')+'</span>';
+      // Drive time pill — sum of OSRM-computed routes from Maps page for this tech in the current period
+      if(row.driveSec>0){
+        var driveH=row.driveSec/3600;
+        html+='<span title="Driving time accumulated from days you have loaded in Maps" style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#ede9fe;color:#5b21b6;display:inline-flex;align-items:center;gap:4px">'+icon("car",11,{color:"#5b21b6"})+_fmtH(driveH)+' Drive</span>';
+      }
       html+='</div>';
       html+='</div>';
     });
@@ -2060,6 +1889,28 @@ function rndrAdminStats(){
       vh+='</div>';
     });
     vh+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--ln);font-size:11px;color:var(--i3);text-align:center">Total: <b style="color:var(--ink)">'+totalV+'</b> ticket'+(totalV!==1?"s":"")+(stats.pf?' · <b style="color:#1e40af">'+stats.pf+'</b> with PF':'')+'</div>';
+  }
+  // ─── Team driving time summary ───
+  // Sum drive seconds across all techs in the period. Uses _mapsDistCache populated by Maps page.
+  var totalDriveSec=0,daysCounted=new Set(),techsWithData=0;
+  Object.keys(byTech).forEach(function(name){
+    if(byTech[name].driveSec>0){techsWithData++;totalDriveSec+=byTech[name].driveSec}
+  });
+  if(typeof _mapsDistCache==="object"&&_mapsDistCache){
+    Object.keys(_mapsDistCache).forEach(function(k){if(k.indexOf("|")<0){var idx=k.lastIndexOf("_");if(idx>0){var d=k.substring(idx+1);if(!startDate||d>=startDate)daysCounted.add(d)}}});
+  }
+  if(totalDriveSec>0){
+    var driveH=totalDriveSec/3600;
+    var driveLabel=driveH<10?driveH.toFixed(1)+'h':Math.round(driveH)+'h';
+    var hh=Math.floor(totalDriveSec/3600),mm=Math.round((totalDriveSec%3600)/60);
+    var preciseLabel=hh>0?hh+'h '+mm+'m':mm+'m';
+    vh+='<div title="Sum of OSRM-routed driving time per tech, per day, in this period. Calculated as: Aspen Spas → tickets (in arrival order) → Aspen Spas. Does not include time spent at customer sites." style="margin-top:14px;padding:14px;background:#ede9fe;border-radius:10px;border:1.5px solid #5b21b633">';
+    vh+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:#5b21b6;display:inline-flex;align-items:center;gap:6px">'+icon("car",14,{color:"#5b21b6"})+'Total Driving Time</span><span style="font-size:14px;font-weight:800;color:#5b21b6">'+preciseLabel+'</span></div>';
+    vh+='<div style="font-size:11px;color:#5b21b6;opacity:.85">Across '+daysCounted.size+' day'+(daysCounted.size===1?'':'s')+' · '+techsWithData+' tech'+(techsWithData===1?'':'s')+'</div>';
+    vh+='<div style="font-size:10px;color:var(--i3);margin-top:6px;font-style:italic">Round-trip from depot only — does not include time at customer sites</div>';
+    vh+='</div>';
+  }else if(typeof _mapsDistCache!=="object"||!Object.keys(_mapsDistCache).length){
+    vh+='<div style="margin-top:14px;padding:12px;background:#fafaf8;border-radius:10px;border:1.5px dashed var(--ln);text-align:center;font-size:11px;color:var(--i3)"><span style="display:inline-flex;align-items:center;gap:6px">'+icon("car",13,{color:"var(--i3)"})+'No driving data yet — open <b style="color:var(--ac)">Maps</b> tab to start recording</span></div>';
   }
   visitsEl.innerHTML=vh;
 }
@@ -2121,7 +1972,7 @@ async function cleanupStaleDispatchTickets(){
     try{
       await db.collection("tickets").doc(stale[i].id).update({
         fieldReportSubmitted:true,
-        fieldReportSubmittedAt:new Date().toLocaleString(),
+        fieldReportSubmittedAt:new Date().toISOString(),
         cleanedUpBy:"admin-cleanup"
       });
       ok++;
@@ -2227,7 +2078,7 @@ async function autoCleanupSilent(){
     try{
       await db.collection("tickets").doc(stale[i].id).update({
         fieldReportSubmitted:true,
-        fieldReportSubmittedAt:new Date().toLocaleString(),
+        fieldReportSubmittedAt:new Date().toISOString(),
         cleanedUpBy:"auto-cleanup"
       });
     }catch(e){console.warn("[autoCleanup] Could not clean "+stale[i].id+":",e)}
@@ -2244,7 +2095,7 @@ async function calDismissTicket(id,custName,ev){
   try{
     await db.collection("tickets").doc(id).update({
       fieldReportSubmitted:true,
-      fieldReportSubmittedAt:new Date().toLocaleString(),
+      fieldReportSubmittedAt:new Date().toISOString(),
       cleanedUpBy:"manual-dismiss-"+(currentUser?currentUser.name:"unknown")
     });
     toast("Removed from calendar ✓");
@@ -2973,7 +2824,7 @@ async function deleteTodo(id){
   try{await db.collection("todos").doc(id).delete()}catch(e){toast("Error","err")}
 }
 
-function showTab(i){[0,1,2,3,4,5,6].forEach(n=>{document.getElementById("tab"+n).classList.toggle("on",n===i);document.getElementById("pg"+n).classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(_e){}
+function showTab(i){[0,1,2,3,4,5,6,7].forEach(n=>{document.getElementById("tab"+n).classList.toggle("on",n===i);document.getElementById("pg"+n).classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(_e){}
 // Auto-select current user as tech in Field Report (only when not editing and form is empty)
 if(i===0&&!editingDocId&&currentUser&&currentUser.role==="tech"&&TECHS.indexOf(currentUser.name)>=0&&(!techs||!techs.length)){
   techs=[currentUser.name];
@@ -2998,7 +2849,7 @@ function buildBottomNav(){
   // Tech: 3 hot tabs. Admin/organizer: 4 hot tabs.
   var ids=currentUser.role==="tech"?[0,1,4]:[0,1,4,5];
   var current=-1;
-  [0,1,2,3,4,5,6].forEach(function(n){var el=document.getElementById("tab"+n);if(el&&el.classList.contains("on"))current=n});
+  [0,1,2,3,4,5,6,7].forEach(function(n){var el=document.getElementById("tab"+n);if(el&&el.classList.contains("on"))current=n});
   var html="";
   ids.forEach(function(n){
     var m=meta[n];if(!m)return;
@@ -3061,9 +2912,15 @@ async function init(){
   // Mount any static Lucide icons in the HTML (replaces .lucide-mount spans with SVG)
   mountLucideIcons();
   document.getElementById("fDate").value=localDateStr();
-  loadTechs().then(()=>buildTechPills());
+  // Await tech list BEFORE the user sync below — otherwise we sync against the hardcoded
+  // default list (Jeremy/Robert/Pedro/Jarred/Fernando) and miss any techs added since.
+  await loadTechs();
+  buildTechPills();
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
   mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();updateOnlineStatus();
+  // Load persisted Maps distance cache early so Admin's "Drive" badge appears immediately
+  // (without requiring user to open Maps tab first). Firestore sync still happens lazily on Maps load.
+  if(typeof _mapsLoadLocalCache==="function")_mapsLoadLocalCache();
   document.getElementById("loginPinIn").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
   document.getElementById("newTechName").addEventListener("keydown",e=>{if(e.key==="Enter")addTech()});
   document.addEventListener("change",e=>{if(e.target.id==="fArr"||e.target.id==="fDep"){checkGate();upWR();rndr()}});
@@ -3075,7 +2932,9 @@ async function init(){
   TECHS.forEach(t=>{if(!allUsers.find(u=>u.name===t)){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});
   if(synced)await saveUsers();
   initTodoCollapse();
-  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}}
+  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
+    if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
+  }
   else{renderLoginScreen()}
   // ═══ AUTO-SAVE DRAFT — restore + bind ═══
   setTimeout(()=>{try{restoreDraft();bindAutoSave()}catch(_e){console.warn("Auto-save init:",_e)}},300);
@@ -3812,7 +3671,7 @@ async function submitTkt(st){
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
                   fieldReportId:editingDocId,
-                  fieldReportSubmittedAt:new Date().toLocaleString()
+                  fieldReportSubmittedAt:new Date().toISOString()
                 });
               }catch(mErrE){console.warn("Could not auto-mark dispatch ticket on edit "+dt.id+":",mErrE)}
             }
@@ -3835,7 +3694,7 @@ async function submitTkt(st){
             await db.collection("tickets").doc(_backToTktId).update({
               fieldReportSubmitted:true,
               fieldReportId:newRef.id,
-              fieldReportSubmittedAt:new Date().toLocaleString()
+              fieldReportSubmittedAt:new Date().toISOString()
             });
           }
         }catch(linkErr){console.warn("Could not mark dispatch ticket as submitted:",linkErr)}
@@ -3872,7 +3731,7 @@ async function submitTkt(st){
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
                   fieldReportId:newRef.id,
-                  fieldReportSubmittedAt:new Date().toLocaleString()
+                  fieldReportSubmittedAt:new Date().toISOString()
                 });
               }catch(mErr){console.warn("Could not auto-mark dispatch ticket "+dt.id+":",mErr)}
             }
@@ -4227,7 +4086,7 @@ function rndrD(){
   el.innerHTML=h;
 }
 // ═══ SERVICE LOG ═══
-function tktMatchesSearch(t,q){if(!q)return true;const s=q.toLowerCase();const qDigits=q.replace(/\D/g,"");if(qDigits.length>=3){const phD=(t.phone||"").replace(/\D/g,"");const ph2D=(t.phone2||"").replace(/\D/g,"");if((phD&&phD.includes(qDigits))||(ph2D&&ph2D.includes(qDigits)))return true}return(t.customer||"").toLowerCase().includes(s)||(t.phone||"").toLowerCase().includes(s)||(t.address||"").toLowerCase().includes(s)||(t.city||"").toLowerCase().includes(s)||(t.zip||"").includes(s)||(t.zone||"").toLowerCase().includes(s)||(t.notes||"").toLowerCase().includes(s)||((t.techs||[]).join(" ")).toLowerCase().includes(s)||((t.workTypes||[]).join(" ")).toLowerCase().includes(s)}
+function tktMatchesSearch(t,q){if(!q)return true;const s=q.toLowerCase();const qDigits=q.replace(/\D/g,"");if(qDigits.length>=3){const phD=(t.phone||"").replace(/\D/g,"");const ph2D=(t.phone2||"").replace(/\D/g,"");if((phD&&phD.includes(qDigits))||(ph2D&&ph2D.includes(qDigits)))return true}return(t.customer||"").toLowerCase().includes(s)||(t.phone||"").toLowerCase().includes(s)||(t.address||"").toLowerCase().includes(s)||(effectiveCity(t)||"").toLowerCase().includes(s)||(t.zip||"").includes(s)||(effectiveZone(t)||"").toLowerCase().includes(s)||(t.notes||"").toLowerCase().includes(s)||((t.techs||[]).join(" ")).toLowerCase().includes(s)||((t.workTypes||[]).join(" ")).toLowerCase().includes(s)}
 let slogPreviewId=null;
 function rndrSlog(){
   const slDt=document.getElementById("slDate");if(slDt&&!slDt.value)slDt.value=fmtD(new Date());
@@ -4400,10 +4259,11 @@ function slTogglePhone2(show){
   else{wrap.style.display="none";btn.style.display="";var p2=document.getElementById("slCustPhone2");if(p2)p2.value=""}
 }
 function slGWT(){if(!slWHas||!slWMod||!slWYr)return"rda";if(slWYr>5)return"rda";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr<=3?"full":"half";if(slWMod==="vs")return slWYr<=3?"full":"rda";return"rda"}
-function slGLabWT(){if(!slWHas||!slWMod||!slWYr)return"none";if(slWYr>5)return"none";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr===1?"full":"tc-only";if(slWMod==="vs")return slWYr<=3?"full":"none";return"none"}
+function slGLabWT(){if(!slWHas||!slWMod||!slWYr)return"none";if(slWYr>5)return"none";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr===1?"full":"tc-only";if(slWMod==="vs")return slWYr===1?"full":"none";return"none"}
 function slGWL(){if(!slWHas&&slWHas!==false)return"N/W";if(!slWHas)return"N/W";if(!slWMod)return"Warranty";const m=slWMod.toUpperCase(),y=slWYr>5?"5+":slWYr;if(slWYr>5)return`${m} Yr${y} No warranty`;const w=slGWT();return w==="full"?`${m} Yr${y} 100%`:w==="half"?`${m} Yr${y} 50%`:`${m} Yr${y} RDA`}
 function slUpWR(){var r=document.getElementById("slWResult");if(!r)return;if(slWHas===null){r.style.display="none";return}if(!slWHas){r.style.display="block";r.style.cssText+=";background:#fff3e0;color:#b45309";r.textContent="No warranty — Parts at RDA";return}if(!slWMod||!slWYr){r.style.display="none";return}var lbl=slGWL(),w=slGWT(),lw=slGLabWT();if(w==="full"&&lw==="full"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#dcfce7;color:#166534";r.textContent="✓ "+lbl+" — Parts $0, Labor FREE"}
 else if(w==="full"&&lw==="tc-only"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#dcfce7;color:#166534";r.textContent=lbl+" — Parts $0, Labor TC only"}
+else if(w==="full"&&lw==="none"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e";r.textContent=lbl+" — Parts $0, Labor charged in full"}
 else if(w==="half"&&lw==="tc-only"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e";r.textContent=lbl+" — Parts 50% Retail, Labor TC only"}
 else if(w==="half"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e";r.textContent=lbl+" — Parts 50% Retail"}
 else{r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#fff3e0;color:#b45309";r.textContent=lbl+" — Parts at RDA"}}
@@ -4912,8 +4772,11 @@ function _resolveTechPill(name){
 function rndrCalTechPills(counts){
   const el=document.getElementById("calTechPills");if(!el)return;
   let h='';
-  visibleTechs().forEach((t,i)=>{
-    const col=TECH_COLORS[i%TECH_COLORS.length];
+  // Use the index from the FULL TECHS array (not visibleTechs) so each technician's color
+  // stays stable even when other techs are hidden — otherwise pills and Team columns disagree.
+  visibleTechs().forEach(t=>{
+    const i=TECHS.indexOf(t);
+    const col=TECH_COLORS[(i>=0?i:0)%TECH_COLORS.length];
     const on=!calHiddenTechs.has(t);
     const c=counts[t]||0;
     h+='<button class="cal-tech-pill'+(on?" on":" off")+'" onclick="calToggleTech(\''+t.replace(/'/g,"\\'")+'\')" style="'+(on?'background:'+col+'18;border-color:'+col+';color:'+col:'')+'"><span class="dot" style="'+(on?'background:'+col:'')+'"></span>'+esc(t)+(c?'<span class="cnt">'+c+'</span>':'')+'</button>';
@@ -5087,12 +4950,22 @@ function dayProgressHTML(tkts){
     if(t.status!=="done"&&t.status!=="complete"&&!t.fieldReportSubmitted)return false;
     var s=t.fieldReportSubmittedAt;
     if(!s)return false; // No timestamp = legacy data, don't count to be safe
-    // fieldReportSubmittedAt is a toLocaleString() string like "5/4/2026, 11:00:00 AM"
-    // Parse via Date, then compare YYYY-MM-DD
+    // fieldReportSubmittedAt may be in two formats:
+    //  - NEW: ISO string ("2026-05-03T12:34:56.000Z") — locale-independent, safe to parse
+    //  - LEGACY: toLocaleString() ("5/3/2026, 11:00:00 AM") — locale-dependent
+    // For ISO, slicing the date part avoids any timezone offset edge case (the tech's day boundary).
     try{
-      var d=new Date(s);
-      if(isNaN(d))return false;
-      return fmtD(d)===today;
+      // ISO format detection: starts with YYYY-MM-DD
+      if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+        // Convert ISO UTC into local-day comparison
+        var d=new Date(s);
+        if(isNaN(d))return false;
+        return fmtD(d)===today;
+      }
+      // Legacy fallback: try parsing as Date
+      var ld=new Date(s);
+      if(isNaN(ld))return false;
+      return fmtD(ld)===today;
     }catch(_e){return false}
   }
   var done=0,canceled=0,needCC=0,repeats=0,paid=0;
@@ -5129,9 +5002,9 @@ function calToggleTeamSection(techName){
 // Each bar shows two segments: completed (field report submitted) vs pending.
 // Click bar → jump to that tech filtered to today.
 // Capacity panel collapse state — persisted in localStorage so admin's preference sticks
-function _capCollapsed(){return localStorage.getItem("aspen_cap_collapsed")==="1"}
+function _capCollapsed(){try{return localStorage.getItem("aspen_cap_collapsed")==="1"}catch(_e){return false}}
 function toggleCapCollapse(){
-  localStorage.setItem("aspen_cap_collapsed",_capCollapsed()?"0":"1");
+  try{localStorage.setItem("aspen_cap_collapsed",_capCollapsed()?"0":"1")}catch(_e){}
   if(typeof rndrAdminCapacity==="function")rndrAdminCapacity();
 }
 function heatmapHTML(allTkts,centerDate){
@@ -5361,7 +5234,8 @@ function rndrCcReminders(){
   ccTkts.sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
   var h='<div class="cc-reminders"><div class="cc-hdr" style="display:flex;align-items:center;gap:6px">'+icon("credit-card",16)+'Pending Credit Card Requests — '+ccTkts.length+'</div><div class="cc-grid">';
   ccTkts.forEach(function(t){
-    var zc=ZONE_COLORS[t.zone||""]||{bg:"#f0f0f0",text:"#555"};
+    var _zEff=effectiveZone(t);
+    var zc=ZONE_COLORS[_zEff||""]||{bg:"#f0f0f0",text:"#555"};
     var d=t.date?new Date(t.date+"T12:00:00"):null;
     var dateLabel=d?d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}):"—";
     h+='<div class="cc-card" onclick="openTktDetail(\''+t.id+'\')">';
@@ -5370,7 +5244,7 @@ function rndrCcReminders(){
     if(t.techs&&t.techs.length)h+='<div class="cc-card-line" style="display:flex;align-items:center;gap:4px">'+icon('wrench',12)+esc(t.techs.join(", "))+'</div>';
     else h+='<div class="cc-card-line cc-warn">⚠️ Unassigned</div>';
     if((t.workTypes||[]).length)h+='<div class="cc-card-line" style="color:#7a5a10;display:flex;align-items:center;gap:4px">'+icon('wrench',12,{color:'#7a5a10'})+esc(t.workTypes.join(", "))+'</div>';
-    if(t.zone)h+='<div style="margin-top:6px"><span class="cc-card-zone" style="background:'+zc.bg+';color:'+zc.text+'">'+esc(t.zone)+'</span></div>';
+    if(_zEff)h+='<div style="margin-top:6px"><span class="cc-card-zone" style="background:'+zc.bg+';color:'+zc.text+'">'+esc(_zEff)+'</span></div>';
     h+='<div class="cc-card-hint">Tap for full details →</div>';
     h+='</div>';
   });
@@ -5744,19 +5618,23 @@ async function saveDetailEdits(id){
   var techs=[];document.querySelectorAll("#tktDetailBody .pill.on").forEach(function(b){techs.push(b.textContent)});
   var dEl=document.getElementById("dtDate");var date=dEl?dEl.value:"";
   var aEl=document.getElementById("dtArrival");var arrival=aEl?aEl.value:"";
-  // Find the original ticket to preserve its source-specific status semantics.
-  // For dispatch tickets, status stays "pending" until a field report is filed.
-  // Setting status:"complete" here would falsely flag the dispatch as a submitted report.
   var orig=[...active,...done].find(function(x){return x.id===id});
   var upd={techs:techs};
   if(dEl)upd.date=date;
   if(aEl)upd.arrival=arrival;
-  if(orig&&orig.source==="dispatch"){
-    // Dispatch tickets keep status="pending" — they only become "complete" when a field report is submitted
-    upd.status=orig.status==="canceled"?"canceled":"pending";
-  }else{
-    // Field reports: legacy behavior (techs.length toggles complete/pending)
-    upd.status=techs.length?"complete":"pending";
+  // Status logic: never DEMOTE a completed/submitted ticket back to pending just because of an edit.
+  //  - If status is already "done" or "complete" or there's a fieldReportSubmitted flag, keep it
+  //  - If "canceled", keep it
+  //  - Otherwise (truly pending dispatch), keep "pending"
+  //  - Legacy field-report tickets without dispatch: same rule — never downgrade
+  if(orig){
+    if(orig.status==="canceled"){upd.status="canceled"}
+    else if(orig.status==="done"||orig.status==="complete"||orig.fieldReportSubmitted===true){
+      // Already submitted/done — preserve it; admin editing shouldn't undo a tech's report
+      upd.status=orig.status||"complete";
+    }else{
+      upd.status="pending";
+    }
   }
   if(isAdmin){
     var ce=document.getElementById("dtCust");if(ce)upd.customer=ce.value.trim();
@@ -5803,26 +5681,65 @@ let _routeMapInstance=null;
 let _routeMapStops=[]; // [{tkt, lat, lng, address}]
 
 // Geocoding cache (query → {lat, lng} or "MISS"). Persisted in localStorage so we don't re-geocode the same address.
-// v2: bumped key to invalidate stale entries from before bounding box was added
-function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache_v2")||"{}")}catch(e){return{}}}
-function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache_v2",JSON.stringify(c))}catch(e){}}
+// v3: bumped key to invalidate stale "MISS" entries from the narrower bbox era — addresses like
+// Rolla 65401 and Festus 63028 were marked MISS but are now valid service-area locations.
+function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache_v3")||"{}")}catch(e){return{}}}
+function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache_v3",JSON.stringify(c))}catch(e){}}
 
-// St. Louis metro bounding box — covers all of St. Louis County MO, St. Charles County, Jefferson County,
-// plus Madison/St. Clair Counties in Illinois (where Aspen Spas serves). The geocoder will ONLY return
-// results within these bounds, so "Lanvale Drive" can't accidentally match somewhere in Georgia.
-const STL_BBOX_PHOTON="-91.10,38.20,-89.50,39.20";          // minLon,minLat,maxLon,maxLat
-const STL_VIEWBOX_NOMINATIM="-91.10,39.20,-89.50,38.20";    // lonLeft,latTop,lonRight,latBottom
+// Aspen Spas service area bounding box — covers full Missouri service zone (north to Hannibal,
+// south to Rolla, west past Sullivan/Cuba) plus Illinois service zone (east through Effingham).
+// Geocoders are biased toward this area but will still return results within these wider bounds,
+// so "Lanvale Drive" can't accidentally match somewhere in Georgia, but Rolla and Festus DO match.
+const STL_BBOX_PHOTON="-91.95,37.70,-88.30,39.70";          // minLon,minLat,maxLon,maxLat
+const STL_VIEWBOX_NOMINATIM="-91.95,39.70,-88.30,37.70";    // lonLeft,latTop,lonRight,latBottom
 const STL_CENTER={lat:38.627,lng:-90.199};                  // downtown St. Louis (used as bias)
 
-// Sanity check: is this coord actually in the St. Louis metro area?
+// Sanity check: is this coord actually in the Aspen Spas service area?
+// Wider than the bbox above by a small margin to avoid edge-case rejections.
 function _isInSTL(coords){
   if(!coords||typeof coords.lat!=="number"||typeof coords.lng!=="number")return false;
-  return coords.lat>38.0&&coords.lat<39.5&&coords.lng>-91.5&&coords.lng<-89.3;
+  return coords.lat>37.5&&coords.lat<39.9&&coords.lng>-92.2&&coords.lng<-88.0;
 }
 
 // Common St. Louis area cities that often get appended to street fields by accident in CSV imports.
 // If the street ends with one of these names, strip it.
 const _STL_CITIES_RE=/\s+(saint\s+louis|st\.?\s+louis|webster\s+groves|ballwin|chesterfield|wildwood|kirkwood|st\.?\s+charles|saint\s+charles|manchester|florissant|hazelwood|bridgeton|maryland\s+heights|creve\s+coeur|ladue|clayton|university\s+city|affton|concord|fenton|arnold|edwardsville|belleville|o'?fallon|wentzville|st\.?\s+peters|saint\s+peters|cottleville|brentwood|maplewood|richmond\s+heights|shrewsbury|crestwood|sunset\s+hills|glendale|ellisville|valley\s+park|eureka|pacific|high\s+ridge|hillsboro|festus|crystal\s+city|imperial|de\s+soto|town\s+and\s+country|town\s+&\s+country|columbia|elsah|godfrey|alton|granite\s+city|town\s+&\s+country|chesterfield|des\s+peres|olivette|overland|jennings|bellefontaine\s+neighbors|black\s+jack|spanish\s+lake|moline\s+acres|berkeley|kinloch|riverview|ferguson|dellwood|country\s+club\s+hills|pine\s+lawn|wellston|northwoods|normandy|pasadena\s+hills|pasadena\s+park|cool\s+valley|beverly\s+hills|hanley\s+hills|velda\s+city|velda\s+village\s+hills|edmundson|woodson\s+terrace|st\.?\s+ann|st\.?\s+john|sycamore\s+hills|charlack|breckenridge\s+hills|vinita\s+park|vinita\s+terrace|uplands\s+park|wilbur\s+park|grantwood\s+village|green\s+park|lakeshire|marlborough|crestwood|webster\s+groves)\s*$/i;
+
+// Normalize street abbreviations that confuse OpenStreetMap geocoders.
+// "157 Oakland Dr." → "157 Oakland Drive"  (and same for St/Ave/Ct/Pl/Rd/Ln/Blvd/Pkwy/Ter/Cir/Hwy)
+// Run BEFORE building geocode queries — improves hit rate dramatically.
+const _ABBREV_MAP=[
+  [/\b(?:Dr\.?|drive)\b\.?/gi,"Drive"],
+  [/\b(?:St\.?|street)\b\.?(?!\s+(?:louis|charles|peters|ann|john|clair|claire))/gi,"Street"], // don't replace "St." in "St. Louis"
+  [/\b(?:Ave\.?|avenue)\b\.?/gi,"Avenue"],
+  [/\b(?:Rd\.?|road)\b\.?/gi,"Road"],
+  [/\b(?:Ct\.?|court)\b\.?/gi,"Court"],
+  [/\b(?:Pl\.?|place)\b\.?/gi,"Place"],
+  [/\b(?:Ln\.?|lane)\b\.?/gi,"Lane"],
+  [/\b(?:Blvd\.?|boulevard)\b\.?/gi,"Boulevard"],
+  [/\b(?:Pkwy\.?|parkway)\b\.?/gi,"Parkway"],
+  [/\b(?:Ter\.?|terrace)\b\.?/gi,"Terrace"],
+  [/\b(?:Cir\.?|circle)\b\.?/gi,"Circle"],
+  [/\b(?:Hwy\.?|highway)\b\.?/gi,"Highway"],
+  [/\b(?:Trl\.?|trail)\b\.?/gi,"Trail"],
+  [/\b(?:Sq\.?|square)\b\.?/gi,"Square"],
+  [/\b(?:Cv\.?|cove)\b\.?/gi,"Cove"],
+];
+function _normalizeStreet(s){
+  if(!s)return"";
+  let out=String(s);
+  // Multi-pass: abbreviations sometimes layer (e.g. "Dr Ln")
+  for(let i=0;i<2;i++){
+    _ABBREV_MAP.forEach(function(rule){out=out.replace(rule[0],rule[1])});
+  }
+  // Remove leading apartment/unit indicators that confuse geocoders ("Apt 4B 157 Oakland Dr" → "157 Oakland Dr")
+  out=out.replace(/^(apt|apartment|unit|suite|ste|#)\s*\S+\s+/i,"");
+  // Strip trailing apt/unit suffix ("157 Oakland Drive Apt 4B" → "157 Oakland Drive")
+  out=out.replace(/\s+(apt|apartment|unit|suite|ste|#)\s*\S+\s*$/i,"");
+  // Collapse multiple spaces
+  out=out.replace(/\s+/g," ").trim();
+  return out;
+}
 
 // Pull just the street out of a possibly-dirty address field.
 // Example input: "1339 Lanvale Drive St. Louis, MO 63119"  →  output: "1339 Lanvale Drive"
@@ -5840,8 +5757,10 @@ function _extractStreetFromAddr(addr){
     s=s.replace(/\s+(MO|Missouri|IL|Illinois)\s*$/i,"").trim();
     // Strip trailing ZIP
     s=s.replace(/\s+\d{5}(-\d{4})?\s*$/,"").trim();
-    if(s===before)break; // no more changes, stop
+    if(s===before)break;
   }
+  // 3. Expand any street abbreviations so geocoders can match (Dr → Drive, St → Street, etc.)
+  s=_normalizeStreet(s);
   return s;
 }
 
@@ -5920,18 +5839,28 @@ async function geocodeTicket(t){
   const city=_extractCityFromCity(t.city);
   const zip=(t.zip||"").toString().replace(/[^\d]/g,"").substring(0,5);
   if(!street&&!zip&&!city)return null;
+  // Pick the right state from ZIP — Illinois ZIPs start with 6, MO ZIPs start with 6 too
+  // but we cover both Madison/St Clair (IL) and STL Metro (MO). Use ZIP as hint:
+  // 62XXX = Illinois, 63XXX = Missouri
+  const state=zip&&zip.startsWith("62")?"IL":"MO";
+  const stateFull=state==="IL"?"Illinois":"Missouri";
   // Build candidate queries in order of best→worst likelihood of matching.
-  // Always include "Saint Louis" or "Missouri" context so the geocoders know the region.
+  // Always include city+state context so the geocoders know the region.
   const candidates=[];
-  if(street&&city&&zip)candidates.push(street+", "+city+", MO "+zip);
-  if(street&&zip)candidates.push(street+", Saint Louis, MO "+zip);
-  if(street&&city)candidates.push(street+", "+city+", Missouri");
+  if(street&&city&&zip)candidates.push(street+", "+city+", "+state+" "+zip);
+  if(street&&city)candidates.push(street+", "+city+", "+stateFull);
+  if(street&&zip)candidates.push(street+", "+state+" "+zip);
   if(street&&zip)candidates.push(street+" "+zip);
-  if(street)candidates.push(street+", Saint Louis, MO");
-  if(zip&&city)candidates.push(city+", MO "+zip); // fallback to city center
-  if(zip)candidates.push(zip+", Missouri");        // last resort: ZIP centroid
-  for(let i=0;i<candidates.length;i++){
-    const q=candidates[i];
+  if(street&&city)candidates.push(street+" "+city);
+  if(street)candidates.push(street+", "+stateFull);
+  // Fallback: city/ZIP centroid (less precise but at least gets us close)
+  if(zip&&city)candidates.push(city+", "+state+" "+zip);
+  if(city)candidates.push(city+", "+stateFull);
+  if(zip)candidates.push(zip+", "+stateFull);
+  // Dedup
+  const seen={};const queries=candidates.filter(q=>{const k=q.toLowerCase();if(seen[k])return false;seen[k]=1;return true});
+  for(let i=0;i<queries.length;i++){
+    const q=queries[i];
     const key=q.toLowerCase();
     const cache=_getGeoCache();
     if(cache[key]){
@@ -5953,7 +5882,7 @@ async function geocodeTicket(t){
     cache[key]="MISS";
     _setGeoCache(cache);
     // Small pause between candidates to be polite to the geocoders
-    if(i<candidates.length-1)await new Promise(function(r){setTimeout(r,400)});
+    if(i<queries.length-1)await new Promise(function(r){setTimeout(r,400)});
   }
   return null;
 }
@@ -6251,6 +6180,18 @@ function startTicketFrom(id){
     document.getElementById("fNotes").value=(t.notes||"")+"\n\n--- Service Update ---\n";
     // Auto-select current user as technician
     if(currentUser&&TECHS.includes(currentUser.name)&&!techs.includes(currentUser.name)){techs.push(currentUser.name);buildTechPills()}
+    // Pre-fill warranty answers from the dispatch ticket if admin already determined them.
+    // The tech can override these in the form — they're a starting point, not a lock.
+    var w=t.warranty;
+    if(w&&(w.has===true||w.has===false)){
+      // Set yes/no
+      setWYN(w.has);
+      // If admin specified model + year too, apply them so the tech sees the full picture
+      if(w.has===true){
+        if(w.model)setMod(w.model);
+        if(w.year&&Number(w.year)>0)setYr(Number(w.year));
+      }
+    }
     let bb=document.getElementById("backToTktBtn");
     if(!bb){bb=document.createElement("button");bb.id="backToTktBtn";bb.style.cssText="margin-bottom:14px;padding:10px 18px;background:none;border:1.5px solid var(--ac);border-radius:10px;font-size:13px;font-weight:600;color:var(--ac);width:100%";document.getElementById("ticketMode").prepend(bb)}
     bb.textContent="← Back to "+t.customer;bb.onclick=()=>{bb.remove();showTab(4);openTktDetail(_backToTktId)};bb.style.display="block";
@@ -6286,9 +6227,11 @@ function rndrCust(){
     if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
     if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
     if(t.address&&!custMap[key].address)custMap[key].address=t.address;
-    if(t.city&&!custMap[key].city)custMap[key].city=t.city;
+    var _ec=effectiveCity(t);
+    if(_ec&&!custMap[key].city)custMap[key].city=_ec;
     if(t.zip&&!custMap[key].zip)custMap[key].zip=t.zip;
-    if(t.zone&&!custMap[key].zone)custMap[key].zone=t.zone;
+    var _ez=effectiveZone(t);
+    if(_ez&&!custMap[key].zone)custMap[key].zone=_ez;
     if(t.date&&t.date>custMap[key].lastDate)custMap[key].lastDate=t.date;
   });
   let customers=Object.entries(custMap).map(([k,v])=>({key:k,...v}));
@@ -6356,9 +6299,11 @@ function qbCustSetTab(tab){
     if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
     if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
     if(t.address&&!custMap[key].address)custMap[key].address=t.address;
-    if(t.city&&!custMap[key].city)custMap[key].city=t.city;
+    var _ec2=effectiveCity(t);
+    if(_ec2&&!custMap[key].city)custMap[key].city=_ec2;
     if(t.zip&&!custMap[key].zip)custMap[key].zip=t.zip;
-    if(t.zone&&!custMap[key].zone)custMap[key].zone=t.zone;
+    var _ez2=effectiveZone(t);
+    if(_ez2&&!custMap[key].zone)custMap[key].zone=_ez2;
   });
   const customers=Object.entries(custMap).map(([k,v])=>({key:k,...v}));
   qbCustRenderDetail(customers);
@@ -6497,7 +6442,7 @@ async function custSaveSpaDesc(){
 
 async function saveCustomZips(){if(!db)return;try{await db.collection("config").doc("customZips").set(customZips)}catch(e){}}
 async function loadCustomZips(){if(!db)return;try{var doc=await db.collection("config").doc("customZips").get();if(doc.exists)customZips=doc.data()||{}}catch(e){}}
-function getCustData(name){if(!name)return null;var key=name.trim().toLowerCase();var allTkts=[...active,...done];var c={phone:"",phone2:"",address:"",city:"",zip:"",zone:"",spaDesc:"",notes:""};var found=false;allTkts.forEach(function(t){if((t.customer||"").trim().toLowerCase()===key){found=true;if(t.phone&&!c.phone)c.phone=t.phone;if(t.phone2&&!c.phone2)c.phone2=t.phone2;if(t.address&&!c.address)c.address=t.address;if(t.city&&!c.city)c.city=t.city;if(t.zip&&!c.zip)c.zip=t.zip;if(t.zone&&!c.zone)c.zone=t.zone;if(t.spaDesc&&!c.spaDesc)c.spaDesc=t.spaDesc;if(t.notes&&t.notes.length>c.notes.length)c.notes=t.notes}});return found?c:null}
+function getCustData(name){if(!name)return null;var key=name.trim().toLowerCase();var allTkts=[...active,...done];var c={phone:"",phone2:"",address:"",city:"",zip:"",zone:"",spaDesc:"",notes:""};var found=false;allTkts.forEach(function(t){if((t.customer||"").trim().toLowerCase()===key){found=true;if(t.phone&&!c.phone)c.phone=t.phone;if(t.phone2&&!c.phone2)c.phone2=t.phone2;if(t.address&&!c.address)c.address=t.address;var _ec=effectiveCity(t);if(_ec&&!c.city)c.city=_ec;if(t.zip&&!c.zip)c.zip=t.zip;var _ez=effectiveZone(t);if(_ez&&!c.zone)c.zone=_ez;if(t.spaDesc&&!c.spaDesc)c.spaDesc=t.spaDesc;if(t.notes&&t.notes.length>c.notes.length)c.notes=t.notes}});return found?c:null}
 async function custSaveInfo(){
   if(!db||!selectedCustKey)return;
   var nameEl=document.getElementById("custName");
@@ -6540,7 +6485,7 @@ async function custCreateTicket(){
   var custTkts=allTkts.filter(function(t){return(t.customer||"").trim().toLowerCase()===selectedCustKey});
   if(!custTkts.length)return;
   var c={name:"",phone:"",phone2:"",address:"",city:"",zip:"",zone:""};
-  custTkts.forEach(function(t){if(!c.name)c.name=t.customer;if(t.phone&&!c.phone)c.phone=t.phone;if(t.phone2&&!c.phone2)c.phone2=t.phone2;if(t.address&&!c.address)c.address=t.address;if(t.city&&!c.city)c.city=t.city;if(t.zip&&!c.zip)c.zip=t.zip;if(t.zone&&!c.zone)c.zone=t.zone});
+  custTkts.forEach(function(t){if(!c.name)c.name=t.customer;if(t.phone&&!c.phone)c.phone=t.phone;if(t.phone2&&!c.phone2)c.phone2=t.phone2;if(t.address&&!c.address)c.address=t.address;var _ec=effectiveCity(t);if(_ec&&!c.city)c.city=_ec;if(t.zip&&!c.zip)c.zip=t.zip;var _ez=effectiveZone(t);if(_ez&&!c.zone)c.zone=_ez});
   // Gather all notes from history
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
@@ -6553,7 +6498,7 @@ function showCustSuggest(prefix){
   var q=(input.value||"").trim().toLowerCase();
   if(q.length<2){dd.classList.remove("show");return}
   var allTkts=[...active,...done];var seen={};var matches=[];
-  allTkts.forEach(function(t){var name=t.customer||"";var key=name.trim().toLowerCase();if(!key||seen[key])return;if(key.indexOf(q)>=0){seen[key]=1;matches.push({name:name,phone:t.phone||"",zone:t.zone||""})}});
+  allTkts.forEach(function(t){var name=t.customer||"";var key=name.trim().toLowerCase();if(!key||seen[key])return;if(key.indexOf(q)>=0){seen[key]=1;matches.push({name:name,phone:t.phone||"",zone:effectiveZone(t)||""})}});
   if(!matches.length){dd.classList.remove("show");return}
   dd.innerHTML=matches.slice(0,8).map(function(m){return'<div class="cust-suggest-item" onmousedown="selectCustSuggest(\''+prefix+'\',\''+esc(m.name).replace(/'/g,"\\'")+'\')"><strong>'+esc(m.name)+'</strong><span>'+esc(m.phone)+(m.zone?' · '+m.zone:'')+'</span></div>'}).join("");
   dd.classList.add("show");
@@ -6614,6 +6559,631 @@ document.addEventListener("keydown",function(e){
     case "?":e.preventDefault();showKbdHint();break;
   }
 });
+
+
+// Aspen Spas warehouse: round-trip start/end point for every tech.
+// Coordinates pre-resolved (via geocoding) so the map doesn't need to
+// hit the network just to plot the depot.
+const ASPEN_DEPOT={
+  address:"4609 McRee Ave, St. Louis, MO 63110",
+  lat:38.6175,    // approx — refined on first geocode if cache miss
+  lng:-90.2410,
+  label:"Aspen Spas"
+};
+let _mapsInstance=null;          // Leaflet instance for the Maps page
+let _mapsLayers=[];              // markers + polylines we've added (so we can clear)
+let _mapsCurrentDate=null;       // YYYY-MM-DD currently displayed
+let _mapsDistCache={};           // {techName_date: {miles,seconds,stops}} per-tech-day cache
+let _mapsCacheLoaded=false;      // True once we've loaded persisted cache from Firestore
+let _mapsCacheDirty=false;       // True if local cache has changes we haven't synced
+let _mapsGeomCache={};           // {cacheKey: [[lat,lng],...]} — full OSRM geometry, LOCAL ONLY (too bulky for Firestore)
+
+// Local mirror of cache for fast boot (Firestore is the source of truth).
+function _mapsLoadLocalCache(){
+  try{
+    const raw=localStorage.getItem("aspen_maps_dist_cache_v1");
+    if(raw){_mapsDistCache=JSON.parse(raw)||{}}
+  }catch(_e){}
+  _mapsLoadLocalGeomCache();
+}
+function _mapsSaveLocalCache(){
+  try{localStorage.setItem("aspen_maps_dist_cache_v1",JSON.stringify(_mapsDistCache))}catch(_e){}
+}
+
+// Geometry cache (full OSRM polylines) — stays in localStorage, never goes to Firestore.
+// localStorage has ~5MB total — geometries can be a few KB each, so we cap to ~150 entries (LRU).
+function _mapsLoadLocalGeomCache(){
+  try{
+    const raw=localStorage.getItem("aspen_maps_geom_cache_v1");
+    if(raw){_mapsGeomCache=JSON.parse(raw)||{}}
+  }catch(_e){_mapsGeomCache={}}
+}
+function _mapsSaveLocalGeomCache(){
+  try{
+    // Trim to most recent 150 entries to keep localStorage healthy
+    const keys=Object.keys(_mapsGeomCache);
+    if(keys.length>150){
+      const trimmed={};
+      keys.slice(-150).forEach(k=>trimmed[k]=_mapsGeomCache[k]);
+      _mapsGeomCache=trimmed;
+    }
+    localStorage.setItem("aspen_maps_geom_cache_v1",JSON.stringify(_mapsGeomCache));
+  }catch(_e){
+    // localStorage full — drop oldest half and retry
+    try{
+      const keys=Object.keys(_mapsGeomCache);
+      const trimmed={};
+      keys.slice(Math.floor(keys.length/2)).forEach(k=>trimmed[k]=_mapsGeomCache[k]);
+      _mapsGeomCache=trimmed;
+      localStorage.setItem("aspen_maps_geom_cache_v1",JSON.stringify(_mapsGeomCache));
+    }catch(_e2){}
+  }
+}
+
+// Firestore sync — cross-device persistence so Nela sees what Alberto computed.
+// Doc path: config/maps_history  →  {techDate: {miles,seconds,stops}, ...}
+async function _mapsLoadFromFirestore(){
+  if(!db||_mapsCacheLoaded)return;
+  try{
+    const doc=await db.collection("config").doc("maps_history").get();
+    if(doc.exists){
+      const d=doc.data();
+      if(d&&d.cache&&typeof d.cache==="object"){
+        // Merge Firestore over local — Firestore is authoritative
+        _mapsDistCache=Object.assign({},_mapsDistCache,d.cache);
+        _mapsSaveLocalCache();
+      }
+    }
+  }catch(_e){/* offline ok */}
+  _mapsCacheLoaded=true;
+}
+// Debounced Firestore writer — many route loads in a row collapse into one write
+let _mapsSyncTimer=null;
+function _mapsScheduleSync(){
+  _mapsCacheDirty=true;
+  _mapsSaveLocalCache(); // always keep local up-to-date instantly
+  if(_mapsSyncTimer)clearTimeout(_mapsSyncTimer);
+  _mapsSyncTimer=setTimeout(_mapsFlushSync,2000);
+}
+async function _mapsFlushSync(){
+  if(!db||!_mapsCacheDirty)return;
+  try{
+    await db.collection("config").doc("maps_history").set({
+      cache:_mapsDistCache,
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    _mapsCacheDirty=false;
+  }catch(_e){/* will retry next time */}
+}
+
+// Haversine fallback (straight-line miles) for when OSRM is unreachable.
+function _haversineMi(lat1,lng1,lat2,lng2){
+  const R=3958.8; // miles
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Format helpers
+function _fmtMiles(mi){return mi<10?mi.toFixed(1)+" mi":Math.round(mi)+" mi"}
+function _fmtDuration(sec){
+  if(!sec||sec<60)return Math.round(sec||0)+"s";
+  const h=Math.floor(sec/3600),m=Math.round((sec%3600)/60);
+  return h>0?h+"h "+m+"m":m+"m";
+}
+
+// Geocode the depot once if needed (only on very first map load).
+async function _ensureDepotCoords(){
+  // Already have approximate coords baked in; refine via geocoder so route accuracy is good.
+  if(typeof geocodeAddress!=="function")return;
+  try{
+    const r=await geocodeAddress(ASPEN_DEPOT.address);
+    if(r&&r.lat&&r.lng){ASPEN_DEPOT.lat=r.lat;ASPEN_DEPOT.lng=r.lng}
+  }catch(_e){/* fall back to baked-in coords */}
+}
+
+// Fetch driving distance + duration for an ORDERED list of [lat,lng] coords,
+// using OSRM's free public router. Returns {miles, seconds, geometry:[[lat,lng],...]}.
+// Falls back to Haversine straight-line if OSRM is unreachable.
+async function _osrmRoute(coords){
+  if(!coords||coords.length<2)return{miles:0,seconds:0,geometry:coords||[]};
+  // OSRM expects "lng,lat;lng,lat" in path
+  const path=coords.map(c=>c[1]+","+c[0]).join(";");
+  const url="https://router.project-osrm.org/route/v1/driving/"+path+"?overview=full&geometries=geojson";
+  try{
+    const resp=await fetch(url,{headers:{"Accept":"application/json"}});
+    if(!resp.ok)throw new Error("OSRM "+resp.status);
+    const data=await resp.json();
+    if(data&&data.code==="Ok"&&data.routes&&data.routes[0]){
+      const r=data.routes[0];
+      const geom=(r.geometry&&r.geometry.coordinates)?r.geometry.coordinates.map(c=>[c[1],c[0]]):coords;
+      return{miles:r.distance/1609.344,seconds:r.duration,geometry:geom};
+    }
+    throw new Error("OSRM returned no route");
+  }catch(e){
+    // Fallback: sum Haversine legs and estimate time at 28 mph average city speed.
+    let mi=0;
+    for(let i=0;i<coords.length-1;i++)mi+=_haversineMi(coords[i][0],coords[i][1],coords[i+1][0],coords[i+1][1]);
+    return{miles:mi,seconds:mi/28*3600,geometry:coords,fallback:true};
+  }
+}
+
+// Build {techName: [stop, stop, ...]} for the given date, sorted by arrival time.
+// Each stop already has lat/lng (from geocodeTicket cache or fresh geocode).
+async function _mapsBuildDayRoutes(dateStr){
+  const allTkts=[...active,...done];
+  const dayTkts=allTkts.filter(function(t){
+    if(t.status==="canceled")return false;
+    if(t.date!==dateStr)return false;
+    return(t.techs||[]).length>0; // unassigned tickets aren't part of any route
+  });
+  if(!dayTkts.length)return{};
+  // Group by tech (a ticket assigned to multiple techs counts for each)
+  const byTech={};
+  dayTkts.forEach(function(t){(t.techs||[]).forEach(function(tn){if(!byTech[tn])byTech[tn]=[];byTech[tn].push(t)})});
+  // Sort each tech's stops by arrival time
+  Object.keys(byTech).forEach(function(tn){byTech[tn].sort(function(a,b){return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")})});
+  // Geocode each ticket — done in PARALLEL across techs to speed things up.
+  // Within a tech, stops are sequential (so we don't blast the geocoder),
+  // but multiple techs run concurrently. Geo cache makes this nearly instant on re-loads.
+  const techNames=Object.keys(byTech);
+  await Promise.all(techNames.map(async function(tn){
+    const stops=byTech[tn];
+    for(let i=0;i<stops.length;i++){
+      const t=stops[i];
+      try{
+        const c=await geocodeTicket(t);
+        stops[i]={tkt:t,lat:c?c.lat:null,lng:c?c.lng:null,address:_cleanDisplayAddr(t)};
+      }catch(_e){
+        stops[i]={tkt:t,lat:null,lng:null,address:_cleanDisplayAddr(t)};
+      }
+    }
+  }));
+  return byTech;
+}
+
+// Cache key for a tech's day route. Includes a fingerprint of the stops so that
+// if Alberto changes the assigned techs or a ticket address mid-day, we recompute.
+function _mapsRouteCacheKey(techName,dateStr,stops){
+  const fp=stops.filter(s=>s.lat&&s.lng).map(s=>s.tkt.id+":"+(s.lat||"0").toFixed(4)+","+(s.lng||"0").toFixed(4)).join("|");
+  return techName+"_"+dateStr+"|"+fp;
+}
+
+// Compute a tech's full day round-trip: depot → stops → depot.
+// Returns {miles, seconds, geometry, validStops, skippedStops, cached}.
+//
+// Cache tiers:
+//   1. _mapsGeomCache  (in-memory + localStorage): full geometry for instant map redraw
+//   2. _mapsDistCache  (in-memory + localStorage + Firestore): just metrics, for cross-device totals
+async function _mapsTechDayRoute(techName,dateStr,techStops){
+  const valid=techStops.filter(s=>s.lat&&s.lng);
+  const skipped=techStops.filter(s=>!s.lat||!s.lng);
+  if(!valid.length)return{miles:0,seconds:0,geometry:[],validStops:[],skippedStops:skipped,cached:false};
+  const cacheKey=_mapsRouteCacheKey(techName,dateStr,valid);
+  // Cache hit — use both metrics AND geometry from cache
+  if(_mapsDistCache[cacheKey]&&_mapsGeomCache[cacheKey]){
+    const cached=_mapsDistCache[cacheKey];
+    return{
+      miles:cached.miles,seconds:cached.seconds,
+      geometry:_mapsGeomCache[cacheKey], // stored OSRM geometry — real driving route
+      validStops:valid,skippedStops:skipped,cached:true
+    };
+  }
+  // Metrics cached but geometry missing (e.g. loaded from Firestore on another device).
+  // Still call OSRM so the map shows a real route, but don't change the persisted metrics.
+  const coords=[[ASPEN_DEPOT.lat,ASPEN_DEPOT.lng]];
+  valid.forEach(s=>coords.push([s.lat,s.lng]));
+  coords.push([ASPEN_DEPOT.lat,ASPEN_DEPOT.lng]);
+  const r=await _osrmRoute(coords);
+  // Save metrics (in-memory + sync to Firestore) — only fields that travel cross-device
+  _mapsDistCache[cacheKey]={miles:r.miles,seconds:r.seconds,stops:valid.length};
+  _mapsDistCache[techName+"_"+dateStr]={miles:r.miles,seconds:r.seconds,stops:valid.length}; // for historical aggregation
+  _mapsScheduleSync();
+  // Save geometry locally only (too bulky for Firestore)
+  _mapsGeomCache[cacheKey]=r.geometry;
+  _mapsSaveLocalGeomCache();
+  return{miles:r.miles,seconds:r.seconds,geometry:r.geometry,validStops:valid,skippedStops:skipped,fallback:r.fallback,cached:false};
+}
+
+// Main entry point: re-render the Maps page for the picked date.
+async function mapsLoad(){
+  if(!isAdmin){document.getElementById("mapsStatus").textContent="Admin only";return}
+  const dateInp=document.getElementById("mapsDate");
+  if(!dateInp.value)dateInp.value=fmtD(new Date());
+  const dateStr=dateInp.value;
+  _mapsCurrentDate=dateStr;
+  const status=document.getElementById("mapsStatus");
+  const cards=document.getElementById("mapsDailyCards");
+  const mapWrap=document.getElementById("mapsMapWrap");
+  status.innerHTML='<span style="color:var(--ac)">Loading…</span>';
+  cards.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--i3);font-size:13px">Loading routes…</div>';
+  // First-time setup: load persisted cache from Firestore (cross-device sync)
+  if(!_mapsCacheLoaded){await _mapsLoadFromFirestore()}
+  // Make sure we have decent depot coords
+  await _ensureDepotCoords();
+  // Build per-tech stops for the day (parallel geocoding)
+  const byTech=await _mapsBuildDayRoutes(dateStr);
+  const techNames=Object.keys(byTech);
+  if(!techNames.length){
+    status.textContent="No assigned tickets for this date";
+    cards.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--i3);font-size:13px;background:#fff;border:1.5px dashed var(--ln);border-radius:14px">No technician routes for '+esc(dateStr)+'</div>';
+    mapWrap.style.display="none";
+    _mapsRenderSummary();
+    _mapsRenderTrendChart();
+    _mapsRenderHistory();
+    return;
+  }
+  // Compute each tech's full route (depot → stops → depot)
+  const results={};
+  let cachedCount=0;
+  let liveCount=0;
+  for(const tn of techNames){
+    const isCached=!!_mapsDistCache[_mapsRouteCacheKey(tn,dateStr,byTech[tn].filter(s=>s.lat&&s.lng))];
+    if(isCached){
+      cachedCount++;
+      status.innerHTML='<span style="color:var(--ac)">Using cached route for '+esc(tn)+'…</span>';
+    }else{
+      liveCount++;
+      status.innerHTML='<span style="color:var(--ac)">Routing '+esc(tn)+' via OSRM…</span>';
+    }
+    results[tn]=await _mapsTechDayRoute(tn,dateStr,byTech[tn]);
+    // Only delay if we actually called OSRM (cache hits are instant — no need to throttle)
+    if(!results[tn].cached)await new Promise(r=>setTimeout(r,250));
+  }
+  // Render map with all tech routes overlaid
+  _mapsRenderMap(results);
+  _mapsRenderLegend(results);
+  _mapsRenderDailyCards(results,dateStr);
+  _mapsRenderSummary();
+  _mapsRenderTrendChart();
+  _mapsRenderHistory();
+  const totalStops=Object.values(results).reduce((s,r)=>s+r.validStops.length,0);
+  const totalSkipped=Object.values(results).reduce((s,r)=>s+r.skippedStops.length,0);
+  let stat=techNames.length+" tech"+(techNames.length===1?"":"s")+" · "+totalStops+" stop"+(totalStops===1?"":"s");
+  if(cachedCount>0)stat+=' <span style="color:#16a34a">· '+cachedCount+' cached</span>';
+  if(totalSkipped)stat+=' · <span style="color:#b45309">'+totalSkipped+" not geocoded</span>";
+  if(Object.values(results).some(r=>r.fallback))stat+=' · <span style="color:#b45309">distances approximate (OSRM unreachable)</span>';
+  status.innerHTML=stat;
+  mapWrap.style.display="block";
+  // If admin stats panel is open and showing tickets per tech, refresh it so Drive time appears
+  if(typeof rndrAdminStats==="function")try{rndrAdminStats()}catch(_e){}
+}
+
+function _mapsRenderMap(results){
+  if(typeof L==="undefined")return;
+  // Tear down previous instance
+  if(_mapsInstance){try{_mapsInstance.remove()}catch(_e){}_mapsInstance=null;_mapsLayers=[]}
+  _mapsInstance=L.map("mapsMapContainer",{zoomControl:true,attributionControl:true});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_mapsInstance);
+  // Depot pin (shared by all techs — drawn once, prominent)
+  const depotIcon=L.divIcon({
+    className:"",
+    html:'<div style="background:#1a1a1a;color:#fff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4)">AS</div>',
+    iconSize:[36,36],iconAnchor:[18,18]
+  });
+  const depotMarker=L.marker([ASPEN_DEPOT.lat,ASPEN_DEPOT.lng],{icon:depotIcon}).addTo(_mapsInstance);
+  depotMarker.bindPopup('<b>Aspen Spas</b><br><small>'+esc(ASPEN_DEPOT.address)+'</small><br><small style="color:#666">Start &amp; end of every route</small>');
+  _mapsLayers.push(depotMarker);
+  // Bounds tracker
+  const bounds=[[ASPEN_DEPOT.lat,ASPEN_DEPOT.lng]];
+  // Each tech: polyline (route) + numbered pins
+  Object.keys(results).forEach(function(techName){
+    const r=results[techName];
+    if(!r.validStops.length)return;
+    const ti=TECHS.indexOf(techName);
+    const col=TECH_COLORS[(ti>=0?ti:0)%TECH_COLORS.length];
+    // Polyline using OSRM geometry (or fallback straight line)
+    if(r.geometry&&r.geometry.length>1){
+      const pl=L.polyline(r.geometry,{color:col,weight:4,opacity:.75,lineCap:"round",lineJoin:"round"}).addTo(_mapsInstance);
+      _mapsLayers.push(pl);
+      r.geometry.forEach(p=>bounds.push(p));
+    }
+    // Numbered stop pins for this tech
+    r.validStops.forEach(function(s,i){
+      const stopNum=i+1;
+      const pinIcon=L.divIcon({
+        className:"",
+        html:'<div style="background:'+col+';color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+stopNum+'</div>',
+        iconSize:[30,30],iconAnchor:[15,15]
+      });
+      const m=L.marker([s.lat,s.lng],{icon:pinIcon}).addTo(_mapsInstance);
+      const popup='<b>'+esc(s.tkt.customer||"—")+'</b><br><span style="color:'+col+';font-weight:700">'+esc(techName)+' · stop '+stopNum+'</span><br>'+(s.tkt.arrival?esc(s.tkt.arrival)+'<br>':'')+'<small>'+esc(s.address)+'</small>';
+      m.bindPopup(popup);
+      _mapsLayers.push(m);
+      bounds.push([s.lat,s.lng]);
+    });
+  });
+  if(bounds.length>1){
+    _mapsInstance.fitBounds(bounds,{padding:[40,40]});
+  }else{
+    _mapsInstance.setView([ASPEN_DEPOT.lat,ASPEN_DEPOT.lng],11);
+  }
+  // Fix Leaflet's "tiles don't render" timing issue
+  setTimeout(function(){if(_mapsInstance)_mapsInstance.invalidateSize()},250);
+}
+
+function _mapsRenderLegend(results){
+  const legend=document.getElementById("mapsLegend");
+  let h='<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600"><div style="background:#1a1a1a;color:#fff;width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:9px">AS</div>Aspen Spas (depot)</div>';
+  Object.keys(results).forEach(function(techName){
+    const r=results[techName];
+    const ti=TECHS.indexOf(techName);
+    const col=TECH_COLORS[(ti>=0?ti:0)%TECH_COLORS.length];
+    h+='<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="display:inline-block;width:18px;height:4px;background:'+col+';border-radius:2px"></span><b style="color:'+col+'">'+esc(techName)+'</b><span style="color:var(--i3)">· '+r.validStops.length+' stops · '+_fmtMiles(r.miles)+' · '+_fmtDuration(r.seconds)+'</span></div>';
+  });
+  legend.innerHTML=h;
+}
+
+function _mapsRenderDailyCards(results,dateStr){
+  const wrap=document.getElementById("mapsDailyCards");
+  let h="";
+  // Sort techs by miles desc — biggest workload first
+  const sorted=Object.keys(results).sort((a,b)=>results[b].miles-results[a].miles);
+  sorted.forEach(function(techName){
+    const r=results[techName];
+    const ti=TECHS.indexOf(techName);
+    const col=TECH_COLORS[(ti>=0?ti:0)%TECH_COLORS.length];
+    h+='<div style="background:#fff;border:1.5px solid var(--ln);border-left:4px solid '+col+';border-radius:12px;padding:14px">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:15px;font-weight:700;color:'+col+'">'+esc(techName)+'</div><div style="font-size:11px;color:var(--i3);text-transform:uppercase;letter-spacing:.5px">'+r.validStops.length+' stop'+(r.validStops.length===1?'':'s')+'</div></div>';
+    // Stats row
+    h+='<div style="display:flex;gap:10px;margin-bottom:10px">';
+    h+='<div style="flex:1;padding:8px;background:#fafaf8;border-radius:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--i1)">'+_fmtMiles(r.miles)+'</div><div style="font-size:10px;color:var(--i3);text-transform:uppercase;letter-spacing:.5px">Total miles</div></div>';
+    h+='<div style="flex:1;padding:8px;background:#fafaf8;border-radius:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--i1)">'+_fmtDuration(r.seconds)+'</div><div style="font-size:10px;color:var(--i3);text-transform:uppercase;letter-spacing:.5px">Driving time</div></div>';
+    h+='</div>';
+    // Stop list (depot → stops → depot)
+    h+='<div style="font-size:11px;color:var(--i3);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Itinerary</div>';
+    h+='<div style="font-size:12px;line-height:1.6">';
+    h+='<div style="display:flex;align-items:center;gap:8px;color:var(--i2)"><span style="background:#1a1a1a;color:#fff;width:18px;height:18px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;flex-shrink:0">AS</span><b>Start</b> · Aspen Spas</div>';
+    r.validStops.forEach(function(s,i){
+      h+='<div style="display:flex;align-items:flex-start;gap:8px;color:var(--i1);margin-top:4px"><span style="background:'+col+';color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;margin-top:1px">'+(i+1)+'</span><div><b>'+esc(s.tkt.customer||"—")+'</b>'+(s.tkt.arrival?' <span style="color:var(--i3)">· '+esc(s.tkt.arrival)+'</span>':'')+'<div style="color:var(--i3);font-size:11px">'+esc(s.address)+'</div></div></div>';
+    });
+    h+='<div style="display:flex;align-items:center;gap:8px;color:var(--i2);margin-top:4px"><span style="background:#1a1a1a;color:#fff;width:18px;height:18px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;flex-shrink:0">AS</span><b>End</b> · Return to Aspen Spas</div>';
+    h+='</div>';
+    if(r.skippedStops&&r.skippedStops.length){
+      h+='<div style="margin-top:10px;padding:8px;background:#fff3e0;border-radius:6px;font-size:11px;color:#b45309"><b>⚠ '+r.skippedStops.length+' stop'+(r.skippedStops.length===1?'':'s')+' not on map</b><div style="color:#92400e;margin-top:2px">Address could not be located. Counted in tally but not routed.</div></div>';
+    }
+    h+='</div>';
+  });
+  wrap.innerHTML=h;
+}
+
+// Aggregate historical totals per tech across ALL dates we've cached so far.
+// Note: cache is built incrementally — only days the admin has viewed are counted.
+// This is a deliberate trade-off: computing every historical day on demand would
+// hit OSRM's free service hundreds of times per page load.
+function _mapsRenderHistory(){
+  const el=document.getElementById("mapsHistory");
+  if(!el)return;
+  const totals={}; // techName: {miles,seconds,stops,days:Set}
+  Object.keys(_mapsDistCache).forEach(function(key){
+    const idx=key.lastIndexOf("_");
+    const tech=key.substring(0,idx);
+    const date=key.substring(idx+1);
+    if(!totals[tech])totals[tech]={miles:0,seconds:0,stops:0,days:new Set()};
+    const d=_mapsDistCache[key];
+    totals[tech].miles+=d.miles;
+    totals[tech].seconds+=d.seconds;
+    totals[tech].stops+=d.stops;
+    totals[tech].days.add(date);
+  });
+  const techNames=Object.keys(totals);
+  if(!techNames.length){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--i3);font-size:13px;background:#fff;border:1.5px dashed var(--ln);border-radius:12px">No history yet — load a few dates above to start building the historical record</div>';
+    return;
+  }
+  techNames.sort((a,b)=>totals[b].miles-totals[a].miles);
+  let h='<div style="background:#fff;border:1.5px solid var(--ln);border-radius:12px;overflow:hidden">';
+  h+='<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px;padding:10px 14px;background:#fafaf8;border-bottom:1px solid var(--ln);font-size:11px;color:var(--i3);font-weight:700;text-transform:uppercase;letter-spacing:.5px">';
+  h+='<div>Technician</div><div style="text-align:right">Days</div><div style="text-align:right">Stops</div><div style="text-align:right">Miles</div><div style="text-align:right">Drive time</div>';
+  h+='</div>';
+  techNames.forEach(function(tn){
+    const d=totals[tn];
+    const ti=TECHS.indexOf(tn);
+    const col=TECH_COLORS[(ti>=0?ti:0)%TECH_COLORS.length];
+    h+='<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ln);font-size:13px;align-items:center">';
+    h+='<div style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;width:10px;height:10px;background:'+col+';border-radius:50%"></span><b style="color:'+col+'">'+esc(tn)+'</b></div>';
+    h+='<div style="text-align:right;color:var(--i2)">'+d.days.size+'</div>';
+    h+='<div style="text-align:right;color:var(--i2)">'+d.stops+'</div>';
+    h+='<div style="text-align:right;font-weight:700;color:var(--i1)">'+_fmtMiles(d.miles)+'</div>';
+    h+='<div style="text-align:right;color:var(--i2)">'+_fmtDuration(d.seconds)+'</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  h+='<div style="padding:10px 14px;font-size:11px;color:var(--i3);font-style:italic">Totals reflect days you have loaded in this session. Open more dates above to extend the history.</div>';
+  el.innerHTML=h;
+}
+
+// ─── Summary cards: this week / this month / total recorded ───
+function _mapsRenderSummary(){
+  const el=document.getElementById("mapsSummaryCards");
+  if(!el)return;
+  const today=new Date();
+  // Get Monday of this week (ISO week start)
+  const dow=today.getDay()||7; // Sunday=0 → 7
+  const weekStart=new Date(today);weekStart.setDate(today.getDate()-(dow-1));
+  const weekStartStr=fmtD(weekStart);
+  const monthStart=fmtD(new Date(today.getFullYear(),today.getMonth(),1));
+  let weekSec=0,weekStops=0,weekDays=new Set();
+  let monthSec=0,monthStops=0,monthDays=new Set();
+  let allSec=0,allDays=new Set();
+  Object.keys(_mapsDistCache).forEach(function(key){
+    // Skip fingerprinted keys (those have "|" in them) — only count clean tech_date keys
+    if(key.indexOf("|")>=0)return;
+    const idx=key.lastIndexOf("_");
+    if(idx<0)return;
+    const date=key.substring(idx+1);
+    const e=_mapsDistCache[key];
+    if(!e||typeof e.seconds!=="number")return;
+    allSec+=e.seconds;allDays.add(date);
+    if(date>=monthStart){monthSec+=e.seconds;monthStops+=(e.stops||0);monthDays.add(date)}
+    if(date>=weekStartStr){weekSec+=e.seconds;weekStops+=(e.stops||0);weekDays.add(date)}
+  });
+  function card(label,sec,sub,col){
+    const h=sec/3600;
+    return '<div style="background:#fff;border:1.5px solid var(--ln);border-left:4px solid '+col+';border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:4px">'+label+'</div><div style="font-size:22px;font-weight:800;color:var(--i1);line-height:1.1">'+(sec>0?_fmtDuration(sec):'—')+'</div><div style="font-size:11px;color:var(--i3);margin-top:4px">'+sub+'</div></div>';
+  }
+  el.innerHTML=
+    card("This week (driving)",weekSec,weekDays.size+' day'+(weekDays.size===1?'':'s')+' · '+weekStops+' stops','#16a34a')+
+    card("This month (driving)",monthSec,monthDays.size+' day'+(monthDays.size===1?'':'s')+' · '+monthStops+' stops','#2563eb')+
+    card("All recorded",allSec,allDays.size+' day'+(allDays.size===1?'':'s')+' total','#5b21b6');
+}
+
+// ─── Last 14 days trend chart: stacked bars by tech ───
+function _mapsRenderTrendChart(){
+  const el=document.getElementById("mapsTrendChart");
+  if(!el)return;
+  // Build data: last 14 days (oldest left), per tech
+  const days=[];
+  const today=new Date();
+  for(let i=13;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);days.push(fmtD(d))}
+  // Per-day, per-tech seconds
+  const dayData=days.map(function(date){
+    const techsSec={};
+    Object.keys(_mapsDistCache).forEach(function(key){
+      if(key.indexOf("|")>=0)return; // skip fingerprinted keys
+      const idx=key.lastIndexOf("_");if(idx<0)return;
+      const keyDate=key.substring(idx+1);
+      if(keyDate!==date)return;
+      const tech=key.substring(0,idx);
+      const e=_mapsDistCache[key];
+      if(e&&e.seconds)techsSec[tech]=(techsSec[tech]||0)+e.seconds;
+    });
+    const total=Object.values(techsSec).reduce((a,b)=>a+b,0);
+    return{date,techsSec,total};
+  });
+  const maxSec=Math.max(1,...dayData.map(d=>d.total));
+  const hasData=dayData.some(d=>d.total>0);
+  if(!hasData){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--i3);font-size:13px">No driving data yet for the last 14 days. Open a date above (or click <b>Backfill 14d</b>) to start recording.</div>';
+    return;
+  }
+  // Build stacked bar chart
+  let h='<div style="display:flex;align-items:flex-end;gap:6px;height:180px;padding-bottom:4px">';
+  dayData.forEach(function(d){
+    const dt=new Date(d.date+"T12:00:00");
+    const isToday=d.date===fmtD(new Date());
+    const dayLbl=dt.toLocaleDateString("en-US",{weekday:"short"})[0];
+    const dayNum=dt.getDate();
+    const totalH=d.total/3600;
+    const barH=d.total>0?Math.max(2,(d.total/maxSec)*150):2;
+    const techs=Object.keys(d.techsSec).sort();
+    h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:0">';
+    // Total label above bar
+    h+='<div style="font-size:10px;color:var(--i2);font-weight:700;margin-bottom:2px;height:14px">'+(d.total>0?(totalH<1?Math.round(totalH*60)+'m':totalH.toFixed(1)+'h'):'')+'</div>';
+    // Stacked bar
+    h+='<div title="'+esc(d.date)+'" style="width:100%;max-width:36px;height:'+barH+'px;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;background:#f0ece8;cursor:pointer" onclick="document.getElementById(\'mapsDate\').value=\''+d.date+'\';mapsLoad()">';
+    techs.forEach(function(tn){
+      const ti=TECHS.indexOf(tn);
+      const col=TECH_COLORS[(ti>=0?ti:0)%TECH_COLORS.length];
+      const segH=(d.techsSec[tn]/d.total)*100;
+      h+='<div title="'+esc(tn)+': '+_fmtDuration(d.techsSec[tn])+'" style="background:'+col+';height:'+segH+'%;min-height:1px"></div>';
+    });
+    h+='</div>';
+    // Date label below
+    h+='<div style="font-size:10px;color:'+(isToday?'var(--ac);font-weight:800':'var(--i3)')+';margin-top:4px">'+dayLbl+' '+dayNum+'</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  // Legend
+  const legendTechs={};
+  dayData.forEach(d=>Object.keys(d.techsSec).forEach(tn=>{legendTechs[tn]=(legendTechs[tn]||0)+d.techsSec[tn]}));
+  const sortedTechs=Object.keys(legendTechs).sort((a,b)=>legendTechs[b]-legendTechs[a]);
+  if(sortedTechs.length){
+    h+='<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--ln);font-size:11px">';
+    sortedTechs.forEach(function(tn){
+      const ti=TECHS.indexOf(tn);
+      const col=TECH_COLORS[(ti>=0?ti:0)%TECH_COLORS.length];
+      h+='<div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;background:'+col+';border-radius:2px"></span><b style="color:'+col+'">'+esc(tn)+'</b><span style="color:var(--i3)">·&nbsp;'+_fmtDuration(legendTechs[tn])+'</span></div>';
+    });
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
+
+// ─── Backfill: compute driving routes for the last N days that have tickets but no cached route ───
+// This is what auto-populates history "starting tomorrow" — runs in background, no UI block.
+async function _mapsBackfillRecent(numDays){
+  if(!isAdmin)return;
+  if(typeof numDays!=="number")numDays=14;
+  const status=document.getElementById("mapsStatus");
+  // Make sure cache is loaded first (otherwise we'd recompute already-cached days)
+  if(!_mapsCacheLoaded)await _mapsLoadFromFirestore();
+  await _ensureDepotCoords();
+  // Build list of (date) candidates: any date in [today-numDays, today] with assigned tickets
+  const candidates=[];
+  const today=new Date();
+  for(let i=0;i<=numDays;i++){
+    const d=new Date(today);d.setDate(today.getDate()-i);
+    candidates.push(fmtD(d));
+  }
+  let computed=0,skipped=0,noTickets=0;
+  for(const dateStr of candidates){
+    // Build per-tech routes for this date
+    const byTech=await _mapsBuildDayRoutes(dateStr);
+    const techNames=Object.keys(byTech);
+    if(!techNames.length){noTickets++;continue}
+    for(const tn of techNames){
+      const valid=byTech[tn].filter(s=>s.lat&&s.lng);
+      if(!valid.length)continue;
+      const cacheKey=_mapsRouteCacheKey(tn,dateStr,valid);
+      if(_mapsDistCache[cacheKey]){skipped++;continue}
+      // New route — compute
+      if(status)status.innerHTML='<span style="color:var(--ac)">Backfill: routing '+esc(tn)+' on '+esc(dateStr)+'…</span>';
+      await _mapsTechDayRoute(tn,dateStr,byTech[tn]);
+      computed++;
+      // Stay polite to OSRM
+      await new Promise(r=>setTimeout(r,300));
+    }
+  }
+  await _mapsFlushSync();
+  // Refresh views with new data
+  _mapsRenderSummary();
+  _mapsRenderTrendChart();
+  _mapsRenderHistory();
+  if(typeof rndrAdminStats==="function")try{rndrAdminStats()}catch(_e){}
+  if(status){
+    if(computed>0)status.innerHTML='<span style="color:#16a34a">✓ Backfill: '+computed+' route'+(computed===1?'':'s')+' computed'+(skipped>0?', '+skipped+' already cached':'')+'</span>';
+    else if(skipped>0)status.innerHTML='<span style="color:var(--i3)">All recent routes already cached ('+skipped+')</span>';
+    else status.innerHTML='<span style="color:var(--i3)">No assigned tickets in the last '+numDays+' days</span>';
+  }
+}
+
+// ─── Auto-backfill once per day on admin login ───
+// Records driving time for any unrecorded days in the last 7 days.
+// Throttled to one run per browser per day so we don't hammer OSRM.
+async function _mapsAutoBackfillOncePerDay(){
+  if(!isAdmin||(currentUser&&currentUser.role!=="admin"))return;
+  const todayKey="aspen_maps_autoBackfill_lastRun";
+  const todayStr=fmtD(new Date());
+  try{
+    if(localStorage.getItem(todayKey)===todayStr)return; // already ran today
+  }catch(_e){}
+  // Mark as ran first so concurrent tabs don't both backfill
+  try{localStorage.setItem(todayKey,todayStr)}catch(_e){}
+  // Quietly compute last 7 days of routes — runs in background
+  await _mapsBackfillRecent(7);
+}
+
+// Auto-init Maps page when admin first opens it (default to today)
+function _mapsInitOnFirstShow(){
+  // Always paint summary/trend/history immediately from cache (fast)
+  // — even before route compute completes.
+  try{_mapsRenderSummary()}catch(_e){}
+  try{_mapsRenderTrendChart()}catch(_e){}
+  try{_mapsRenderHistory()}catch(_e){}
+  const dInp=document.getElementById("mapsDate");
+  if(dInp&&!dInp.value){dInp.value=fmtD(new Date());mapsLoad()}
+}
+// Hook into showTab so we auto-load when admin clicks Maps for the first time
+(function(){
+  const _origShowTab=window.showTab;
+  if(typeof _origShowTab!=="function")return;
+  window.showTab=function(i){
+    _origShowTab(i);
+    if(i===7)_mapsInitOnFirstShow();
+  };
+})();
 
 init();</script>
 </body>
