@@ -766,6 +766,243 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .opt-applied-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#ede9fe;color:#6d28d9;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-left:6px}
 
 
+/* ═══════════════════════════════════════════════════════════
+   GLASSMORPHISM THEME — Monarch-inspired translucent UI
+   This layer overrides the base theme. To revert: remove
+   everything between the GLASS-START and GLASS-END markers.
+   ═══════════════════════════════════════════════════════════ */
+/* GLASS-START */
+
+/* ── Background: subtle neutral gray that gives glass enough contrast ── */
+body{
+  background:
+    radial-gradient(ellipse at top left,#eef0f3 0%,transparent 60%),
+    radial-gradient(ellipse at bottom right,#e9ebee 0%,transparent 65%),
+    linear-gradient(180deg,#f0f1f4 0%,#e9eaee 100%) !important;
+  background-attachment:fixed !important;
+  min-height:100vh;
+}
+
+/* ── Header (logo + brand strip) ── */
+.hdr,.brand,header{
+  background:rgba(255,255,255,.6) !important;
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.6) !important;
+}
+
+/* ── Tabs row: frosted glass strip ── */
+.tabs{
+  background:rgba(255,255,255,.6) !important;
+  backdrop-filter:saturate(180%) blur(18px);
+  -webkit-backdrop-filter:saturate(180%) blur(18px);
+  border-bottom:1px solid rgba(255,255,255,.5) !important;
+}
+.tab{background:transparent !important}
+.tab.on{background:rgba(255,255,255,.5) !important;color:var(--ac)}
+
+/* ── Generic cards (.card, .gz, .zone-section) ── */
+.card,.gz,.zone-section{
+  background:rgba(255,255,255,.7) !important;
+  backdrop-filter:saturate(160%) blur(14px);
+  -webkit-backdrop-filter:saturate(160%) blur(14px);
+  border:1px solid rgba(255,255,255,.85) !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.8) inset,
+    0 4px 20px rgba(50,55,65,.06),
+    0 1px 3px rgba(0,0,0,.04) !important;
+}
+
+/* ── Modal backdrop + content ── */
+.mbg{
+  background:rgba(20,25,35,.45) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.modal,.mt{
+  background:rgba(255,255,255,.85) !important;
+  backdrop-filter:saturate(180%) blur(24px);
+  -webkit-backdrop-filter:saturate(180%) blur(24px);
+  border:1px solid rgba(255,255,255,.9) !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 12px 40px rgba(30,35,45,.18),
+    0 4px 12px rgba(0,0,0,.08) !important;
+}
+
+/* ── Search bar ── */
+.search-wrap{
+  background:rgba(255,255,255,.7) !important;
+  backdrop-filter:saturate(160%) blur(14px);
+  -webkit-backdrop-filter:saturate(160%) blur(14px);
+  border:1px solid rgba(255,255,255,.8) !important;
+  border-radius:14px !important;
+}
+.search-bar{background:transparent !important}
+
+/* ── Today's Capacity panel ── */
+.cap-panel{
+  background:rgba(255,255,255,.7) !important;
+  backdrop-filter:saturate(160%) blur(16px);
+  -webkit-backdrop-filter:saturate(160%) blur(16px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+.cap-card{
+  background:rgba(255,255,255,.65) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+.cap-card.all-done{background:rgba(220,252,231,.7) !important;border-color:rgba(134,239,172,.7) !important}
+.cap-card.overload{background:rgba(254,226,226,.7) !important;border-color:rgba(252,165,165,.7) !important}
+
+/* ── Attention panel (Calendar) ── */
+.attn-panel{
+  background:linear-gradient(135deg,rgba(255,251,235,.75) 0%,rgba(254,243,199,.7) 100%) !important;
+  backdrop-filter:saturate(160%) blur(14px);
+  -webkit-backdrop-filter:saturate(160%) blur(14px);
+  border:1px solid rgba(252,211,77,.5) !important;
+}
+.attn-panel.empty{background:rgba(240,253,244,.75) !important;border-color:rgba(134,239,172,.5) !important}
+.attn-cell{
+  background:rgba(255,255,255,.75) !important;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+
+/* ── Calendar Team view columns ── */
+.mt-cal{background:transparent}
+.mt-col{
+  background:rgba(255,255,255,.6) !important;
+  backdrop-filter:saturate(160%) blur(12px);
+  -webkit-backdrop-filter:saturate(160%) blur(12px);
+  border:1px solid rgba(255,255,255,.75) !important;
+}
+
+/* ── Day-view ticket cards (cal-tkt-mini) ── */
+.cal-tkt-mini{
+  background:rgba(255,255,255,.78) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.85) !important;
+}
+
+/* ── Day view header / day-progress ── */
+.day-progress{
+  background:rgba(255,255,255,.65) !important;
+  backdrop-filter:saturate(160%) blur(12px);
+  -webkit-backdrop-filter:saturate(160%) blur(12px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+
+/* ── Service Log zone cards / customer cards ── */
+.zone-card-item,.cust-card,.cc-card{
+  background:rgba(255,255,255,.72) !important;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+
+/* ── Floating to-do widget ── */
+.todo-wrap{
+  background:rgba(255,255,255,.85) !important;
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border:1px solid rgba(255,255,255,.9) !important;
+  box-shadow:0 8px 32px rgba(30,35,45,.18) !important;
+}
+
+/* ── Bottom nav (mobile) ── */
+.bottom-nav{
+  background:rgba(255,255,255,.78) !important;
+  backdrop-filter:saturate(180%) blur(24px);
+  -webkit-backdrop-filter:saturate(180%) blur(24px);
+}
+
+/* ── Tech management cards ── */
+.usr-card{
+  background:rgba(255,255,255,.68) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+
+/* ── ZIP section sub-tab content ── */
+.zip-stat,.zip-rcard,.cap-card{
+  background:rgba(255,255,255,.65) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+
+/* ── ZIP table ── */
+.zip-table th{background:rgba(250,250,250,.55) !important}
+.zip-table tr:hover{background:rgba(255,255,255,.5) !important}
+
+/* ── ZIP drop zone (import area) ── */
+.zip-drop{
+  background:rgba(255,255,255,.5) !important;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:2px dashed rgba(255,255,255,.8) !important;
+}
+.zip-drop:hover,.zip-drop.over{
+  background:rgba(255,247,235,.7) !important;
+  border-color:var(--ac) !important;
+}
+
+/* ── Inputs: keep solid white for readability (don't translucent these) ── */
+input[type=text],input[type=tel],input[type=email],input[type=number],
+input[type=date],input[type=time],input[type=password],input[type=search],
+textarea,select{
+  background:rgba(255,255,255,.92) !important;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+
+/* ── Login screen ── */
+#loginScreen{
+  background:linear-gradient(180deg,#f0f1f4 0%,#e3e5e9 100%) !important;
+}
+.login-card{
+  background:rgba(255,255,255,.8) !important;
+  backdrop-filter:saturate(180%) blur(28px);
+  -webkit-backdrop-filter:saturate(180%) blur(28px);
+  border:1px solid rgba(255,255,255,.95) !important;
+  box-shadow:0 16px 50px rgba(30,35,45,.18) !important;
+}
+
+/* ── Tabs filter row inside calendar ── */
+.cal-tech-pill{
+  background:rgba(255,255,255,.65) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1.5px solid rgba(255,255,255,.8) !important;
+}
+
+/* ── Slog zone filter pills ── */
+.slog-filter button{
+  background:rgba(255,255,255,.65) !important;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.8) !important;
+}
+
+/* ── Toasts: keep visible on top of glass ── */
+.toast{
+  background:rgba(20,25,35,.85) !important;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.15);
+}
+
+/* ── Reduce motion preference: drop blur (perf on weak devices) ── */
+@media (prefers-reduced-motion:reduce){
+  *{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+}
+
+/* GLASS-END */
+
 </style>
 </head>
 <body>
@@ -4844,10 +5081,24 @@ function calDayCell(d,ds,tkts,today,isOther){
 function rndrCalWeek(sun,byDate,today){const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let h=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");for(let i=0;i<7;i++){const dt=new Date(sun);dt.setDate(sun.getDate()+i);const ds=fmtD(dt);h+=calDayCell(dt.getDate(),ds,byDate[ds]||[],today,false)}document.getElementById("calGrid").innerHTML=h}
 function dayProgressHTML(tkts){
   if(!tkts||!tkts.length)return "";
+  var today=fmtD(new Date()); // YYYY-MM-DD
+  // Helper: was this ticket's field report submitted TODAY (not just at any past time)?
+  function _submittedToday(t){
+    if(t.status!=="done"&&t.status!=="complete"&&!t.fieldReportSubmitted)return false;
+    var s=t.fieldReportSubmittedAt;
+    if(!s)return false; // No timestamp = legacy data, don't count to be safe
+    // fieldReportSubmittedAt is a toLocaleString() string like "5/4/2026, 11:00:00 AM"
+    // Parse via Date, then compare YYYY-MM-DD
+    try{
+      var d=new Date(s);
+      if(isNaN(d))return false;
+      return fmtD(d)===today;
+    }catch(_e){return false}
+  }
   var done=0,canceled=0,needCC=0,repeats=0,paid=0;
   tkts.forEach(function(t){
     if(t.status==="canceled")canceled++;
-    else if(t.status==="done"||t.status==="complete")done++;
+    else if(_submittedToday(t))done++;
     if(t.status!=="canceled"){
       if(t.ccRequested&&!t.ccOnFile)needCC++;
       if(t.isRepeat)repeats++;
@@ -4856,7 +5107,7 @@ function dayProgressHTML(tkts){
   });
   var active=tkts.length-canceled;
   var pct=active?Math.round((done/active)*100):0;
-  var stats='<span class="dp-stat"><b>'+done+'</b> of <b>'+active+'</b> done</span>';
+  var stats='<span class="dp-stat"><b>'+done+'</b> of <b>'+active+'</b> done today</span>';
   if(needCC)stats+='<span class="dp-sep">·</span><span class="dp-stat dp-warn">'+needCC+' need CC</span>';
   if(repeats)stats+='<span class="dp-sep">·</span><span class="dp-stat dp-danger">'+repeats+' repeat</span>';
   if(canceled)stats+='<span class="dp-sep">·</span><span class="dp-stat">'+canceled+' canceled</span>';
@@ -4899,7 +5150,18 @@ function heatmapHTML(allTkts,centerDate){
     (t.techs||[]).forEach(function(tn){
       if(!stats[tn])return;
       stats[tn].total++;
-      var isComplete=t.fieldReportSubmitted===true||t.source==="report"||t.status==="done";
+      // A ticket counts as "done" only if its field report was submitted TODAY.
+      // Old completed tickets that happen to share today's date stay pending.
+      var isComplete=false;
+      if(t.fieldReportSubmitted===true||t.source==="report"||t.status==="done"||t.status==="complete"){
+        var s=t.fieldReportSubmittedAt;
+        if(s){
+          try{var d=new Date(s);if(!isNaN(d)&&fmtD(d)===today)isComplete=true}catch(_e){}
+        }
+        // Tickets whose source is "report" (created from a field report) and that
+        // have date==today implicitly count even without timestamp — they were created today.
+        if(!isComplete&&t.source==="report"&&!s)isComplete=true;
+      }
       if(isComplete)stats[tn].done++;
       else stats[tn].pend++;
     });
