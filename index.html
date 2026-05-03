@@ -7312,11 +7312,20 @@ async function _traccarGetLatestPosition(deviceId){
 }
 
 async function _traccarTestConnection(){
+  // Use /api/devices instead of /api/session because Bearer tokens
+  // don't authenticate against /api/session in modern Traccar (it's for session cookies).
+  // /api/devices is the simplest authenticated endpoint that confirms the token works.
   try{
-    const session=await _traccarFetch("/api/session");
-    return{ok:true,user:session?(session.name||session.email):"unknown"};
+    const devices=await _traccarFetch("/api/devices");
+    return{ok:true,user:"token valid · "+(devices?devices.length:0)+" device"+(devices&&devices.length===1?"":"s")+" accessible"};
   }catch(e){
-    return{ok:false,error:e.message};
+    // Provide more helpful error messages
+    let msg=e.message||"unknown error";
+    if(msg.indexOf("401")>=0)msg="Invalid or expired token. Generate a new one in Traccar → Account → Tokens.";
+    else if(msg.indexOf("403")>=0)msg="Token lacks permissions. Make sure it's a User token, not a service account.";
+    else if(msg.indexOf("404")>=0)msg="Server URL is wrong. Check that it ends with the right domain (no trailing slash, no port).";
+    else if(msg.indexOf("Failed to fetch")>=0||msg.indexOf("NetworkError")>=0)msg="Network error. Check the URL and your internet connection. Some browsers block mixed content (https → http).";
+    return{ok:false,error:msg};
   }
 }
 
