@@ -1116,6 +1116,13 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
       </div>
       <div id="adminStatVisitBody" style="padding-top:12px"><div id="adminStatVisits"></div></div>
     </div>
+    <div class="card" style="margin:0">
+      <div onclick="adminToggleSection('Traccar')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:2px solid var(--ac)" id="adminTraccarHdr">
+        <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="radio" data-size="18" data-color="var(--ac)"></span><span style="font-size:13px;font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">GPS Tracking · Traccar</span></div>
+        <span id="adminTraccarArrow" style="font-size:14px;color:var(--i2);transition:transform .2s">▼</span>
+      </div>
+      <div id="adminTraccarBody" style="padding-top:12px"></div>
+    </div>
   </div>
   <div style="text-align:center;margin-top:20px"><button onclick="logout()" style="padding:12px 28px;background:none;border:1.5px solid var(--r);border-radius:10px;font-size:13px;font-weight:600;color:var(--r);cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="log-out" data-size="14" data-color="var(--r)"></span>Logout</button></div>
 </div>
@@ -1130,9 +1137,11 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
   <!-- Date picker + status -->
   <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="mapsDate" onchange="mapsLoad()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="mapsDate" onchange="mapsLoad();if(_traccarLiveEnabled)_traccarRenderLiveTracks()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
     <button onclick="mapsLoad()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Refresh</button>
     <button onclick="_mapsBackfillRecent(14)" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Compute driving time for the last 14 days that have assigned tickets but no cached route"><span class="lucide-mount" data-lucide="zap" data-size="13" data-color="var(--ac)"></span>Backfill 14d</button>
+    <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" title="Overlay real GPS tracks from Traccar over the planned routes"><input type="checkbox" id="traccarLiveToggle" onchange="_traccarToggleLive()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--ac)"><span class="lucide-mount" data-lucide="radio" data-size="14" data-color="var(--ac)"></span>Show Live GPS</label>
+    <span id="traccarLiveStatus" style="font-size:11px"></span>
     <div id="mapsStatus" style="font-size:13px;color:var(--i3);flex:1;min-width:200px"></div>
   </div>
 
@@ -1426,8 +1435,8 @@ window.addEventListener("offline",function(){
   if(typeof toast==="function")toast("📴 Offline — changes will sync when reconnected","warn");
 });
 
-let TECHS=["Jeremy","Robert","Pedro","Jarred","Fernando"];
-const DEFAULT_TECHS=["Jeremy","Robert","Pedro","Jarred","Fernando"];
+let TECHS=["Jeremy","Pedro","Jarred","Fernando","Jeremias","Sebys"];
+const DEFAULT_TECHS=["Jeremy","Pedro","Jarred","Fernando","Jeremias","Sebys"];
 // HIDDEN_TECHS: technicians admin chose to hide. They stay in TECHS (not deleted),
 // but are filtered from all user-facing UIs (pills, calendar columns, capacity, etc).
 // Persisted in Firestore alongside techs list via saveTechs/loadTechs.
@@ -1713,7 +1722,7 @@ function updAdmin(){
 // ═══ USER MANAGEMENT (Admin Tab) ═══
 function openUserMgmt(){showTab(3)}
 function closeUserMgmt(){}
-function rndrAdmin(){rndrAdminCapacity();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse()}
+function rndrAdmin(){rndrAdminCapacity();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();if(typeof _traccarRenderAdminSection==="function")try{_traccarRenderAdminSection()}catch(_e){}_applyAdminCollapse()}
 function rndrAdminCapacity(){
   var el=document.getElementById("adminCapacity");if(!el)return;
   if(!isAdmin){el.innerHTML="";return}
@@ -1723,7 +1732,7 @@ function rndrAdminCapacity(){
 }
 // Apply collapsed state on render based on localStorage (default: Tech/User collapsed, Stats expanded)
 function _applyAdminCollapse(){
-  [{k:"Tech",def:true},{k:"User",def:true},{k:"Zip",def:true},{k:"StatTech",def:false},{k:"StatVisit",def:false}].forEach(function(o){
+  [{k:"Tech",def:true},{k:"User",def:true},{k:"Zip",def:true},{k:"StatTech",def:false},{k:"StatVisit",def:false},{k:"Traccar",def:true}].forEach(function(o){
     var body=document.getElementById("admin"+o.k+"Body");
     var arr=document.getElementById("admin"+o.k+"Arrow");
     if(!body||!arr)return;
@@ -7184,6 +7193,677 @@ function _mapsInitOnFirstShow(){
     if(i===7)_mapsInitOnFirstShow();
   };
 })();
+
+// ════════════════════════════════════════════════════════════════════════════
+// TRACCAR INTEGRATION MODULE
+// Connects this app to a Traccar GPS tracking server.
+// - Config (URL + API token) stored in Firestore: _config/traccar
+// - Tech-to-device mapping stored in Firestore: _config/traccarTechMap
+// - Live GPS rendering on Maps tab via toggle
+// ════════════════════════════════════════════════════════════════════════════
+
+let _traccarConfig = null;   // {url, token, enabled} or null if not configured
+let _traccarTechMap = {};    // {techName: deviceId}
+let _traccarDevices = [];    // cached list of devices from Traccar
+let _traccarPosCache = {};   // {deviceId_date: [positions]}
+let _traccarLatestCache = {}; // {deviceId: {pos, fetchedAt}}
+let _traccarLiveLayer = null; // Leaflet layer group for live tracks
+let _traccarLiveTimer = null; // setInterval for auto-refresh
+let _traccarLiveEnabled = false;
+
+// ─── Config load/save (Firestore) ───
+async function _traccarLoadConfig(){
+  if(!firebase||!firebase.firestore)return;
+  try{
+    const db=firebase.firestore();
+    const snap=await db.collection("_config").doc("traccar").get();
+    if(snap.exists){
+      _traccarConfig=snap.data();
+    }else{
+      _traccarConfig=null;
+    }
+    const mapSnap=await db.collection("_config").doc("traccarTechMap").get();
+    if(mapSnap.exists){
+      _traccarTechMap=mapSnap.data().map||{};
+    }else{
+      _traccarTechMap={};
+    }
+  }catch(e){
+    console.warn("Traccar config load failed:",e);
+    _traccarConfig=null;
+  }
+}
+
+async function _traccarSaveConfig(url,token,enabled){
+  if(!firebase||!firebase.firestore)return false;
+  try{
+    const db=firebase.firestore();
+    await db.collection("_config").doc("traccar").set({
+      url:url,
+      token:token,
+      enabled:enabled!==false,
+      updatedAt:new Date().toISOString(),
+      updatedBy:currentUser?currentUser.name:"unknown"
+    });
+    _traccarConfig={url:url,token:token,enabled:enabled!==false};
+    return true;
+  }catch(e){
+    console.warn("Traccar config save failed:",e);
+    return false;
+  }
+}
+
+async function _traccarSaveTechMap(map){
+  if(!firebase||!firebase.firestore)return false;
+  try{
+    const db=firebase.firestore();
+    await db.collection("_config").doc("traccarTechMap").set({
+      map:map,
+      updatedAt:new Date().toISOString(),
+      updatedBy:currentUser?currentUser.name:"unknown"
+    });
+    _traccarTechMap=map;
+    return true;
+  }catch(e){
+    console.warn("Traccar tech map save failed:",e);
+    return false;
+  }
+}
+
+// ─── API wrapper ───
+async function _traccarFetch(endpoint,options){
+  if(!_traccarConfig||!_traccarConfig.url||!_traccarConfig.token){
+    throw new Error("Traccar not configured");
+  }
+  const url=_traccarConfig.url.replace(/\/+$/,"")+endpoint;
+  const opts=options||{};
+  opts.headers=Object.assign({
+    "Authorization":"Bearer "+_traccarConfig.token,
+    "Accept":"application/json"
+  },opts.headers||{});
+  const res=await fetch(url,opts);
+  if(!res.ok){
+    const txt=await res.text().catch(function(){return""});
+    throw new Error("Traccar API "+res.status+": "+txt.substring(0,120));
+  }
+  return res.json();
+}
+
+async function _traccarGetDevices(){
+  const devs=await _traccarFetch("/api/devices");
+  _traccarDevices=devs||[];
+  return _traccarDevices;
+}
+
+async function _traccarGetPositions(deviceId,from,to){
+  const fromIso=from.toISOString();
+  const toIso=to.toISOString();
+  return _traccarFetch("/api/positions?deviceId="+deviceId+"&from="+encodeURIComponent(fromIso)+"&to="+encodeURIComponent(toIso));
+}
+
+async function _traccarGetLatestPosition(deviceId){
+  const now=Date.now();
+  const cached=_traccarLatestCache[deviceId];
+  if(cached&&(now-cached.fetchedAt)<25000)return cached.pos;
+  const positions=await _traccarFetch("/api/positions?deviceId="+deviceId);
+  const pos=positions&&positions.length?positions[positions.length-1]:null;
+  _traccarLatestCache[deviceId]={pos:pos,fetchedAt:now};
+  return pos;
+}
+
+async function _traccarTestConnection(){
+  try{
+    const session=await _traccarFetch("/api/session");
+    return{ok:true,user:session?(session.name||session.email):"unknown"};
+  }catch(e){
+    return{ok:false,error:e.message};
+  }
+}
+
+// ─── Admin UI: Configuration section ───
+function _traccarRenderAdminSection(){
+  const host=document.getElementById("adminTraccarBody");
+  if(!host)return;
+  const cfg=_traccarConfig||{url:"",token:"",enabled:false};
+  const status=cfg.url&&cfg.token?(cfg.enabled?'<span style="color:#16a34a;font-weight:700">● Connected</span>':'<span style="color:var(--i3);font-weight:700">○ Disabled</span>'):'<span style="color:#b45309;font-weight:700">⚠ Not configured</span>';
+  let html='<div style="margin-bottom:14px;padding:10px 12px;background:#fafaf8;border-radius:8px;font-size:12px;color:var(--i3)">Status: '+status+(cfg.url?' · <code style="font-size:11px">'+esc(cfg.url)+'</code>':'')+'</div>';
+
+  html+='<div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px">';
+  html+='<div><label style="display:block;font-size:11px;font-weight:700;color:var(--i2);margin-bottom:4px;letter-spacing:.4px;text-transform:uppercase">Server URL</label>';
+  html+='<input type="text" id="traccarUrlInput" value="'+esc(cfg.url||"https://demo.traccar.org")+'" placeholder="https://demo.traccar.org" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>';
+  html+='<div><label style="display:block;font-size:11px;font-weight:700;color:var(--i2);margin-bottom:4px;letter-spacing:.4px;text-transform:uppercase">API Token</label>';
+  html+='<input type="password" id="traccarTokenInput" value="'+esc(cfg.token||"")+'" placeholder="Paste your Traccar API token here" style="width:100%;padding:9px 10px;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-family:monospace;box-sizing:border-box"></div>';
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-top:4px"><label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="traccarEnabledInput"'+(cfg.enabled?' checked':'')+' style="width:16px;height:16px;cursor:pointer">Integration enabled</label></div>';
+  html+='</div>';
+
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
+  html+='<button onclick="_traccarHandleSaveConfig()" style="padding:9px 16px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save</button>';
+  html+='<button onclick="_traccarHandleTest()" style="padding:9px 16px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Test Connection</button>';
+  if(cfg.url&&cfg.token)html+='<button onclick="_traccarHandleLoadDevices()" style="padding:9px 16px;background:#fff;color:var(--i1);border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Load Devices</button>';
+  if(cfg.url&&cfg.token)html+='<button onclick="_traccarHandleAutoSetup()" style="padding:9px 16px;background:#dcfce7;color:#166534;border:1.5px solid #86efac;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">⚡ Auto-Setup All Techs</button>';
+  html+='</div>';
+
+  html+='<div id="traccarTestResult" style="margin-bottom:14px"></div>';
+
+  if(cfg.url&&cfg.token){
+    html+='<div style="margin-top:18px;padding-top:14px;border-top:1.5px dashed var(--ln)">';
+    html+='<div style="font-size:12px;font-weight:700;color:var(--br);letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px">Map Technicians to Devices</div>';
+    html+='<p style="font-size:12px;color:var(--i3);margin:0 0 12px 0">Click "Load Devices" above to see your Traccar devices, then assign each technician to one.</p>';
+    html+='<div id="traccarTechMapBody"></div>';
+    html+='</div>';
+  }
+
+  host.innerHTML=html;
+  if(typeof lucide!=="undefined")lucide.createIcons();
+  _traccarRenderTechMapUI();
+}
+
+function _traccarRenderTechMapUI(){
+  const host=document.getElementById("traccarTechMapBody");
+  if(!host)return;
+  const techs=(typeof TECHS!=="undefined"&&Array.isArray(TECHS))?TECHS:[];
+  if(!techs.length){host.innerHTML='<div style="color:var(--i3);font-size:12px">No technicians configured.</div>';return}
+
+  let html='<div style="display:grid;grid-template-columns:1fr;gap:8px">';
+  techs.forEach(function(t){
+    const tName=typeof t==="string"?t:(t.name||t);
+    if(!tName)return;
+    const currentDeviceId=_traccarTechMap[tName]||"";
+    let opts='<option value="">— Not mapped —</option>';
+    _traccarDevices.forEach(function(d){
+      const sel=String(d.id)===String(currentDeviceId)?" selected":"";
+      opts+='<option value="'+d.id+'"'+sel+'>'+esc(d.name||d.uniqueId||("Device "+d.id))+' ('+esc(d.uniqueId||"")+')</option>';
+    });
+    html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fafaf8;border-radius:8px">';
+    html+='<div style="flex:0 0 140px;font-size:13px;font-weight:600;color:var(--br)">'+esc(tName)+'</div>';
+    html+='<select id="traccarMap_'+esc(tName)+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--ln);border-radius:6px;font-size:12px;background:#fff">'+opts+'</select>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<div style="margin-top:10px;display:flex;justify-content:flex-end"><button onclick="_traccarHandleSaveTechMap()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Save Mapping</button></div>';
+
+  host.innerHTML=html;
+}
+
+async function _traccarHandleSaveConfig(){
+  const url=(document.getElementById("traccarUrlInput")||{}).value||"";
+  const token=(document.getElementById("traccarTokenInput")||{}).value||"";
+  const enabled=(document.getElementById("traccarEnabledInput")||{}).checked||false;
+  if(!url||!token){toast("URL and Token are required","err");return}
+  const ok=await _traccarSaveConfig(url.trim(),token.trim(),enabled);
+  if(ok){toast("Traccar configuration saved","ok");_traccarRenderAdminSection()}
+  else toast("Failed to save config","err");
+}
+
+async function _traccarHandleTest(){
+  const url=(document.getElementById("traccarUrlInput")||{}).value||"";
+  const token=(document.getElementById("traccarTokenInput")||{}).value||"";
+  if(!url||!token){toast("Enter URL and Token first","err");return}
+  const oldCfg=_traccarConfig;
+  _traccarConfig={url:url.trim(),token:token.trim(),enabled:true};
+  const result=await _traccarTestConnection();
+  _traccarConfig=oldCfg;
+  const host=document.getElementById("traccarTestResult");
+  if(!host)return;
+  if(result.ok){
+    host.innerHTML='<div style="padding:10px 12px;background:#dcfce7;border-radius:8px;font-size:13px;color:#166534">✓ Connection OK · Logged in as <b>'+esc(result.user)+'</b></div>';
+  }else{
+    host.innerHTML='<div style="padding:10px 12px;background:#fee2e2;border-radius:8px;font-size:13px;color:#991b1b">✗ Connection failed: '+esc(result.error||"unknown error")+'</div>';
+  }
+}
+
+async function _traccarHandleLoadDevices(){
+  const host=document.getElementById("traccarTestResult");
+  if(host)host.innerHTML='<div style="padding:8px 12px;background:#fafaf8;border-radius:8px;font-size:12px;color:var(--i3)">Loading devices...</div>';
+  try{
+    const devs=await _traccarGetDevices();
+    if(host)host.innerHTML='<div style="padding:10px 12px;background:#dcfce7;border-radius:8px;font-size:13px;color:#166534">✓ Loaded '+devs.length+' device'+(devs.length===1?'':'s')+' from Traccar</div>';
+    _traccarRenderTechMapUI();
+  }catch(e){
+    if(host)host.innerHTML='<div style="padding:10px 12px;background:#fee2e2;border-radius:8px;font-size:13px;color:#991b1b">✗ Failed to load devices: '+esc(e.message)+'</div>';
+  }
+}
+
+async function _traccarHandleSaveTechMap(){
+  const techs=(typeof TECHS!=="undefined"&&Array.isArray(TECHS))?TECHS:[];
+  const newMap={};
+  techs.forEach(function(t){
+    const tName=typeof t==="string"?t:(t.name||t);
+    if(!tName)return;
+    const sel=document.getElementById("traccarMap_"+tName);
+    if(sel&&sel.value)newMap[tName]=sel.value;
+  });
+  const ok=await _traccarSaveTechMap(newMap);
+  if(ok)toast("Technician mapping saved","ok");
+  else toast("Failed to save mapping","err");
+}
+
+// ─── Live GPS rendering on Maps tab ───
+async function _traccarToggleLive(){
+  const cb=document.getElementById("traccarLiveToggle");
+  _traccarLiveEnabled=cb&&cb.checked;
+  if(_traccarLiveEnabled){
+    if(!_traccarConfig||!_traccarConfig.url||!_traccarConfig.token||!_traccarConfig.enabled){
+      toast("Traccar not configured. Go to Admin → Integrations.","err");
+      if(cb)cb.checked=false;
+      _traccarLiveEnabled=false;
+      return;
+    }
+    await _traccarRenderLiveTracks();
+    if(_traccarLiveTimer)clearInterval(_traccarLiveTimer);
+    _traccarLiveTimer=setInterval(_traccarRenderLiveTracks,30000);
+  }else{
+    if(_traccarLiveTimer){clearInterval(_traccarLiveTimer);_traccarLiveTimer=null}
+    _traccarClearLiveLayer();
+  }
+}
+
+function _traccarClearLiveLayer(){
+  if(_traccarLiveLayer&&typeof _mapsInstance!=="undefined"&&_mapsInstance){
+    try{_mapsInstance.removeLayer(_traccarLiveLayer)}catch(_e){}
+    _traccarLiveLayer=null;
+  }
+  const badge=document.getElementById("traccarLiveStatus");
+  if(badge)badge.innerHTML="";
+}
+
+async function _traccarRenderLiveTracks(){
+  if(typeof _mapsInstance==="undefined"||!_mapsInstance)return;
+  if(typeof L==="undefined")return;
+  const dateStr=document.getElementById("mapsDate")?document.getElementById("mapsDate").value:fmtD(new Date());
+  if(!dateStr)return;
+  const dateStart=new Date(dateStr+"T00:00:00");
+  const dateEnd=new Date(dateStr+"T23:59:59");
+  const techs=Object.keys(_traccarTechMap);
+  if(!techs.length){
+    const badge=document.getElementById("traccarLiveStatus");
+    if(badge)badge.innerHTML='<span style="color:#b45309;font-size:11px">No technicians mapped to devices</span>';
+    return;
+  }
+
+  _traccarClearLiveLayer();
+  _traccarLiveLayer=L.layerGroup().addTo(_mapsInstance);
+
+  let totalPings=0,techsOnline=0;
+  const techColors=(typeof TECH_COLORS!=="undefined")?TECH_COLORS:["#D4772C","#3D2B1F","#2563eb","#059669","#d946ef","#dc2626","#0891b2","#ca8a04"];
+
+  for(let i=0;i<techs.length;i++){
+    const tName=techs[i];
+    const deviceId=_traccarTechMap[tName];
+    if(!deviceId)continue;
+    const color=techColors[i%techColors.length];
+
+    try{
+      const positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
+      if(!positions||!positions.length)continue;
+      totalPings+=positions.length;
+      techsOnline++;
+
+      const latlngs=positions.map(function(p){return[p.latitude,p.longitude]});
+      L.polyline(latlngs,{
+        color:color,
+        weight:3,
+        opacity:0.85,
+        dashArray:"6,8"
+      }).addTo(_traccarLiveLayer).bindTooltip(esc(tName)+" · "+positions.length+" pings",{sticky:true});
+
+      const lastPos=positions[positions.length-1];
+      const lastTime=new Date(lastPos.deviceTime||lastPos.fixTime||lastPos.serverTime);
+      const minAgo=Math.round((Date.now()-lastTime.getTime())/60000);
+      const ageStr=minAgo<1?"just now":(minAgo<60?(minAgo+" min ago"):(Math.round(minAgo/60)+"h ago"));
+
+      const pulseIcon=L.divIcon({
+        html:'<div style="position:relative;width:16px;height:16px"><div style="position:absolute;inset:0;background:'+color+';border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 2px '+color+'88,0 2px 4px rgba(0,0,0,.3);animation:traccar-pulse 1.5s ease-out infinite"></div></div>',
+        className:"",
+        iconSize:[16,16],
+        iconAnchor:[8,8]
+      });
+      L.marker([lastPos.latitude,lastPos.longitude],{icon:pulseIcon,zIndexOffset:1000})
+        .addTo(_traccarLiveLayer)
+        .bindPopup('<div style="font-family:inherit;font-size:13px"><div style="font-weight:700;color:'+color+';margin-bottom:4px">'+esc(tName)+'</div><div style="font-size:11px;color:#666">Live · '+ageStr+'</div><div style="font-size:11px;color:#666">'+positions.length+' pings today</div>'+(lastPos.speed?'<div style="font-size:11px;color:#666">Speed: '+Math.round(lastPos.speed*1.151)+' mph</div>':'')+'</div>');
+    }catch(e){
+      console.warn("Traccar fetch failed for",tName,deviceId,e);
+    }
+  }
+
+  if(!document.getElementById("traccarPulseStyle")){
+    const st=document.createElement("style");
+    st.id="traccarPulseStyle";
+    st.textContent="@keyframes traccar-pulse{0%{box-shadow:0 0 0 0 rgba(0,0,0,.4),0 2px 4px rgba(0,0,0,.3)}70%{box-shadow:0 0 0 12px rgba(0,0,0,0),0 2px 4px rgba(0,0,0,.3)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0),0 2px 4px rgba(0,0,0,.3)}}";
+    document.head.appendChild(st);
+  }
+
+  const badge=document.getElementById("traccarLiveStatus");
+  if(badge){
+    if(techsOnline>0){
+      badge.innerHTML='<span style="color:#16a34a;font-size:11px;font-weight:600">● Live · '+techsOnline+' tech'+(techsOnline===1?'':'s')+' · '+totalPings+' pings</span>';
+    }else{
+      badge.innerHTML='<span style="color:var(--i3);font-size:11px">No GPS data for selected date</span>';
+    }
+  }
+}
+
+// ─── Hook Traccar config load into login flow ───
+(function(){
+  const _origUpdAdmin=window.updAdmin;
+  if(typeof _origUpdAdmin==="function"){
+    window.updAdmin=function(){
+      _origUpdAdmin.apply(this,arguments);
+      if(currentUser&&currentUser.role==="admin"&&!_traccarConfig){
+        _traccarLoadConfig().then(function(){
+          if(typeof rndrAdmin==="function")try{rndrAdmin()}catch(_e){}
+        });
+      }
+    };
+  }
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// TRACCAR V2 — Auto-Setup, Real Drive Time, GPS Validation
+// ════════════════════════════════════════════════════════════════════════════
+
+// ─── Auto-Setup: Create devices for all techs in one click ───
+async function _traccarHandleAutoSetup(){
+  const techs=(typeof TECHS!=="undefined"&&Array.isArray(TECHS))?TECHS.slice():[];
+  if(!techs.length){toast("No technicians configured","err");return}
+
+  const host=document.getElementById("traccarTestResult");
+  if(!host)return;
+
+  // Confirm
+  if(!confirm("This will create "+techs.length+" devices in Traccar (one per technician):\n\n"+techs.join(", ")+"\n\nExisting devices with the same identifier will be skipped.\n\nProceed?"))return;
+
+  host.innerHTML='<div style="padding:10px 12px;background:#fafaf8;border-radius:8px;font-size:12px;color:var(--i3)">Loading existing devices...</div>';
+
+  // Step 1: Load existing devices to avoid duplicates
+  let existing=[];
+  try{
+    existing=await _traccarGetDevices();
+  }catch(e){
+    host.innerHTML='<div style="padding:10px 12px;background:#fee2e2;border-radius:8px;font-size:13px;color:#991b1b">✗ Failed to load existing devices: '+esc(e.message)+'</div>';
+    return;
+  }
+
+  const existingByUniqueId={};
+  existing.forEach(function(d){if(d.uniqueId)existingByUniqueId[d.uniqueId.toLowerCase()]=d});
+
+  let created=0,skipped=0,failed=0;
+  const newMap=Object.assign({},_traccarTechMap);
+  const log=[];
+
+  for(let i=0;i<techs.length;i++){
+    const tName=typeof techs[i]==="string"?techs[i]:(techs[i].name||techs[i]);
+    if(!tName)continue;
+    const uniqueId=tName.toLowerCase().replace(/[^a-z0-9]/g,"_")+"_aspen";
+
+    host.innerHTML='<div style="padding:10px 12px;background:#fafaf8;border-radius:8px;font-size:12px;color:var(--i3)">Creating devices... ('+(i+1)+'/'+techs.length+') · '+esc(tName)+'</div>';
+
+    // Skip if already exists
+    if(existingByUniqueId[uniqueId]){
+      newMap[tName]=existingByUniqueId[uniqueId].id;
+      skipped++;
+      log.push({tech:tName,status:"exists",id:existingByUniqueId[uniqueId].id,uniqueId:uniqueId});
+      continue;
+    }
+
+    // Create new device
+    try{
+      const res=await _traccarFetch("/api/devices",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          name:tName+" Aspen",
+          uniqueId:uniqueId,
+          category:"person"
+        })
+      });
+      newMap[tName]=res.id;
+      created++;
+      log.push({tech:tName,status:"created",id:res.id,uniqueId:uniqueId});
+    }catch(e){
+      failed++;
+      log.push({tech:tName,status:"failed",error:e.message});
+    }
+  }
+
+  // Save mapping
+  await _traccarSaveTechMap(newMap);
+
+  // Refresh device list
+  try{await _traccarGetDevices()}catch(_e){}
+
+  // Build result HTML
+  let resHtml='<div style="padding:12px;background:#dcfce7;border-radius:8px;font-size:13px">';
+  resHtml+='<div style="font-weight:700;color:#166534;margin-bottom:8px">✓ Auto-Setup Complete</div>';
+  resHtml+='<div style="display:flex;gap:14px;font-size:12px;margin-bottom:10px">';
+  resHtml+='<span><b style="color:#16a34a">'+created+'</b> created</span>';
+  resHtml+='<span><b style="color:var(--i3)">'+skipped+'</b> already existed</span>';
+  if(failed>0)resHtml+='<span><b style="color:#dc2626">'+failed+'</b> failed</span>';
+  resHtml+='</div>';
+  resHtml+='<details style="font-size:11px;color:var(--i2)"><summary style="cursor:pointer;font-weight:600">Device identifiers (for tech setup)</summary>';
+  resHtml+='<table style="width:100%;margin-top:8px;border-collapse:collapse;font-family:monospace">';
+  resHtml+='<thead><tr style="background:#fafaf8"><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--ln)">Technician</th><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--ln)">Device Identifier</th><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--ln)">Status</th></tr></thead>';
+  resHtml+='<tbody>';
+  log.forEach(function(l){
+    const stColor=l.status==="created"?"#16a34a":(l.status==="exists"?"#666":"#dc2626");
+    resHtml+='<tr><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0">'+esc(l.tech)+'</td><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0">'+esc(l.uniqueId||"-")+'</td><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:'+stColor+'">'+esc(l.status)+'</td></tr>';
+  });
+  resHtml+='</tbody></table></details>';
+  resHtml+='</div>';
+
+  host.innerHTML=resHtml;
+  toast("Auto-setup: "+created+" created, "+skipped+" existed","ok");
+
+  // Re-render
+  _traccarRenderTechMapUI();
+}
+
+// ─── Real Drive Time from Traccar (per tech, per date) ───
+let _traccarDriveCache={}; // {techName_date: {seconds, miles, pings}}
+
+async function _traccarGetTechDriveData(techName,dateStr){
+  const cacheKey=techName+"_"+dateStr;
+  if(_traccarDriveCache[cacheKey])return _traccarDriveCache[cacheKey];
+  const deviceId=_traccarTechMap[techName];
+  if(!deviceId)return null;
+
+  const dateStart=new Date(dateStr+"T00:00:00");
+  const dateEnd=new Date(dateStr+"T23:59:59");
+  let positions;
+  try{
+    positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
+  }catch(e){
+    console.warn("Traccar position fetch failed:",e);
+    return null;
+  }
+  if(!positions||positions.length<2)return null;
+
+  // Compute total drive time (sum of seconds where speed > 1 knot ≈ stationary threshold)
+  // and total distance (sum of haversine between consecutive points where moving)
+  let driveSec=0,miles=0;
+  for(let i=1;i<positions.length;i++){
+    const p0=positions[i-1],p1=positions[i];
+    const t0=new Date(p0.deviceTime||p0.fixTime||p0.serverTime).getTime();
+    const t1=new Date(p1.deviceTime||p1.fixTime||p1.serverTime).getTime();
+    const dt=(t1-t0)/1000;
+    if(dt<=0||dt>1200)continue; // skip large gaps (>20 min)
+    const speed=p1.speed||0; // knots
+    if(speed>1){
+      driveSec+=dt;
+      const dMiles=_haversineMi(p0.latitude,p0.longitude,p1.latitude,p1.longitude);
+      miles+=dMiles;
+    }
+  }
+  const data={seconds:Math.round(driveSec),miles:Math.round(miles*10)/10,pings:positions.length};
+  _traccarDriveCache[cacheKey]=data;
+  return data;
+}
+
+// Pre-fetch drive data for all techs/dates in a period (used by Admin stats)
+async function _traccarPreloadDriveData(techDateMap){
+  // techDateMap: {techName: [date1, date2, ...]}
+  const promises=[];
+  Object.keys(techDateMap).forEach(function(name){
+    const deviceId=_traccarTechMap[name];
+    if(!deviceId)return;
+    techDateMap[name].forEach(function(d){
+      const cacheKey=name+"_"+d;
+      if(_traccarDriveCache[cacheKey])return;
+      promises.push(_traccarGetTechDriveData(name,d).catch(function(_e){return null}));
+    });
+  });
+  // Limit parallelism — don't hammer the API
+  const batchSize=4;
+  for(let i=0;i<promises.length;i+=batchSize){
+    await Promise.all(promises.slice(i,i+batchSize));
+  }
+}
+
+// ─── GPS Validation: did the tech's GPS confirm presence at ticket address? ───
+async function _traccarValidateTicketPresence(ticket){
+  // Returns {verified: true/false/null, pingCount, closestPing, reason}
+  if(!_traccarConfig||!_traccarConfig.enabled)return{verified:null,reason:"Traccar not configured"};
+  if(!ticket||!ticket.date||!ticket.techs||!ticket.techs.length)return{verified:null,reason:"No ticket data"};
+  const techName=ticket.techs[0];
+  const deviceId=_traccarTechMap[techName];
+  if(!deviceId)return{verified:null,reason:"Technician not mapped"};
+  if(!ticket.address||!ticket.zip)return{verified:null,reason:"No address"};
+
+  // Geocode the ticket address
+  let coords=null;
+  try{coords=await geocodeTicket(ticket)}catch(_e){}
+  if(!coords)return{verified:null,reason:"Could not geocode address"};
+
+  // Define time window (±2 hours from arrival time, or full day if no time)
+  const dateStart=new Date(ticket.date+"T00:00:00");
+  const dateEnd=new Date(ticket.date+"T23:59:59");
+
+  let positions;
+  try{
+    positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
+  }catch(e){
+    return{verified:null,reason:"Failed to fetch GPS data: "+e.message};
+  }
+  if(!positions||!positions.length)return{verified:false,reason:"No GPS pings for this day",pingCount:0};
+
+  // Find pings within 200m of address
+  const PROXIMITY_MILES=0.124; // ~200m
+  let closestDist=Infinity,closestPing=null,nearbyCount=0;
+  positions.forEach(function(p){
+    const d=_haversineMi(coords.lat,coords.lng,p.latitude,p.longitude);
+    if(d<closestDist){closestDist=d;closestPing=p}
+    if(d<=PROXIMITY_MILES)nearbyCount++;
+  });
+
+  if(nearbyCount>0){
+    return{verified:true,pingCount:nearbyCount,closestPing:closestPing,closestDist:closestDist,reason:"GPS confirmed presence"};
+  }else{
+    return{verified:false,pingCount:0,closestPing:closestPing,closestDist:closestDist,reason:"No pings within 200m of address"};
+  }
+}
+
+// ─── Admin Stats Hook: Override drive time pill with REAL Traccar data when available ───
+// This wraps rndrAdminStats to fetch Traccar data for techs that have a device mapping
+let _traccarStatsOverridePending=false;
+
+async function _traccarEnhanceAdminStats(){
+  if(_traccarStatsOverridePending)return;
+  if(!_traccarConfig||!_traccarConfig.enabled)return;
+  if(!Object.keys(_traccarTechMap).length)return;
+  _traccarStatsOverridePending=true;
+  try{
+    // Find current period's tech-date pairs
+    const period=(document.getElementById("adminStatPeriod")||{}).value||"month";
+    const now=new Date();
+    let startDate="";
+    if(period==="week"){
+      const d=new Date(now);d.setDate(d.getDate()-7);startDate=fmtD(d);
+    }else if(period==="month"){
+      const d=new Date(now);d.setDate(d.getDate()-30);startDate=fmtD(d);
+    }
+    const todayStr=fmtD(now);
+    const pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+    const datesByTech={};
+    pool.forEach(function(t){
+      if(!t.date)return;
+      if(startDate&&t.date<startDate)return;
+      if(t.date>todayStr)return;
+      (t.techs||[]).forEach(function(name){
+        if(!name||name==="—")return;
+        if(!_traccarTechMap[name])return;
+        if(!datesByTech[name])datesByTech[name]=[];
+        if(datesByTech[name].indexOf(t.date)<0)datesByTech[name].push(t.date);
+      });
+    });
+    if(!Object.keys(datesByTech).length){_traccarStatsOverridePending=false;return}
+
+    await _traccarPreloadDriveData(datesByTech);
+
+    // Now patch the existing rendered pills with REAL data
+    Object.keys(datesByTech).forEach(function(name){
+      let realSec=0,realMi=0;
+      datesByTech[name].forEach(function(d){
+        const data=_traccarDriveCache[name+"_"+d];
+        if(data){realSec+=data.seconds;realMi+=data.miles}
+      });
+      if(realSec>0){
+        // Find the tech's row in the rendered admin stats and add a real-drive pill
+        const allRows=document.querySelectorAll("#adminStatTechs > div");
+        allRows.forEach(function(row){
+          const nameSpan=row.querySelector("span");
+          if(!nameSpan||nameSpan.textContent.trim()!==name)return;
+          const pillsContainer=row.querySelector("div:last-child");
+          if(!pillsContainer)return;
+          // Don't add twice
+          if(row.querySelector(".traccar-real-pill"))return;
+          const driveH=realSec/3600;
+          const fmtH=function(h){if(!h)return"";if(h<1)return Math.round(h*60)+"m";return(Math.round(h*10)/10)+"h"};
+          const realPill=document.createElement("span");
+          realPill.className="traccar-real-pill";
+          realPill.title="Actual driving time from Traccar GPS · "+realMi.toFixed(1)+" mi";
+          realPill.style.cssText="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534;display:inline-flex;align-items:center;gap:4px;margin-left:4px";
+          realPill.innerHTML='📍 '+fmtH(driveH)+' Real';
+          pillsContainer.appendChild(realPill);
+        });
+      }
+    });
+  }catch(e){
+    console.warn("Traccar stats enhance failed:",e);
+  }finally{
+    _traccarStatsOverridePending=false;
+  }
+}
+
+// Hook into rndrAdminStats — re-enhance after each render
+(function(){
+  const _origRndr=window.rndrAdminStats;
+  if(typeof _origRndr==="function"){
+    window.rndrAdminStats=function(){
+      _origRndr.apply(this,arguments);
+      if(_traccarConfig&&_traccarConfig.enabled){
+        setTimeout(_traccarEnhanceAdminStats,100);
+      }
+    };
+  }
+})();
+
+// ─── GPS Validation Badge in Service Log ───
+// When a ticket is rendered in the service log, fetch GPS verification status async
+async function _traccarRenderTicketGpsBadge(ticket,hostElementId){
+  if(!_traccarConfig||!_traccarConfig.enabled)return;
+  const host=document.getElementById(hostElementId);
+  if(!host)return;
+  host.innerHTML='<span style="font-size:10px;color:var(--i3)">Checking GPS...</span>';
+  const result=await _traccarValidateTicketPresence(ticket);
+  if(result.verified===true){
+    host.innerHTML='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534;display:inline-flex;align-items:center;gap:4px" title="GPS confirmed presence at this address">✓ GPS verified · '+result.pingCount+' pings</span>';
+  }else if(result.verified===false){
+    const closestStr=result.closestDist?(result.closestDist.toFixed(2)+' mi away'):"";
+    host.innerHTML='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:4px" title="'+esc(result.reason)+' (closest: '+closestStr+')">⚠ No GPS match</span>';
+  }else{
+    host.innerHTML="";
+  }
+}
 
 init();</script>
 </body>
