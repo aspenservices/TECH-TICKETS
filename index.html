@@ -1761,6 +1761,10 @@ function doLogin(){
   // Start GPS-to-Firebase auto-sync (admin/organizer only — techs don't sync).
   // First sync runs immediately, then every 5 min while logged in.
   try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,2500)}catch(_e){}
+  // Auto-backfill of last 30 days — runs once per 24h, shared across admin
+  // devices via Firebase state. Delayed so the dashboard renders and the
+  // initial 5-min sync runs first.
+  try{if(typeof _traccarAutoBackfillIfDue==="function")setTimeout(_traccarAutoBackfillIfDue,30000)}catch(_e){}
   // Tech-side: start the GPS health banner polling and fire one auto-wake on login
   // so Traccar gets refreshed as soon as the tech opens the dashboard.
   if(currentUser&&currentUser.role==="tech"){
@@ -3100,6 +3104,7 @@ async function init(){
   if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
     if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
     try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,3000)}catch(_e){}
+    try{if(typeof _traccarAutoBackfillIfDue==="function")setTimeout(_traccarAutoBackfillIfDue,32000)}catch(_e){}
     if(currentUser&&currentUser.role==="tech"){
       try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3500)}catch(_e){}
       try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("auto-login")},5000)}catch(_e){}
@@ -8045,6 +8050,90 @@ function _traccarStopAutoSync(){
   if(_traccarSyncTimer){clearInterval(_traccarSyncTimer);_traccarSyncTimer=null}
 }
 
+// ─── Auto-backfill (once per day) ───
+// The 30-day backfill grabs historical positions from Traccar's demo server
+// (which may purge data) and writes them to Firebase for permanent storage.
+// We run this automatically once every 24 hours per organization (state stored
+// in Firebase so it's shared across admin devices, not duplicated). It runs in
+// the background a few seconds after admin login, doesn't block the UI, and
+// shows progress in the same status badge area as manual backfill.
+async function _traccarAutoBackfillIfDue(){
+  if(!_traccarConfig||!_traccarConfig.enabled)return;
+  if(!currentUser||currentUser.role==="tech")return; // admins/organizers only
+  if(_traccarSyncInProgress)return; // don't compete with an active sync
+  // Check Firebase state — when did we last auto-backfill?
+  let state=null;
+  try{state=await _fbGetSyncState()}catch(_e){}
+  const now=Date.now();
+  const ONE_DAY=24*60*60*1000;
+  let lastMs=0;
+  if(state&&state.lastAutoBackfillAt){
+    try{
+      lastMs=state.lastAutoBackfillAt.toDate?state.lastAutoBackfillAt.toDate().getTime():new Date(state.lastAutoBackfillAt).getTime();
+    }catch(_e){}
+  }
+  if(now-lastMs<ONE_DAY){
+    const hoursAgo=Math.round((now-lastMs)/3600000);
+    console.log("[Traccar] Auto-backfill skipped — ran "+hoursAgo+"h ago");
+    return;
+  }
+  // Stamp the timestamp BEFORE running so concurrent admins on other devices
+  // see the in-progress marker and skip.
+  console.log("[Traccar] Auto-backfill starting (last ran "+(lastMs?Math.round((now-lastMs)/3600000)+"h ago":"never")+")");
+  try{
+    const fs=firebase.firestore.FieldValue;
+    await db.collection("_config").doc("traccarSyncState").set({
+      lastAutoBackfillAt:fs.serverTimestamp()
+    },{merge:true});
+  }catch(_e){}
+  // Run the backfill — same function the manual button uses, but no confirm
+  // dialog, no button-state UI. Progress indicator appears in same div as
+  // manual backfill so admin can see it's working.
+  try{
+    const r=await _traccarBackfill(30);
+    if(r&&r.ok){
+      console.log("[Traccar] Auto-backfill done — "+r.totalSaved+" positions saved across "+r.devices+" device(s)");
+      // Subtle toast so admin knows it ran
+      try{toast("GPS history auto-synced · +"+r.totalSaved+" positions","ok")}catch(_e){}
+      // Update the status badge in the admin panel if visible
+      try{if(typeof _traccarUpdateAutoBackfillBadge==="function")_traccarUpdateAutoBackfillBadge()}catch(_e){}
+    }else{
+      console.warn("[Traccar] Auto-backfill failed:",r&&r.reason);
+    }
+  }catch(e){
+    console.warn("[Traccar] Auto-backfill error:",e);
+    // On error, reset the timestamp so it tries again next session
+    try{
+      await db.collection("_config").doc("traccarSyncState").set({
+        lastAutoBackfillAt:null
+      },{merge:true});
+    }catch(_e){}
+  }
+}
+
+// Render the small status line in the admin panel showing when auto-backfill
+// last ran and when it's next scheduled. Reads from the Firebase sync state.
+async function _traccarUpdateAutoBackfillBadge(){
+  const el=document.getElementById("traccarAutoBackfillStatus");
+  if(!el)return;
+  let state=null;
+  try{state=await _fbGetSyncState()}catch(_e){}
+  let lastMs=0;
+  if(state&&state.lastAutoBackfillAt){
+    try{
+      lastMs=state.lastAutoBackfillAt.toDate?state.lastAutoBackfillAt.toDate().getTime():new Date(state.lastAutoBackfillAt).getTime();
+    }catch(_e){}
+  }
+  if(!lastMs){
+    el.innerHTML='<span style="color:#a16207">○ Auto-backfill: never run · will start within 30 sec</span>';
+    return;
+  }
+  const ageMin=Math.round((Date.now()-lastMs)/60000);
+  const ageStr=ageMin<60?ageMin+" min ago":Math.round(ageMin/60)+" h ago";
+  const nextHours=Math.max(0,24-Math.round(ageMin/60));
+  el.innerHTML='<span style="color:#16a34a">✓ Auto-backfill: ran '+esc(ageStr)+'</span> · <span style="color:var(--i3)">next in ~'+nextHours+' h</span>';
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // TRACCAR AUTO-WAKE & HEALTH MONITOR
 // ════════════════════════════════════════════════════════════════════════════
@@ -8068,13 +8157,30 @@ function _traccarStopAutoSync(){
 //      tech (green <15min, yellow 15-40min, red >40min). Auto-refreshes
 //      every 30 sec while Admin tab is visible.
 //
-// Configurable URL scheme — Traccar Client iOS may register `traccar://` (best
-// guess) or another scheme. If the scheme is wrong, iOS shows a "cannot open"
-// error and nothing breaks. Alberto can change the scheme in admin settings
-// if needed.
+// Configurable URL scheme — Traccar Client iOS itself does NOT register a URL
+// scheme (confirmed in the open-source Info.plist). So we use iOS Shortcuts
+// as a bridge: techs create a Shortcut with a known name on their phone, and
+// we invoke it via the standard `shortcuts://run-shortcut?name=...` URL.
+// iOS Shortcuts is built-in and its URL scheme always works.
 // ════════════════════════════════════════════════════════════════════════════
 
-const TRACCAR_URL_SCHEME = "traccar://";          // iOS deep link to Traccar Client
+// Traccar Client iOS does NOT register a URL scheme (confirmed via the
+// open-source Info.plist on github.com/traccar/traccar-client). So we cannot
+// open it directly from a web page. Instead, we use iOS Shortcuts as a
+// bridge: each tech creates a Shortcut on their iPhone named exactly the
+// value of TRACCAR_SHORTCUT_NAME below, with a single action "Open App →
+// Traccar Client". Then this URL scheme will run that Shortcut, which opens
+// Traccar Client. iOS Shortcuts has its own built-in URL scheme that DOES
+// work from a web page. Encode spaces as %20.
+// The shortcut should contain TWO actions in this order:
+//   1) Open App → Traccar Client (brings app to foreground)
+//   2) Start Tracking (Traccar's native App Intent — arranges the GPS service
+//      to be in active tracking state, not just app open)
+// The "Start Tracking" action is exposed natively by Traccar Client through
+// iOS App Intents, so it actually starts the tracker rather than just
+// surfacing the UI. Much better than just opening the app.
+const TRACCAR_SHORTCUT_NAME = "Start Tracking";
+const TRACCAR_URL_SCHEME = "shortcuts://run-shortcut?name="+encodeURIComponent(TRACCAR_SHORTCUT_NAME);
 const TRACCAR_WAKE_THROTTLE_MS = 20*60*1000;      // 20 min between auto-wake attempts
 const TRACCAR_BANNER_STALE_MIN = 40;              // GPS older than this = red banner
 const TRACCAR_BANNER_REFRESH_MS = 5*60*1000;      // re-check banner every 5 min
@@ -8185,7 +8291,7 @@ async function _traccarRenderTechBanner(){
         '</div>'+
         '<button onclick="_traccarManualWake();event.stopPropagation();return false" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Reactivar GPS</button>'+
       '</div>'+
-      '<div style="font-size:11px;color:#991b1b;margin-top:8px;opacity:.85">Toca el botón rojo. Cuando se abra Traccar Client, espera 2 segundos y vuelve aquí con el botón atrás.</div>'+
+      '<div style="font-size:11px;color:#991b1b;margin-top:8px;opacity:.85">Si tienes el Shortcut "'+esc(TRACCAR_SHORTCUT_NAME)+'" configurado, el botón arranca el GPS automáticamente. Si no, abre la app Traccar Client manualmente.</div>'+
     '</div>';
 }
 
@@ -8356,12 +8462,13 @@ function _traccarRenderAdminSection(){
   if(cfg.url&&cfg.token&&cfg.enabled){
     html+='<div style="margin-top:18px;padding:14px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px">';
     html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="lucide-mount" data-lucide="database" data-size="16" data-color="#16a34a"></span><span style="font-size:12px;font-weight:800;color:#166534;letter-spacing:.4px;text-transform:uppercase">Firebase Mirror — Permanent History</span></div>';
-    html+='<p style="font-size:12px;color:#166534;margin:0 0 10px 0;line-height:1.5">Auto-syncs every 5 minutes while you\'re logged in. Your GPS history lives in Firebase forever, even if Traccar\'s demo server purges its data.</p>';
+    html+='<p style="font-size:12px;color:#166534;margin:0 0 10px 0;line-height:1.5"><b>Auto-sync</b> every 5 min while logged in (incremental) · <b>Auto-backfill</b> 30 days every 24 h (catches gaps). Your GPS history lives in Firebase forever, even if Traccar\'s demo server purges its data — fully automatic, no manual action needed.</p>';
     html+='<div id="traccarSyncStatus" style="font-size:13px;margin-bottom:10px;padding:8px 10px;background:#fff;border-radius:6px;border:1px solid #d1fae5"><span style="color:var(--i3)">Loading status…</span></div>';
+    html+='<div id="traccarAutoBackfillStatus" style="font-size:12px;margin-bottom:10px;padding:6px 10px;background:#fff;border-radius:6px;border:1px solid #d1fae5;color:var(--i3)">Auto-backfill: loading…</div>';
     html+='<div id="traccarBackfillProgress" style="margin-bottom:10px"></div>';
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
     html+='<button id="traccarSyncNowBtn" onclick="_traccarManualSyncNow()" style="padding:8px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'+icon("refresh-cw",13,{color:"#fff"})+' Sync now</button>';
-    html+='<button id="traccarBackfillBtn" onclick="_traccarManualBackfill()" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="One-time grab of the last 30 days of positions from Traccar — useful right now to capture whatever data is still on the demo server before it\'s purged">'+icon("download-cloud",13,{color:"var(--ac)"})+' Backfill 30 days</button>';
+    html+='<button id="traccarBackfillBtn" onclick="_traccarManualBackfill()" style="padding:8px 14px;background:#fff;color:var(--i3);border:1.5px solid var(--ln);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Force a 30-day backfill right now (normally runs automatically every 24 h)">'+icon("download-cloud",13,{color:"var(--i3)"})+' Force backfill now</button>';
     html+='</div>';
     html+='</div>';
   }
@@ -8378,9 +8485,20 @@ function _traccarRenderAdminSection(){
   // ─── URL Scheme test (debug tool to find the right deep link) ──────
   if(cfg.url&&cfg.token){
     html+='<div style="margin-top:18px;padding:14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px">';
-    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="lucide-mount" data-lucide="link" data-size="16" data-color="#1d4ed8"></span><span style="font-size:12px;font-weight:800;color:#1e3a8a;letter-spacing:.4px;text-transform:uppercase">Auto-wake URL scheme test</span></div>';
-    html+='<p style="font-size:12px;color:#1e3a8a;margin:0 0 10px 0;line-height:1.5">When techs open the dashboard, it tries to fire <code style="font-size:11px;background:#fff;padding:1px 5px;border-radius:3px">'+esc(TRACCAR_URL_SCHEME)+'</code> to wake Traccar Client. Test it on your iPhone — if it opens Traccar, the auto-wake works. If iOS shows "cannot open this page", we need to find a different scheme.</p>';
-    html+='<button onclick="_traccarTestUrlScheme()" style="padding:9px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Test '+esc(TRACCAR_URL_SCHEME)+'</button>';
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="lucide-mount" data-lucide="link" data-size="16" data-color="#1d4ed8"></span><span style="font-size:12px;font-weight:800;color:#1e3a8a;letter-spacing:.4px;text-transform:uppercase">Auto-wake via iOS Shortcuts</span></div>';
+    html+='<p style="font-size:12px;color:#1e3a8a;margin:0 0 8px 0;line-height:1.5"><b>Traccar Client iOS</b> exposes a native <b>"Start Tracking"</b> App Intent through iOS Shortcuts. The dashboard fires this Shortcut to actually <b>start the GPS service</b> — not just open the app. Each tech needs to set up the Shortcut once on their iPhone (5 min):</p>';
+    html+='<ol style="font-size:12px;color:#1e3a8a;margin:0 0 8px 18px;padding:0;line-height:1.6">';
+    html+='<li>Open the <b>Shortcuts</b> app (built-in iOS app)</li>';
+    html+='<li>Tap <b>+</b> to create a new shortcut</li>';
+    html+='<li>Name it exactly: <code style="background:#fff;padding:1px 5px;border-radius:3px;font-size:11px">'+esc(TRACCAR_SHORTCUT_NAME)+'</code> (capital S, capital T)</li>';
+    html+='<li>Tap <b>Add Action</b> → search "<b>Open App</b>" → select it → tap "App" → choose <b>Traccar Client</b></li>';
+    html+='<li>Tap <b>Add Action</b> again → search "<b>Start Tracking</b>" → select the green Traccar action</li>';
+    html+='<li>Tap <b>Done</b></li>';
+    html+='</ol>';
+    html+='<p style="font-size:12px;color:#1e3a8a;margin:0 0 10px 0;line-height:1.5"><b>Optional but strongly recommended</b> — also create a <b>Personal Automation</b> in Shortcuts (Automation tab → + → Time of Day 7:30 AM → repeat Mon–Sat → action "Run Shortcut: '+esc(TRACCAR_SHORTCUT_NAME)+'" → turn off "Ask Before Running"). This kicks off Traccar tracking automatically every workday morning, even if the tech doesn\'t open the dashboard yet.</p>';
+    html+='<p style="font-size:12px;color:#1e3a8a;margin:0 0 10px 0;line-height:1.5">Test the URL below on your iPhone <b>after</b> creating the Shortcut. It should run the shortcut, open Traccar Client, and start tracking automatically.</p>';
+    html+='<button onclick="_traccarTestUrlScheme()" style="padding:9px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Test Shortcut "'+esc(TRACCAR_SHORTCUT_NAME)+'"</button>';
+    html+='<div style="font-size:11px;color:#1e3a8a;margin-top:8px;font-family:monospace;word-break:break-all">URL: '+esc(TRACCAR_URL_SCHEME)+'</div>';
     html+='</div>';
   }
 
@@ -8397,6 +8515,8 @@ function _traccarRenderAdminSection(){
   _traccarRenderTechMapUI();
   // Refresh sync badge with current state (if there's been a sync)
   try{_traccarUpdateSyncBadge()}catch(_e){}
+  // Refresh auto-backfill status line
+  try{if(typeof _traccarUpdateAutoBackfillBadge==="function")_traccarUpdateAutoBackfillBadge()}catch(_e){}
   // Start (or restart) live GPS health polling — only when admin Traccar
   // section is visible
   try{if(typeof _traccarStartLiveStatusPolling==="function")_traccarStartLiveStatusPolling()}catch(_e){}
