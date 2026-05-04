@@ -1129,41 +1129,104 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 <!-- ══ MAPS PAGE ══ -->
 <div class="wrap" id="pg7">
-  <h2 style="margin:0 0 6px 0;display:flex;align-items:center;gap:10px"><span class="lucide-mount" data-lucide="map" data-size="22" data-color="var(--ac)"></span>Maps</h2>
-  <p style="color:var(--i3);margin:0 0 18px 0;font-size:14px">Daily routes per technician · Round-trip from Aspen Spas (4609 McRee Ave) · <b style="color:var(--ac)">Admin only</b></p>
+  <h2 style="margin:0 0 6px 0;display:flex;align-items:center;gap:10px"><span class="lucide-mount" data-lucide="map" data-size="22" data-color="var(--ac)"></span>Maps &amp; GPS</h2>
+  <p style="color:var(--i3);margin:0 0 14px 0;font-size:14px">Routes, live tracking, and trip analysis · <b style="color:var(--ac)">Admin only</b></p>
 
-  <!-- Driving time summary cards (week / month / total recorded) -->
-  <div id="mapsSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px"></div>
-
-  <!-- Date picker + status -->
-  <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="mapsDate" onchange="mapsLoad();if(_traccarLiveEnabled)_traccarRenderLiveTracks()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
-    <button onclick="mapsLoad()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Refresh</button>
-    <button onclick="_mapsBackfillRecent(14)" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Compute driving time for the last 14 days that have assigned tickets but no cached route"><span class="lucide-mount" data-lucide="zap" data-size="13" data-color="var(--ac)"></span>Backfill 14d</button>
-    <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" title="Overlay real GPS tracks from Traccar over the planned routes"><input type="checkbox" id="traccarLiveToggle" onchange="_traccarToggleLive()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--ac)"><span class="lucide-mount" data-lucide="radio" data-size="14" data-color="var(--ac)"></span>Show Live GPS</label>
-    <span id="traccarLiveStatus" style="font-size:11px"></span>
-    <div id="mapsStatus" style="font-size:13px;color:var(--i3);flex:1;min-width:200px"></div>
+  <!-- Sub-tabs nav -->
+  <div id="mapsSubNav" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1.5px solid var(--ln);padding-bottom:0">
+    <button class="maps-subtab on" onclick="mapsSwitchSub('routes')" data-sub="routes" style="padding:9px 14px;background:transparent;border:none;border-bottom:3px solid var(--ac);font-size:13px;font-weight:700;color:var(--ac);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;margin-bottom:-1.5px"><span class="lucide-mount" data-lucide="route" data-size="14" data-color="currentColor"></span>Planned Routes</button>
+    <button class="maps-subtab" onclick="mapsSwitchSub('live')" data-sub="live" style="padding:9px 14px;background:transparent;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:600;color:var(--i2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;margin-bottom:-1.5px"><span class="lucide-mount" data-lucide="radio" data-size="14" data-color="currentColor"></span>Live View</button>
+    <button class="maps-subtab" onclick="mapsSwitchSub('daily')" data-sub="daily" style="padding:9px 14px;background:transparent;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:600;color:var(--i2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;margin-bottom:-1.5px"><span class="lucide-mount" data-lucide="map-pinned" data-size="14" data-color="currentColor"></span>Daily GPS</button>
+    <button class="maps-subtab" onclick="mapsSwitchSub('compare')" data-sub="compare" style="padding:9px 14px;background:transparent;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:600;color:var(--i2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;margin-bottom:-1.5px"><span class="lucide-mount" data-lucide="git-compare" data-size="14" data-color="currentColor"></span>Compare</button>
+    <button class="maps-subtab" onclick="mapsSwitchSub('summary')" data-sub="summary" style="padding:9px 14px;background:transparent;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:600;color:var(--i2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;margin-bottom:-1.5px"><span class="lucide-mount" data-lucide="bar-chart-3" data-size="14" data-color="currentColor"></span>Summary</button>
   </div>
 
-  <!-- Map container -->
-  <div id="mapsMapWrap" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none">
-    <div id="mapsMapContainer" style="height:520px;width:100%"></div>
-    <div id="mapsLegend" style="padding:10px 14px;border-top:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:14px;background:#fafaf8"></div>
+  <!-- ─── PANE: Planned Routes (original Maps content) ─── -->
+  <div id="mapsPane_routes" class="maps-pane">
+    <!-- Driving time summary cards -->
+    <div id="mapsSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px"></div>
+
+    <!-- Date picker + status -->
+    <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="mapsDate" onchange="mapsLoad();if(_traccarLiveEnabled)_traccarRenderLiveTracks()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
+      <button onclick="mapsLoad()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Refresh</button>
+      <button onclick="_mapsBackfillRecent(14)" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Compute driving time for the last 14 days that have assigned tickets but no cached route"><span class="lucide-mount" data-lucide="zap" data-size="13" data-color="var(--ac)"></span>Backfill 14d</button>
+      <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" title="Overlay real GPS tracks from Traccar over the planned routes"><input type="checkbox" id="traccarLiveToggle" onchange="_traccarToggleLive()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--ac)"><span class="lucide-mount" data-lucide="radio" data-size="14" data-color="var(--ac)"></span>Show Live GPS</label>
+      <span id="traccarLiveStatus" style="font-size:11px"></span>
+      <div id="mapsStatus" style="font-size:13px;color:var(--i3);flex:1;min-width:200px"></div>
+    </div>
+
+    <!-- Map container -->
+    <div id="mapsMapWrap" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none">
+      <div id="mapsMapContainer" style="height:520px;width:100%"></div>
+      <div id="mapsLegend" style="padding:10px 14px;border-top:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:14px;background:#fafaf8"></div>
+    </div>
+
+    <!-- Per-tech cards for the selected day -->
+    <h3 style="margin:14px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="route" data-size="16" data-color="var(--ac)"></span>Today's Routes</h3>
+    <div id="mapsDailyCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:24px"></div>
+
+    <!-- 14-day driving time trend chart -->
+    <h3 style="margin:24px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="bar-chart-3" data-size="16" data-color="var(--ac)"></span>Last 14 Days · Driving Time</h3>
+    <p style="color:var(--i3);margin:0 0 14px 0;font-size:13px">Where the team's time has been going · Each bar stacks total drive time per tech</p>
+    <div id="mapsTrendChart" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:24px"></div>
+
+    <!-- Per-tech historical archive -->
+    <h3 style="margin:24px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="history" data-size="16" data-color="var(--ac)"></span>Historical Records</h3>
+    <p style="color:var(--i3);margin:0 0 14px 0;font-size:13px">Total miles &amp; time driven by each technician across all recorded dates</p>
+    <div id="mapsHistory"></div>
   </div>
 
-  <!-- Per-tech cards for the selected day -->
-  <h3 style="margin:14px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="route" data-size="16" data-color="var(--ac)"></span>Today's Routes</h3>
-  <div id="mapsDailyCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:24px"></div>
+  <!-- ─── PANE: Live View ─── -->
+  <div id="mapsPane_live" class="maps-pane" style="display:none">
+    <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="font-size:13px;font-weight:600;color:var(--i1);display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="radio" data-size="14" data-color="var(--ac)"></span>Real-time positions of all technicians</div>
+      <button onclick="_traccarLiveViewRefresh()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Refresh now</button>
+      <span id="traccarLiveViewStatus" style="font-size:12px;color:var(--i3);flex:1"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:14px;margin-bottom:14px" id="liveGridWrap">
+      <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;overflow:hidden">
+        <div id="liveMapContainer" style="height:560px;width:100%"></div>
+      </div>
+      <div id="livePanel" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:12px;max-height:560px;overflow-y:auto"></div>
+    </div>
+  </div>
 
-  <!-- 14-day driving time trend chart -->
-  <h3 style="margin:24px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="bar-chart-3" data-size="16" data-color="var(--ac)"></span>Last 14 Days · Driving Time</h3>
-  <p style="color:var(--i3);margin:0 0 14px 0;font-size:13px">Where the team's time has been going · Each bar stacks total drive time per tech</p>
-  <div id="mapsTrendChart" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:24px"></div>
+  <!-- ─── PANE: Daily GPS Routes (based on actual movement, not tickets) ─── -->
+  <div id="mapsPane_daily" class="maps-pane" style="display:none">
+    <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="dailyGpsDate" onchange="_traccarLoadDailyGps()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
+      <button onclick="_traccarLoadDailyGps()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Load</button>
+      <span id="dailyGpsStatus" style="font-size:12px;color:var(--i3);flex:1"></span>
+    </div>
+    <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none" id="dailyGpsMapWrap">
+      <div id="dailyGpsMapContainer" style="height:520px;width:100%"></div>
+      <div id="dailyGpsLegend" style="padding:10px 14px;border-top:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:14px;background:#fafaf8"></div>
+    </div>
+    <div id="dailyGpsCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px"></div>
+  </div>
 
-  <!-- Per-tech historical archive -->
-  <h3 style="margin:24px 0 10px 0;font-size:15px;color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="history" data-size="16" data-color="var(--ac)"></span>Historical Records</h3>
-  <p style="color:var(--i3);margin:0 0 14px 0;font-size:13px">Total miles &amp; time driven by each technician across all recorded dates</p>
-  <div id="mapsHistory"></div>
+  <!-- ─── PANE: Compare (Tickets vs GPS) ─── -->
+  <div id="mapsPane_compare" class="maps-pane" style="display:none">
+    <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="calendar" data-size="16" data-color="var(--ac)"></span><label style="font-size:13px;font-weight:600">Date:</label><input type="date" id="compareDate" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></div>
+      <div style="display:flex;align-items:center;gap:8px"><label style="font-size:13px;font-weight:600">Technician:</label><select id="compareTech" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"></select></div>
+      <button onclick="_traccarLoadCompare()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="git-compare" data-size="13" data-color="#fff"></span>Analyze</button>
+      <span id="compareStatus" style="font-size:12px;color:var(--i3);flex:1"></span>
+    </div>
+    <div id="compareResults"></div>
+  </div>
+
+  <!-- ─── PANE: Summary (weekly/monthly aggregate) ─── -->
+  <div id="mapsPane_summary" class="maps-pane" style="display:none">
+    <div style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px"><label style="font-size:13px;font-weight:600">Period:</label><select id="summaryPeriod" onchange="_traccarLoadSummary()" style="padding:8px 12px;border:1.5px solid var(--ln);border-radius:8px;font-size:14px;font-family:inherit"><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30" selected>Last 30 days</option></select></div>
+      <button onclick="_traccarLoadSummary()" style="padding:8px 14px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="refresh-cw" data-size="13" data-color="#fff"></span>Load</button>
+      <button onclick="_traccarExportSummary()" style="padding:8px 14px;background:#fff;color:#16a34a;border:1.5px solid #86efac;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="download" data-size="13" data-color="#16a34a"></span>Export Excel</button>
+      <span id="summaryStatus" style="font-size:12px;color:var(--i3);flex:1"></span>
+    </div>
+    <div id="summaryResults"></div>
+  </div>
 </div>
 
 <!-- ══ CALENDAR PAGE ══ -->
@@ -1840,12 +1903,29 @@ function rndrAdminStats(){
     var maxT=techArr[0].total||1;
     var html="";
     techArr.forEach(function(row){
-      var col=TECH_COLORS[TECHS.indexOf(row.name)%TECH_COLORS.length]||"#999";
+      // Stable color: use position in TECHS, but if tech is no longer in TECHS (was deleted),
+      // fall back to a deterministic color based on name hash. This preserves history visualization.
+      var techIdx=TECHS.indexOf(row.name);
+      var col;
+      if(techIdx>=0){
+        col=TECH_COLORS[techIdx%TECH_COLORS.length];
+      }else{
+        // Tech deleted from list — generate stable color from name
+        var hash=0;
+        for(var ci=0;ci<row.name.length;ci++)hash=(hash*31+row.name.charCodeAt(ci))|0;
+        col=TECH_COLORS[Math.abs(hash)%TECH_COLORS.length];
+      }
+      col=col||"#999";
+      var isHidden=HIDDEN_TECHS.has(row.name);
+      var notInList=techIdx<0;
       var pct=Math.round((row.total/maxT)*100);
-      html+='<div style="margin-bottom:14px;padding:12px;background:#fafaf8;border-radius:10px;border:1px solid var(--ln)">';
+      html+='<div style="margin-bottom:14px;padding:12px;background:#fafaf8;border-radius:10px;border:1px solid var(--ln)'+(isHidden||notInList?';opacity:.78':'')+'">';
       // Header: name + total + total hours
       html+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:8px;flex-wrap:wrap">';
-      html+='<span style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(row.name)+'</span>';
+      html+='<span style="font-size:14px;font-weight:700;color:var(--ink);display:inline-flex;align-items:center;gap:6px">'+esc(row.name);
+      if(notInList)html+='<span title="Former technician — kept for history" style="font-size:9px;font-weight:700;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase">Former</span>';
+      else if(isHidden)html+='<span title="Hidden from active assignment" style="font-size:9px;font-weight:700;background:#e5e7eb;color:#52525b;padding:2px 7px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase">Hidden</span>';
+      html+='</span>';
       html+='<div style="display:flex;gap:10px;align-items:baseline;font-size:11px">';
       html+='<span style="font-weight:700;color:'+col+';font-size:14px">'+row.total+' tickets</span>';
       if(row.hTotal>0)html+='<span style="color:var(--i3);display:inline-flex;align-items:center;gap:4px">'+icon("clock",12,{color:"var(--i3)"})+'<b style="color:var(--ink)">'+_fmtH(row.hTotal)+'</b></span>';
@@ -2591,8 +2671,27 @@ async function adminRenameTech(i){
   rndrAdmin();toast("Updated ✓");
 }
 async function adminDelTech(i){
-  if(!confirm("Remove "+TECHS[i]+"?"))return;
-  const name=TECHS.splice(i,1)[0];await saveTechs();buildTechPills();rndrAdmin();toast(name+" removed");
+  const name=TECHS[i];
+  if(!name)return;
+  // Check if this tech has any tickets in the system (active or done)
+  const pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  const ticketCount=pool.filter(function(t){return t.techs&&t.techs.indexOf(name)>=0}).length;
+  if(ticketCount>0){
+    // Tech has history — preserve it by hiding instead of deleting
+    if(!confirm(name+" has "+ticketCount+" tickets in history.\n\nDeleting would orphan their work and break Admin Stats / Maps Historical / Service Log.\n\nINSTEAD, "+name+" will be HIDDEN:\n  ✓ Won't appear in calendar, assignments, or pickers\n  ✓ Won't show in 'Live View' or 'Daily GPS' tabs\n  ✓ History stays intact in Admin Stats & Maps Historical\n  ✓ Existing tickets keep their assignment\n  ✓ Can be unhidden later from Admin → Technicians → 👁\n\nProceed to hide "+name+"?"))return;
+    HIDDEN_TECHS.add(name);
+    await saveTechs();buildTechPills();
+    if(typeof rndrAdmin==="function")rndrAdmin();
+    if(typeof refreshAll==="function")refreshAll();
+    toast(name+" hidden (history preserved)","ok");
+    return;
+  }
+  // No tickets — safe to delete completely
+  if(!confirm("Permanently remove "+name+"?\n\nThis tech has no tickets in history, so deletion is safe."))return;
+  TECHS.splice(i,1);
+  HIDDEN_TECHS.delete(name);
+  await saveTechs();buildTechPills();rndrAdmin();
+  toast(name+" removed","ok");
 }
 async function adminAddUser(){
   const name=document.getElementById("adNewUserName").value.trim();
@@ -2903,8 +3002,22 @@ function addTech(){
   TECHS.push(name);saveTechs();buildTechPills();renderTechMgmt();inp.value="";toast(name+" added ✓");
 }
 function removeTech(i){
-  if(!confirm("Remove "+TECHS[i]+"?"))return;
-  const name=TECHS.splice(i,1)[0];saveTechs();buildTechPills();renderTechMgmt();toast(name+" removed");
+  const name=TECHS[i];
+  if(!name)return;
+  // Check ticket history
+  const pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  const ticketCount=pool.filter(function(t){return t.techs&&t.techs.indexOf(name)>=0}).length;
+  if(ticketCount>0){
+    if(!confirm(name+" has "+ticketCount+" tickets in history.\n\nTo preserve their work history, "+name+" will be HIDDEN instead of deleted.\n\nProceed?"))return;
+    HIDDEN_TECHS.add(name);
+    saveTechs();buildTechPills();renderTechMgmt();
+    toast(name+" hidden (history preserved)","ok");
+    return;
+  }
+  if(!confirm("Permanently remove "+name+"? (No tickets in history)"))return;
+  TECHS.splice(i,1);
+  HIDDEN_TECHS.delete(name);
+  saveTechs();buildTechPills();renderTechMgmt();toast(name+" removed");
 }
 function editTech(i){
   const newName=prompt("Edit technician name:",TECHS[i]);
@@ -7872,6 +7985,874 @@ async function _traccarRenderTicketGpsBadge(ticket,hostElementId){
   }else{
     host.innerHTML="";
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TRACCAR V3 — Sub-tabs UI: Live View, Daily GPS, Compare, Summary
+// ════════════════════════════════════════════════════════════════════════════
+
+// ─── Sub-tab switcher ───
+let _mapsCurrentSub="routes";
+let _liveMapInstance=null;
+let _liveMarkers=[];
+let _liveAutoRefreshTimer=null;
+let _dailyGpsMapInstance=null;
+let _dailyGpsLayer=null;
+const STOP_MIN_MINUTES=10;     // a "stop" = stationary >= 10 minutes
+const STOP_RADIUS_MILES=0.062; // ~100m clustering radius
+const REVGEOCODE_CACHE_KEY="aspen_revgeocode_cache_v1";
+let _revGeocodeCache=null;
+
+function mapsSwitchSub(name){
+  _mapsCurrentSub=name;
+  // Update nav pills
+  document.querySelectorAll(".maps-subtab").forEach(function(b){
+    const isOn=b.getAttribute("data-sub")===name;
+    b.style.color=isOn?"var(--ac)":"var(--i2)";
+    b.style.fontWeight=isOn?"700":"600";
+    b.style.borderBottomColor=isOn?"var(--ac)":"transparent";
+    b.classList.toggle("on",isOn);
+  });
+  // Show/hide panes
+  document.querySelectorAll(".maps-pane").forEach(function(p){p.style.display="none"});
+  const pane=document.getElementById("mapsPane_"+name);
+  if(pane)pane.style.display="";
+
+  // Stop live auto-refresh when leaving Live View
+  if(_liveAutoRefreshTimer&&name!=="live"){
+    clearInterval(_liveAutoRefreshTimer);
+    _liveAutoRefreshTimer=null;
+  }
+
+  // Lazy-init each pane
+  if(name==="live"){
+    _traccarLiveViewInit();
+  }else if(name==="daily"){
+    _traccarLoadDailyGpsInit();
+  }else if(name==="compare"){
+    _traccarCompareInit();
+  }else if(name==="summary"){
+    _traccarLoadSummaryInit();
+  }else if(name==="routes"){
+    // Re-fix Leaflet map size on switching back
+    setTimeout(function(){if(typeof _mapsInstance!=="undefined"&&_mapsInstance)try{_mapsInstance.invalidateSize()}catch(_e){}},100);
+  }
+}
+
+// ─── Reverse geocoding (LocationIQ free tier 5K req/day) with persistent cache ───
+function _revGeocodeLoadCache(){
+  if(_revGeocodeCache)return _revGeocodeCache;
+  try{
+    const raw=localStorage.getItem(REVGEOCODE_CACHE_KEY);
+    _revGeocodeCache=raw?JSON.parse(raw):{};
+  }catch(_e){_revGeocodeCache={}}
+  return _revGeocodeCache;
+}
+function _revGeocodeSaveCache(){
+  if(!_revGeocodeCache)return;
+  try{
+    // Trim to last 500 entries to keep LS small
+    const keys=Object.keys(_revGeocodeCache);
+    if(keys.length>500){
+      const trimmed={};
+      keys.slice(-500).forEach(function(k){trimmed[k]=_revGeocodeCache[k]});
+      _revGeocodeCache=trimmed;
+    }
+    localStorage.setItem(REVGEOCODE_CACHE_KEY,JSON.stringify(_revGeocodeCache));
+  }catch(_e){}
+}
+function _revGeocodeKey(lat,lng){
+  // Round to ~25m precision so nearby points share cache entry
+  return Math.round(lat*4000)/4000+","+Math.round(lng*4000)/4000;
+}
+async function _revGeocode(lat,lng){
+  const cache=_revGeocodeLoadCache();
+  const key=_revGeocodeKey(lat,lng);
+  if(cache[key])return cache[key];
+  // Try Nominatim first (no key required, 1 req/sec limit) — fallback for free
+  try{
+    const url="https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lng+"&zoom=18&addressdetails=1";
+    const res=await fetch(url,{headers:{"Accept-Language":"en-US"}});
+    if(res.ok){
+      const data=await res.json();
+      let label="";
+      if(data&&data.address){
+        const a=data.address;
+        const parts=[];
+        if(a.house_number&&a.road)parts.push(a.house_number+" "+a.road);
+        else if(a.road)parts.push(a.road);
+        if(a.city||a.town||a.village)parts.push(a.city||a.town||a.village);
+        else if(a.suburb)parts.push(a.suburb);
+        if(a.state)parts.push(a.state);
+        label=parts.join(", ");
+      }
+      if(!label&&data.display_name)label=data.display_name.split(",").slice(0,3).join(",").trim();
+      if(label){
+        cache[key]=label;
+        _revGeocodeSaveCache();
+        return label;
+      }
+    }
+  }catch(_e){}
+  return lat.toFixed(4)+", "+lng.toFixed(4);
+}
+
+// ─── Stop detection: cluster nearby pings into "stops" of >=10 minutes ───
+function _detectStops(positions){
+  if(!positions||positions.length<2)return[];
+  const stops=[];
+  let cluster=[positions[0]];
+  for(let i=1;i<positions.length;i++){
+    const p=positions[i];
+    const ref=cluster[0];
+    const d=_haversineMi(ref.latitude,ref.longitude,p.latitude,p.longitude);
+    if(d<=STOP_RADIUS_MILES){
+      cluster.push(p);
+    }else{
+      // Close cluster
+      const t0=new Date(cluster[0].deviceTime||cluster[0].fixTime||cluster[0].serverTime).getTime();
+      const t1=new Date(cluster[cluster.length-1].deviceTime||cluster[cluster.length-1].fixTime||cluster[cluster.length-1].serverTime).getTime();
+      const minutes=(t1-t0)/60000;
+      if(minutes>=STOP_MIN_MINUTES){
+        // Average position
+        let sumLat=0,sumLng=0;
+        cluster.forEach(function(pp){sumLat+=pp.latitude;sumLng+=pp.longitude});
+        stops.push({
+          lat:sumLat/cluster.length,
+          lng:sumLng/cluster.length,
+          start:new Date(t0),
+          end:new Date(t1),
+          durationMin:Math.round(minutes),
+          pingCount:cluster.length
+        });
+      }
+      cluster=[p];
+    }
+  }
+  // Final cluster
+  if(cluster.length>=2){
+    const t0=new Date(cluster[0].deviceTime||cluster[0].fixTime||cluster[0].serverTime).getTime();
+    const t1=new Date(cluster[cluster.length-1].deviceTime||cluster[cluster.length-1].fixTime||cluster[cluster.length-1].serverTime).getTime();
+    const minutes=(t1-t0)/60000;
+    if(minutes>=STOP_MIN_MINUTES){
+      let sumLat=0,sumLng=0;
+      cluster.forEach(function(pp){sumLat+=pp.latitude;sumLng+=pp.longitude});
+      stops.push({
+        lat:sumLat/cluster.length,
+        lng:sumLng/cluster.length,
+        start:new Date(t0),
+        end:new Date(t1),
+        durationMin:Math.round(minutes),
+        pingCount:cluster.length
+      });
+    }
+  }
+  return stops;
+}
+
+function _fmtTime(d){
+  if(!d)return"";
+  const h=d.getHours(),m=d.getMinutes();
+  const ampm=h>=12?"PM":"AM";
+  const h12=h%12||12;
+  return h12+":"+(m<10?"0":"")+m+" "+ampm;
+}
+
+function _fmtDur(min){
+  if(min<60)return min+"m";
+  const h=Math.floor(min/60),m=min%60;
+  return h+"h"+(m>0?(" "+m+"m"):"");
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LIVE VIEW
+// ════════════════════════════════════════════════════════════════════════════
+function _traccarLiveViewInit(){
+  // Initialize Leaflet map
+  if(typeof L==="undefined"){
+    const c=document.getElementById("liveMapContainer");
+    if(c)c.innerHTML='<div style="padding:40px;text-align:center;color:var(--i3)">Map library not loaded</div>';
+    return;
+  }
+  if(!_liveMapInstance){
+    _liveMapInstance=L.map("liveMapContainer",{zoomControl:true,attributionControl:true});
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19,
+      attribution:'&copy; OpenStreetMap'
+    }).addTo(_liveMapInstance);
+    _liveMapInstance.setView([38.6175,-90.2410],10);
+  }else{
+    setTimeout(function(){try{_liveMapInstance.invalidateSize()}catch(_e){}},100);
+  }
+  // Initial render
+  _traccarLiveViewRefresh();
+  // Auto-refresh every 30s while pane is open
+  if(_liveAutoRefreshTimer)clearInterval(_liveAutoRefreshTimer);
+  _liveAutoRefreshTimer=setInterval(_traccarLiveViewRefresh,30000);
+}
+
+async function _traccarLiveViewRefresh(){
+  if(!_traccarConfig||!_traccarConfig.enabled){
+    const s=document.getElementById("traccarLiveViewStatus");
+    if(s)s.innerHTML='<span style="color:#b45309">⚠ Traccar not configured</span>';
+    return;
+  }
+  if(!_liveMapInstance)return;
+  // Only show GPS for active (non-hidden) techs
+  const techs=Object.keys(_traccarTechMap).filter(function(t){return!HIDDEN_TECHS.has(t)});
+  if(!techs.length){
+    const s=document.getElementById("traccarLiveViewStatus");
+    if(s)s.innerHTML='<span style="color:#b45309">⚠ No technicians mapped to devices</span>';
+    return;
+  }
+
+  const status=document.getElementById("traccarLiveViewStatus");
+  if(status)status.innerHTML='<span style="color:var(--i3)">Refreshing...</span>';
+
+  // Clear old markers
+  _liveMarkers.forEach(function(m){try{_liveMapInstance.removeLayer(m)}catch(_e){}});
+  _liveMarkers=[];
+
+  const techColors=(typeof TECH_COLORS!=="undefined")?TECH_COLORS:["#D4772C","#3D2B1F","#2563eb","#059669","#d946ef","#dc2626","#0891b2","#ca8a04"];
+  const TECH_LIST=(typeof TECHS!=="undefined")?TECHS:[];
+
+  const results=[];
+  // Inject pulse animation CSS once
+  if(!document.getElementById("traccarPulseStyle")){
+    const st=document.createElement("style");
+    st.id="traccarPulseStyle";
+    st.textContent="@keyframes traccar-pulse{0%{box-shadow:0 0 0 0 rgba(0,0,0,.4),0 2px 4px rgba(0,0,0,.3)}70%{box-shadow:0 0 0 12px rgba(0,0,0,0),0 2px 4px rgba(0,0,0,.3)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0),0 2px 4px rgba(0,0,0,.3)}}";
+    document.head.appendChild(st);
+  }
+
+  for(let i=0;i<techs.length;i++){
+    const tName=techs[i];
+    const deviceId=_traccarTechMap[tName];
+    if(!deviceId)continue;
+    const colorIdx=TECH_LIST.indexOf(tName);
+    const color=techColors[(colorIdx>=0?colorIdx:i)%techColors.length];
+    try{
+      const pos=await _traccarGetLatestPosition(deviceId);
+      if(!pos){results.push({tName:tName,color:color,offline:true});continue}
+      const lastTime=new Date(pos.deviceTime||pos.fixTime||pos.serverTime);
+      const minAgo=Math.round((Date.now()-lastTime.getTime())/60000);
+      results.push({tName:tName,color:color,pos:pos,minAgo:minAgo,lastTime:lastTime});
+
+      const stale=minAgo>15;
+      const pulseIcon=L.divIcon({
+        html:'<div style="position:relative;width:20px;height:20px"><div style="position:absolute;inset:0;background:'+color+';border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px '+color+'88,0 2px 4px rgba(0,0,0,.3);'+(stale?'':'animation:traccar-pulse 1.5s ease-out infinite')+'"></div></div>',
+        className:"",
+        iconSize:[20,20],
+        iconAnchor:[10,10]
+      });
+      const marker=L.marker([pos.latitude,pos.longitude],{icon:pulseIcon,zIndexOffset:1000}).addTo(_liveMapInstance);
+      marker.bindPopup('<div style="font-family:inherit;font-size:13px"><div style="font-weight:700;color:'+color+';margin-bottom:4px">'+esc(tName)+'</div><div style="font-size:11px;color:#666">'+(minAgo<1?"Now":(minAgo+" min ago"))+'</div>'+(pos.speed?'<div style="font-size:11px;color:#666">Speed: '+Math.round(pos.speed*1.151)+' mph</div>':'')+'</div>');
+      _liveMarkers.push(marker);
+    }catch(e){results.push({tName:tName,color:color,error:e.message})}
+  }
+
+  // Fit bounds if any markers
+  if(_liveMarkers.length){
+    try{
+      const grp=L.featureGroup(_liveMarkers);
+      _liveMapInstance.fitBounds(grp.getBounds().pad(0.2),{maxZoom:13});
+    }catch(_e){}
+  }
+
+  // Render side panel
+  const panel=document.getElementById("livePanel");
+  if(panel){
+    let html='<div style="font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br);margin-bottom:10px">Team Status</div>';
+    if(!results.length){
+      html+='<div style="color:var(--i3);font-size:13px">No data</div>';
+    }else{
+      results.forEach(function(r){
+        if(r.offline||r.error){
+          html+='<div style="padding:10px;margin-bottom:8px;background:#fafaf8;border-radius:8px;border-left:3px solid #d4d4d8"><div style="font-size:13px;font-weight:600;color:var(--i2)">'+esc(r.tName)+'</div><div style="font-size:11px;color:var(--i3);margin-top:2px">'+(r.error?("⚠ "+esc(r.error.substring(0,40))):"○ No data")+'</div></div>';
+        }else{
+          const stale=r.minAgo>15;
+          const ageColor=stale?"#b45309":"#16a34a";
+          const ageStr=r.minAgo<1?"Now":(r.minAgo<60?(r.minAgo+" min"):(Math.round(r.minAgo/60)+"h"));
+          const speedMph=r.pos.speed?Math.round(r.pos.speed*1.151):0;
+          html+='<div onclick="_liveMapInstance.setView(['+r.pos.latitude+','+r.pos.longitude+'],15)" style="padding:10px;margin-bottom:8px;background:#fff;border-radius:8px;border-left:3px solid '+r.color+';cursor:pointer;border:1px solid var(--ln)">';
+          html+='<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:13px;font-weight:700;color:'+r.color+'">'+esc(r.tName)+'</div><div style="font-size:10px;color:'+ageColor+';font-weight:600">● '+esc(ageStr)+'</div></div>';
+          if(speedMph>2)html+='<div style="font-size:11px;color:var(--i2);margin-top:2px">🚗 '+speedMph+' mph</div>';
+          else html+='<div style="font-size:11px;color:var(--i3);margin-top:2px">⏸ Stationary</div>';
+          html+='</div>';
+        }
+      });
+    }
+    panel.innerHTML=html;
+  }
+
+  if(status){
+    const onlineCount=results.filter(function(r){return r.pos&&r.minAgo<=15}).length;
+    status.innerHTML='<span style="color:'+(onlineCount>0?"#16a34a":"var(--i3)")+'">● '+onlineCount+'/'+techs.length+' online · last refresh '+_fmtTime(new Date())+'</span>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DAILY GPS — actual movement, not tickets
+// ════════════════════════════════════════════════════════════════════════════
+function _traccarLoadDailyGpsInit(){
+  const inp=document.getElementById("dailyGpsDate");
+  if(inp&&!inp.value)inp.value=fmtD(new Date());
+  if(typeof L==="undefined")return;
+  if(!_dailyGpsMapInstance){
+    _dailyGpsMapInstance=L.map("dailyGpsMapContainer",{zoomControl:true,attributionControl:true});
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19,
+      attribution:'&copy; OpenStreetMap'
+    }).addTo(_dailyGpsMapInstance);
+    _dailyGpsMapInstance.setView([38.6175,-90.2410],10);
+  }else{
+    setTimeout(function(){try{_dailyGpsMapInstance.invalidateSize()}catch(_e){}},100);
+  }
+  _traccarLoadDailyGps();
+}
+
+async function _traccarLoadDailyGps(){
+  if(!_traccarConfig||!_traccarConfig.enabled){
+    const s=document.getElementById("dailyGpsStatus");
+    if(s)s.innerHTML='<span style="color:#b45309">⚠ Traccar not configured</span>';
+    return;
+  }
+  const inp=document.getElementById("dailyGpsDate");
+  const dateStr=inp&&inp.value?inp.value:fmtD(new Date());
+  const dateStart=new Date(dateStr+"T00:00:00");
+  const dateEnd=new Date(dateStr+"T23:59:59");
+
+  const status=document.getElementById("dailyGpsStatus");
+  if(status)status.innerHTML='<span style="color:var(--i3)">Loading...</span>';
+  const wrap=document.getElementById("dailyGpsMapWrap");
+  if(wrap)wrap.style.display="none";
+
+  // Clear existing layers
+  if(_dailyGpsLayer&&_dailyGpsMapInstance){try{_dailyGpsMapInstance.removeLayer(_dailyGpsLayer)}catch(_e){}_dailyGpsLayer=null}
+  _dailyGpsLayer=L.layerGroup();
+
+  // Only include active (non-hidden) techs in GPS tracking view
+  const techs=Object.keys(_traccarTechMap).filter(function(t){return!HIDDEN_TECHS.has(t)});
+  const techColors=(typeof TECH_COLORS!=="undefined")?TECH_COLORS:["#D4772C","#3D2B1F","#2563eb","#059669","#d946ef","#dc2626","#0891b2","#ca8a04"];
+  const TECH_LIST=(typeof TECHS!=="undefined")?TECHS:[];
+
+  const techDataList=[];
+  let allBounds=[];
+
+  for(let i=0;i<techs.length;i++){
+    const tName=techs[i];
+    const deviceId=_traccarTechMap[tName];
+    if(!deviceId)continue;
+    const colorIdx=TECH_LIST.indexOf(tName);
+    const color=techColors[(colorIdx>=0?colorIdx:i)%techColors.length];
+
+    try{
+      const positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
+      if(!positions||!positions.length)continue;
+      const stopsRaw=_detectStops(positions);
+
+      // Tag depot stops separately so they're visually distinct
+      const DEPOT_PROX_MILES=0.124;
+      const stops=[],depotStops=[];
+      stopsRaw.forEach(function(s){
+        const distToDepot=_haversineMi(ASPEN_DEPOT.lat,ASPEN_DEPOT.lng,s.lat,s.lng);
+        if(distToDepot<=DEPOT_PROX_MILES){
+          s._isDepot=true;
+          depotStops.push(s);
+        }else{
+          stops.push(s);
+        }
+      });
+      // Determine depot roles for cards
+      if(depotStops.length){
+        depotStops.sort(function(a,b){return a.start-b.start});
+        depotStops[0]._depotRole="start";
+        if(depotStops.length>1)depotStops[depotStops.length-1]._depotRole="end";
+        for(let dd=1;dd<depotStops.length-1;dd++)depotStops[dd]._depotRole="midday";
+      }
+      // Combine for rendering (chronological)
+      const allStopsForRender=stops.concat(depotStops).sort(function(a,b){return a.start-b.start});
+      // Compute total miles + drive time
+      let driveSec=0,miles=0;
+      for(let j=1;j<positions.length;j++){
+        const p0=positions[j-1],p1=positions[j];
+        const t0=new Date(p0.deviceTime||p0.fixTime||p0.serverTime).getTime();
+        const t1=new Date(p1.deviceTime||p1.fixTime||p1.serverTime).getTime();
+        const dt=(t1-t0)/1000;
+        if(dt<=0||dt>1200)continue;
+        const sp=p1.speed||0;
+        if(sp>1){
+          driveSec+=dt;
+          miles+=_haversineMi(p0.latitude,p0.longitude,p1.latitude,p1.longitude);
+        }
+      }
+      const firstTime=new Date(positions[0].deviceTime||positions[0].fixTime||positions[0].serverTime);
+      const lastTime=new Date(positions[positions.length-1].deviceTime||positions[positions.length-1].fixTime||positions[positions.length-1].serverTime);
+      techDataList.push({tName:tName,color:color,positions:positions,stops:stops,depotStops:depotStops,allStops:allStopsForRender,driveSec:Math.round(driveSec),miles:Math.round(miles*10)/10,firstTime:firstTime,lastTime:lastTime});
+
+      // Draw track
+      const latlngs=positions.map(function(p){return[p.latitude,p.longitude]});
+      L.polyline(latlngs,{color:color,weight:3,opacity:0.85}).addTo(_dailyGpsLayer).bindTooltip(esc(tName)+" · "+positions.length+" pings");
+      latlngs.forEach(function(ll){allBounds.push(ll)});
+
+      // Draw customer stops as numbered circles
+      stops.forEach(function(s,idx){
+        const stopIcon=L.divIcon({
+          html:'<div style="background:'+color+';color:#fff;border:2.5px solid #fff;border-radius:50%;width:24px;height:24px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.3)">'+(idx+1)+'</div>',
+          className:"",
+          iconSize:[24,24],
+          iconAnchor:[12,12]
+        });
+        L.marker([s.lat,s.lng],{icon:stopIcon}).addTo(_dailyGpsLayer)
+          .bindPopup('<div style="font-size:13px;font-family:inherit"><b style="color:'+color+'">'+esc(tName)+' · Stop #'+(idx+1)+'</b><br><span style="color:#666;font-size:11px">'+_fmtTime(s.start)+' – '+_fmtTime(s.end)+' ('+_fmtDur(s.durationMin)+')</span><br><span style="font-size:11px;color:#999" id="stopAddr_'+esc(tName)+'_'+idx+'">📍 '+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+'</span></div>');
+        _revGeocode(s.lat,s.lng).then(function(addr){
+          const el=document.getElementById("stopAddr_"+tName+"_"+idx);
+          if(el)el.innerHTML='📍 '+esc(addr);
+        });
+      });
+
+      // Draw Aspen depot stops as house icons
+      depotStops.forEach(function(s,idx){
+        const depotIcon=L.divIcon({
+          html:'<div style="background:#3730a3;color:#fff;border:2.5px solid #fff;border-radius:6px;width:26px;height:26px;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.3)">🏠</div>',
+          className:"",
+          iconSize:[26,26],
+          iconAnchor:[13,13]
+        });
+        const role=s._depotRole;
+        const roleLabel=role==="start"?"Day start":(role==="end"?"Day end":(role==="midday"?"Mid-day return":"Aspen visit"));
+        L.marker([s.lat,s.lng],{icon:depotIcon,zIndexOffset:500}).addTo(_dailyGpsLayer)
+          .bindPopup('<div style="font-size:13px;font-family:inherit"><b style="color:#3730a3">'+esc(tName)+' · 🏠 Aspen Spas</b><br><span style="color:#3730a3;font-size:11px;font-weight:600">'+roleLabel+'</span><br><span style="color:#666;font-size:11px">'+_fmtTime(s.start)+' – '+_fmtTime(s.end)+' ('+_fmtDur(s.durationMin)+')</span></div>');
+      });
+    }catch(e){
+      console.warn("Daily GPS load failed for",tName,":",e);
+    }
+  }
+
+  if(techDataList.length){
+    _dailyGpsLayer.addTo(_dailyGpsMapInstance);
+    if(wrap)wrap.style.display="";
+    if(allBounds.length){
+      try{_dailyGpsMapInstance.fitBounds(allBounds,{padding:[30,30]})}catch(_e){}
+    }
+    setTimeout(function(){try{_dailyGpsMapInstance.invalidateSize()}catch(_e){}},150);
+    // Legend
+    const lg=document.getElementById("dailyGpsLegend");
+    if(lg){
+      lg.innerHTML=techDataList.map(function(d){
+        const aspenStr=d.depotStops.length?' · 🏠 '+d.depotStops.length+' Aspen':'';
+        return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><span style="width:14px;height:3px;background:'+d.color+';display:inline-block"></span><b>'+esc(d.tName)+'</b> · '+d.stops.length+' stops'+aspenStr+' · '+_fmtMiles(d.miles)+' · '+_fmtDuration(d.driveSec)+'</span>'
+      }).join("");
+    }
+  }
+
+  // Render cards
+  const cardsHost=document.getElementById("dailyGpsCards");
+  if(cardsHost){
+    if(!techDataList.length){
+      cardsHost.innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--i3);font-size:13px;background:#fff;border:1.5px solid var(--ln);border-radius:14px">No GPS data for '+esc(dateStr)+'. Either no movement detected or technicians had Traccar Client paused.</div>';
+    }else{
+      cardsHost.innerHTML=techDataList.map(function(d){
+        let stopsHtml='';
+        let customerStopIdx=0;
+        d.allStops.forEach(function(s){
+          if(s._isDepot){
+            const role=s._depotRole;
+            const roleLabel=role==="start"?"Day start at Aspen":(role==="end"?"Day end at Aspen":(role==="midday"?"Returned to Aspen":"At Aspen"));
+            stopsHtml+='<div style="padding:8px 10px;border-top:1px solid #f0ece8;display:flex;align-items:flex-start;gap:8px;background:#e0e7ff22"><div style="flex:0 0 22px;height:22px;background:#3730a3;color:#fff;border-radius:6px;font-size:12px;display:flex;align-items:center;justify-content:center">🏠</div><div style="flex:1;min-width:0"><div style="font-size:11px;color:#3730a3;font-weight:700">'+_fmtTime(s.start)+' – '+_fmtTime(s.end)+' · '+_fmtDur(s.durationMin)+'</div><div style="font-size:12px;color:var(--i1);margin-top:2px;font-weight:600">'+esc(roleLabel)+'</div><div style="font-size:10px;color:var(--i3);margin-top:1px">4609 McRee Ave, St. Louis</div></div></div>';
+          }else{
+            const idx=customerStopIdx++;
+            stopsHtml+='<div style="padding:8px 10px;border-top:1px solid #f0ece8;display:flex;align-items:flex-start;gap:8px"><div style="flex:0 0 22px;height:22px;background:'+d.color+';color:#fff;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">'+(idx+1)+'</div><div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--i3);font-weight:600">'+_fmtTime(s.start)+' – '+_fmtTime(s.end)+' · '+_fmtDur(s.durationMin)+'</div><div style="font-size:12px;color:var(--i1);margin-top:2px;word-break:break-word" id="cardStopAddr_'+esc(d.tName)+'_'+idx+'">'+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+'</div></div></div>';
+            _revGeocode(s.lat,s.lng).then(function(addr){
+              const el=document.getElementById("cardStopAddr_"+d.tName+"_"+idx);
+              if(el)el.textContent=addr;
+            });
+          }
+        });
+        // Detect missing depot bookends
+        const hasStart=d.depotStops.some(function(s){return s._depotRole==="start"});
+        const hasEnd=d.depotStops.some(function(s){return s._depotRole==="end"})||(d.depotStops.length===1&&d.depotStops[0]._depotRole==="start");
+        let warningsHtml="";
+        if(!hasStart)warningsHtml+='<div style="padding:6px 10px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;border-top:1px solid #fde68a">⚠ No Aspen depot stop at day start detected</div>';
+        if(!hasEnd&&d.depotStops.length<2)warningsHtml+='<div style="padding:6px 10px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;border-top:1px solid #fde68a">⚠ No Aspen depot return detected</div>';
+
+        return '<div style="background:#fff;border:1.5px solid var(--ln);border-left:4px solid '+d.color+';border-radius:12px;overflow:hidden">'+
+          '<div style="padding:12px 14px;background:linear-gradient(to right,'+d.color+'18,transparent)">'+
+            '<div style="font-size:14px;font-weight:700;color:'+d.color+';margin-bottom:6px">'+esc(d.tName)+'</div>'+
+            '<div style="display:flex;gap:14px;font-size:11px;color:var(--i2);flex-wrap:wrap">'+
+              '<span><b style="color:var(--i1);font-size:13px">'+_fmtMiles(d.miles)+'</b> driven</span>'+
+              '<span><b style="color:var(--i1);font-size:13px">'+_fmtDuration(d.driveSec)+'</b> driving</span>'+
+              '<span><b style="color:var(--i1);font-size:13px">'+d.stops.length+'</b> stop'+(d.stops.length===1?'':'s')+'</span>'+
+              (d.depotStops.length?'<span style="color:#3730a3"><b style="font-size:13px">'+d.depotStops.length+'</b> 🏠 Aspen</span>':'')+
+            '</div>'+
+            '<div style="font-size:11px;color:var(--i3);margin-top:4px">First ping: '+_fmtTime(d.firstTime)+' · Last: '+_fmtTime(d.lastTime)+'</div>'+
+          '</div>'+
+          warningsHtml+
+          '<div>'+(stopsHtml||'<div style="padding:14px;text-align:center;color:var(--i3);font-size:12px;font-style:italic">No stops ≥ 10 min detected</div>')+'</div>'+
+        '</div>';
+      }).join("");
+    }
+  }
+
+  if(status){
+    const totalStops=techDataList.reduce(function(a,d){return a+d.stops.length},0);
+    status.innerHTML='<span>'+techDataList.length+' tech'+(techDataList.length===1?'':'s')+' moved · '+totalStops+' stops total</span>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPARE — Tickets vs GPS Stops
+// ════════════════════════════════════════════════════════════════════════════
+function _traccarCompareInit(){
+  const inp=document.getElementById("compareDate");
+  if(inp&&!inp.value)inp.value=fmtD(new Date());
+  // Populate tech selector — only active (non-hidden) techs
+  const sel=document.getElementById("compareTech");
+  if(sel){
+    const techs=(typeof TECHS!=="undefined")?TECHS.filter(function(t){return!HIDDEN_TECHS.has(t)}):[];
+    sel.innerHTML='<option value="">— Select technician —</option>'+techs.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>'}).join("");
+  }
+}
+
+async function _traccarLoadCompare(){
+  const dateStr=(document.getElementById("compareDate")||{}).value;
+  const tName=(document.getElementById("compareTech")||{}).value;
+  const status=document.getElementById("compareStatus");
+  const host=document.getElementById("compareResults");
+  if(!dateStr||!tName){
+    if(status)status.innerHTML='<span style="color:#b45309">Select date and technician</span>';
+    return;
+  }
+  if(!_traccarConfig||!_traccarConfig.enabled){
+    if(status)status.innerHTML='<span style="color:#b45309">⚠ Traccar not configured</span>';
+    return;
+  }
+  const deviceId=_traccarTechMap[tName];
+  if(!deviceId){
+    if(status)status.innerHTML='<span style="color:#b45309">⚠ '+esc(tName)+' not mapped to a device</span>';
+    return;
+  }
+  if(status)status.innerHTML='<span style="color:var(--i3)">Loading data...</span>';
+  if(host)host.innerHTML='';
+
+  // 1. Get tickets for this tech/date
+  const pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  const ticketsForDay=pool.filter(function(t){return t.date===dateStr&&t.techs&&t.techs.indexOf(tName)>=0});
+
+  // Check if date is in the future (no GPS data possible yet)
+  const todayStr=fmtD(new Date());
+  const isFuture=dateStr>todayStr;
+  if(isFuture){
+    if(host)host.innerHTML='<div style="padding:30px;text-align:center;background:#fff;border:1.5px solid var(--ln);border-radius:14px"><div style="font-size:16px;font-weight:700;color:var(--i1);margin-bottom:6px">📅 Future date</div><div style="color:var(--i3);font-size:13px">'+esc(dateStr)+' is in the future. GPS data is only available for past or current dates.</div><div style="margin-top:14px;font-size:12px;color:var(--i3)">'+ticketsForDay.length+' ticket'+(ticketsForDay.length===1?'':'s')+' currently scheduled for this day.</div></div>';
+    if(status)status.innerHTML='<span style="color:var(--i3)">Future date — no GPS yet</span>';
+    return;
+  }
+
+  // 2. Get GPS positions and detect stops
+  const dateStart=new Date(dateStr+"T00:00:00");
+  const dateEnd=new Date(dateStr+"T23:59:59");
+  let positions=[];
+  try{positions=await _traccarGetPositions(deviceId,dateStart,dateEnd)}catch(e){
+    if(status)status.innerHTML='<span style="color:#dc2626">Failed: '+esc(e.message)+'</span>';
+    return;
+  }
+  const stops=_detectStops(positions||[]);
+
+  // 3. Geocode tickets
+  const ticketCoords=[];
+  for(let i=0;i<ticketsForDay.length;i++){
+    const t=ticketsForDay[i];
+    let coords=null;
+    try{coords=await geocodeTicket(t)}catch(_e){}
+    ticketCoords.push({ticket:t,coords:coords});
+  }
+
+  // 4. Match stops to tickets (within ~200m)
+  const PROX_MILES=0.124;
+  const matches=ticketCoords.map(function(tc){
+    if(!tc.coords)return{ticket:tc.ticket,coords:null,matchedStop:null,distMi:null};
+    let best=null,bestDist=Infinity;
+    stops.forEach(function(s){
+      const d=_haversineMi(tc.coords.lat,tc.coords.lng,s.lat,s.lng);
+      if(d<bestDist){bestDist=d;best=s}
+    });
+    return{ticket:tc.ticket,coords:tc.coords,matchedStop:bestDist<=PROX_MILES?best:null,distMi:bestDist};
+  });
+
+  // Stops not matched to any ticket (excluding Aspen depot stops which are expected)
+  const matchedStopsSet=new Set();
+  matches.forEach(function(m){if(m.matchedStop)matchedStopsSet.add(m.matchedStop)});
+
+  // Identify Aspen depot stops — start, end, or mid-day part-pickup runs
+  // Tolerance: 200m around the depot
+  const DEPOT_PROX_MILES=0.124;
+  const aspenStops=[];
+  stops.forEach(function(s){
+    if(matchedStopsSet.has(s))return; // already matched to ticket
+    const distToDepot=_haversineMi(ASPEN_DEPOT.lat,ASPEN_DEPOT.lng,s.lat,s.lng);
+    if(distToDepot<=DEPOT_PROX_MILES){
+      // Tag as Aspen depot stop and remove from "extra" pool
+      s._isDepot=true;
+      aspenStops.push(s);
+      matchedStopsSet.add(s); // mark so it doesn't show as "extra"
+    }
+  });
+
+  // Determine which depot stops are start / end / mid-day
+  if(aspenStops.length){
+    aspenStops.sort(function(a,b){return a.start-b.start});
+    aspenStops[0]._depotRole="start";
+    if(aspenStops.length>1)aspenStops[aspenStops.length-1]._depotRole="end";
+    for(let ii=1;ii<aspenStops.length-1;ii++)aspenStops[ii]._depotRole="midday";
+    if(aspenStops.length===1)aspenStops[0]._depotRole="start"; // only one depot visit
+  }
+
+  const unmatchedStops=stops.filter(function(s){return!matchedStopsSet.has(s)});
+
+  // 5. Reverse-geocode unmatched stops async
+  unmatchedStops.forEach(function(s,i){
+    _revGeocode(s.lat,s.lng).then(function(addr){
+      const el=document.getElementById("unmatchedStopAddr_"+i);
+      if(el)el.textContent=addr;
+    });
+  });
+
+  // 6. Render
+  const visited=matches.filter(function(m){return m.matchedStop}).length;
+  const missing=matches.filter(function(m){return!m.matchedStop&&m.coords}).length;
+  const ungeocoded=matches.filter(function(m){return!m.coords}).length;
+
+  let html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">';
+  html+='<div style="padding:12px;background:#dcfce7;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#166534">'+visited+'</div><div style="font-size:11px;color:#166534;font-weight:600">VISITED</div></div>';
+  html+='<div style="padding:12px;background:#fee2e2;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#991b1b">'+missing+'</div><div style="font-size:11px;color:#991b1b;font-weight:600">NOT VISITED</div></div>';
+  html+='<div style="padding:12px;background:#fef3c7;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#92400e">'+unmatchedStops.length+'</div><div style="font-size:11px;color:#92400e;font-weight:600">EXTRA STOPS</div></div>';
+  html+='<div style="padding:12px;background:#e0e7ff;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#3730a3">'+aspenStops.length+'</div><div style="font-size:11px;color:#3730a3;font-weight:600">🏠 ASPEN VISITS</div></div>';
+  html+='<div style="padding:12px;background:#fafaf8;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--i2)">'+ticketsForDay.length+'</div><div style="font-size:11px;color:var(--i3);font-weight:600">TICKETS TODAY</div></div>';
+  html+='</div>';
+
+  // Day timeline summary (Aspen → ticket → ticket → Aspen)
+  if(aspenStops.length||matches.length){
+    const startStop=aspenStops.find(function(s){return s._depotRole==="start"});
+    const endStop=aspenStops.find(function(s){return s._depotRole==="end"});
+    const middayStops=aspenStops.filter(function(s){return s._depotRole==="midday"});
+    let timeline='<div style="background:#fff;border:1.5px solid var(--ln);border-radius:12px;padding:14px;margin-bottom:14px">';
+    timeline+='<div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br);margin-bottom:10px">📅 Day Timeline</div>';
+    timeline+='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px">';
+    if(startStop){
+      timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#e0e7ff;color:#3730a3;border-radius:8px;font-weight:600">🏠 Aspen <small style="opacity:.7">'+_fmtTime(startStop.end)+'</small></span>';
+    }else{
+      timeline+='<span style="padding:5px 10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-weight:600">⚠ No Aspen start detected</span>';
+    }
+    // Sort visits chronologically (matched stops + midday depot stops)
+    const orderedEvents=[];
+    matches.forEach(function(m){if(m.matchedStop)orderedEvents.push({type:"ticket",time:m.matchedStop.start,m:m})});
+    middayStops.forEach(function(s){orderedEvents.push({type:"depot",time:s.start,s:s})});
+    orderedEvents.sort(function(a,b){return a.time-b.time});
+    orderedEvents.forEach(function(e){
+      timeline+='<span style="color:var(--i3)">→</span>';
+      if(e.type==="ticket"){
+        timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#dcfce7;color:#166534;border-radius:8px;font-weight:600" title="'+esc(e.m.ticket.address||"")+'">📋 '+esc((e.m.ticket.last||e.m.ticket.first||"—")).substring(0,15)+' <small style="opacity:.7">'+_fmtTime(e.m.matchedStop.start)+'</small></span>';
+      }else{
+        timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#e0e7ff;color:#3730a3;border-radius:8px;font-weight:600">🏠 Aspen <small style="opacity:.7">'+_fmtTime(e.s.start)+'</small></span>';
+      }
+    });
+    if(endStop&&endStop!==startStop){
+      timeline+='<span style="color:var(--i3)">→</span>';
+      timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#e0e7ff;color:#3730a3;border-radius:8px;font-weight:600">🏠 Aspen <small style="opacity:.7">'+_fmtTime(endStop.start)+'</small></span>';
+    }else if(!endStop&&aspenStops.length<=1){
+      timeline+='<span style="color:var(--i3)">→</span>';
+      timeline+='<span style="padding:5px 10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-weight:600">⚠ No Aspen return</span>';
+    }
+    timeline+='</div>';
+    timeline+='</div>';
+    html+=timeline;
+  }
+
+  // Side-by-side
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">';
+
+  // Left: Tickets
+  html+='<div style="background:#fff;border:1.5px solid var(--ln);border-radius:12px;overflow:hidden">';
+  html+='<div style="padding:10px 14px;background:#fafaf8;border-bottom:1.5px solid var(--ln);font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">📋 Tickets Assigned</div>';
+  if(!matches.length){
+    html+='<div style="padding:20px;text-align:center;color:var(--i3);font-size:12px">No tickets assigned</div>';
+  }else{
+    matches.forEach(function(m){
+      const t=m.ticket;
+      const status=m.matchedStop?"visited":(m.coords?"missed":"nogeo");
+      const colors={visited:{bg:"#dcfce7",bd:"#86efac",fg:"#166534",icon:"✓"},missed:{bg:"#fee2e2",bd:"#fca5a5",fg:"#991b1b",icon:"⚠"},nogeo:{bg:"#fafaf8",bd:"var(--ln)",fg:"var(--i3)",icon:"?"}};
+      const c=colors[status];
+      html+='<div style="padding:10px 12px;border-bottom:1px solid #f5f5f5;background:'+c.bg+'66">';
+      html+='<div style="display:flex;align-items:flex-start;gap:8px">';
+      html+='<div style="flex:0 0 24px;height:24px;background:'+c.bg+';color:'+c.fg+';border-radius:50%;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">'+c.icon+'</div>';
+      html+='<div style="flex:1;min-width:0">';
+      html+='<div style="font-size:13px;font-weight:700;color:var(--i1)">'+esc(t.last||t.first||"—")+'</div>';
+      html+='<div style="font-size:11px;color:var(--i3);margin-top:2px">'+esc(t.address||"")+(t.city?', '+esc(t.city):'')+'</div>';
+      if(m.matchedStop){
+        html+='<div style="font-size:11px;color:'+c.fg+';margin-top:4px;font-weight:600">✓ '+_fmtTime(m.matchedStop.start)+'–'+_fmtTime(m.matchedStop.end)+' ('+_fmtDur(m.matchedStop.durationMin)+')</div>';
+      }else if(m.coords){
+        html+='<div style="font-size:11px;color:'+c.fg+';margin-top:4px;font-weight:600">⚠ No GPS stop within 200m'+(m.distMi&&m.distMi<10?' (closest: '+m.distMi.toFixed(2)+' mi)':'')+'</div>';
+      }else{
+        html+='<div style="font-size:11px;color:'+c.fg+';margin-top:4px">? Could not geocode address</div>';
+      }
+      html+='</div></div></div>';
+    });
+  }
+  html+='</div>';
+
+  // Right: GPS Stops
+  html+='<div style="background:#fff;border:1.5px solid var(--ln);border-radius:12px;overflow:hidden">';
+  html+='<div style="padding:10px 14px;background:#fafaf8;border-bottom:1.5px solid var(--ln);font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">📍 GPS Stops Detected</div>';
+  if(!stops.length){
+    html+='<div style="padding:20px;text-align:center;color:var(--i3);font-size:12px">No stops ≥ 10 min detected</div>';
+  }else{
+    stops.forEach(function(s,idx){
+      const isDepot=s._isDepot;
+      const isMatched=matchedStopsSet.has(s)&&!isDepot;
+      const matchedTicket=matches.find(function(m){return m.matchedStop===s});
+      const matchedName=matchedTicket?matchedTicket.ticket.last||matchedTicket.ticket.first:"";
+      let bg,fg,iconBg,statusLabel;
+      if(isDepot){
+        bg="#e0e7ff66";fg="#3730a3";iconBg="#e0e7ff";
+        const role=s._depotRole;
+        const roleLabel=role==="start"?"Day start":(role==="end"?"Day end":(role==="midday"?"Mid-day return":"Aspen visit"));
+        statusLabel='🏠 Aspen Spas · '+roleLabel;
+      }else if(isMatched){
+        bg="#dcfce766";fg="#166534";iconBg="#dcfce7";
+        statusLabel='✓ Matches: '+esc(matchedName);
+      }else{
+        bg="#fef3c766";fg="#92400e";iconBg="#fef3c7";
+        statusLabel='⚠ Not in any ticket';
+      }
+      html+='<div style="padding:10px 12px;border-bottom:1px solid #f5f5f5;background:'+bg+'">';
+      html+='<div style="display:flex;align-items:flex-start;gap:8px">';
+      html+='<div style="flex:0 0 24px;height:24px;background:'+iconBg+';color:'+fg+';border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">'+(isDepot?"🏠":(idx+1))+'</div>';
+      html+='<div style="flex:1;min-width:0">';
+      html+='<div style="font-size:12px;font-weight:600;color:var(--i1)">'+_fmtTime(s.start)+' – '+_fmtTime(s.end)+' <span style="color:var(--i3);font-weight:500">('+_fmtDur(s.durationMin)+')</span></div>';
+      const unmatchedIdx=unmatchedStops.indexOf(s);
+      const addrId=unmatchedIdx>=0?'unmatchedStopAddr_'+unmatchedIdx:'matchedAddr_'+idx;
+      if(isDepot){
+        html+='<div style="font-size:11px;color:var(--i3);margin-top:2px;word-break:break-word">4609 McRee Ave, St. Louis, MO 63110</div>';
+      }else{
+        html+='<div style="font-size:11px;color:var(--i3);margin-top:2px;word-break:break-word" id="'+addrId+'">'+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+'</div>';
+      }
+      html+='<div style="font-size:11px;color:'+fg+';margin-top:3px;font-weight:600">'+statusLabel+'</div>';
+      html+='</div></div></div>';
+      // Geocode matched ones too
+      if(isMatched&&!isDepot)_revGeocode(s.lat,s.lng).then(function(addr){const el=document.getElementById("matchedAddr_"+idx);if(el)el.textContent=addr});
+    });
+  }
+  html+='</div>';
+
+  html+='</div>';
+
+  if(host)host.innerHTML=html;
+  if(status)status.innerHTML='<span>Analysis complete</span>';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SUMMARY — Period aggregate report
+// ════════════════════════════════════════════════════════════════════════════
+let _summaryData=[];
+
+function _traccarLoadSummaryInit(){
+  _traccarLoadSummary();
+}
+
+async function _traccarLoadSummary(){
+  if(!_traccarConfig||!_traccarConfig.enabled){
+    const s=document.getElementById("summaryStatus");
+    if(s)s.innerHTML='<span style="color:#b45309">⚠ Traccar not configured</span>';
+    return;
+  }
+  const days=parseInt((document.getElementById("summaryPeriod")||{}).value||"30",10);
+  const status=document.getElementById("summaryStatus");
+  const host=document.getElementById("summaryResults");
+  if(status)status.innerHTML='<span style="color:var(--i3)">Loading '+days+' days...</span>';
+  if(host)host.innerHTML='';
+
+  const today=new Date();
+  const dates=[];
+  for(let i=0;i<days;i++){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    dates.push(fmtD(d));
+  }
+  // Only include active (non-hidden) techs in GPS summary
+  const techs=Object.keys(_traccarTechMap).filter(function(t){return!HIDDEN_TECHS.has(t)});
+  const TECH_LIST=(typeof TECHS!=="undefined")?TECHS:[];
+  const techColors=(typeof TECH_COLORS!=="undefined")?TECH_COLORS:["#D4772C","#3D2B1F","#2563eb","#059669","#d946ef","#dc2626","#0891b2","#ca8a04"];
+
+  // Aggregate per tech
+  const summary={};
+  let totalChecked=0;
+  for(let i=0;i<techs.length;i++){
+    const tName=techs[i];
+    summary[tName]={tech:tName,days:0,miles:0,driveSec:0,stops:0,pings:0};
+    for(let j=0;j<dates.length;j++){
+      const dateStr=dates[j];
+      totalChecked++;
+      if(status&&totalChecked%5===0)status.innerHTML='<span style="color:var(--i3)">Loading... ('+totalChecked+'/'+(techs.length*dates.length)+')</span>';
+      const data=await _traccarGetTechDriveData(tName,dateStr);
+      if(data&&data.pings>1){
+        summary[tName].days++;
+        summary[tName].miles+=data.miles;
+        summary[tName].driveSec+=data.seconds;
+        summary[tName].pings+=data.pings;
+        // Stop count requires fresh fetch — use cached drive miles as proxy heuristic if no fresh count
+        // For accuracy, fetch positions and count stops:
+        const deviceId=_traccarTechMap[tName];
+        if(deviceId){
+          try{
+            const ds=new Date(dateStr+"T00:00:00"),de=new Date(dateStr+"T23:59:59");
+            const positions=await _traccarGetPositions(deviceId,ds,de);
+            const stops=_detectStops(positions||[]);
+            summary[tName].stops+=stops.length;
+          }catch(_e){}
+        }
+      }
+    }
+  }
+
+  _summaryData=Object.values(summary).filter(function(s){return s.days>0||s.miles>0});
+
+  // Render table
+  let html='<div style="background:#fff;border:1.5px solid var(--ln);border-radius:12px;overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html+='<thead><tr style="background:#fafaf8;border-bottom:2px solid var(--ln)"><th style="text-align:left;padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">Technician</th><th style="text-align:right;padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">Active Days</th><th style="text-align:right;padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">Miles</th><th style="text-align:right;padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">Driving Time</th><th style="text-align:right;padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">Stops</th><th style="text-align:right;padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--br)">Avg Miles/Day</th></tr></thead>';
+  html+='<tbody>';
+  if(!_summaryData.length){
+    html+='<tr><td colspan="6" style="padding:30px;text-align:center;color:var(--i3)">No GPS data in this period</td></tr>';
+  }else{
+    _summaryData.sort(function(a,b){return b.miles-a.miles}).forEach(function(s){
+      const colorIdx=TECH_LIST.indexOf(s.tech);
+      const col=techColors[(colorIdx>=0?colorIdx:0)%techColors.length];
+      const avgMi=s.days>0?(s.miles/s.days):0;
+      html+='<tr style="border-bottom:1px solid #f0ece8"><td style="padding:14px;font-weight:700;color:'+col+'">'+esc(s.tech)+'</td><td style="text-align:right;padding:14px">'+s.days+'</td><td style="text-align:right;padding:14px"><b>'+_fmtMiles(s.miles)+'</b></td><td style="text-align:right;padding:14px">'+_fmtDuration(s.driveSec)+'</td><td style="text-align:right;padding:14px">'+s.stops+'</td><td style="text-align:right;padding:14px;color:var(--i3)">'+avgMi.toFixed(1)+'</td></tr>';
+    });
+    // Totals row
+    const tot={days:0,miles:0,driveSec:0,stops:0};
+    _summaryData.forEach(function(s){tot.days+=s.days;tot.miles+=s.miles;tot.driveSec+=s.driveSec;tot.stops+=s.stops});
+    html+='<tr style="background:#fafaf8;border-top:2px solid var(--ac);font-weight:700"><td style="padding:14px;color:var(--br)">TOTAL</td><td style="text-align:right;padding:14px">'+tot.days+'</td><td style="text-align:right;padding:14px">'+_fmtMiles(tot.miles)+'</td><td style="text-align:right;padding:14px">'+_fmtDuration(tot.driveSec)+'</td><td style="text-align:right;padding:14px">'+tot.stops+'</td><td style="text-align:right;padding:14px"></td></tr>';
+  }
+  html+='</tbody></table></div>';
+
+  if(host)host.innerHTML=html;
+  if(status)status.innerHTML='<span>Loaded '+_summaryData.length+' tech'+(_summaryData.length===1?'':'s')+' across '+days+' days</span>';
+}
+
+function _traccarExportSummary(){
+  if(!_summaryData||!_summaryData.length){toast("No data to export","err");return}
+  if(typeof XLSX==="undefined"){toast("Excel library not loaded","err");return}
+  const days=parseInt((document.getElementById("summaryPeriod")||{}).value||"30",10);
+  const rows=[["Technician","Active Days","Miles","Driving Time (h)","Stops","Avg Miles/Day"]];
+  _summaryData.sort(function(a,b){return b.miles-a.miles}).forEach(function(s){
+    rows.push([s.tech,s.days,Math.round(s.miles*10)/10,Math.round((s.driveSec/3600)*100)/100,s.stops,s.days>0?Math.round((s.miles/s.days)*10)/10:0]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"GPS Summary");
+  const filename="GPS_Summary_"+fmtD(new Date())+"_"+days+"d.xlsx";
+  XLSX.writeFile(wb,filename);
+  toast("Exported "+filename,"ok");
 }
 
 init();</script>
