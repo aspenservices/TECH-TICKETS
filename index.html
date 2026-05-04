@@ -1745,7 +1745,21 @@ function doLogin(){
   if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,1500);
   toast(`Welcome, ${currentUser.name}`);
 }
-function logout(){currentUser=null;isAdmin=false;sessionStorage.removeItem("aspUser");document.getElementById("loginScreen").style.display="flex";updAdmin();cancelLogin();renderLoginScreen()}
+function logout(){
+  // Clean up active timers and listeners to prevent memory leaks across sessions.
+  // Use typeof checks because these vars are declared further down — defensive.
+  try{if(typeof _traccarLiveTimer!=="undefined"&&_traccarLiveTimer){clearInterval(_traccarLiveTimer);_traccarLiveTimer=null}}catch(_e){}
+  try{if(typeof _liveAutoRefreshTimer!=="undefined"&&_liveAutoRefreshTimer){clearInterval(_liveAutoRefreshTimer);_liveAutoRefreshTimer=null}}catch(_e){}
+  try{if(typeof _traccarLiveEnabled!=="undefined")_traccarLiveEnabled=false}catch(_e){}
+  // Reset state
+  currentUser=null;
+  isAdmin=false;
+  try{sessionStorage.removeItem("aspUser")}catch(_e){}
+  document.getElementById("loginScreen").style.display="flex";
+  updAdmin();
+  cancelLogin();
+  renderLoginScreen();
+}
 function tryAutoLogin(){const s=sessionStorage.getItem("aspUser");if(!s)return false;try{const u=JSON.parse(s);const found=allUsers.find(x=>x.name===u.name&&x.pin===u.pin);if(found){currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";return true}}catch(e){}return false}
 
 function toggleAdmin(){logout()}
@@ -2011,12 +2025,6 @@ async function cleanupStaleDispatchTickets(){
   var resEl=document.getElementById("cleanupResult");
   if(resEl)resEl.textContent="Scanning...";
   function _norm(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-  function _daysBetween(d1,d2){
-    if(!d1||!d2)return 999;
-    var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
-    if(isNaN(t1)||isNaN(t2))return 999;
-    return Math.abs(Math.round((t1-t2)/86400000));
-  }
   // Returns days that FR is AFTER dispatch (positive means FR is later). Used for matching.
   // A tech can only file a field report ON or AFTER the scheduled date — never before it.
   function _daysFrAfterDispatch(dispatchDate, frDate){
@@ -2250,8 +2258,6 @@ function _buildZipList(){
   });
 }
 // Legacy alias kept for back-compat
-function _listZipOverrides(){return _buildZipList().filter(function(r){return r.source!=="builtIn"})}
-
 function rndrAdminZips(){
   // Populate zone dropdowns once
   var zones=Object.keys(ZONE_COLORS);
@@ -4128,11 +4134,6 @@ function fmtDayLabel(dateStr){
   const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return days[d.getDay()]+" "+months[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear();
-}
-function groupByDay(list){
-  const groups={};
-  list.forEach((t,i)=>{const k=t.date||"0000-00-00";if(!groups[k])groups[k]=[];groups[k].push({t,i})});
-  return Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(k=>({date:k,items:groups[k]}));
 }
 function daySepHTML(label){return`<div class="day-sep"><div class="day-line"></div><div class="day-lbl">${label}</div><div class="day-line"></div></div>`}
 
@@ -6021,9 +6022,6 @@ async function geocodeAddress(addr){
   return null;
 }
 
-// Used by the route map list (display) and Apple/Google Maps URLs
-function _addrFromTkt(t){return _cleanDisplayAddr(t)}
-
 async function openRouteMap(dateStr){
   // Find tickets for this date (matching current calendar filter — same as Day view)
   const isTech=currentUser&&currentUser.role==="tech";
@@ -6146,12 +6144,18 @@ function _focusStop(i){
 // ═══ ROUTE OPTIMIZATION (Nearest Neighbor on _routeMapStops) ═══
 let _routeOptimized=false;
 let _routeOriginalOrder=null; // snapshot of pre-optimized order for reset
-function _haversineMi(a,b){
-  // Distance in miles between two {lat,lng} points
+function _haversineMi(a,b,c,d){
+  // Accepts EITHER:
+  //   _haversineMi({lat,lng}, {lat,lng})    — object form
+  //   _haversineMi(lat1, lng1, lat2, lng2)  — 4-number form
+  var lat1,lng1,lat2,lng2;
+  if(typeof a==="object"&&a!==null){lat1=a.lat;lng1=a.lng;lat2=b.lat;lng2=b.lng}
+  else{lat1=a;lng1=b;lat2=c;lng2=d}
+  if(typeof lat1!=="number"||typeof lng1!=="number"||typeof lat2!=="number"||typeof lng2!=="number")return 0;
   var R=3958.8;
-  var toRad=function(d){return d*Math.PI/180};
-  var dLat=toRad(b.lat-a.lat),dLng=toRad(b.lng-a.lng);
-  var s=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  var toRad=function(x){return x*Math.PI/180};
+  var dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);
+  var s=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)*Math.sin(dLng/2);
   return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
 }
 function _routeTotalMi(stops){
@@ -6779,14 +6783,6 @@ async function _mapsFlushSync(){
 }
 
 // Haversine fallback (straight-line miles) for when OSRM is unreachable.
-function _haversineMi(lat1,lng1,lat2,lng2){
-  const R=3958.8; // miles
-  const dLat=(lat2-lat1)*Math.PI/180;
-  const dLng=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
 // Format helpers
 function _fmtMiles(mi){return mi<10?mi.toFixed(1)+" mi":Math.round(mi)+" mi"}
 function _fmtDuration(sec){
@@ -7841,152 +7837,6 @@ async function _traccarPreloadDriveData(techDateMap){
   }
 }
 
-// ─── GPS Validation: did the tech's GPS confirm presence at ticket address? ───
-async function _traccarValidateTicketPresence(ticket){
-  // Returns {verified: true/false/null, pingCount, closestPing, reason}
-  if(!_traccarConfig||!_traccarConfig.enabled)return{verified:null,reason:"Traccar not configured"};
-  if(!ticket||!ticket.date||!ticket.techs||!ticket.techs.length)return{verified:null,reason:"No ticket data"};
-  const techName=ticket.techs[0];
-  const deviceId=_traccarTechMap[techName];
-  if(!deviceId)return{verified:null,reason:"Technician not mapped"};
-  if(!ticket.address||!ticket.zip)return{verified:null,reason:"No address"};
-
-  // Geocode the ticket address
-  let coords=null;
-  try{coords=await geocodeTicket(ticket)}catch(_e){}
-  if(!coords)return{verified:null,reason:"Could not geocode address"};
-
-  // Define time window (±2 hours from arrival time, or full day if no time)
-  const dateStart=new Date(ticket.date+"T00:00:00");
-  const dateEnd=new Date(ticket.date+"T23:59:59");
-
-  let positions;
-  try{
-    positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
-  }catch(e){
-    return{verified:null,reason:"Failed to fetch GPS data: "+e.message};
-  }
-  if(!positions||!positions.length)return{verified:false,reason:"No GPS pings for this day",pingCount:0};
-
-  // Find pings within 200m of address
-  const PROXIMITY_MILES=0.124; // ~200m
-  let closestDist=Infinity,closestPing=null,nearbyCount=0;
-  positions.forEach(function(p){
-    const d=_haversineMi(coords.lat,coords.lng,p.latitude,p.longitude);
-    if(d<closestDist){closestDist=d;closestPing=p}
-    if(d<=PROXIMITY_MILES)nearbyCount++;
-  });
-
-  if(nearbyCount>0){
-    return{verified:true,pingCount:nearbyCount,closestPing:closestPing,closestDist:closestDist,reason:"GPS confirmed presence"};
-  }else{
-    return{verified:false,pingCount:0,closestPing:closestPing,closestDist:closestDist,reason:"No pings within 200m of address"};
-  }
-}
-
-// ─── Admin Stats Hook: Override drive time pill with REAL Traccar data when available ───
-// This wraps rndrAdminStats to fetch Traccar data for techs that have a device mapping
-let _traccarStatsOverridePending=false;
-
-async function _traccarEnhanceAdminStats(){
-  if(_traccarStatsOverridePending)return;
-  if(!_traccarConfig||!_traccarConfig.enabled)return;
-  if(!Object.keys(_traccarTechMap).length)return;
-  _traccarStatsOverridePending=true;
-  try{
-    // Find current period's tech-date pairs
-    const period=(document.getElementById("adminStatPeriod")||{}).value||"month";
-    const now=new Date();
-    let startDate="";
-    if(period==="week"){
-      const d=new Date(now);d.setDate(d.getDate()-7);startDate=fmtD(d);
-    }else if(period==="month"){
-      const d=new Date(now);d.setDate(d.getDate()-30);startDate=fmtD(d);
-    }
-    const todayStr=fmtD(now);
-    const pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
-    const datesByTech={};
-    pool.forEach(function(t){
-      if(!t.date)return;
-      if(startDate&&t.date<startDate)return;
-      if(t.date>todayStr)return;
-      (t.techs||[]).forEach(function(name){
-        if(!name||name==="—")return;
-        if(!_traccarTechMap[name])return;
-        if(!datesByTech[name])datesByTech[name]=[];
-        if(datesByTech[name].indexOf(t.date)<0)datesByTech[name].push(t.date);
-      });
-    });
-    if(!Object.keys(datesByTech).length){_traccarStatsOverridePending=false;return}
-
-    await _traccarPreloadDriveData(datesByTech);
-
-    // Now patch the existing rendered pills with REAL data
-    Object.keys(datesByTech).forEach(function(name){
-      let realSec=0,realMi=0;
-      datesByTech[name].forEach(function(d){
-        const data=_traccarDriveCache[name+"_"+d];
-        if(data){realSec+=data.seconds;realMi+=data.miles}
-      });
-      if(realSec>0){
-        // Find the tech's row in the rendered admin stats and add a real-drive pill
-        const allRows=document.querySelectorAll("#adminStatTechs > div");
-        allRows.forEach(function(row){
-          const nameSpan=row.querySelector("span");
-          if(!nameSpan||nameSpan.textContent.trim()!==name)return;
-          const pillsContainer=row.querySelector("div:last-child");
-          if(!pillsContainer)return;
-          // Don't add twice
-          if(row.querySelector(".traccar-real-pill"))return;
-          const driveH=realSec/3600;
-          const fmtH=function(h){if(!h)return"";if(h<1)return Math.round(h*60)+"m";return(Math.round(h*10)/10)+"h"};
-          const realPill=document.createElement("span");
-          realPill.className="traccar-real-pill";
-          realPill.title="Actual driving time from Traccar GPS · "+realMi.toFixed(1)+" mi";
-          realPill.style.cssText="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534;display:inline-flex;align-items:center;gap:4px;margin-left:4px";
-          realPill.innerHTML='📍 '+fmtH(driveH)+' Real';
-          pillsContainer.appendChild(realPill);
-        });
-      }
-    });
-  }catch(e){
-    console.warn("Traccar stats enhance failed:",e);
-  }finally{
-    _traccarStatsOverridePending=false;
-  }
-}
-
-// Hook into rndrAdminStats — re-enhance after each render
-(function(){
-  const _origRndr=window.rndrAdminStats;
-  if(typeof _origRndr==="function"){
-    window.rndrAdminStats=function(){
-      _origRndr.apply(this,arguments);
-      if(_traccarConfig&&_traccarConfig.enabled){
-        setTimeout(_traccarEnhanceAdminStats,100);
-      }
-    };
-  }
-})();
-
-// ─── GPS Validation Badge in Service Log ───
-// When a ticket is rendered in the service log, fetch GPS verification status async
-async function _traccarRenderTicketGpsBadge(ticket,hostElementId){
-  if(!_traccarConfig||!_traccarConfig.enabled)return;
-  const host=document.getElementById(hostElementId);
-  if(!host)return;
-  host.innerHTML='<span style="font-size:10px;color:var(--i3)">Checking GPS...</span>';
-  const result=await _traccarValidateTicketPresence(ticket);
-  if(result.verified===true){
-    host.innerHTML='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534;display:inline-flex;align-items:center;gap:4px" title="GPS confirmed presence at this address">✓ GPS verified · '+result.pingCount+' pings</span>';
-  }else if(result.verified===false){
-    const closestStr=result.closestDist?(result.closestDist.toFixed(2)+' mi away'):"";
-    host.innerHTML='<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:4px" title="'+esc(result.reason)+' (closest: '+closestStr+')">⚠ No GPS match</span>';
-  }else{
-    host.innerHTML="";
-  }
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 // TRACCAR V3 — Sub-tabs UI: Live View, Daily GPS, Compare, Summary
 // ════════════════════════════════════════════════════════════════════════════
@@ -8651,7 +8501,7 @@ async function _traccarLoadCompare(){
     orderedEvents.forEach(function(e){
       timeline+='<span style="color:var(--i3)">→</span>';
       if(e.type==="ticket"){
-        timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#dcfce7;color:#166534;border-radius:8px;font-weight:600" title="'+esc(e.m.ticket.address||"")+'">📋 '+esc((e.m.ticket.last||e.m.ticket.first||"—")).substring(0,15)+' <small style="opacity:.7">'+_fmtTime(e.m.matchedStop.start)+'</small></span>';
+        timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#dcfce7;color:#166534;border-radius:8px;font-weight:600" title="'+esc(e.m.ticket.address||"")+'">📋 '+esc((e.m.ticket.customer||"—")).substring(0,15)+' <small style="opacity:.7">'+_fmtTime(e.m.matchedStop.start)+'</small></span>';
       }else{
         timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#e0e7ff;color:#3730a3;border-radius:8px;font-weight:600">🏠 Aspen <small style="opacity:.7">'+_fmtTime(e.s.start)+'</small></span>';
       }
@@ -8686,7 +8536,7 @@ async function _traccarLoadCompare(){
       html+='<div style="display:flex;align-items:flex-start;gap:8px">';
       html+='<div style="flex:0 0 24px;height:24px;background:'+c.bg+';color:'+c.fg+';border-radius:50%;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">'+c.icon+'</div>';
       html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:700;color:var(--i1)">'+esc(t.last||t.first||"—")+'</div>';
+      html+='<div style="font-size:13px;font-weight:700;color:var(--i1)">'+esc(t.customer||"—")+'</div>';
       html+='<div style="font-size:11px;color:var(--i3);margin-top:2px">'+esc(t.address||"")+(t.city?', '+esc(t.city):'')+'</div>';
       if(m.matchedStop){
         html+='<div style="font-size:11px;color:'+c.fg+';margin-top:4px;font-weight:600">✓ '+_fmtTime(m.matchedStop.start)+'–'+_fmtTime(m.matchedStop.end)+' ('+_fmtDur(m.matchedStop.durationMin)+')</div>';
@@ -8710,7 +8560,7 @@ async function _traccarLoadCompare(){
       const isDepot=s._isDepot;
       const isMatched=matchedStopsSet.has(s)&&!isDepot;
       const matchedTicket=matches.find(function(m){return m.matchedStop===s});
-      const matchedName=matchedTicket?matchedTicket.ticket.last||matchedTicket.ticket.first:"";
+      const matchedName=matchedTicket?(matchedTicket.ticket.customer||"—"):"";
       let bg,fg,iconBg,statusLabel;
       if(isDepot){
         bg="#e0e7ff66";fg="#3730a3";iconBg="#e0e7ff";
@@ -8782,35 +8632,59 @@ async function _traccarLoadSummary(){
   const TECH_LIST=(typeof TECHS!=="undefined")?TECHS:[];
   const techColors=(typeof TECH_COLORS!=="undefined")?TECH_COLORS:["#D4772C","#3D2B1F","#2563eb","#059669","#d946ef","#dc2626","#0891b2","#ca8a04"];
 
-  // Aggregate per tech
+  // Aggregate per tech — parallelized in batches to avoid hammering the API
+  // Previously: techs × days sequential calls × 2 endpoints = ~210-420 sequential calls (1+ min)
+  // Now: 1 call per (tech, day) that returns both drive data AND stops, parallelized in batches of 6
   const summary={};
-  let totalChecked=0;
-  for(let i=0;i<techs.length;i++){
-    const tName=techs[i];
-    summary[tName]={tech:tName,days:0,miles:0,driveSec:0,stops:0,pings:0};
-    for(let j=0;j<dates.length;j++){
-      const dateStr=dates[j];
-      totalChecked++;
-      if(status&&totalChecked%5===0)status.innerHTML='<span style="color:var(--i3)">Loading... ('+totalChecked+'/'+(techs.length*dates.length)+')</span>';
-      const data=await _traccarGetTechDriveData(tName,dateStr);
-      if(data&&data.pings>1){
-        summary[tName].days++;
-        summary[tName].miles+=data.miles;
-        summary[tName].driveSec+=data.seconds;
-        summary[tName].pings+=data.pings;
-        // Stop count requires fresh fetch — use cached drive miles as proxy heuristic if no fresh count
-        // For accuracy, fetch positions and count stops:
-        const deviceId=_traccarTechMap[tName];
-        if(deviceId){
-          try{
-            const ds=new Date(dateStr+"T00:00:00"),de=new Date(dateStr+"T23:59:59");
-            const positions=await _traccarGetPositions(deviceId,ds,de);
-            const stops=_detectStops(positions||[]);
-            summary[tName].stops+=stops.length;
-          }catch(_e){}
+  techs.forEach(function(tName){summary[tName]={tech:tName,days:0,miles:0,driveSec:0,stops:0,pings:0}});
+
+  // Build all (tech, date) jobs
+  const jobs=[];
+  techs.forEach(function(tName){
+    const deviceId=_traccarTechMap[tName];
+    if(!deviceId)return;
+    dates.forEach(function(dateStr){
+      jobs.push({tName:tName,deviceId:deviceId,dateStr:dateStr});
+    });
+  });
+
+  // Inner worker — fetches positions ONCE, computes both drive data and stops
+  async function _processJob(job){
+    try{
+      const ds=new Date(job.dateStr+"T00:00:00"),de=new Date(job.dateStr+"T23:59:59");
+      const positions=await _traccarGetPositions(job.deviceId,ds,de);
+      if(!positions||positions.length<2)return;
+      // Compute miles + driveSec from positions
+      let miles=0,driveSec=0;
+      for(let k=1;k<positions.length;k++){
+        const p0=positions[k-1],p1=positions[k];
+        const t0=new Date(p0.deviceTime||p0.fixTime||p0.serverTime).getTime();
+        const t1=new Date(p1.deviceTime||p1.fixTime||p1.serverTime).getTime();
+        const dt=(t1-t0)/1000;
+        if(dt<=0||dt>1200)continue;
+        const sp=p1.speed||0;
+        if(sp>1){
+          driveSec+=dt;
+          miles+=_haversineMi(p0.latitude,p0.longitude,p1.latitude,p1.longitude);
         }
       }
-    }
+      const stops=_detectStops(positions);
+      summary[job.tName].days++;
+      summary[job.tName].miles+=miles;
+      summary[job.tName].driveSec+=driveSec;
+      summary[job.tName].pings+=positions.length;
+      summary[job.tName].stops+=stops.length;
+    }catch(_e){}
+  }
+
+  // Run in batches of 6 — keeps Traccar API happy and stays well under 60 req/min limit
+  const BATCH_SIZE=6;
+  let completed=0;
+  for(let b=0;b<jobs.length;b+=BATCH_SIZE){
+    const batch=jobs.slice(b,b+BATCH_SIZE);
+    await Promise.all(batch.map(_processJob));
+    completed+=batch.length;
+    if(status)status.innerHTML='<span style="color:var(--i3)">Loading... ('+completed+'/'+jobs.length+')</span>';
   }
 
   _summaryData=Object.values(summary).filter(function(s){return s.days>0||s.miles>0});
