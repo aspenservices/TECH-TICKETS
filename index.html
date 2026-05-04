@@ -1817,12 +1817,22 @@ function updAdmin(){
 function openUserMgmt(){showTab(3)}
 function closeUserMgmt(){}
 function rndrAdmin(){rndrAdminCapacity();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();if(typeof _traccarRenderAdminSection==="function")try{_traccarRenderAdminSection()}catch(_e){}_applyAdminCollapse()}
+
+// Capacity panel date (null = "today"). Lets admin navigate forward/back
+// to plan ahead and audit past days for missing field reports.
+let _capacityDate=null;
+function _capGetDate(){return _capacityDate||fmtD(new Date())}
+function _capSetDate(d){_capacityDate=d;rndrAdminCapacity()}
+function _capPrevDay(){var d=new Date(_capGetDate()+"T12:00:00");d.setDate(d.getDate()-1);_capSetDate(fmtD(d))}
+function _capNextDay(){var d=new Date(_capGetDate()+"T12:00:00");d.setDate(d.getDate()+1);_capSetDate(fmtD(d))}
+function _capResetToday(){_capSetDate(fmtD(new Date()))}
+
 function rndrAdminCapacity(){
   var el=document.getElementById("adminCapacity");if(!el)return;
   if(!isAdmin){el.innerHTML="";return}
   if(typeof heatmapHTML!=="function"){el.innerHTML="";return}
   var allTkts=[].concat(active||[],done||[]);
-  el.innerHTML=heatmapHTML(allTkts,fmtD(new Date()));
+  el.innerHTML=heatmapHTML(allTkts,_capGetDate());
 }
 // Apply collapsed state on render based on localStorage (default: Tech/User collapsed, Stats expanded)
 function _applyAdminCollapse(){
@@ -5149,63 +5159,73 @@ function toggleCapCollapse(){
   if(typeof rndrAdminCapacity==="function")rndrAdminCapacity();
 }
 function heatmapHTML(allTkts,centerDate){
-  var today=fmtD(new Date());
-  var dt=new Date(today+"T12:00:00");
+  var todayStr=fmtD(new Date());
+  var dt=new Date(centerDate+"T12:00:00");
   var DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  var dayLabel=DOW[dt.getDay()]+", "+dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  // Adaptive day label: "Today" / "Yesterday" / "Tomorrow" / weekday + date
+  var dayLabel;
+  var diffDays=Math.round((dt.getTime()-new Date(todayStr+"T12:00:00").getTime())/(24*3600*1000));
+  if(diffDays===0)dayLabel="Today · "+DOW[dt.getDay()]+", "+dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  else if(diffDays===-1)dayLabel="Yesterday · "+DOW[dt.getDay()]+", "+dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  else if(diffDays===1)dayLabel="Tomorrow · "+DOW[dt.getDay()]+", "+dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  else dayLabel=DOW[dt.getDay()]+", "+dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  var isOnToday=(centerDate===todayStr);
+  var isFuture=diffDays>0;
   var TARGET=4;
-  var techList=visibleTechs(); // exclude hidden technicians
-  // Tally tickets per tech for TODAY only, splitting completed (field report submitted) vs pending
+  var techList=visibleTechs();
+  // Tally tickets per tech for the SELECTED date.
+  // A ticket is "done" when a field report has been filed (regardless of when).
+  // For navigation purposes this is what matters: did the tech file their report?
   var stats={};
   techList.forEach(function(tn){stats[tn]={done:0,pend:0,total:0}});
   allTkts.forEach(function(t){
     if(t.status==="canceled")return;
-    if(t.date!==today)return;
+    if(t.date!==centerDate)return;
     (t.techs||[]).forEach(function(tn){
       if(!stats[tn])return;
       stats[tn].total++;
-      // A ticket counts as "done" only if its field report was submitted TODAY.
-      // Old completed tickets that happen to share today's date stay pending.
-      var isComplete=false;
-      if(t.fieldReportSubmitted===true||t.source==="report"||t.status==="done"||t.status==="complete"){
-        var s=t.fieldReportSubmittedAt;
-        if(s){
-          try{var d=new Date(s);if(!isNaN(d)&&fmtD(d)===today)isComplete=true}catch(_e){}
-        }
-        // Tickets whose source is "report" (created from a field report) and that
-        // have date==today implicitly count even without timestamp — they were created today.
-        if(!isComplete&&t.source==="report"&&!s)isComplete=true;
-      }
+      var isComplete=(t.fieldReportSubmitted===true||t.source==="report"||t.status==="done"||t.status==="complete");
       if(isComplete)stats[tn].done++;
       else stats[tn].pend++;
     });
   });
   // Team-wide summary
-  var teamTotal=0,teamDone=0;
-  techList.forEach(function(tn){teamTotal+=stats[tn].total;teamDone+=stats[tn].done});
-  var teamPct=teamTotal?Math.round((teamDone/teamTotal)*100):0;
+  var teamTotal=0,teamPending=0,teamDone=0;
+  techList.forEach(function(tn){teamTotal+=stats[tn].total;teamPending+=stats[tn].pend;teamDone+=stats[tn].done});
+  // Adaptive summary text
+  var summary;
+  if(teamTotal===0)summary='<span style="color:var(--i3)">No tickets scheduled</span>';
+  else if(isFuture)summary='<b>'+teamTotal+'</b> ticket'+(teamTotal===1?'':'s')+' scheduled';
+  else if(teamPending===0)summary='<span style="color:#16a34a;font-weight:700">✓ All '+teamTotal+' done</span>';
+  else summary='<b>'+teamPending+'</b> pending of '+teamTotal;
   var collapsed=_capCollapsed();
   var h='<div class="cap-panel'+(collapsed?" cap-collapsed":"")+'">';
-  h+='<div class="cap-hdr" onclick="toggleCapCollapse()">';
-  h+='<div class="cap-hdr-title">'+icon("activity",14,{color:"var(--i1)"})+"Today's Capacity</div>";
-  h+='<div class="cap-hdr-meta">'+dayLabel+(teamTotal?' · <b>'+teamDone+'/'+teamTotal+'</b> ('+teamPct+'%)':' · No tickets')+'</div>';
+  h+='<div class="cap-hdr">';
+  h+='<div class="cap-hdr-title" onclick="toggleCapCollapse()" style="cursor:pointer">'+icon("activity",14,{color:"var(--i1)"})+"Daily Capacity</div>";
+  // Date navigator: ‹ [date label] ›  + optional Today button
+  h+='<div style="display:inline-flex;align-items:center;gap:4px;flex-shrink:0">';
+  h+='<button type="button" onclick="event.stopPropagation();_capPrevDay()" style="background:#fafaf9;border:1px solid var(--ln);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;color:var(--i1);padding:0" aria-label="Previous day">‹</button>';
+  h+='<span style="font-size:11.5px;font-weight:700;color:var(--i1);min-width:140px;text-align:center;padding:0 4px">'+esc(dayLabel)+'</span>';
+  h+='<button type="button" onclick="event.stopPropagation();_capNextDay()" style="background:#fafaf9;border:1px solid var(--ln);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;color:var(--i1);padding:0" aria-label="Next day">›</button>';
+  if(!isOnToday)h+='<button type="button" onclick="event.stopPropagation();_capResetToday()" style="background:#fff;border:1.5px solid var(--ac);color:var(--ac);border-radius:6px;height:24px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;margin-left:4px">Today</button>';
+  h+='</div>';
+  h+='<div class="cap-hdr-meta" style="text-align:right">'+summary+'</div>';
   h+='<button class="cap-toggle" type="button" onclick="event.stopPropagation();toggleCapCollapse()" aria-label="'+(collapsed?"Expand":"Collapse")+'">'+(collapsed?"▾":"▴")+'</button>';
   h+='</div>';
   if(!collapsed){
     h+='<div class="cap-grid">';
     techList.forEach(function(tn){
       var s=stats[tn];
-      var pct=s.total?Math.round((s.done/s.total)*100):0;
       var cardCls="cap-card";
       if(s.total===0)cardCls+=" zero";
-      else if(s.done===s.total)cardCls+=" all-done";
-      else if(s.total>TARGET)cardCls+=" overload";
-      h+='<div class="'+cardCls+'" onclick="calSelectedDate=\''+today+'\';calView=\'day\';rndrCal()" title="'+esc(tn)+' — '+s.done+' done / '+s.pend+' pending">';
+      else if(s.pend===0)cardCls+=" all-done";   // all reports filed
+      else if(s.total>TARGET)cardCls+=" overload"; // overbooked
+      h+='<div class="'+cardCls+'" onclick="calSelectedDate=\''+centerDate+'\';calView=\'day\';rndrCal()" title="'+esc(tn)+' — '+s.pend+' pending / '+s.done+' done / '+s.total+' total">';
       h+='<div class="cap-card-name">'+esc(tn)+'</div>';
       if(s.total===0){
         h+='<div class="cap-card-empty">No tickets</div>';
       }else{
-        // Mini progress bar
+        // Mini progress bar (kept the same — it's still useful visual)
         var capped=Math.min(s.total,TARGET);
         var donePct=(s.done/TARGET)*100;
         var pendPctVisible=(Math.max(0,capped-s.done)/TARGET)*100;
@@ -5223,7 +5243,15 @@ function heatmapHTML(allTkts,centerDate){
           if(pendPctVisible>0)h+='<div class="cap-seg pend" style="width:'+pendPctVisible+'%"></div>';
         }
         h+='</div>';
-        h+='<div class="cap-card-stat"><b>'+s.done+'/'+s.total+'</b><span class="cap-card-pct">'+pct+'%</span></div>';
+        // Big number = pending count (what's left to do).
+        // Subtitle shows context: total scheduled + done count
+        if(s.pend===0){
+          h+='<div class="cap-card-stat"><b>✓ All done</b><span class="cap-card-pct">'+s.total+' filed</span></div>';
+        }else if(isFuture){
+          h+='<div class="cap-card-stat"><b>'+s.total+' scheduled</b><span class="cap-card-pct">upcoming</span></div>';
+        }else{
+          h+='<div class="cap-card-stat"><b>'+s.pend+' pending</b><span class="cap-card-pct">'+s.done+'/'+s.total+' filed</span></div>';
+        }
       }
       h+='</div>';
     });
