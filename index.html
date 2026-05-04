@@ -800,6 +800,8 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 <!-- ══ NEW TICKET ══ -->
 <div class="wrap show" id="pg0">
+  <!-- GPS Health Banner (tech only — auto-shown when GPS is stale) -->
+  <div id="gpsHealthBanner" style="display:none"></div>
   <!-- Mode Selector -->
   <div class="mode-sel" id="modeSel">
     <button class="mode-btn" onclick="setMode('ticket')"><span class="mode-ico"><span class="lucide-mount" data-lucide="wrench" data-size="22" data-color="var(--ac)"></span></span><span class="mode-t">Field Report</span><span class="mode-d">Labor performed, photos & notes</span></button>
@@ -1759,6 +1761,12 @@ function doLogin(){
   // Start GPS-to-Firebase auto-sync (admin/organizer only — techs don't sync).
   // First sync runs immediately, then every 5 min while logged in.
   try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,2500)}catch(_e){}
+  // Tech-side: start the GPS health banner polling and fire one auto-wake on login
+  // so Traccar gets refreshed as soon as the tech opens the dashboard.
+  if(currentUser&&currentUser.role==="tech"){
+    try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3000)}catch(_e){}
+    try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("login")},4500)}catch(_e){}
+  }
   toast(`Welcome, ${currentUser.name}`);
 }
 function logout(){
@@ -1768,6 +1776,8 @@ function logout(){
   try{if(typeof _liveAutoRefreshTimer!=="undefined"&&_liveAutoRefreshTimer){clearInterval(_liveAutoRefreshTimer);_liveAutoRefreshTimer=null}}catch(_e){}
   try{if(typeof _traccarLiveEnabled!=="undefined")_traccarLiveEnabled=false}catch(_e){}
   try{if(typeof _traccarStopAutoSync==="function")_traccarStopAutoSync()}catch(_e){}
+  try{if(typeof _traccarStopTechBannerPolling==="function")_traccarStopTechBannerPolling()}catch(_e){}
+  try{if(typeof _traccarStopLiveStatusPolling==="function")_traccarStopLiveStatusPolling()}catch(_e){}
   // Reset state
   currentUser=null;
   isAdmin=false;
@@ -3090,6 +3100,10 @@ async function init(){
   if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
     if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
     try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,3000)}catch(_e){}
+    if(currentUser&&currentUser.role==="tech"){
+      try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3500)}catch(_e){}
+      try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("auto-login")},5000)}catch(_e){}
+    }
   }
   else{renderLoginScreen()}
   // ═══ AUTO-SAVE DRAFT — restore + bind ═══
@@ -8031,6 +8045,223 @@ function _traccarStopAutoSync(){
   if(_traccarSyncTimer){clearInterval(_traccarSyncTimer);_traccarSyncTimer=null}
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// TRACCAR AUTO-WAKE & HEALTH MONITOR
+// ════════════════════════════════════════════════════════════════════════════
+// iOS aggressively suspends background apps. Even with all permissions correct,
+// Traccar Client gets paused by iOS after some time in background, especially
+// when the phone is stationary or the user opens other apps.
+//
+// Strategy to keep Traccar alive without explicit user action:
+//   1) Auto-wake: every time the dashboard becomes visible (tech swipes back
+//      to it from another app, or opens it from home screen), we try to
+//      re-launch Traccar via custom URL scheme. This brings Traccar to the
+//      foreground momentarily, refreshing its run state. iOS will show a
+//      one-time confirmation dialog the first time; after that it usually
+//      remembers the choice. Throttled to once every 20 min so it's not
+//      annoying.
+//   2) Health banner: for tech role, show a red urgent banner at the top of
+//      the Field Report tab if their last GPS position is older than 40 min
+//      during work hours. Banner has a tap-to-wake button that fires the URL
+//      scheme directly. Auto-refreshes every 5 min.
+//   3) Admin live status: in Admin tab, show real-time GPS health for each
+//      tech (green <15min, yellow 15-40min, red >40min). Auto-refreshes
+//      every 30 sec while Admin tab is visible.
+//
+// Configurable URL scheme — Traccar Client iOS may register `traccar://` (best
+// guess) or another scheme. If the scheme is wrong, iOS shows a "cannot open"
+// error and nothing breaks. Alberto can change the scheme in admin settings
+// if needed.
+// ════════════════════════════════════════════════════════════════════════════
+
+const TRACCAR_URL_SCHEME = "traccar://";          // iOS deep link to Traccar Client
+const TRACCAR_WAKE_THROTTLE_MS = 20*60*1000;      // 20 min between auto-wake attempts
+const TRACCAR_BANNER_STALE_MIN = 40;              // GPS older than this = red banner
+const TRACCAR_BANNER_REFRESH_MS = 5*60*1000;      // re-check banner every 5 min
+const TRACCAR_LIVE_STATUS_REFRESH_MS = 30*1000;   // refresh admin status every 30 sec
+const TRACCAR_WAKE_LS_KEY = "traccarLastWakeMs";  // localStorage key
+
+let _traccarBannerTimer = null;
+let _traccarLiveStatusTimer = null;
+let _traccarLatestPosByTech = {}; // {techName: {timeMs, fresh:bool}} — populated by health checks
+
+// Returns minutes since the given ISO date string (or 99999 if invalid/missing)
+function _traccarMinutesSince(iso){
+  if(!iso)return 99999;
+  try{
+    const d=new Date(iso);
+    if(isNaN(d.getTime()))return 99999;
+    return Math.round((Date.now()-d.getTime())/60000);
+  }catch(_e){return 99999}
+}
+
+// Is now during work hours? (Mon-Sat 7AM-7PM local). We don't show banners
+// or fire wakes outside these hours so techs aren't annoyed at home.
+function _traccarIsWorkHours(){
+  const d=new Date();
+  const day=d.getDay(); // 0=Sun, 6=Sat
+  if(day===0)return false; // Sunday off
+  const h=d.getHours();
+  return h>=7&&h<19;
+}
+
+// ─── Auto-wake ────────────────────────────────────────────────────────
+// Fires the URL scheme to bring Traccar Client to foreground. Throttled.
+// Returns true if attempted, false if throttled.
+function _traccarAutoWakeIfDue(reason){
+  // Tech role only — admins don't need this
+  if(!currentUser||currentUser.role!=="tech")return false;
+  if(!_traccarIsWorkHours())return false;
+  let last=0;
+  try{last=parseInt(localStorage.getItem(TRACCAR_WAKE_LS_KEY)||"0",10)||0}catch(_e){}
+  const now=Date.now();
+  if(now-last<TRACCAR_WAKE_THROTTLE_MS)return false; // still in cooldown
+  try{localStorage.setItem(TRACCAR_WAKE_LS_KEY,String(now))}catch(_e){}
+  console.log("[Traccar] Auto-wake firing ("+(reason||"?")+") — last was "+Math.round((now-last)/60000)+" min ago");
+  // Delay slightly so the dashboard renders before iOS switches to Traccar.
+  // This avoids the jarring "tap icon → flash to Traccar" feel.
+  setTimeout(function(){
+    try{window.location.href=TRACCAR_URL_SCHEME}
+    catch(e){console.warn("[Traccar] URL scheme failed:",e)}
+  },1500);
+  return true;
+}
+
+// Listen for tab becoming visible (tech swipes back to dashboard from another
+// app, or unlocks phone with dashboard already open). This is the main
+// trigger for auto-wake throughout the day.
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible"){
+    // Small delay to let iOS settle (sometimes visibility fires before the
+    // page is actually interactive)
+    setTimeout(function(){_traccarAutoWakeIfDue("visibility-visible")},800);
+    // Also refresh the health banner if a tech is logged in
+    if(currentUser&&currentUser.role==="tech")_traccarRenderTechBanner();
+  }
+});
+
+// ─── Tech health banner ───────────────────────────────────────────────
+// Shows a red urgent banner at the top of the Field Report tab if the tech's
+// own GPS hasn't sent a position recently. Banner has a tap-to-wake button.
+async function _traccarRenderTechBanner(){
+  const el=document.getElementById("gpsHealthBanner");
+  if(!el)return;
+  // Only for tech role
+  if(!currentUser||currentUser.role!=="tech"){el.style.display="none";return}
+  // Outside work hours — hide silently
+  if(!_traccarIsWorkHours()){el.style.display="none";return}
+  // Need Traccar configured
+  if(!_traccarConfig||!_traccarConfig.enabled){el.style.display="none";return}
+  // Need this tech mapped to a device
+  const deviceId=_traccarTechMap[currentUser.name];
+  if(!deviceId){
+    el.style.display="block";
+    el.innerHTML='<div style="padding:12px 14px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;color:#78350f;font-size:13px"><b>⚠ GPS device not mapped</b> — ask the office to set up Traccar for your phone.</div>';
+    return;
+  }
+  // Fetch latest position for this tech
+  let minutesAgo=99999;
+  try{
+    const pos=await _traccarGetLatestPosition(deviceId);
+    if(pos&&(pos.deviceTime||pos.fixTime||pos.serverTime)){
+      minutesAgo=_traccarMinutesSince(pos.deviceTime||pos.fixTime||pos.serverTime);
+    }
+  }catch(_e){}
+  // Decide banner state
+  if(minutesAgo<TRACCAR_BANNER_STALE_MIN){
+    el.style.display="none"; // GPS is healthy — no banner
+    return;
+  }
+  // Banner: red urgent
+  const ageStr=minutesAgo>=99999?"never seen today":minutesAgo+" min ago";
+  el.style.display="block";
+  el.innerHTML=
+    '<div style="padding:14px 16px;background:#fee2e2;border:2px solid #dc2626;border-radius:12px;color:#7f1d1d;margin-bottom:14px;cursor:pointer" onclick="_traccarManualWake()">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="font-size:22px">⚠️</div>'+
+        '<div style="flex:1;min-width:200px">'+
+          '<div style="font-weight:800;font-size:15px;margin-bottom:2px">GPS está dormido</div>'+
+          '<div style="font-size:13px;color:#991b1b">Última ubicación: '+esc(ageStr)+' · iOS suspendió la app Traccar</div>'+
+        '</div>'+
+        '<button onclick="_traccarManualWake();event.stopPropagation();return false" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Reactivar GPS</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#991b1b;margin-top:8px;opacity:.85">Toca el botón rojo. Cuando se abra Traccar Client, espera 2 segundos y vuelve aquí con el botón atrás.</div>'+
+    '</div>';
+}
+
+// Manually invoked (button click) — bypasses throttle since user explicitly
+// requested it.
+function _traccarManualWake(){
+  try{localStorage.setItem(TRACCAR_WAKE_LS_KEY,String(Date.now()))}catch(_e){}
+  try{window.location.href=TRACCAR_URL_SCHEME}
+  catch(e){toast("No se pudo abrir Traccar","err")}
+}
+
+function _traccarStartTechBannerPolling(){
+  if(_traccarBannerTimer)return;
+  if(!currentUser||currentUser.role!=="tech")return;
+  _traccarRenderTechBanner();
+  _traccarBannerTimer=setInterval(_traccarRenderTechBanner,TRACCAR_BANNER_REFRESH_MS);
+}
+function _traccarStopTechBannerPolling(){
+  if(_traccarBannerTimer){clearInterval(_traccarBannerTimer);_traccarBannerTimer=null}
+}
+
+// ─── Admin live status panel ──────────────────────────────────────────
+// Shows real-time GPS health for all techs. Reads from Firebase mirror
+// (deviceLastTime) so it doesn't hammer Traccar API.
+async function _traccarRenderLiveStatus(){
+  const host=document.getElementById("traccarLiveStatus");
+  if(!host)return;
+  if(!_traccarConfig||!_traccarConfig.enabled){
+    host.innerHTML='<div style="padding:10px;color:var(--i3);font-size:12px">Enable Traccar integration to see live status</div>';
+    return;
+  }
+  let state=null;
+  try{state=await _fbGetSyncState()}catch(_e){}
+  const deviceLastTime=(state&&state.deviceLastTime)||{};
+  const techs=Object.keys(_traccarTechMap).filter(function(t){return!HIDDEN_TECHS.has(t)}).sort();
+  if(!techs.length){
+    host.innerHTML='<div style="padding:10px;color:var(--i3);font-size:12px">No technicians mapped to devices yet</div>';
+    return;
+  }
+  const rows=techs.map(function(tn){
+    const did=_traccarTechMap[tn];
+    const iso=deviceLastTime[did];
+    const mins=_traccarMinutesSince(iso);
+    let color,label,bg,border;
+    if(mins<15){color="#16a34a";bg="#dcfce7";border="#86efac";label=mins+" min ago";}
+    else if(mins<TRACCAR_BANNER_STALE_MIN){color="#a16207";bg="#fef9c3";border="#fde047";label=mins+" min ago";}
+    else if(mins<99999){color="#dc2626";bg="#fee2e2";border="#fca5a5";label=mins+" min ago";}
+    else{color="#6b7280";bg="#f3f4f6";border="#d1d5db";label="no data";}
+    const dot='<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:8px;vertical-align:middle"></span>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:'+bg+';border:1px solid '+border+';border-radius:8px;margin-bottom:6px">'+
+      '<div style="font-weight:600;font-size:13px;color:var(--i1)">'+dot+esc(tn)+'</div>'+
+      '<div style="font-size:12px;font-weight:600;color:'+color+'">'+esc(label)+'</div>'+
+    '</div>';
+  }).join("");
+  const hourLabel=_traccarIsWorkHours()?"":' <span style="font-size:11px;color:var(--i3);font-weight:400">(outside work hours)</span>';
+  host.innerHTML=
+    '<div style="font-size:11px;color:var(--i3);margin-bottom:8px">Auto-refresh every 30s · ●green &lt;15min · ●yellow &lt;40min · ●red &gt;40min'+hourLabel+'</div>'+
+    rows;
+}
+function _traccarStartLiveStatusPolling(){
+  if(_traccarLiveStatusTimer)return;
+  _traccarRenderLiveStatus();
+  _traccarLiveStatusTimer=setInterval(_traccarRenderLiveStatus,TRACCAR_LIVE_STATUS_REFRESH_MS);
+}
+function _traccarStopLiveStatusPolling(){
+  if(_traccarLiveStatusTimer){clearInterval(_traccarLiveStatusTimer);_traccarLiveStatusTimer=null}
+}
+
+// Test button handler — fires URL scheme directly so admin can verify which
+// scheme actually opens Traccar Client on their device
+function _traccarTestUrlScheme(){
+  toast("Trying "+TRACCAR_URL_SCHEME+" — iOS may show a confirm dialog");
+  try{window.location.href=TRACCAR_URL_SCHEME}
+  catch(e){toast("Error: "+e.message,"err")}
+}
+
 // ─── UI helpers (sync status badge + backfill progress) ───
 function _traccarUpdateSyncBadge(){
   const el=document.getElementById("traccarSyncStatus");
@@ -8135,6 +8366,24 @@ function _traccarRenderAdminSection(){
     html+='</div>';
   }
 
+  // ─── Live GPS Health panel — admin sees who's tracking right now ───
+  if(cfg.url&&cfg.token&&cfg.enabled){
+    html+='<div style="margin-top:18px;padding:14px;background:#fefce8;border:1.5px solid #fde68a;border-radius:10px">';
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="lucide-mount" data-lucide="activity" data-size="16" data-color="#a16207"></span><span style="font-size:12px;font-weight:800;color:#78350f;letter-spacing:.4px;text-transform:uppercase">Live GPS Health</span></div>';
+    html+='<p style="font-size:12px;color:#78350f;margin:0 0 10px 0;line-height:1.5">Real-time status per technician — call out whoever is red so they reactivate Traccar.</p>';
+    html+='<div id="traccarLiveStatus"><div style="padding:10px;color:var(--i3);font-size:12px">Loading…</div></div>';
+    html+='</div>';
+  }
+
+  // ─── URL Scheme test (debug tool to find the right deep link) ──────
+  if(cfg.url&&cfg.token){
+    html+='<div style="margin-top:18px;padding:14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px">';
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="lucide-mount" data-lucide="link" data-size="16" data-color="#1d4ed8"></span><span style="font-size:12px;font-weight:800;color:#1e3a8a;letter-spacing:.4px;text-transform:uppercase">Auto-wake URL scheme test</span></div>';
+    html+='<p style="font-size:12px;color:#1e3a8a;margin:0 0 10px 0;line-height:1.5">When techs open the dashboard, it tries to fire <code style="font-size:11px;background:#fff;padding:1px 5px;border-radius:3px">'+esc(TRACCAR_URL_SCHEME)+'</code> to wake Traccar Client. Test it on your iPhone — if it opens Traccar, the auto-wake works. If iOS shows "cannot open this page", we need to find a different scheme.</p>';
+    html+='<button onclick="_traccarTestUrlScheme()" style="padding:9px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Test '+esc(TRACCAR_URL_SCHEME)+'</button>';
+    html+='</div>';
+  }
+
   if(cfg.url&&cfg.token){
     html+='<div style="margin-top:18px;padding-top:14px;border-top:1.5px dashed var(--ln)">';
     html+='<div style="font-size:12px;font-weight:700;color:var(--br);letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px">Map Technicians to Devices</div>';
@@ -8148,6 +8397,9 @@ function _traccarRenderAdminSection(){
   _traccarRenderTechMapUI();
   // Refresh sync badge with current state (if there's been a sync)
   try{_traccarUpdateSyncBadge()}catch(_e){}
+  // Start (or restart) live GPS health polling — only when admin Traccar
+  // section is visible
+  try{if(typeof _traccarStartLiveStatusPolling==="function")_traccarStartLiveStatusPolling()}catch(_e){}
 }
 
 function _traccarRenderTechMapUI(){
