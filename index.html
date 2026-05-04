@@ -5174,20 +5174,46 @@ function heatmapHTML(allTkts,centerDate){
   var TARGET=4;
   var techList=visibleTechs();
   // Tally tickets per tech for the SELECTED date.
-  // A ticket is "done" when a field report has been filed (regardless of when).
-  // For navigation purposes this is what matters: did the tech file their report?
+  //
+  // CRITICAL: each customer visit can produce TWO records in the database:
+  //   1) The original "dispatch" ticket (source:"dispatch"), created when admin
+  //      schedules the visit
+  //   2) A separate "report" ticket (source != "dispatch"), created when the
+  //      tech files their field report
+  // Both share the same date+tech+customer. If we count both, totals double.
+  //
+  // We dedupe by customer name. Within each customer-group, the visit counts
+  // as DONE only if a real report record exists (source !== "dispatch"). The
+  // `fieldReportSubmitted` flag on a dispatch can be set by the auto-cleanup
+  // tool based on any nearby report — so it's not a reliable signal that the
+  // tech actually filed a report for THIS specific visit.
+  function _normCustomer(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
   var stats={};
-  techList.forEach(function(tn){stats[tn]={done:0,pend:0,total:0}});
-  allTkts.forEach(function(t){
-    if(t.status==="canceled")return;
-    if(t.date!==centerDate)return;
-    (t.techs||[]).forEach(function(tn){
-      if(!stats[tn])return;
-      stats[tn].total++;
-      var isComplete=(t.fieldReportSubmitted===true||t.source==="report"||t.status==="done"||t.status==="complete");
-      if(isComplete)stats[tn].done++;
-      else stats[tn].pend++;
+  techList.forEach(function(tn){
+    var ticketsForTech=allTkts.filter(function(t){
+      return t.status!=="canceled"&&t.date===centerDate&&(t.techs||[]).indexOf(tn)>=0;
     });
+    // Group by normalized customer name. For tickets without a customer name
+    // (rare), fall back to the ticket id so they don't all collapse into one.
+    var byCust={};
+    ticketsForTech.forEach(function(t){
+      var key=_normCustomer(t.customer)||("__noname_"+t.id);
+      (byCust[key]=byCust[key]||[]).push(t);
+    });
+    var done=0,pend=0;
+    Object.keys(byCust).forEach(function(k){
+      var grp=byCust[k];
+      // Done if at least one record in this customer-group is NOT a dispatch
+      // ticket — which means it's a field report record (created when the
+      // tech submits the report). Field report records don't have an explicit
+      // source field set, so we treat any non-"dispatch" value (including
+      // undefined) as a report. This matches the convention used everywhere
+      // else in the codebase (e.g. cleanupStaleDispatchTickets).
+      var hasReport=grp.some(function(t){return t.source!=="dispatch"});
+      if(hasReport)done++;
+      else pend++;
+    });
+    stats[tn]={done:done,pend:pend,total:done+pend};
   });
   // Team-wide summary
   var teamTotal=0,teamPending=0,teamDone=0;
