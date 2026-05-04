@@ -1153,7 +1153,20 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
       <button onclick="_mapsBackfillRecent(14)" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Compute driving time for the last 14 days that have assigned tickets but no cached route"><span class="lucide-mount" data-lucide="zap" data-size="13" data-color="var(--ac)"></span>Backfill 14d</button>
       <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" title="Overlay real GPS tracks from Traccar over the planned routes"><input type="checkbox" id="traccarLiveToggle" onchange="_traccarToggleLive()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--ac)"><span class="lucide-mount" data-lucide="radio" data-size="14" data-color="var(--ac)"></span>Show Live GPS</label>
       <span id="traccarLiveStatus" style="font-size:11px"></span>
+      <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" title="1-hour rain/snow forecast (NOAA HRRR model, 15-min frames). Press play to see how the weather moves over the next hour."><input type="checkbox" id="rainRadarToggle" onchange="_rainRadarToggle()" style="width:16px;height:16px;cursor:pointer;accent-color:#0ea5e9"><span class="lucide-mount" data-lucide="cloud-rain" data-size="14" data-color="#0ea5e9"></span>Rain/Snow Radar</label>
+      <span id="rainRadarStatus" style="font-size:11px"></span>
       <div id="mapsStatus" style="font-size:13px;color:var(--i3);flex:1;min-width:200px"></div>
+    </div>
+
+    <!-- Rain Radar Player (shown only when radar toggle is on) -->
+    <div id="rainRadarPlayer" style="display:none;background:#fff;border:1.5px solid #0ea5e9;border-radius:14px;padding:10px 14px;margin-bottom:14px;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:0.5px"><span class="lucide-mount" data-lucide="cloud-rain" data-size="14" data-color="#0ea5e9"></span>Radar</span>
+      <button onclick="_rainRadarPrev()" style="width:32px;height:32px;border:1.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:16px;line-height:1;font-family:inherit" title="Previous frame">‹</button>
+      <button id="rainRadarPlayBtn" onclick="_rainRadarPlayPause()" style="width:38px;height:32px;border:none;border-radius:6px;background:#0ea5e9;color:#fff;cursor:pointer;font-size:13px;font-weight:700;line-height:1" title="Play / pause">▶</button>
+      <button onclick="_rainRadarNext()" style="width:32px;height:32px;border:1.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:16px;line-height:1;font-family:inherit" title="Next frame">›</button>
+      <input type="range" id="rainRadarSlider" min="0" max="0" value="0" oninput="_rainRadarSliderInput()" style="flex:1;min-width:200px;accent-color:#0ea5e9;cursor:pointer">
+      <span id="rainRadarTimeLabel" style="font-size:13px;font-weight:700;color:#1a1a1a;min-width:78px;text-align:center;font-variant-numeric:tabular-nums"></span>
+      <span id="rainRadarFrameType" style="font-size:10px;font-weight:700;padding:4px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;min-width:62px;text-align:center"></span>
     </div>
 
     <!-- Map container -->
@@ -6974,6 +6987,7 @@ function _mapsRenderMap(results){
   if(_mapsInstance){try{_mapsInstance.remove()}catch(_e){}_mapsInstance=null;_mapsLayers=[]}
   _mapsInstance=L.map("mapsMapContainer",{zoomControl:true,attributionControl:true});
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_mapsInstance);
+  if(typeof _rainRadarReapplyIfActive==="function")_rainRadarReapplyIfActive();
   // Depot pin (shared by all techs — drawn once, prominent)
   const depotIcon=L.divIcon({
     className:"",
@@ -7319,6 +7333,270 @@ let _traccarLatestCache = {}; // {deviceId: {pos, fetchedAt}}
 let _traccarLiveLayer = null; // Leaflet layer group for live tracks
 let _traccarLiveTimer = null; // setInterval for auto-refresh
 let _traccarLiveEnabled = false;
+
+// ═══════════════════════════════════════════════════════════════════
+// RAIN/SNOW RADAR (HRRR forecast model — 1-hour rain/snow lookahead)
+//
+// Source: NOAA HRRR (High-Resolution Rapid Refresh) at 1km resolution,
+// served as TMS tiles by Iowa State Mesonet (IEM). HRRR runs every
+// hour and outputs a forecast every 15 minutes for the next 18 hours,
+// with explicit precipitation TYPE (rain / snow / freezing rain / mix)
+// rendered using the NWS color ramp.
+//
+// Timeline shown: NOW + 15 + 30 + 45 + 60 min (5 frames).
+// "NOW" = the model's analysis time (F0000) of the latest run, which
+// updates every hour and is the freshest model-blended depiction of
+// current weather. The other 4 frames are pure forecast.
+//
+// No API keys required. IEM serves NOAA HRRR data for free.
+// Docs: https://mesonet.agron.iastate.edu/GIS/model.phtml
+// ═══════════════════════════════════════════════════════════════════
+const RR_HRRR_META_URL  = "https://mesonet.agron.iastate.edu/data/gis/images/4326/hrrr/refd_1080.json";
+const RR_HRRR_TMS_BASE  = "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/hrrr::REFP-F";
+const RR_HRRR_FRAME_MIN = [0, 15, 30, 45, 60]; // forecast minutes shown
+
+let _rainRadarEnabled = false;
+let _rainRadarTimeline = [];        // [{date, fmin, initStr}, ...]
+let _rainRadarLayerCache = {};      // {pos: L.TileLayer}
+let _rainRadarCurrentPos = -1;
+let _rainRadarNowPos = 0;           // first frame (F0000) = "now"
+let _rainRadarPlayTimer = null;
+let _rainRadarRefreshTimer = null;
+let _rainRadarPlaying = false;
+const RAIN_RADAR_FRAME_DELAY = 1100;    // ms between frames during playback
+const RAIN_RADAR_END_PAUSE   = 2200;    // ms pause when looping back to start
+const RAIN_RADAR_FADE_MS     = 500;     // cross-fade duration between frames
+const RAIN_RADAR_OPACITY     = 0.6;     // visible-frame opacity (0.001 = hidden)
+
+// ─── Utilities ───
+function _rainRadarPad(n,len){return String(n).padStart(len||2,"0")}
+
+// Format a Date as YYYYMMDDHHMM (UTC) — required by HRRR TMS URLs.
+function _rainRadarHRRRTimestamp(d){
+  return d.getUTCFullYear()+
+    _rainRadarPad(d.getUTCMonth()+1)+
+    _rainRadarPad(d.getUTCDate())+
+    _rainRadarPad(d.getUTCHours())+
+    _rainRadarPad(d.getUTCMinutes());
+}
+
+// ─── HRRR metadata fetch ───
+// Returns the model_init_utc Date of the latest available HRRR run,
+// or null on failure.
+async function _rainRadarFetchHRRRMeta(){
+  try{
+    const r=await fetch(RR_HRRR_META_URL,{cache:"no-store"});
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(!j||!j.model_init_utc)return null;
+    return new Date(j.model_init_utc);
+  }catch(_e){return null}
+}
+
+// ─── Timeline builder ───
+function _rainRadarBuildTimeline(initDate){
+  const initStr=_rainRadarHRRRTimestamp(initDate);
+  _rainRadarTimeline=RR_HRRR_FRAME_MIN.map(function(fmin){
+    return {
+      date:new Date(initDate.getTime()+fmin*60*1000),
+      fmin:fmin,
+      initStr:initStr
+    };
+  });
+  _rainRadarNowPos=0; // F0000 = analysis time = "now"
+}
+
+// ─── Layer management ───
+function _rainRadarClearCache(map){
+  if(!map)return;
+  Object.keys(_rainRadarLayerCache).forEach(function(pos){
+    try{map.removeLayer(_rainRadarLayerCache[pos])}catch(_e){}
+  });
+  _rainRadarLayerCache={};
+  _rainRadarCurrentPos=-1;
+}
+
+function _rainRadarCreateLayer(frame){
+  // HRRR TMS URL: hrrr::REFP-F{minute:0000}-{init:YYYYMMDDHHMM}/{z}/{x}/{y}.png
+  // REFP = reflectivity with precipitation-type color ramp (rain/snow/freezing).
+  const fminStr=_rainRadarPad(frame.fmin,4);
+  const url=RR_HRRR_TMS_BASE+fminStr+"-"+frame.initStr+"/{z}/{x}/{y}.png";
+  const layer=L.tileLayer(url,{
+    tileSize:256,
+    maxNativeZoom:9,    // HRRR is 1km — supports higher native zoom than NEXRAD
+    maxZoom:19,
+    opacity:0.001,
+    zIndex:450,
+    attribution:'HRRR forecast &copy; NOAA via <a href="https://mesonet.agron.iastate.edu/" target="_blank">IEM</a>'
+  });
+  // CSS opacity transition for cross-fade between frames during playback.
+  layer.on("add",function(){
+    const el=layer.getContainer&&layer.getContainer();
+    if(el)el.style.transition="opacity "+RAIN_RADAR_FADE_MS+"ms linear";
+  });
+  return layer;
+}
+
+function _rainRadarShowFrame(map,pos){
+  if(!map||!_rainRadarTimeline.length)return;
+  if(pos<0)pos=_rainRadarTimeline.length-1;
+  if(pos>=_rainRadarTimeline.length)pos=0;
+  const frame=_rainRadarTimeline[pos];
+  if(_rainRadarCurrentPos>=0&&_rainRadarLayerCache[_rainRadarCurrentPos]){
+    _rainRadarLayerCache[_rainRadarCurrentPos].setOpacity(0.001);
+  }
+  let layer=_rainRadarLayerCache[pos];
+  if(!layer){
+    layer=_rainRadarCreateLayer(frame);
+    layer.addTo(map);
+    _rainRadarLayerCache[pos]=layer;
+  }
+  layer.setOpacity(RAIN_RADAR_OPACITY);
+  _rainRadarCurrentPos=pos;
+  _rainRadarUpdateUI();
+}
+
+// ─── UI sync ───
+function _rainRadarUpdateUI(){
+  if(_rainRadarCurrentPos<0||!_rainRadarTimeline.length)return;
+  const frame=_rainRadarTimeline[_rainRadarCurrentPos];
+  if(!frame)return;
+  const timeStr=frame.date.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+
+  const slider=document.getElementById("rainRadarSlider");
+  if(slider){slider.max=_rainRadarTimeline.length-1;slider.value=_rainRadarCurrentPos}
+  const timeLabel=document.getElementById("rainRadarTimeLabel");
+  if(timeLabel)timeLabel.textContent=timeStr;
+
+  const typeLabel=document.getElementById("rainRadarFrameType");
+  if(typeLabel){
+    const fmin=_rainRadarTimeline[_rainRadarCurrentPos].fmin;
+    if(fmin===0){
+      typeLabel.textContent="NOW";
+      typeLabel.style.background="#0ea5e9";typeLabel.style.color="#fff";
+    }else{
+      typeLabel.textContent="+"+fmin+" min";
+      typeLabel.style.background="#fef3c7";typeLabel.style.color="#92400e";
+    }
+  }
+  const status=document.getElementById("rainRadarStatus");
+  if(status)status.innerHTML='<span style="color:#0ea5e9">●</span> '+timeStr;
+}
+
+// ─── Slider / step controls ───
+function _rainRadarSliderInput(){
+  const slider=document.getElementById("rainRadarSlider");
+  if(!slider||!_mapsInstance)return;
+  _rainRadarPause();
+  _rainRadarShowFrame(_mapsInstance,parseInt(slider.value,10));
+}
+
+function _rainRadarPrev(){
+  if(!_mapsInstance)return;
+  _rainRadarPause();
+  _rainRadarShowFrame(_mapsInstance,_rainRadarCurrentPos-1);
+}
+
+function _rainRadarNext(){
+  if(!_mapsInstance)return;
+  _rainRadarPause();
+  _rainRadarShowFrame(_mapsInstance,_rainRadarCurrentPos+1);
+}
+
+// ─── Play / pause ───
+function _rainRadarPlay(){
+  if(_rainRadarPlaying||!_mapsInstance||!_rainRadarTimeline.length)return;
+  _rainRadarPlaying=true;
+  const btn=document.getElementById("rainRadarPlayBtn");
+  if(btn)btn.textContent="\u23F8";
+  const tick=function(){
+    if(!_rainRadarPlaying)return;
+    let nextPos=_rainRadarCurrentPos+1;
+    let delay=RAIN_RADAR_FRAME_DELAY;
+    if(nextPos>=_rainRadarTimeline.length){
+      nextPos=0;
+      delay=RAIN_RADAR_END_PAUSE;
+    }
+    _rainRadarShowFrame(_mapsInstance,nextPos);
+    _rainRadarPlayTimer=setTimeout(tick,delay);
+  };
+  _rainRadarPlayTimer=setTimeout(tick,RAIN_RADAR_FRAME_DELAY);
+}
+
+function _rainRadarPause(){
+  _rainRadarPlaying=false;
+  if(_rainRadarPlayTimer){clearTimeout(_rainRadarPlayTimer);_rainRadarPlayTimer=null}
+  const btn=document.getElementById("rainRadarPlayBtn");
+  if(btn)btn.textContent="\u25B6";
+}
+
+function _rainRadarPlayPause(){
+  if(_rainRadarPlaying)_rainRadarPause();else _rainRadarPlay();
+}
+
+// ─── Master toggle ───
+async function _rainRadarToggle(){
+  const cb=document.getElementById("rainRadarToggle");
+  _rainRadarEnabled=cb&&cb.checked;
+  const status=document.getElementById("rainRadarStatus");
+  const player=document.getElementById("rainRadarPlayer");
+
+  if(_rainRadarEnabled){
+    if(status)status.textContent="Loading\u2026";
+    const initDate=await _rainRadarFetchHRRRMeta();
+    if(!initDate){
+      if(status)status.textContent="Could not load forecast";
+      if(cb)cb.checked=false;
+      _rainRadarEnabled=false;
+      return;
+    }
+    _rainRadarBuildTimeline(initDate);
+    if(!_rainRadarTimeline.length){
+      if(status)status.textContent="No forecast data";
+      if(cb)cb.checked=false;
+      _rainRadarEnabled=false;
+      return;
+    }
+    if(player)player.style.display="flex";
+    if(_mapsInstance)_rainRadarShowFrame(_mapsInstance,_rainRadarNowPos);
+
+    // Auto-refresh every 5 min. HRRR runs hourly, so most polls won't see
+    // a new run; we only rebuild the timeline when init time has advanced.
+    if(_rainRadarRefreshTimer)clearInterval(_rainRadarRefreshTimer);
+    _rainRadarRefreshTimer=setInterval(async function(){
+      if(!_rainRadarEnabled||!_mapsInstance)return;
+      const fresh=await _rainRadarFetchHRRRMeta();
+      if(!fresh)return;
+      const currentInit=_rainRadarTimeline[0]&&_rainRadarTimeline[0].date.getTime();
+      if(fresh.getTime()===currentInit)return; // same run, nothing new
+      const wasPlaying=_rainRadarPlaying;
+      _rainRadarPause();
+      _rainRadarBuildTimeline(fresh);
+      _rainRadarClearCache(_mapsInstance);
+      _rainRadarShowFrame(_mapsInstance,_rainRadarNowPos);
+      if(wasPlaying)_rainRadarPlay();
+    },5*60*1000);
+  }else{
+    _rainRadarPause();
+    if(_rainRadarRefreshTimer){clearInterval(_rainRadarRefreshTimer);_rainRadarRefreshTimer=null}
+    if(_mapsInstance)_rainRadarClearCache(_mapsInstance);
+    if(player)player.style.display="none";
+    if(status)status.textContent="";
+  }
+}
+
+// Called from inside _mapsRenderMap after the OSM base layer is added,
+// so the radar overlay survives map teardowns (date-picker rebuild).
+function _rainRadarReapplyIfActive(){
+  if(_rainRadarEnabled&&_rainRadarTimeline.length&&_mapsInstance){
+    _rainRadarLayerCache={};
+    _rainRadarCurrentPos=-1;
+    _rainRadarShowFrame(_mapsInstance,_rainRadarNowPos);
+  }
+}
+
+
+
 
 // ─── Config load/save (Firestore) ───
 async function _traccarLoadConfig(){
