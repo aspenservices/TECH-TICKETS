@@ -1756,6 +1756,9 @@ function doLogin(){
   try{rndrA();rndrD();if(typeof rndrSlog==="function")rndrSlog();if(typeof rndrCal==="function")rndrCal();if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
   // Background auto-backfill of recent driving routes (admin only) — runs without blocking UI.
   if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,1500);
+  // Start GPS-to-Firebase auto-sync (admin/organizer only — techs don't sync).
+  // First sync runs immediately, then every 5 min while logged in.
+  try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,2500)}catch(_e){}
   toast(`Welcome, ${currentUser.name}`);
 }
 function logout(){
@@ -1764,6 +1767,7 @@ function logout(){
   try{if(typeof _traccarLiveTimer!=="undefined"&&_traccarLiveTimer){clearInterval(_traccarLiveTimer);_traccarLiveTimer=null}}catch(_e){}
   try{if(typeof _liveAutoRefreshTimer!=="undefined"&&_liveAutoRefreshTimer){clearInterval(_liveAutoRefreshTimer);_liveAutoRefreshTimer=null}}catch(_e){}
   try{if(typeof _traccarLiveEnabled!=="undefined")_traccarLiveEnabled=false}catch(_e){}
+  try{if(typeof _traccarStopAutoSync==="function")_traccarStopAutoSync()}catch(_e){}
   // Reset state
   currentUser=null;
   isAdmin=false;
@@ -3075,6 +3079,7 @@ async function init(){
   initTodoCollapse();
   if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
     if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
+    try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,3000)}catch(_e){}
   }
   else{renderLoginScreen()}
   // ═══ AUTO-SAVE DRAFT — restore + bind ═══
@@ -7754,6 +7759,289 @@ async function _traccarTestConnection(){
   }
 }
 
+// ════════════════════════════════════════════════════════════════════
+// FIREBASE MIRROR — saves Traccar GPS positions to Firestore so the
+// history is permanent even when using the free Traccar demo server
+// (which doesn't guarantee data retention).
+//
+// Architecture:
+//   • Positions stored in `gpsLogs/{deviceId}_{YYYY-MM-DD}` (one doc per
+//     device per day, positions as a deduplicated array).
+//   • Sync state stored in `_config/traccarSyncState` so we know where
+//     to resume on the next sync (no double-fetching).
+//   • Auto-sync runs every 5 min while admin/organizer is logged in.
+//   • Read functions (Daily GPS, Compare, Summary, drive stats) read
+//     from Firebase first, fall back to live Traccar only if empty.
+//   • Live View intentionally still reads from Traccar directly so the
+//     "live" dot stays current (Firebase trails by up to 5 min).
+// ════════════════════════════════════════════════════════════════════
+let _traccarSyncTimer = null;
+let _traccarSyncInProgress = false;
+let _traccarSyncLastResult = null;     // {ok, newPositions, errorMsg, atMs}
+
+function _gpsLogDocId(deviceId,dateStr){return deviceId+"_"+dateStr}
+function _gpsPosTime(p){return p.deviceTime||p.fixTime||p.serverTime||""}
+function _gpsDateStrFromPos(p){
+  const t=_gpsPosTime(p);if(!t)return"";
+  try{return fmtD(new Date(t))}catch(_e){return""}
+}
+
+// Save (merge) an array of positions for ONE device on ONE date.
+// Dedupes by Traccar's position id. Returns the count of NEWLY added.
+async function _fbSavePositions(deviceId,dateStr,positionsForDay){
+  if(!db||!positionsForDay||!positionsForDay.length)return 0;
+  const ref=db.collection("gpsLogs").doc(_gpsLogDocId(deviceId,dateStr));
+  const snap=await ref.get();
+  const existing=snap.exists?(snap.data().positions||[]):[];
+  const seenIds=new Set(existing.map(function(p){return p.id}));
+  const newOnes=positionsForDay.filter(function(p){return p.id&&!seenIds.has(p.id)});
+  if(!newOnes.length)return 0;
+  const merged=existing.concat(newOnes).sort(function(a,b){
+    return new Date(_gpsPosTime(a)).getTime()-new Date(_gpsPosTime(b)).getTime();
+  });
+  const lastTime=_gpsPosTime(merged[merged.length-1]);
+  await ref.set({
+    deviceId:deviceId,
+    date:dateStr,
+    positions:merged,
+    count:merged.length,
+    lastUpdated:firebase.firestore.FieldValue.serverTimestamp(),
+    lastPositionTime:lastTime
+  });
+  return newOnes.length;
+}
+
+// Read positions for one device across an arbitrary time range. Spans
+// multiple date-docs if needed. Filters by exact time at the boundaries.
+async function _fbGetPositions(deviceId,fromDate,toDate){
+  if(!db)return[];
+  const startStr=fmtD(fromDate),endStr=fmtD(toDate);
+  const out=[];
+  try{
+    if(startStr===endStr){
+      const snap=await db.collection("gpsLogs").doc(_gpsLogDocId(deviceId,startStr)).get();
+      if(snap.exists&&snap.data().positions)out.push.apply(out,snap.data().positions);
+    }else{
+      const q=await db.collection("gpsLogs")
+        .where("deviceId","==",deviceId)
+        .where("date",">=",startStr)
+        .where("date","<=",endStr)
+        .get();
+      q.forEach(function(s){
+        const ps=s.data().positions||[];
+        for(let i=0;i<ps.length;i++)out.push(ps[i]);
+      });
+    }
+  }catch(_e){return[]}
+  const fromMs=fromDate.getTime(),toMs=toDate.getTime();
+  return out.filter(function(p){
+    const t=new Date(_gpsPosTime(p)).getTime();
+    return t>=fromMs&&t<=toMs;
+  }).sort(function(a,b){
+    return new Date(_gpsPosTime(a)).getTime()-new Date(_gpsPosTime(b)).getTime();
+  });
+}
+
+async function _fbGetSyncState(){
+  if(!db)return{deviceLastTime:{},totalPositions:0};
+  try{
+    const s=await db.collection("_config").doc("traccarSyncState").get();
+    return s.exists?s.data():{deviceLastTime:{},totalPositions:0};
+  }catch(_e){return{deviceLastTime:{},totalPositions:0}}
+}
+
+async function _fbSetSyncState(state){
+  if(!db)return;
+  try{
+    state.lastSyncedAt=firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection("_config").doc("traccarSyncState").set(state,{merge:true});
+  }catch(_e){}
+}
+
+// Cached getter: drop-in replacement for _traccarGetPositions.
+// Tries Firebase first; if empty (or error), falls back to live Traccar.
+async function _traccarGetPositionsCached(deviceId,from,to){
+  try{
+    const fb=await _fbGetPositions(deviceId,from,to);
+    if(fb&&fb.length)return fb;
+  }catch(_e){}
+  try{return await _traccarGetPositions(deviceId,from,to)}catch(_e){return[]}
+}
+
+// Incremental sync — fetches only positions newer than what we've already
+// saved per device. Bootstraps with last 24h on first run for a device.
+async function _traccarSyncToFirebase(){
+  if(_traccarSyncInProgress)return{ok:false,reason:"already running"};
+  if(!db||!_traccarConfig||!_traccarConfig.enabled)return{ok:false,reason:"not configured"};
+  if(!_traccarConfig.url||!_traccarConfig.token)return{ok:false,reason:"no credentials"};
+  _traccarSyncInProgress=true;
+  const result={ok:true,newPositions:0,devices:0,atMs:Date.now(),errorMsg:null};
+  try{
+    const syncState=await _fbGetSyncState();
+    syncState.deviceLastTime=syncState.deviceLastTime||{};
+    const devices=_traccarDevices.length?_traccarDevices:await _traccarGetDevices();
+    const now=Date.now();
+    for(let i=0;i<devices.length;i++){
+      const dev=devices[i];const deviceId=dev.id;
+      const lastIso=syncState.deviceLastTime[deviceId];
+      // Bootstrap: if we've never synced this device, grab last 24h. Otherwise resume.
+      const fromTime=lastIso?new Date(new Date(lastIso).getTime()+1):new Date(now-24*3600*1000);
+      const toTime=new Date(now);
+      try{
+        const positions=await _traccarGetPositions(deviceId,fromTime,toTime);
+        if(!positions||!positions.length)continue;
+        // Group by local date (Firestore docs are per device-per-day)
+        const byDate={};
+        for(let k=0;k<positions.length;k++){
+          const ds=_gpsDateStrFromPos(positions[k]);
+          if(!ds)continue;
+          (byDate[ds]=byDate[ds]||[]).push(positions[k]);
+        }
+        for(const ds in byDate){
+          const n=await _fbSavePositions(deviceId,ds,byDate[ds]);
+          result.newPositions+=n;
+        }
+        // Track latest position time so next sync resumes from there
+        let maxIso=lastIso||"";
+        for(let k=0;k<positions.length;k++){
+          const t=_gpsPosTime(positions[k]);
+          if(t&&(!maxIso||t>maxIso))maxIso=t;
+        }
+        if(maxIso)syncState.deviceLastTime[deviceId]=maxIso;
+        result.devices++;
+      }catch(devErr){
+        console.warn("Sync failed for device "+deviceId+":",devErr);
+      }
+    }
+    syncState.totalPositions=(syncState.totalPositions||0)+result.newPositions;
+    await _fbSetSyncState(syncState);
+  }catch(e){
+    result.ok=false;result.errorMsg=e.message||"sync failed";
+  }finally{
+    _traccarSyncInProgress=false;
+    _traccarSyncLastResult=result;
+    _traccarUpdateSyncBadge();
+  }
+  return result;
+}
+
+// One-time deep grab — pulls all available positions from Traccar going
+// back N days. Run this once now to capture whatever the demo server
+// still has before it gets purged.
+async function _traccarBackfill(daysBack){
+  if(!db||!_traccarConfig||!_traccarConfig.enabled)return{ok:false,reason:"not configured"};
+  daysBack=daysBack||30;
+  const devices=_traccarDevices.length?_traccarDevices:await _traccarGetDevices();
+  const now=Date.now();
+  let totalSaved=0,totalSkipped=0;
+  const totalSteps=devices.length*(daysBack+1);
+  let stepIdx=0;
+  // Process per device, per day (one /api/positions call per day) to keep
+  // each response small and avoid timeouts on the demo server.
+  for(let i=0;i<devices.length;i++){
+    const dev=devices[i];
+    for(let d=daysBack;d>=0;d--){
+      stepIdx++;
+      _traccarUpdateBackfillProgress(stepIdx,totalSteps,totalSaved,dev.name||("Device "+dev.id));
+      const dayStart=new Date(now-d*24*3600*1000);dayStart.setHours(0,0,0,0);
+      const dayEnd=new Date(dayStart.getTime()+24*3600*1000-1);
+      try{
+        const positions=await _traccarGetPositions(dev.id,dayStart,dayEnd);
+        if(positions&&positions.length){
+          const ds=fmtD(dayStart);
+          const n=await _fbSavePositions(dev.id,ds,positions);
+          totalSaved+=n;totalSkipped+=(positions.length-n);
+        }
+      }catch(_e){/* skip this day */}
+    }
+  }
+  // Update sync state so the next incremental sync picks up from "now"
+  const syncState=await _fbGetSyncState();
+  syncState.deviceLastTime=syncState.deviceLastTime||{};
+  for(let i=0;i<devices.length;i++)syncState.deviceLastTime[devices[i].id]=new Date(now).toISOString();
+  syncState.totalPositions=(syncState.totalPositions||0)+totalSaved;
+  await _fbSetSyncState(syncState);
+  _traccarUpdateBackfillProgress(totalSteps,totalSteps,totalSaved,"done");
+  return{ok:true,totalSaved:totalSaved,totalSkipped:totalSkipped,daysBack:daysBack,devices:devices.length};
+}
+
+// ─── Auto-sync lifecycle ───
+function _traccarStartAutoSync(){
+  if(_traccarSyncTimer)return;
+  if(!_traccarConfig||!_traccarConfig.enabled)return;
+  if(!currentUser||currentUser.role==="tech")return; // only admin/organizer sync
+  _traccarSyncToFirebase(); // run once immediately
+  _traccarSyncTimer=setInterval(_traccarSyncToFirebase,5*60*1000);
+}
+function _traccarStopAutoSync(){
+  if(_traccarSyncTimer){clearInterval(_traccarSyncTimer);_traccarSyncTimer=null}
+}
+
+// ─── UI helpers (sync status badge + backfill progress) ───
+function _traccarUpdateSyncBadge(){
+  const el=document.getElementById("traccarSyncStatus");
+  if(!el)return;
+  if(_traccarSyncInProgress){el.innerHTML='<span style="color:var(--ac)">Syncing…</span>';return}
+  const r=_traccarSyncLastResult;
+  if(r){
+    if(!r.ok){el.innerHTML='<span style="color:#b45309">⚠ Sync error: '+esc(r.errorMsg||"unknown")+'</span>';return}
+    const ago=Math.round((Date.now()-r.atMs)/1000);
+    const agoStr=ago<60?ago+"s ago":Math.round(ago/60)+"m ago";
+    el.innerHTML='<span style="color:#16a34a">✓ Last sync '+agoStr+'</span> · '+
+      '<span style="color:var(--i2)">+'+r.newPositions+' new positions across '+r.devices+' device'+(r.devices===1?"":"s")+'</span>';
+    return;
+  }
+  // No in-session sync yet — show persisted state from Firebase if available
+  el.innerHTML='<span style="color:var(--i3)">Loading…</span>';
+  _fbGetSyncState().then(function(state){
+    const target=document.getElementById("traccarSyncStatus");
+    if(!target)return;
+    if(_traccarSyncLastResult||_traccarSyncInProgress)return; // a fresh sync took over — let it render
+    const total=state.totalPositions||0;
+    if(state.lastSyncedAt&&state.lastSyncedAt.toDate){
+      const last=state.lastSyncedAt.toDate();
+      const ago=Math.round((Date.now()-last.getTime())/1000);
+      const agoStr=ago<60?ago+"s ago":(ago<3600?Math.round(ago/60)+"m ago":Math.round(ago/3600)+"h ago");
+      target.innerHTML='<span style="color:var(--i2)">Last sync '+agoStr+'</span> · '+
+        '<span style="color:var(--i2)">'+total.toLocaleString()+' positions saved total</span>';
+    }else if(total>0){
+      target.innerHTML='<span style="color:var(--i2)">'+total.toLocaleString()+' positions saved (sync time unknown)</span>';
+    }else{
+      target.innerHTML='<span style="color:var(--i3)">No positions saved yet — auto-sync will start in a few seconds, or click "Sync now"</span>';
+    }
+  }).catch(function(){
+    const target=document.getElementById("traccarSyncStatus");
+    if(target)target.innerHTML='<span style="color:var(--i3)">Status unavailable</span>';
+  });
+}
+function _traccarUpdateBackfillProgress(step,total,saved,label){
+  const el=document.getElementById("traccarBackfillProgress");
+  if(!el)return;
+  const pct=Math.round(100*step/total);
+  el.innerHTML='<div style="font-size:12px;color:var(--i2);margin-bottom:4px">Backfilling: '+esc(label)+' ('+step+'/'+total+' · '+saved+' saved)</div>'+
+    '<div style="height:6px;background:#eee;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--ac);transition:width .2s"></div></div>';
+}
+async function _traccarManualSyncNow(){
+  const btn=document.getElementById("traccarSyncNowBtn");
+  if(btn){btn.disabled=true;btn.textContent="Syncing…"}
+  const r=await _traccarSyncToFirebase();
+  if(btn){btn.disabled=false;btn.innerHTML=icon("refresh-cw",13,{color:"#fff"})+" Sync now"}
+  if(r.ok)toast("Sync OK · "+r.newPositions+" new","ok");
+  else toast("Sync error: "+(r.reason||r.errorMsg||"unknown"),"err");
+}
+async function _traccarManualBackfill(){
+  if(!confirm("Backfill the last 30 days of GPS data from Traccar to Firebase?\n\nThis may take a few minutes. You can keep using the dashboard while it runs."))return;
+  const btn=document.getElementById("traccarBackfillBtn");
+  if(btn){btn.disabled=true;btn.textContent="Backfilling…"}
+  try{
+    const r=await _traccarBackfill(30);
+    if(r.ok)toast("Backfill done · "+r.totalSaved+" positions saved","ok");
+    else toast("Backfill error: "+r.reason,"err");
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML=icon("download-cloud",13,{color:"var(--ac)"})+" Backfill 30 days"}
+  }
+}
+
 // ─── Admin UI: Configuration section ───
 function _traccarRenderAdminSection(){
   const host=document.getElementById("adminTraccarBody");
@@ -7779,6 +8067,20 @@ function _traccarRenderAdminSection(){
 
   html+='<div id="traccarTestResult" style="margin-bottom:14px"></div>';
 
+  // ─── Firebase Mirror panel ─────────────────────────────────────────
+  if(cfg.url&&cfg.token&&cfg.enabled){
+    html+='<div style="margin-top:18px;padding:14px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px">';
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="lucide-mount" data-lucide="database" data-size="16" data-color="#16a34a"></span><span style="font-size:12px;font-weight:800;color:#166534;letter-spacing:.4px;text-transform:uppercase">Firebase Mirror — Permanent History</span></div>';
+    html+='<p style="font-size:12px;color:#166534;margin:0 0 10px 0;line-height:1.5">Auto-syncs every 5 minutes while you\'re logged in. Your GPS history lives in Firebase forever, even if Traccar\'s demo server purges its data.</p>';
+    html+='<div id="traccarSyncStatus" style="font-size:13px;margin-bottom:10px;padding:8px 10px;background:#fff;border-radius:6px;border:1px solid #d1fae5"><span style="color:var(--i3)">Loading status…</span></div>';
+    html+='<div id="traccarBackfillProgress" style="margin-bottom:10px"></div>';
+    html+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    html+='<button id="traccarSyncNowBtn" onclick="_traccarManualSyncNow()" style="padding:8px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'+icon("refresh-cw",13,{color:"#fff"})+' Sync now</button>';
+    html+='<button id="traccarBackfillBtn" onclick="_traccarManualBackfill()" style="padding:8px 14px;background:#fff;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="One-time grab of the last 30 days of positions from Traccar — useful right now to capture whatever data is still on the demo server before it\'s purged">'+icon("download-cloud",13,{color:"var(--ac)"})+' Backfill 30 days</button>';
+    html+='</div>';
+    html+='</div>';
+  }
+
   if(cfg.url&&cfg.token){
     html+='<div style="margin-top:18px;padding-top:14px;border-top:1.5px dashed var(--ln)">';
     html+='<div style="font-size:12px;font-weight:700;color:var(--br);letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px">Map Technicians to Devices</div>';
@@ -7790,6 +8092,8 @@ function _traccarRenderAdminSection(){
   host.innerHTML=html;
   if(typeof lucide!=="undefined")lucide.createIcons();
   _traccarRenderTechMapUI();
+  // Refresh sync badge with current state (if there's been a sync)
+  try{_traccarUpdateSyncBadge()}catch(_e){}
 }
 
 function _traccarRenderTechMapUI(){
@@ -8105,7 +8409,7 @@ async function _traccarGetTechDriveData(techName,dateStr){
   const dateEnd=new Date(dateStr+"T23:59:59");
   let positions;
   try{
-    positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
+    positions=await _traccarGetPositionsCached(deviceId,dateStart,dateEnd);
   }catch(e){
     console.warn("Traccar position fetch failed:",e);
     return null;
@@ -8264,39 +8568,20 @@ async function _revGeocode(lat,lng){
 }
 
 // ─── Stop detection: cluster nearby pings into "stops" of >=10 minutes ───
+// GPS data is noisy. A phone reporting from a customer's driveway can
+// occasionally spike 100-200m off due to multipath / weak signal, then
+// snap back. A naive algorithm would close the cluster on that single
+// noisy ping and never accumulate the 10 min needed to count as a stop —
+// which is why "0 stops detected" was so common before. We allow a
+// short tolerance buffer (TOL_OUT consecutive outsiders) before closing.
 function _detectStops(positions){
   if(!positions||positions.length<2)return[];
+  const TOL_OUT=2; // tolerate up to 2 consecutive "outside" pings (likely GPS noise)
   const stops=[];
   let cluster=[positions[0]];
-  for(let i=1;i<positions.length;i++){
-    const p=positions[i];
-    const ref=cluster[0];
-    const d=_haversineMi(ref.latitude,ref.longitude,p.latitude,p.longitude);
-    if(d<=STOP_RADIUS_MILES){
-      cluster.push(p);
-    }else{
-      // Close cluster
-      const t0=new Date(cluster[0].deviceTime||cluster[0].fixTime||cluster[0].serverTime).getTime();
-      const t1=new Date(cluster[cluster.length-1].deviceTime||cluster[cluster.length-1].fixTime||cluster[cluster.length-1].serverTime).getTime();
-      const minutes=(t1-t0)/60000;
-      if(minutes>=STOP_MIN_MINUTES){
-        // Average position
-        let sumLat=0,sumLng=0;
-        cluster.forEach(function(pp){sumLat+=pp.latitude;sumLng+=pp.longitude});
-        stops.push({
-          lat:sumLat/cluster.length,
-          lng:sumLng/cluster.length,
-          start:new Date(t0),
-          end:new Date(t1),
-          durationMin:Math.round(minutes),
-          pingCount:cluster.length
-        });
-      }
-      cluster=[p];
-    }
-  }
-  // Final cluster
-  if(cluster.length>=2){
+  let outsideCount=0;
+  function _closeAndCheck(){
+    if(cluster.length<2)return;
     const t0=new Date(cluster[0].deviceTime||cluster[0].fixTime||cluster[0].serverTime).getTime();
     const t1=new Date(cluster[cluster.length-1].deviceTime||cluster[cluster.length-1].fixTime||cluster[cluster.length-1].serverTime).getTime();
     const minutes=(t1-t0)/60000;
@@ -8313,6 +8598,28 @@ function _detectStops(positions){
       });
     }
   }
+  for(let i=1;i<positions.length;i++){
+    const p=positions[i];
+    const ref=cluster[0];
+    const d=_haversineMi(ref.latitude,ref.longitude,p.latitude,p.longitude);
+    if(d<=STOP_RADIUS_MILES){
+      cluster.push(p);
+      outsideCount=0; // reset — we're back inside
+    }else{
+      outsideCount++;
+      if(outsideCount<=TOL_OUT){
+        // Treat as transient noise, don't close yet. The point itself is
+        // not added to the cluster (so the centroid isn't pulled toward it).
+        continue;
+      }
+      // Confirmed departure — close the cluster, start new one with this point.
+      _closeAndCheck();
+      cluster=[p];
+      outsideCount=0;
+    }
+  }
+  // Final cluster
+  _closeAndCheck();
   return stops;
 }
 
@@ -8513,7 +8820,7 @@ async function _traccarLoadDailyGps(){
     const color=techColors[(colorIdx>=0?colorIdx:i)%techColors.length];
 
     try{
-      const positions=await _traccarGetPositions(deviceId,dateStart,dateEnd);
+      const positions=await _traccarGetPositionsCached(deviceId,dateStart,dateEnd);
       if(!positions||!positions.length)continue;
       const stopsRaw=_detectStops(positions);
 
@@ -8718,7 +9025,7 @@ async function _traccarLoadCompare(){
   const dateStart=new Date(dateStr+"T00:00:00");
   const dateEnd=new Date(dateStr+"T23:59:59");
   let positions=[];
-  try{positions=await _traccarGetPositions(deviceId,dateStart,dateEnd)}catch(e){
+  try{positions=await _traccarGetPositionsCached(deviceId,dateStart,dateEnd)}catch(e){
     if(status)status.innerHTML='<span style="color:#dc2626">Failed: '+esc(e.message)+'</span>';
     return;
   }
@@ -8788,7 +9095,29 @@ async function _traccarLoadCompare(){
   const missing=matches.filter(function(m){return!m.matchedStop&&m.coords}).length;
   const ungeocoded=matches.filter(function(m){return!m.coords}).length;
 
-  let html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">';
+  // Compute total miles + first/last GPS time so we can show useful context
+  // even when no stops were detected (helps Alberto understand WHY).
+  let totalMiles=0,firstPosTime=null,lastPosTime=null;
+  if(positions&&positions.length){
+    firstPosTime=new Date(positions[0].deviceTime||positions[0].fixTime||positions[0].serverTime);
+    lastPosTime=new Date(positions[positions.length-1].deviceTime||positions[positions.length-1].fixTime||positions[positions.length-1].serverTime);
+    for(let k=1;k<positions.length;k++){
+      totalMiles+=_haversineMi(
+        positions[k-1].latitude,positions[k-1].longitude,
+        positions[k].latitude,positions[k].longitude
+      );
+    }
+  }
+
+  // Inline explainer (compact — shows what Compare actually does)
+  let html='<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1e3a8a;line-height:1.55">';
+  html+='<b>How Compare works:</b> Matches the tickets assigned to '+esc(tName)+' against where they actually went today (per GPS). ';
+  html+='A ticket counts as <span style="background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-weight:600">visited</span> when their phone stayed within ~200m of the address for at least 10 minutes. ';
+  html+='Stops not near any ticket show up as <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-weight:600">extra stops</span> (lunch, parts run, gas, etc.). ';
+  html+='Stops at the Aspen depot are tagged separately as <span style="background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:4px;font-weight:600">🏠 Aspen visits</span>.';
+  html+='</div>';
+
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">';
   html+='<div style="padding:12px;background:#dcfce7;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#166534">'+visited+'</div><div style="font-size:11px;color:#166534;font-weight:600">VISITED</div></div>';
   html+='<div style="padding:12px;background:#fee2e2;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#991b1b">'+missing+'</div><div style="font-size:11px;color:#991b1b;font-weight:600">NOT VISITED</div></div>';
   html+='<div style="padding:12px;background:#fef3c7;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:#92400e">'+unmatchedStops.length+'</div><div style="font-size:11px;color:#92400e;font-weight:600">EXTRA STOPS</div></div>';
@@ -8796,8 +9125,34 @@ async function _traccarLoadCompare(){
   html+='<div style="padding:12px;background:#fafaf8;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--i2)">'+ticketsForDay.length+'</div><div style="font-size:11px;color:var(--i3);font-weight:600">TICKETS TODAY</div></div>';
   html+='</div>';
 
-  // Day timeline summary (Aspen → ticket → ticket → Aspen)
-  if(aspenStops.length||matches.length){
+  // GPS data summary banner — diagnostic info so the user knows WHY counts may be zero
+  if(!positions.length){
+    html+='<div style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px;color:#78350f;line-height:1.6">';
+    html+='<div style="font-weight:700;margin-bottom:6px">⚠ No GPS data for '+esc(tName)+' on this date</div>';
+    html+='<div style="font-size:12px">Possible reasons:</div>';
+    html+='<ul style="margin:6px 0 0 18px;padding:0;font-size:12px">';
+    html+='<li>The Traccar Client app on '+esc(tName)+'\'s phone wasn\'t running</li>';
+    html+='<li>The phone lost network connectivity all day</li>';
+    html+='<li>The demo Traccar server purged this day\'s data (run the Backfill in Admin → Traccar to capture what\'s left)</li>';
+    html+='<li>'+esc(tName)+' is mapped to the wrong Traccar device (check Admin → Traccar → Map Technicians)</li>';
+    html+='</ul></div>';
+  }else if(!stops.length){
+    html+='<div style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px;color:#78350f;line-height:1.6">';
+    html+='<div style="font-weight:700;margin-bottom:4px">📍 GPS data exists, but no 10-min stops detected</div>';
+    html+='<div style="font-size:12px">Tracked '+_fmtTime(firstPosTime)+' to '+_fmtTime(lastPosTime)+' · '+positions.length+' position'+(positions.length===1?'':'s')+' · '+totalMiles.toFixed(1)+' mi total</div>';
+    html+='<div style="font-size:12px;margin-top:6px">This means '+esc(tName)+' was either (a) driving the entire time, or (b) the GPS was reporting too infrequently to confirm a 10-min stationary period. If they were on jobs all day, the Traccar Client may need to report more often (every 1–2 min instead of every 10 min).</div>';
+    html+='</div>';
+  }else{
+    html+='<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.55">';
+    html+='<b>✓ GPS coverage:</b> '+_fmtTime(firstPosTime)+'–'+_fmtTime(lastPosTime)+' · '+positions.length+' positions · '+totalMiles.toFixed(1)+' mi · '+stops.length+' stop'+(stops.length===1?'':'s')+' detected';
+    html+='</div>';
+  }
+
+  // Day timeline summary (Aspen → ticket → ticket → Aspen) — only if there's
+  // actual visited content. With no matched stops AND no depot stops, the
+  // timeline is just empty arrows and warnings, which isn't useful.
+  const hasMatched=matches.some(function(m){return m.matchedStop});
+  if(aspenStops.length||hasMatched){
     const startStop=aspenStops.find(function(s){return s._depotRole==="start"});
     const endStop=aspenStops.find(function(s){return s._depotRole==="end"});
     const middayStops=aspenStops.filter(function(s){return s._depotRole==="midday"});
@@ -8807,7 +9162,7 @@ async function _traccarLoadCompare(){
     if(startStop){
       timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#e0e7ff;color:#3730a3;border-radius:8px;font-weight:600">🏠 Aspen <small style="opacity:.7">'+_fmtTime(startStop.end)+'</small></span>';
     }else{
-      timeline+='<span style="padding:5px 10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-weight:600">⚠ No Aspen start detected</span>';
+      timeline+='<span style="padding:5px 10px;background:#fafaf8;color:var(--i3);border-radius:8px;font-weight:600;border:1px dashed var(--ln)">Started elsewhere (not depot)</span>';
     }
     // Sort visits chronologically (matched stops + midday depot stops)
     const orderedEvents=[];
@@ -8827,7 +9182,7 @@ async function _traccarLoadCompare(){
       timeline+='<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#e0e7ff;color:#3730a3;border-radius:8px;font-weight:600">🏠 Aspen <small style="opacity:.7">'+_fmtTime(endStop.start)+'</small></span>';
     }else if(!endStop&&aspenStops.length<=1){
       timeline+='<span style="color:var(--i3)">→</span>';
-      timeline+='<span style="padding:5px 10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-weight:600">⚠ No Aspen return</span>';
+      timeline+='<span style="padding:5px 10px;background:#fafaf8;color:var(--i3);border-radius:8px;font-weight:600;border:1px dashed var(--ln)">Ended elsewhere (no depot return)</span>';
     }
     timeline+='</div>';
     timeline+='</div>';
@@ -8968,7 +9323,7 @@ async function _traccarLoadSummary(){
   async function _processJob(job){
     try{
       const ds=new Date(job.dateStr+"T00:00:00"),de=new Date(job.dateStr+"T23:59:59");
-      const positions=await _traccarGetPositions(job.deviceId,ds,de);
+      const positions=await _traccarGetPositionsCached(job.deviceId,ds,de);
       if(!positions||positions.length<2)return;
       // Compute miles + driveSec from positions
       let miles=0,driveSec=0;
