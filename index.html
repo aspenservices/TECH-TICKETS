@@ -1771,6 +1771,10 @@ function doLogin(){
     try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3000)}catch(_e){}
     try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("login")},4500)}catch(_e){}
   }
+  // Check-out reminder polling — every 5 min checks if user is checked in for
+  // >2h without checking out. Runs for ALL roles (techs and admins) since
+  // either may be the one who checked in.
+  try{if(typeof _startCheckOutReminderPoll==="function")setTimeout(_startCheckOutReminderPoll,5000)}catch(_e){}
   toast(`Welcome, ${currentUser.name}`);
 }
 function logout(){
@@ -1782,6 +1786,7 @@ function logout(){
   try{if(typeof _traccarStopAutoSync==="function")_traccarStopAutoSync()}catch(_e){}
   try{if(typeof _traccarStopTechBannerPolling==="function")_traccarStopTechBannerPolling()}catch(_e){}
   try{if(typeof _traccarStopLiveStatusPolling==="function")_traccarStopLiveStatusPolling()}catch(_e){}
+  try{if(typeof _stopCheckOutReminderPoll==="function")_stopCheckOutReminderPoll()}catch(_e){}
   // Reset state
   currentUser=null;
   isAdmin=false;
@@ -3109,6 +3114,7 @@ async function init(){
       try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3500)}catch(_e){}
       try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("auto-login")},5000)}catch(_e){}
     }
+    try{if(typeof _startCheckOutReminderPoll==="function")setTimeout(_startCheckOutReminderPoll,6000)}catch(_e){}
   }
   else{renderLoginScreen()}
   // ═══ AUTO-SAVE DRAFT — restore + bind ═══
@@ -3771,6 +3777,21 @@ async function submitTkt(st){
   if(!document.getElementById("fDep").value){toast("Enter departure time — required for labor calculation","warn");document.getElementById("fDep").focus();return}
   if(!document.getElementById("fNotes").value.trim()){toast("Please add notes about the work done","warn");document.getElementById("fNotes").focus();return}
   if(wTypes.includes("Water Change")&&!wcType){toast("Select Chemical or No Chemical for Water Change","warn");return}
+
+  // Check-in/out validation — block submission if the related dispatch
+  // ticket required check-in but tech didn't do it. We only enforce this
+  // when editing a dispatch ticket (editingDocId is set and the original
+  // ticket has source==="dispatch"). For brand-new field reports without
+  // a parent dispatch (rare — happens when tech files a report for a
+  // walk-in not on the calendar), we don't enforce because there's no
+  // dispatch to check against.
+  if(editingDocId&&typeof _validateCheckInForSubmit==="function"){
+    const _origTkt=[...active,...done].find(function(x){return x.id===editingDocId});
+    if(_origTkt&&_origTkt.source==="dispatch"){
+      const errMsg=_validateCheckInForSubmit(_origTkt);
+      if(errMsg){toast(errMsg,"err");return}
+    }
+  }
 
   const btnS=document.getElementById("btnSend"),btnR=document.getElementById("btnResched");
   btnS.disabled=true;btnR.disabled=true;btnS.textContent="Saving...";
@@ -5566,7 +5587,12 @@ function openTktDetail(id){
   const _city=effectiveCity(t);
   const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");
   const mapsUrl=fullAddr?"https://maps.apple.com/?q="+encodeURIComponent(fullAddr):"";
-  let h='<div style="margin-bottom:16px">';
+  // Check-In / Check-Out panel — appears at the very top of the ticket detail
+  // for any ticket dated >= CHECKIN_REQUIRED_FROM_DATE (defined in Check-in
+  // module). Renders as: big check-in button / ongoing visit / completed.
+  let h="";
+  try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
+  h+='<div style="margin-bottom:16px">';
   if(isAdmin){
     h+='<div style="margin-bottom:12px"><div class="lbl" style="font-size:10px">Customer</div><input id="dtCust" value="'+esc(t.customer)+'" class="time-input" style="width:100%;font-size:14px;font-weight:700"></div>';
     h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
@@ -7411,8 +7437,361 @@ function _mapsInitOnFirstShow(){
 })();
 
 // ════════════════════════════════════════════════════════════════════════════
-// TRACCAR INTEGRATION MODULE
-// Connects this app to a Traccar GPS tracking server.
+// CHECK-IN / CHECK-OUT MODULE
+// ════════════════════════════════════════════════════════════════════════════
+// Manual GPS verification of when techs arrive at and leave each customer.
+// Reinforces (and partially replaces dependency on) Traccar's continuous
+// tracking — because a tap-to-checkin event happens while the dashboard is
+// actively in use, it does NOT depend on iOS background suspension.
+//
+// Lifecycle for a ticket created on or after CHECKIN_REQUIRED_FROM_DATE:
+//   1) Admin schedules dispatch ticket → ticket appears in Daily/Calendar
+//   2) Tech opens ticket on phone, taps "CHECK IN — Llegué"
+//      → browser GPS one-shot, save lat/lng + timestamp + distance to address
+//      → if >100m from address, warn or block (configurable)
+//   3) Tech does the work, taps "CHECK OUT — Me voy"
+//      → save departure timestamp + duration
+//      → ticket REMAINS in calendar (does not auto-clean)
+//   4) Later (at home, end of day, anywhere), tech opens ticket and submits
+//      Field Report. Submission is BLOCKED if no check-in/out exists.
+//      → existing flow: submitting Field Report cleans dispatch from calendar
+//
+// Tickets dated BEFORE the cutoff date keep the legacy flow (no check-in
+// requirement) — admin can still submit without check-in/out.
+//
+// Data model: stored directly on the dispatch ticket document for simplicity.
+//   checkInAt:        ISO timestamp string
+//   checkInLat:       number (degrees)
+//   checkInLng:       number (degrees)
+//   checkInDist:      number (meters from registered customer address)
+//   checkInVerified:  bool (within geofence radius)
+//   checkInBy:        string (tech name)
+//   checkOutAt:       ISO timestamp
+//   checkOutLat/Lng/Dist/Verified/By: same shape as check-in
+//   checkOutDuration: number (minutes between check-in and check-out)
+// ════════════════════════════════════════════════════════════════════════════
+
+// Tickets dated >= this date (inclusive) require check-in/out to submit.
+// Older tickets follow legacy behavior — no check-in needed.
+const CHECKIN_REQUIRED_FROM_DATE = "2026-05-05";
+
+// Geofence thresholds (in meters) for distance from registered customer address
+const CHECKIN_GEOFENCE_OK_M = 100;       // <= this = green / verified
+const CHECKIN_GEOFENCE_WARN_M = 500;     // <= this = yellow / "are you sure?"
+                                          // > this  = red / require reason
+
+// Reminder threshold for checked-in but not checked-out
+const CHECKOUT_REMINDER_HOURS = 2;
+const CHECKOUT_REMINDER_CHECK_INTERVAL_MS = 5 * 60 * 1000; // poll every 5 min
+
+let _checkOutReminderTimer = null;
+let _checkOutRemindedTktIds = new Set(); // de-dupe so we don't re-remind every 5 min
+
+// ─── Helpers ───────────────────────────────────────────────────────
+
+// Returns true if this ticket falls under the new check-in/out requirement
+function _ticketRequiresCheckIn(t){
+  if(!t||!t.date)return false;
+  // Date strings are YYYY-MM-DD which sort lexicographically — perfect for compare
+  return t.date >= CHECKIN_REQUIRED_FROM_DATE;
+}
+
+// Has an active check-in but no check-out yet?
+function _ticketIsCheckedIn(t){return !!(t&&t.checkInAt&&!t.checkOutAt)}
+// Has both check-in and check-out?
+function _ticketIsCheckedOut(t){return !!(t&&t.checkInAt&&t.checkOutAt)}
+
+// Haversine distance between two GPS coords, in meters
+function _haversineMeters(lat1,lng1,lat2,lng2){
+  if(lat1==null||lng1==null||lat2==null||lng2==null)return Infinity;
+  const R=6371000; // earth radius m
+  const toRad=function(d){return d*Math.PI/180};
+  const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  return R*c;
+}
+
+// Friendly format minutes elapsed
+function _fmtElapsed(mins){
+  if(mins<1)return "just now";
+  if(mins<60)return Math.round(mins)+" min";
+  const h=Math.floor(mins/60),m=Math.round(mins%60);
+  return h+"h "+(m?m+"m":"");
+}
+
+// Get current GPS via browser API. One-shot, foreground-only — does NOT
+// require background location permission (just regular geolocation prompt).
+function _getCurrentGPS(){
+  return new Promise(function(resolve,reject){
+    if(!navigator.geolocation){reject(new Error("GPS not available on this device"));return}
+    navigator.geolocation.getCurrentPosition(
+      function(pos){
+        resolve({
+          lat:pos.coords.latitude,
+          lng:pos.coords.longitude,
+          accuracy:pos.coords.accuracy
+        });
+      },
+      function(err){
+        let msg="GPS error";
+        if(err.code===1)msg="Permiso de ubicación denegado — actívalo en Ajustes del navegador";
+        else if(err.code===2)msg="No se pudo obtener ubicación — revisa que GPS esté activo";
+        else if(err.code===3)msg="Tiempo agotado — intenta de nuevo";
+        reject(new Error(msg));
+      },
+      {enableHighAccuracy:true,timeout:15000,maximumAge:30000}
+    );
+  });
+}
+
+// Look up customer's registered address coords via existing geocoding cache.
+// Returns {lat,lng} or null if address is not geocodable.
+async function _ticketAddressCoords(t){
+  if(!t)return null;
+  // First try the existing geocoder which has cache
+  try{
+    if(typeof geocodeTicket==="function"){
+      const r=await geocodeTicket(t);
+      if(r&&typeof r.lat==="number"&&typeof r.lng==="number")return {lat:r.lat,lng:r.lng};
+    }
+  }catch(_e){}
+  return null;
+}
+
+// ─── Check-in flow ─────────────────────────────────────────────────
+
+async function _doCheckIn(ticketId){
+  const t=[...active,...done].find(function(x){return x.id===ticketId});
+  if(!t){toast("Ticket no encontrado","err");return}
+  if(!currentUser){toast("Inicia sesión primero","err");return}
+  if(!db){toast("Sin conexión a Firebase","err");return}
+  if(t.checkInAt){toast("Ya hiciste check-in para este cliente","warn");return}
+
+  // Disable button to prevent double-tap
+  const btn=document.getElementById("checkInBtn_"+ticketId);
+  if(btn){btn.disabled=true;btn.textContent="Obteniendo GPS…"}
+
+  let gps;
+  try{gps=await _getCurrentGPS()}
+  catch(e){
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — Llegué'}
+    toast(e.message||"Error de GPS","err");
+    return;
+  }
+
+  // Compute distance to customer address (geofence check)
+  let distanceM=null,verified=false;
+  const addrCoords=await _ticketAddressCoords(t);
+  if(addrCoords){
+    distanceM=Math.round(_haversineMeters(gps.lat,gps.lng,addrCoords.lat,addrCoords.lng));
+    verified=distanceM<=CHECKIN_GEOFENCE_OK_M;
+  }
+
+  // Geofence verdict — warn admin/tech if too far
+  if(distanceM!==null){
+    if(distanceM>CHECKIN_GEOFENCE_WARN_M){
+      // RED: probably wrong location — block unless tech confirms
+      const proceed=confirm(
+        "⚠️ Estás a "+(distanceM>=1000?(distanceM/1000).toFixed(1)+" km":distanceM+" m")+
+        " de la dirección registrada de "+t.customer+".\n\n"+
+        "Dirección registrada: "+(t.address||"(sin dirección)")+"\n\n"+
+        "¿Estás seguro que estás en este cliente? El check-in se va a registrar como NO VERIFICADO."
+      );
+      if(!proceed){
+        if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — Llegué'}
+        return;
+      }
+    }
+    // 100-500m range proceeds without confirm — borderline OK
+  }
+
+  // Save to Firestore
+  const nowIso=new Date().toISOString();
+  const payload={
+    checkInAt:nowIso,
+    checkInLat:gps.lat,
+    checkInLng:gps.lng,
+    checkInDist:distanceM!==null?distanceM:-1, // -1 = no address to compare
+    checkInVerified:verified,
+    checkInBy:currentUser.name
+  };
+  try{
+    await db.collection("tickets").doc(ticketId).update(payload);
+    // Update local cache so UI re-renders correctly
+    Object.assign(t,payload);
+    if(verified){
+      toast("✓ Check-in registrado · "+(distanceM!==null?distanceM+"m de la dirección":"sin dirección registrada"),"ok");
+    }else if(distanceM===null||distanceM<=CHECKIN_GEOFENCE_WARN_M){
+      toast("✓ Check-in registrado","ok");
+    }else{
+      toast("Check-in guardado (no verificado)","warn");
+    }
+    // Re-render the ticket detail panel to show new state
+    if(typeof openTktDetail==="function")openTktDetail(ticketId);
+    // Refresh calendar/daily so any in-card indicators update
+    try{rndrA();rndrD();if(typeof rndrCal==="function")rndrCal()}catch(_e){}
+  }catch(e){
+    console.warn("Check-in error:",e);
+    toast("Error al guardar check-in","err");
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — Llegué'}
+  }
+}
+
+async function _doCheckOut(ticketId){
+  const t=[...active,...done].find(function(x){return x.id===ticketId});
+  if(!t){toast("Ticket no encontrado","err");return}
+  if(!currentUser){toast("Inicia sesión primero","err");return}
+  if(!t.checkInAt){toast("Tienes que hacer check-in primero","warn");return}
+  if(t.checkOutAt){toast("Ya hiciste check-out","warn");return}
+
+  const btn=document.getElementById("checkOutBtn_"+ticketId);
+  if(btn){btn.disabled=true;btn.textContent="Obteniendo GPS…"}
+
+  let gps;
+  try{gps=await _getCurrentGPS()}
+  catch(e){
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">⏹</span>&nbsp; CHECK OUT — Me voy'}
+    toast(e.message||"Error de GPS","err");
+    return;
+  }
+
+  let distanceM=null,verified=false;
+  const addrCoords=await _ticketAddressCoords(t);
+  if(addrCoords){
+    distanceM=Math.round(_haversineMeters(gps.lat,gps.lng,addrCoords.lat,addrCoords.lng));
+    verified=distanceM<=CHECKIN_GEOFENCE_OK_M;
+  }
+
+  // Compute duration from check-in
+  const inMs=new Date(t.checkInAt).getTime();
+  const nowIso=new Date().toISOString();
+  const durationMin=Math.round((Date.now()-inMs)/60000);
+
+  const payload={
+    checkOutAt:nowIso,
+    checkOutLat:gps.lat,
+    checkOutLng:gps.lng,
+    checkOutDist:distanceM!==null?distanceM:-1,
+    checkOutVerified:verified,
+    checkOutBy:currentUser.name,
+    checkOutDuration:durationMin
+  };
+  try{
+    await db.collection("tickets").doc(ticketId).update(payload);
+    Object.assign(t,payload);
+    // Remove from "reminded" set since they checked out
+    _checkOutRemindedTktIds.delete(ticketId);
+    toast("✓ Check-out registrado · duración "+_fmtElapsed(durationMin),"ok");
+    if(typeof openTktDetail==="function")openTktDetail(ticketId);
+    try{rndrA();rndrD();if(typeof rndrCal==="function")rndrCal()}catch(_e){}
+  }catch(e){
+    console.warn("Check-out error:",e);
+    toast("Error al guardar check-out","err");
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">⏹</span>&nbsp; CHECK OUT — Me voy'}
+  }
+}
+
+// ─── Ticket detail UI panel ────────────────────────────────────────
+// Returns the HTML for the check-in/out panel that goes at the top of the
+// ticket detail view. Different states render differently.
+function _checkInPanelHTML(t){
+  if(!t)return "";
+  if(!_ticketRequiresCheckIn(t))return ""; // legacy ticket — no panel
+  // Don't show on canceled or completed tickets
+  if(t.status==="canceled")return "";
+
+  // Already checked out — show summary
+  if(_ticketIsCheckedOut(t)){
+    const inT=new Date(t.checkInAt);
+    const outT=new Date(t.checkOutAt);
+    const dur=t.checkOutDuration||Math.round((outT.getTime()-inT.getTime())/60000);
+    const inDistOK=t.checkInVerified||t.checkInDist<0;
+    const outDistOK=t.checkOutVerified||t.checkOutDist<0;
+    const verifiedBadge=(inDistOK&&outDistOK)?
+      '<span style="background:#dcfce7;color:#166534;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">✓ VERIFICADO</span>':
+      '<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">⚠ NO VERIFICADO</span>';
+    return '<div style="margin-bottom:14px;padding:14px 16px;background:#f0fdf4;border:2px solid #86efac;border-radius:12px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">'+
+        '<div style="font-weight:800;font-size:15px;color:#166534">✓ Visita completa</div>'+
+        verifiedBadge+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;color:#166534">'+
+        '<div><div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Llegada</div>'+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkInDist>=0?' · '+t.checkInDist+'m':'')+'</div>'+
+        '<div><div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Salida</div>'+esc(outT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkOutDist>=0?' · '+t.checkOutDist+'m':'')+'</div>'+
+      '</div>'+
+      '<div style="margin-top:8px;font-size:12px;color:#15803d"><b>Duración:</b> '+esc(_fmtElapsed(dur))+' · Registrado por '+esc(t.checkInBy||"—")+'</div>'+
+    '</div>';
+  }
+
+  // Checked in but not out — show ongoing visit
+  if(_ticketIsCheckedIn(t)){
+    const inT=new Date(t.checkInAt);
+    const elapsedMin=Math.round((Date.now()-inT.getTime())/60000);
+    const distInfo=t.checkInDist>=0?(t.checkInDist+'m de la dirección'):"";
+    const distColor=t.checkInVerified?"#166534":"#92400e";
+    return '<div style="margin-bottom:14px;padding:14px 16px;background:#fefce8;border:2px solid #fde047;border-radius:12px">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'+
+        '<div style="font-weight:800;font-size:15px;color:#78350f">⏱ En el cliente</div>'+
+        '<div style="font-size:13px;color:#92400e">desde '+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+' · '+esc(_fmtElapsed(elapsedMin))+'</div>'+
+      '</div>'+
+      (distInfo?'<div style="font-size:12px;color:'+distColor+';margin-bottom:10px">📍 '+esc(distInfo)+(t.checkInVerified?' · ✓ verificado':' · ⚠ no verificado')+'</div>':'')+
+      '<button id="checkOutBtn_'+esc(t.id)+'" onclick="_doCheckOut(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:18px">⏹</span> CHECK OUT — Me voy</button>'+
+    '</div>';
+  }
+
+  // Not checked in yet — show big check-in button
+  return '<div style="margin-bottom:14px;padding:14px 16px;background:#eff6ff;border:2px solid #3b82f6;border-radius:12px">'+
+    '<div style="font-weight:800;font-size:15px;color:#1e3a8a;margin-bottom:6px">📍 Llegada al cliente</div>'+
+    '<div style="font-size:12px;color:#1e40af;margin-bottom:10px">Toca cuando llegues a la casa del cliente. Se registra tu hora y ubicación GPS.</div>'+
+    '<button id="checkInBtn_'+esc(t.id)+'" onclick="_doCheckIn(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:18px">▶</span> CHECK IN — Llegué</button>'+
+  '</div>';
+}
+
+// ─── Check-out reminder (background poll) ───────────────────────────
+// Every 5 min, scan tickets where the current user is checked in but not
+// checked out. If >2 hours have passed, show a reminder toast.
+function _scanForForgottenCheckOuts(){
+  if(!currentUser)return;
+  const myTickets=[...active].filter(function(t){
+    return t.checkInAt&&!t.checkOutAt&&t.checkInBy===currentUser.name;
+  });
+  myTickets.forEach(function(t){
+    if(_checkOutRemindedTktIds.has(t.id))return;
+    const elapsedH=(Date.now()-new Date(t.checkInAt).getTime())/3600000;
+    if(elapsedH>=CHECKOUT_REMINDER_HOURS){
+      _checkOutRemindedTktIds.add(t.id);
+      toast("⏰ Lleva "+_fmtElapsed(elapsedH*60)+" en "+(t.customer||"un cliente")+" — ¿olvidaste hacer check-out?","warn");
+    }
+  });
+}
+function _startCheckOutReminderPoll(){
+  if(_checkOutReminderTimer)return;
+  _scanForForgottenCheckOuts();
+  _checkOutReminderTimer=setInterval(_scanForForgottenCheckOuts,CHECKOUT_REMINDER_CHECK_INTERVAL_MS);
+}
+function _stopCheckOutReminderPoll(){
+  if(_checkOutReminderTimer){clearInterval(_checkOutReminderTimer);_checkOutReminderTimer=null}
+  _checkOutRemindedTktIds.clear();
+}
+
+// ─── Validation: block Field Report submit if no check-in/out ────
+// Returns null if OK to submit, or a string error message if not.
+function _validateCheckInForSubmit(t){
+  if(!t)return null;
+  if(!_ticketRequiresCheckIn(t))return null; // grandfathered
+  // Admin/organizer can override — they may be entering data on behalf of techs
+  if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))return null;
+  if(!t.checkInAt)return "Tienes que hacer CHECK IN antes de entregar el Field Report. Abre el ticket y toca el botón verde de Check-In.";
+  if(!t.checkOutAt)return "Tienes que hacer CHECK OUT antes de entregar el Field Report. Abre el ticket y toca el botón rojo de Check-Out.";
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// END CHECK-IN / CHECK-OUT MODULE
+// ════════════════════════════════════════════════════════════════════════════
+
+
 // - Config (URL + API token) stored in Firestore: _config/traccar
 // - Tech-to-device mapping stored in Firestore: _config/traccarTechMap
 // - Live GPS rendering on Maps tab via toggle
