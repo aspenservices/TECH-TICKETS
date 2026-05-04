@@ -3441,11 +3441,11 @@ function renderTdAttachments(ticketId){
   }else if(isAdmin){
     h+='<div style="padding:14px;background:#fafaf8;border:2px dashed #e5e5dc;border-radius:10px;color:var(--i3);font-size:12px;text-align:center;margin-bottom:10px">No attachments yet — click below to add</div>';
   }
-  // Permission: admin always, OR a tech who is assigned to this ticket
-  var _t=[...active,...done].find(function(x){return x.id===ticketId});
-  var _canUp=isAdmin||(currentUser&&currentUser.role==="tech"&&_t&&(_t.techs||[]).includes(currentUser.name));
+  // Permission: only admin/organizer can upload — techs are view-only
+  // (per Alberto's spec: techs add new info via Field Report, not by editing the ticket).
+  var _canUp=isAdmin;
   if(_canUp){
-    var _isTechRole=currentUser&&currentUser.role==="tech";
+    var _isTechRole=false; // never true here now, but kept for code symmetry below
     h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
     if(_isTechRole){
       // Techs in field: prominent camera button + secondary file picker
@@ -5609,18 +5609,33 @@ function openTktDetail(id){
     h+='<div class="tp-row"><span>Schedule</span><span style="font-weight:700">'+esc(_dateLbl)+(t.arrival?' · '+esc(t.arrival):'')+'</span></div>';
   }
   // Notes
-  // Spa Description - always show, editable
+  // Techs see Spa Description and Notes as READ-ONLY — they add new info via Field Report.
+  var _isTechView=currentUser&&currentUser.role==="tech";
+  // Spa Description
   h+='<div class="lbl">Spa Description</div>';
-  h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(t.spaDesc||'')+'</textarea>';
-  h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
+  if(_isTechView){
+    var _spa=t.spaDesc||"";
+    h+='<div class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap;'+(_spa?'':'color:#aaa;font-style:italic')+'">'+esc(_spa||"(no spa description)")+'</div>';
+    h+='<div style="margin-bottom:10px"></div>';
+  }else{
+    h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(t.spaDesc||'')+'</textarea>';
+    h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
+  }
   // Attachments section (rendered separately so it can re-render in place after upload/delete)
   h+='<div id="tdAttSection_'+t.id+'"></div>';
-  h+='<div class="lbl" style="display:flex;align-items:center;justify-content:space-between"><span>Notes / Updates</span><span style="font-size:10px;color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Tap mic to dictate</span></div>';
-  h+='<div class="notes-with-mic">';
-  h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
-  h+='<button type="button" class="mic-btn" id="micBtn_tktDetailNotes" onclick="voiceToggle(\'tktDetailNotes\')" title="Dictate notes" aria-label="Voice input">'+icon("mic",17,{color:"currentColor"})+'</button>';
-  h+='</div>';
-  h+='<div style="font-size:10px;color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
+  // Notes / Updates
+  if(_isTechView){
+    h+='<div class="lbl"><span>Notes / Updates</span></div>';
+    var _notes=t.notes||"";
+    h+='<div class="notes" style="min-height:120px;font-size:14px;white-space:pre-wrap;'+(_notes?'':'color:#aaa;font-style:italic')+'">'+esc(_notes||"(no notes — add new info through your Field Report)")+'</div>';
+  }else{
+    h+='<div class="lbl" style="display:flex;align-items:center;justify-content:space-between"><span>Notes / Updates</span><span style="font-size:10px;color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Tap mic to dictate</span></div>';
+    h+='<div class="notes-with-mic">';
+    h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
+    h+='<button type="button" class="mic-btn" id="micBtn_tktDetailNotes" onclick="voiceToggle(\'tktDetailNotes\')" title="Dictate notes" aria-label="Voice input">'+icon("mic",17,{color:"currentColor"})+'</button>';
+    h+='</div>';
+    h+='<div style="font-size:10px;color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
+  }
   // Actions
   h+='<div id="tktDetailActionsWrap" style="margin-top:16px;padding-top:16px;border-top:2px solid var(--ln)"><div class="lbl">Actions</div><div id="tktDetailActions" style="display:flex;gap:8px;flex-wrap:wrap">';
   var _isTech=currentUser&&currentUser.role==="tech";
@@ -7353,10 +7368,17 @@ let _traccarLiveEnabled = false;
 // ═══════════════════════════════════════════════════════════════════
 const RR_HRRR_META_URL  = "https://mesonet.agron.iastate.edu/data/gis/images/4326/hrrr/refd_1080.json";
 const RR_HRRR_TMS_BASE  = "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/hrrr::REFP-F";
-const RR_HRRR_FRAME_MIN = [0, 15, 30, 45, 60]; // forecast minutes shown
+// The 5 timeline slots are at OFFSET minutes from "now" — actual HRRR
+// forecast minutes are computed at build time so frame 0 is always the
+// closest 15-min boundary to right-now (regardless of how recent the
+// model run is). HRRR forecasts run out to F1080 (18 hours).
+const RR_HRRR_OFFSETS   = [0, 15, 30, 45, 60];
+const RR_HRRR_MAX_FMIN  = 1080;
 
 let _rainRadarEnabled = false;
-let _rainRadarTimeline = [];        // [{date, fmin, initStr}, ...]
+let _rainRadarInitDate = null;      // model init Date of currently shown HRRR run
+let _rainRadarFminNow = -1;         // forecast minute treated as "now" in current timeline
+let _rainRadarTimeline = [];        // [{date, fmin, offset, initStr}, ...]
 let _rainRadarLayerCache = {};      // {pos: L.TileLayer}
 let _rainRadarCurrentPos = -1;
 let _rainRadarNowPos = 0;           // first frame (F0000) = "now"
@@ -7396,14 +7418,25 @@ async function _rainRadarFetchHRRRMeta(){
 // ─── Timeline builder ───
 function _rainRadarBuildTimeline(initDate){
   const initStr=_rainRadarHRRRTimestamp(initDate);
-  _rainRadarTimeline=RR_HRRR_FRAME_MIN.map(function(fmin){
+  // Find the HRRR forecast minute closest to (and not after) right-now.
+  // Round DOWN to a 15-min boundary so frame 0 ≤ wall-clock now ≤ frame 0 + 15min.
+  const minsSinceInit=Math.floor((Date.now()-initDate.getTime())/60000);
+  let fminNow=Math.max(0, Math.floor(minsSinceInit/15)*15);
+  // Cap so fminNow + 60 ≤ HRRR max (1080). Will only matter if init is
+  // unusually stale (>17h old) — shouldn't happen in normal operation.
+  if(fminNow>RR_HRRR_MAX_FMIN-60)fminNow=RR_HRRR_MAX_FMIN-60;
+  _rainRadarInitDate=initDate;
+  _rainRadarFminNow=fminNow;
+  _rainRadarTimeline=RR_HRRR_OFFSETS.map(function(offset){
+    const fmin=fminNow+offset;
     return {
       date:new Date(initDate.getTime()+fmin*60*1000),
       fmin:fmin,
+      offset:offset,
       initStr:initStr
     };
   });
-  _rainRadarNowPos=0; // F0000 = analysis time = "now"
+  _rainRadarNowPos=0; // first slot is always "now" (offset 0)
 }
 
 // ─── Layer management ───
@@ -7470,12 +7503,12 @@ function _rainRadarUpdateUI(){
 
   const typeLabel=document.getElementById("rainRadarFrameType");
   if(typeLabel){
-    const fmin=_rainRadarTimeline[_rainRadarCurrentPos].fmin;
-    if(fmin===0){
+    const offset=_rainRadarTimeline[_rainRadarCurrentPos].offset;
+    if(offset===0){
       typeLabel.textContent="NOW";
       typeLabel.style.background="#0ea5e9";typeLabel.style.color="#fff";
     }else{
-      typeLabel.textContent="+"+fmin+" min";
+      typeLabel.textContent="+"+offset+" min";
       typeLabel.style.background="#fef3c7";typeLabel.style.color="#92400e";
     }
   }
@@ -7560,15 +7593,20 @@ async function _rainRadarToggle(){
     if(player)player.style.display="flex";
     if(_mapsInstance)_rainRadarShowFrame(_mapsInstance,_rainRadarNowPos);
 
-    // Auto-refresh every 5 min. HRRR runs hourly, so most polls won't see
-    // a new run; we only rebuild the timeline when init time has advanced.
+    // Auto-refresh every 5 min. Rebuild the timeline if EITHER:
+    //   - HRRR published a newer run (init time advanced), OR
+    //   - 15+ minutes of wall-clock time passed (so the "now" frame would
+    //     shift forward to a later forecast minute).
     if(_rainRadarRefreshTimer)clearInterval(_rainRadarRefreshTimer);
     _rainRadarRefreshTimer=setInterval(async function(){
       if(!_rainRadarEnabled||!_mapsInstance)return;
       const fresh=await _rainRadarFetchHRRRMeta();
       if(!fresh)return;
-      const currentInit=_rainRadarTimeline[0]&&_rainRadarTimeline[0].date.getTime();
-      if(fresh.getTime()===currentInit)return; // same run, nothing new
+      const initChanged=!_rainRadarInitDate||fresh.getTime()!==_rainRadarInitDate.getTime();
+      const newMinsSinceInit=Math.floor((Date.now()-fresh.getTime())/60000);
+      const newFminNow=Math.max(0,Math.floor(newMinsSinceInit/15)*15);
+      const fminShifted=newFminNow!==_rainRadarFminNow;
+      if(!initChanged&&!fminShifted)return; // nothing to update yet
       const wasPlaying=_rainRadarPlaying;
       _rainRadarPause();
       _rainRadarBuildTimeline(fresh);
