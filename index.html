@@ -796,12 +796,16 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 <div class="hdr-sub">Service Ticket System</div>
 <div class="tabs" id="tabBar"><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log</div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div><div class="tab hidden" id="tab7" onclick="showTab(7)">Maps</div></div>
 
+<!-- GPS Health Banner — TECH ROLE ONLY. Hidden for admin/organizer.
+     Lives above all tabs so it's visible regardless of which tab the tech is on.
+     Auto-managed by _traccarRenderTechBanner() (polled every 60s) — that
+     function refuses to render anything for non-tech users. -->
+<div id="gpsHealthBanner" style="display:none;max-width:1400px;margin:0 auto 14px;padding:0 16px"></div>
+
 <div id="cfgErr" style="display:none"></div>
 
 <!-- ══ NEW TICKET ══ -->
 <div class="wrap show" id="pg0">
-  <!-- GPS Health Banner (tech only — auto-shown when GPS is stale) -->
-  <div id="gpsHealthBanner" style="display:none"></div>
   <!-- Mode Selector -->
   <div class="mode-sel" id="modeSel">
     <button class="mode-btn" onclick="setMode('ticket')"><span class="mode-ico"><span class="lucide-mount" data-lucide="wrench" data-size="22" data-color="var(--ac)"></span></span><span class="mode-t">Field Report</span><span class="mode-d">Labor performed, photos & notes</span></button>
@@ -1823,6 +1827,14 @@ function doLogin(){
   if(currentUser&&currentUser.role==="tech"){
     try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3000)}catch(_e){}
     try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("login")},4500)}catch(_e){}
+  }else{
+    // Admin/organizer: explicitly clear any GPS banner that may have been left
+    // in the DOM from a previous tech session in this same browser tab.
+    try{
+      var _gpsBan=document.getElementById("gpsHealthBanner");
+      if(_gpsBan){_gpsBan.style.display="none";_gpsBan.innerHTML=""}
+      if(typeof _traccarStopTechBannerPolling==="function")_traccarStopTechBannerPolling();
+    }catch(_e){}
   }
   // Check-out reminder polling — every 5 min checks if user is checked in for
   // >2h without checking out. Runs for ALL roles (techs and admins) since
@@ -3207,6 +3219,12 @@ async function init(){
     if(currentUser&&currentUser.role==="tech"){
       try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3500)}catch(_e){}
       try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("auto-login")},5000)}catch(_e){}
+    }else{
+      // Admin/organizer auto-login: clear any leftover GPS banner from a prior session
+      try{
+        var _gpsBan2=document.getElementById("gpsHealthBanner");
+        if(_gpsBan2){_gpsBan2.style.display="none";_gpsBan2.innerHTML=""}
+      }catch(_e){}
     }
     try{if(typeof _startCheckOutReminderPoll==="function")setTimeout(_startCheckOutReminderPoll,6000)}catch(_e){}
   }
@@ -4426,8 +4444,21 @@ function rndrSlog(){
   h+=`</div>`;el.innerHTML=h;
 }
 async function slToggleTech(docId,techName){if(!db)return;try{const doc=await db.collection("tickets").doc(docId).get();const d=doc.data();let techs=(d.techs||[]).slice();if(techs.includes(techName))techs=techs.filter(x=>x!==techName);else techs.push(techName);await db.collection("tickets").doc(docId).update({techs,status:techs.length?"complete":"pending"});toast(techs.length?techName+" updated":"Unassigned");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
-async function slUpdateField(docId,field,val){if(!db)return;try{const upd={};upd[field]=val;await db.collection("tickets").doc(docId).update(upd);toast("Updated ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
-async function slDeleteTkt(docId){if(!confirm("Delete this ticket?"))return;if(!db)return;try{await db.collection("tickets").doc(docId).delete();slogPreviewId=null;toast("Deleted ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
+async function slUpdateField(docId,field,val){
+  // Service Log inline edits are admin/organizer only (UI hides this control from techs)
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit Service Log","err");return}
+  if(!db)return;
+  try{const upd={};upd[field]=val;await db.collection("tickets").doc(docId).update(upd);toast("Updated ✓");setTimeout(refreshAll,500)}
+  catch(e){toast("Error: "+e.message,"err")}
+}
+async function slDeleteTkt(docId){
+  // Admin/organizer only — defense in depth (UI also hides this from techs)
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can delete tickets","err");return}
+  if(!confirm("Delete this ticket?"))return;
+  if(!db)return;
+  try{await db.collection("tickets").doc(docId).delete();slogPreviewId=null;toast("Deleted ✓");setTimeout(refreshAll,500)}
+  catch(e){toast("Error: "+e.message,"err")}
+}
 async function cancelVisit(docId){
   if(!db)return;
   try{
@@ -4500,6 +4531,8 @@ async function uncancelVisit(docId){
   }catch(e){toast("Error: "+e.message,"err")}
 }
 async function askDeleteWithWarning(docId){
+  // Admin only — defense in depth (UI also hides this from techs)
+  if(!currentUser||currentUser.role!=="admin"){toast("Only admins can delete tickets","err");return}
   // Count other tickets for the same customer
   const t=[...active,...done].find(x=>x.id===docId);if(!t)return;
   const custName=(t.customer||"").trim().toLowerCase();
@@ -4649,6 +4682,18 @@ function setMode(m){
   document.getElementById("ticketMode").style.display=m==="ticket"?"block":"none";
   document.getElementById("estMode").style.display=m==="estimate"?"block":"none";
   if(m==="estimate"){document.getElementById("eDate").value=localDateStr();buildETechPills();eRndr()}
+  // If startTicketFrom() / startEstimateFrom() set _backToTktId, they call
+  // setMode immediately AFTER setting it — so resetting here would clear that
+  // intent. We only reset _backToTktId when setMode is called by the user
+  // clicking the mode buttons in the menu (not via startTicketFrom). Detect
+  // by checking if the call stack came through startTicketFrom: if there's no
+  // back-to-ticket button currently visible, this is a manual mode switch.
+  setTimeout(function(){
+    var bb=document.getElementById("backToTktBtn");
+    var bbE=document.getElementById("backToEstBtn");
+    var bbVisible=(bb&&bb.style.display!=="none")||(bbE&&bbE.style.display!=="none");
+    if(!bbVisible)_backToTktId=null;
+  },300);
 }
 
 
@@ -4666,7 +4711,19 @@ function setEHrs(h){
   const info=document.getElementById("eHrsInfo");info.style.display="block";
   const wt=eGWT();
   if(wt==="full"){info.className="w-result full-cov";info.innerHTML=`<b>${h} hour${h>1?"s":""}</b> — Labor <b>FREE</b> (warranty)`}
-  else{const amt=150+Math.max(0,h-1)*100;info.className="w-result rda-cov";info.innerHTML=`<b>${h} hour${h>1?"s":""}</b> — TC $150${h>1?` + ${h-1}hr × $100`:""} = <b>$${amt}</b>`}
+  else{
+    // New billing rule (May 2026):
+    //   <60min  → 60min minimum
+    //   ≥60min  → round up to next 15-min increment
+    // First hour covered by TC ($150). Each additional 15 min: $25.
+    const billMins=h<1?60:Math.ceil(h*4)*15; // h is in hours; convert to mins via *60, then quarters via *4
+    const totalQuarters=Math.round(billMins/15);
+    const extraQuarters=Math.max(0,totalQuarters-4);
+    const amt=150+extraQuarters*25;
+    const labelExtra=extraQuarters>0?` + ${extraQuarters*15}min × $25`:"";
+    info.className="w-result rda-cov";
+    info.innerHTML=`<b>${h} hour${h>1?"s":""}</b> — TC $150${labelExtra} = <b>$${amt}</b>`;
+  }
   eRndr();
 }
 function eGWT(){if(!eWHas||!eWMod||!eWYr)return"rda";if(eWMod==="ss")return eWYr<=3?"full":"rda";if(eWYr>5)return"rda";if(eWMod==="es")return"full";if(eWMod==="gs")return eWYr<=3?"full":"half";if(eWMod==="vs")return eWYr<=3?"full":"rda";return"rda"}
@@ -4675,8 +4732,19 @@ function eCalcLabor(){
   if(!eHrsVal||eHrsVal<=0)return null;
   const wt=eGWT();
   if(wt==="full")return{amount:0,hours:eHrsVal,label:"Labor FREE (warranty)",free:true};
-  const extra=Math.max(0,eHrsVal-1);
-  return{amount:150+extra*100,tc:150,extra,extraAmt:extra*100,hours:eHrsVal,label:extra>0?`TC $150 + ${extra}hr × $100`:`TC $150`,free:false};
+  // New billing (matches calcLabor in Field Report side):
+  //   eHrsVal is in hours (e.g. 1.5 for 1h30m).
+  //   <1h    → bill 1 full hour
+  //   ≥1h    → round up to next 15-min increment
+  // First hour is TC ($150), every additional 15 min is $25.
+  const rawMins=eHrsVal*60;
+  const billMins=rawMins<60?60:Math.ceil(rawMins/15)*15;
+  const totalQuarters=Math.round(billMins/15);
+  const extraQuarters=Math.max(0,totalQuarters-4);
+  const extraAmt=extraQuarters*25;
+  const amount=150+extraAmt;
+  const label=extraQuarters>0?`TC $150 + ${extraQuarters*15}min × $25`:"TC $150";
+  return{amount:amount,tc:150,extra:+(extraQuarters*0.25).toFixed(2),extraAmt:extraAmt,hours:eHrsVal,label:label,free:false};
 }
 function eCalcTax(){return eSel.reduce((s,p)=>eIsService(p)?s:s+eGPr(p)*p.qty,0)*TAX_RATE}
 function eSetWYN(v){eWHas=v;eWMod="";eWYr=0;document.getElementById("eWarYes").className="wb yes"+(v===true?" on-y":"");document.getElementById("eWarNo").className="wb no"+(v===false?" on-n":"");document.getElementById("eWS2").classList.toggle("show",v);document.getElementById("eWS3").classList.remove("show");eUpWR();if(eHrsVal)setEHrs(eHrsVal);eRndr()}
@@ -5063,13 +5131,16 @@ function rndrCalTechPills(counts){
 function rndrCal(){if(!calYear)calInit();const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];const isTech=currentUser&&currentUser.role==="tech";const q=(document.getElementById("searchCal")||{}).value||"";
 // For techs, we hide dispatch tickets that have already been handled (report submitted or ticket marked done).
 const today=fmtD(new Date());
-// Normalize customer name aggressively to catch variations like "Hill, Mark" vs "hill mark" vs "Hill,Mark"
-function _normCust(s){return(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-// Build a lookup of field reports already submitted for a customer on a specific date.
+// Customer-name matching uses the family-name-aware helper _custGroupKey
+// defined globally. This handles real-world variations like:
+//   "Bellinger, Vince"  ↔  "Bellinger, Vince and Mary"  → both → "fam:bellinger"
+// The previous simple alphanumeric normalization missed these and left
+// dispatch tickets in the calendar after their reports were filed.
+// Build a lookup of field reports already submitted, keyed by groupKey+date.
 const fieldReportKeys=new Set();
 // Also track "any report ever done for this customer" — used for past-dated stale dispatch tickets
 const customerHasCompletedReport=new Set();
-// Track all completed/submitted field reports per customer (for ±14 day matching)
+// Track all completed/submitted field reports per customer-key (for ±30 day matching).
 // Each entry: { date: "YYYY-MM-DD", createdMs: Number } — createdMs is when the report was created (server time)
 const customerReports={};
 function _ticketCreatedMs(t){
@@ -5085,7 +5156,7 @@ function _ticketCreatedMs(t){
 }
 [...active,...done].forEach(t=>{
   if(t.source==="dispatch")return; // only count tech-submitted field reports
-  const cust=_normCust(t.customer);
+  const cust=_custGroupKey(t.customer);
   const dt=(t.date||"").trim();
   if(!cust)return;
   if(dt)fieldReportKeys.add(cust+"|"+dt);
@@ -5098,7 +5169,7 @@ function _ticketCreatedMs(t){
     }
   }
 });
-// Helper: is there a field report within ±14 days of this dispatch's visit date,
+// Helper: is there a field report within ±30 days of this dispatch's visit date,
 // AND that report was created AFTER the dispatch was created?
 // (If the report was created BEFORE the dispatch, the dispatch is a NEW separate visit
 // and must NOT be hidden — common when a customer needs a follow-up visit.)
@@ -5129,15 +5200,17 @@ const allTkts=[...active,...done].filter(t=>{
   if(t.source!=="dispatch")return false;
   if(t.fieldReportSubmitted)return false;
   if(t.status==="canceled")return false;
+  // Also hide if check-in/check-out was completed — physical work happened, even
+  // if the field report flag hasn't been written yet (race condition guard).
+  if(_dispatchIsDone(t))return false;
   // Apply this safety net to ALL users (admin + tech): if a field report already exists
   // for the same customer + date, the dispatch ticket should never appear in the calendar.
   // This protects against race conditions where fieldReportSubmitted flag failed to update.
-  const cust=_normCust(t.customer);
+  const cust=_custGroupKey(t.customer);
   const dt=(t.date||"").trim();
   if(cust&&dt&&fieldReportKeys.has(cust+"|"+dt))return false;
   // Extended safety net: hide dispatch if there is a completed field report for the same
   // customer within ±30 days, AND that report was created after this dispatch.
-  // Protects against false positives when admin creates a NEW dispatch after a prior report.
   const dispatchCreatedMs=_ticketCreatedMs(t);
   if(cust&&dt&&_hasMatchingReport(cust,dt,dispatchCreatedMs))return false;
   if(isTech){
@@ -5441,8 +5514,10 @@ function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMo
 function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return "";if(s==="complete")return '<span class="st-badge st-complete">Submitted</span>';if(s==="done")return '<span class="st-badge st-done">'+icon("check",10,{color:"#047857"})+'Done</span>';if(s==="canceled")return '<span class="st-badge st-canceled">Canceled</span>';if(s==="reschedule")return '<span class="st-badge st-reschedule">Reschedule</span>';return ""}
 function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"#f0f0f0",text:"#555"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;let h=`<div class="cal-tkt-mini${stRowClass}"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${t.paid?";border-left:3px solid #16a34a;background:#f0fdf4":""}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:#dc2626;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='#dc2626'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p>${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</p>`;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;background:#16a34a;color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">CC ✓</span> `;if(t.ccRequested)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fee2e2;color:#991b1b">Repeat</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#fef3c7;color:#92400e;display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"#92400e"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#dbeafe;color:#1e40af">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#d1fae5;color:#065f46">Credit</span> `;if(fullAddr)h+=`<p style="font-size:10px;color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:10px;color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
-// Toggle paid status of a ticket
+// Toggle paid status of a ticket — admin/organizer only (the UI also hides
+// the toggle from techs, but defense in depth prevents console-side bypass).
 async function togglePaid(id,currentlyPaid){
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can mark tickets paid","err");return}
   if(!db)return;
   var newVal=!currentlyPaid;
   try{
@@ -5618,7 +5693,16 @@ async function calSaveAssign(docId){
   }catch(e){toast("Error","err")}
 }
 function calDragStart(e,id){dragTktId=id;e.dataTransfer.effectAllowed="move";e.target.classList.add("dragging");setTimeout(()=>{if(e.target)e.target.classList.remove("dragging")},200)}
-async function calDropOnDay(e,ds){e.preventDefault();e.currentTarget.classList.remove("drop-over");if(!dragTktId||!db)return;try{await db.collection("tickets").doc(dragTktId).update({date:ds});toast("Moved to "+ds);dragTktId=null;setTimeout(refreshAll,500)}catch(er){toast("Error","err")}}
+async function calDropOnDay(e,ds){
+  e.preventDefault();e.currentTarget.classList.remove("drop-over");
+  // Drag-and-drop reschedule is admin/organizer only — techs shouldn't be able
+  // to move tickets between days. (UI hides drag handles for techs but defense
+  // in depth in case the DOM is manipulated.)
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can move tickets","err");return}
+  if(!dragTktId||!db)return;
+  try{await db.collection("tickets").doc(dragTktId).update({date:ds});toast("Moved to "+ds);dragTktId=null;setTimeout(refreshAll,500)}
+  catch(er){toast("Error: "+er.message,"err")}
+}
 // Drop on a tech column in Team view: change assigned tech (and date if needed)
 async function calDropOnTech(e,techName,ds){
   e.preventDefault();
@@ -6468,8 +6552,21 @@ function openRouteInExternalMaps(provider){
     window.open(url,"_blank");
   }
 }
-async function dtUpdateCC(id){if(!db)return;try{var upd={ccOnFile:document.getElementById("dtCcFile").checked,ccRequested:document.getElementById("dtCcReq").checked};var rp=document.getElementById("dtRepeat");if(rp)upd.isRepeat=rp.checked;var ck=document.getElementById("dtCheck");if(ck)upd.payCheck=ck.checked;var cr=document.getElementById("dtCredit");if(cr)upd.payCredit=cr.checked;await db.collection("tickets").doc(id).update(upd);toast("CC updated ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
-async function saveTktNotes(id){if(!db)return;try{await db.collection("tickets").doc(id).update({notes:document.getElementById("tktDetailNotes").value});toast("Saved ✓")}catch(e){toast("Error","err")}}
+async function dtUpdateCC(id){
+  // Ticket flag toggles (CC on file, Repeat, Check/Credit) are admin/organizer only.
+  // The UI shows the editable checkboxes only to admins; techs see read-only badges.
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit ticket flags","err");return}
+  if(!db)return;
+  try{var upd={ccOnFile:document.getElementById("dtCcFile").checked,ccRequested:document.getElementById("dtCcReq").checked};var rp=document.getElementById("dtRepeat");if(rp)upd.isRepeat=rp.checked;var ck=document.getElementById("dtCheck");if(ck)upd.payCheck=ck.checked;var cr=document.getElementById("dtCredit");if(cr)upd.payCredit=cr.checked;await db.collection("tickets").doc(id).update(upd);toast("CC updated ✓");setTimeout(refreshAll,500)}
+  catch(e){toast("Error: "+e.message,"err")}
+}
+async function saveTktNotes(id){
+  // Notes are admin-only (techs see read-only and add new info via Field Report).
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit ticket notes","err");return}
+  if(!db)return;
+  try{await db.collection("tickets").doc(id).update({notes:document.getElementById("tktDetailNotes").value});toast("Saved ✓")}
+  catch(e){toast("Error: "+e.message,"err")}
+}
 
 // ═══ VOICE-TO-TEXT (WebSpeech API) ═══
 // Single-instance state — toggling on a different field stops the current session.
@@ -6526,7 +6623,13 @@ function voiceToggle(targetId){
   try{r.start();toast("Listening… tap mic again to stop")}
   catch(_e){toast("Couldn't start voice","err");voiceStop()}
 }
-async function saveTktSpaDesc(id){if(!db)return;try{await db.collection("tickets").doc(id).update({spaDesc:document.getElementById("tktDetailSpaDesc").value});toast("Spa desc saved ✓")}catch(e){toast("Error","err")}}
+async function saveTktSpaDesc(id){
+  // Spa Description is admin-only (techs see read-only).
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit spa description","err");return}
+  if(!db)return;
+  try{await db.collection("tickets").doc(id).update({spaDesc:document.getElementById("tktDetailSpaDesc").value});toast("Spa desc saved ✓")}
+  catch(e){toast("Error: "+e.message,"err")}
+}
 let _backToTktId=null;
 function startTicketFrom(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
@@ -8752,12 +8855,21 @@ document.addEventListener("visibilitychange",function(){
 async function _traccarRenderTechBanner(){
   const el=document.getElementById("gpsHealthBanner");
   if(!el)return;
-  // Only for tech role
-  if(!currentUser||currentUser.role!=="tech"){el.style.display="none";return}
+  // ─── HARD GUARD: never show this banner to admin/organizer ───
+  // The banner is for the field tech to see "your GPS app is asleep, tap to wake it".
+  // Admins don't need it (they have the full GPS Tracking panel in Admin → Settings).
+  // We not only hide the element but also clear its contents and stop the
+  // polling timer, so even a stale render from a previous session can't leak through.
+  if(!currentUser||currentUser.role!=="tech"){
+    el.style.display="none";
+    el.innerHTML="";
+    if(_traccarBannerTimer){clearInterval(_traccarBannerTimer);_traccarBannerTimer=null}
+    return;
+  }
   // Outside work hours — hide silently
-  if(!_traccarIsWorkHours()){el.style.display="none";return}
+  if(!_traccarIsWorkHours()){el.style.display="none";el.innerHTML="";return}
   // Need Traccar configured
-  if(!_traccarConfig||!_traccarConfig.enabled){el.style.display="none";return}
+  if(!_traccarConfig||!_traccarConfig.enabled){el.style.display="none";el.innerHTML="";return}
   // Need this tech mapped to a device
   const deviceId=_traccarTechMap[currentUser.name];
   if(!deviceId){
@@ -8776,6 +8888,7 @@ async function _traccarRenderTechBanner(){
   // Decide banner state
   if(minutesAgo<TRACCAR_BANNER_STALE_MIN){
     el.style.display="none"; // GPS is healthy — no banner
+    el.innerHTML="";
     return;
   }
   // Banner: red urgent
@@ -8800,7 +8913,7 @@ async function _traccarRenderTechBanner(){
 function _traccarManualWake(){
   try{localStorage.setItem(TRACCAR_WAKE_LS_KEY,String(Date.now()))}catch(_e){}
   try{window.location.href=TRACCAR_URL_SCHEME}
-  catch(e){toast("No se pudo abrir Traccar","err")}
+  catch(e){toast("Could not open Traccar","err")}
 }
 
 function _traccarStartTechBannerPolling(){
