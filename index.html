@@ -289,6 +289,36 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .cal-nav button{width:36px;height:36px;border:none;border-right:1px solid #d1d1d6;background:#fff;font-size:16px;font-weight:500;color:#1d1d1f;display:flex;align-items:center;justify-content:center;cursor:pointer}.cal-nav button:last-child{border-right:none}.cal-nav button:hover{background:#f5f5f7}
 .cal-views{display:flex;gap:0;border:1px solid #d1d1d6;border-radius:8px;overflow:hidden}
 .cal-vb{padding:7px 14px;font-size:12px;font-weight:500;background:#fff;border:none;border-right:1px solid #d1d1d6;color:#1d1d1f;cursor:pointer}.cal-vb:last-child{border-right:none}.cal-vb:hover{background:#f5f5f7}.cal-vb.on{background:var(--ac);color:#fff}
+/* ─── Mobile-specific calendar header tweaks (≤480px) ─────────────────
+   On phones the day-view title "Tuesday, May 5, 2026" is too long and
+   was wrapping to 3 lines, pushing controls into a tiny vertical column.
+   Shrink the title, force the view toggles to wrap onto their own row,
+   and make the prev/today/next nav buttons fill width so they're tap-
+   friendly. The To-Do button also gets compressed. */
+@media(max-width:520px){
+  .cal-hdr{gap:10px}
+  .cal-hdr h3{font-size:18px;line-height:1.25;letter-spacing:-.3px;flex:1;min-width:0}
+  .cal-hdr > div:first-child{flex:1 1 100%;min-width:0;flex-wrap:wrap;align-items:flex-start;gap:8px}
+  .cal-hdr > div:nth-child(2){flex:1 1 100%;justify-content:space-between;width:100%}
+  .cal-views{flex-wrap:wrap}
+  .cal-vb{flex:1;padding:6px 8px;font-size:11px;min-width:55px}
+  .cal-nav{flex:1;max-width:160px}
+  .cal-nav button{flex:1;height:38px;font-size:18px}
+  #todoTriggerBtn{flex-shrink:0;padding:0 10px!important;font-size:12px!important}
+  /* The View Route Map button + day progress bar were also overflowing;
+     wrap the whole content area's children flush to the page edge. */
+  #pg4 .cal-main{padding:0}
+  .day-progress{padding:10px 12px}
+  /* Prevent ANY content from overflowing the viewport horizontally on mobile.
+     Long customer addresses with no spaces (e.g. street + zip jammed together)
+     can otherwise push the parent card wider than the screen. */
+  .wrap{overflow-x:hidden}
+  .cal-day-detail,.cal-detail-card{max-width:100%;overflow-x:hidden}
+  /* Ticket card buttons — let them stack instead of staying side-by-side */
+  #pg4 button[onclick*="openRouteMap"]{min-width:0!important;width:100%!important;font-size:13px!important;padding:11px 14px!important}
+  /* GPS banner extra padding cleanup so it doesn't stick out */
+  #gpsHealthBanner{padding:0 12px!important;margin-bottom:10px!important}
+}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border-top:1px solid #e5e5e5;border-left:1px solid #e5e5e5;background:#fff;border-radius:8px;overflow:hidden}
 .cal-dow{text-align:center;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;padding:10px 0;letter-spacing:.8px;background:#fafaf8;border-bottom:1px solid #e5e5e5}
 .cal-day{min-height:130px;background:#fff;border-right:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5;padding:6px 6px 4px;cursor:pointer;transition:background .15s;position:relative;display:flex;flex-direction:column;overflow:hidden}
@@ -1825,7 +1855,7 @@ function doLogin(){
   // Tech-side: start the GPS health banner polling and fire one auto-wake on login
   // so Traccar gets refreshed as soon as the tech opens the dashboard.
   if(currentUser&&currentUser.role==="tech"){
-    try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3000)}catch(_e){}
+    try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,500)}catch(_e){}
     try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("login")},4500)}catch(_e){}
   }else{
     // Admin/organizer: explicitly clear any GPS banner that may have been left
@@ -3217,7 +3247,7 @@ async function init(){
     try{if(typeof _traccarStartAutoSync==="function")setTimeout(_traccarStartAutoSync,3000)}catch(_e){}
     try{if(typeof _traccarAutoBackfillIfDue==="function")setTimeout(_traccarAutoBackfillIfDue,32000)}catch(_e){}
     if(currentUser&&currentUser.role==="tech"){
-      try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,3500)}catch(_e){}
+      try{if(typeof _traccarStartTechBannerPolling==="function")setTimeout(_traccarStartTechBannerPolling,500)}catch(_e){}
       try{if(typeof _traccarAutoWakeIfDue==="function")setTimeout(function(){_traccarAutoWakeIfDue("auto-login")},5000)}catch(_e){}
     }else{
       // Admin/organizer auto-login: clear any leftover GPS banner from a prior session
@@ -8850,16 +8880,15 @@ document.addEventListener("visibilitychange",function(){
 });
 
 // ─── Tech health banner ───────────────────────────────────────────────
-// Shows a red urgent banner at the top of the Field Report tab if the tech's
-// own GPS hasn't sent a position recently. Banner has a tap-to-wake button.
+// Always-visible during work hours so the tech KNOWS the GPS is on.
+//   🟢 GREEN  (compact pill)  — GPS healthy, last fix <15 min ago
+//   🟡 YELLOW (compact pill)  — GPS slightly stale, 15–40 min ago
+//   🔴 RED    (full banner)   — GPS sleeping, >40 min — taps to wake
+// Outside work hours we hide it entirely (don't nag at night).
 async function _traccarRenderTechBanner(){
   const el=document.getElementById("gpsHealthBanner");
   if(!el)return;
   // ─── HARD GUARD: never show this banner to admin/organizer ───
-  // The banner is for the field tech to see "your GPS app is asleep, tap to wake it".
-  // Admins don't need it (they have the full GPS Tracking panel in Admin → Settings).
-  // We not only hide the element but also clear its contents and stop the
-  // polling timer, so even a stale render from a previous session can't leak through.
   if(!currentUser||currentUser.role!=="tech"){
     el.style.display="none";
     el.innerHTML="";
@@ -8874,7 +8903,7 @@ async function _traccarRenderTechBanner(){
   const deviceId=_traccarTechMap[currentUser.name];
   if(!deviceId){
     el.style.display="block";
-    el.innerHTML='<div style="padding:12px 14px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;color:#78350f;font-size:13px"><b>⚠ GPS device not mapped</b> — ask the office to set up Traccar for your phone.</div>';
+    el.innerHTML='<div style="padding:10px 14px;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;color:#78350f;font-size:12px;font-weight:600">⚠ GPS device not mapped — ask the office to set up Traccar for your phone.</div>';
     return;
   }
   // Fetch latest position for this tech
@@ -8885,22 +8914,40 @@ async function _traccarRenderTechBanner(){
       minutesAgo=_traccarMinutesSince(pos.deviceTime||pos.fixTime||pos.serverTime);
     }
   }catch(_e){}
-  // Decide banner state
-  if(minutesAgo<TRACCAR_BANNER_STALE_MIN){
-    el.style.display="none"; // GPS is healthy — no banner
-    el.innerHTML="";
+
+  // Three-state UI
+  const ageStr=minutesAgo>=99999?"never seen today":(minutesAgo+" min ago");
+  el.style.display="block";
+
+  // 🟢 GREEN — healthy. Compact pill, just a confirmation that GPS is on.
+  if(minutesAgo<15){
+    el.innerHTML=
+      '<div style="padding:8px 12px;background:#dcfce7;border:1.5px solid #16a34a;border-radius:8px;color:#14532d;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px">'+
+        '<span style="display:inline-block;width:8px;height:8px;background:#16a34a;border-radius:50%;flex-shrink:0;animation:pulse 2s infinite"></span>'+
+        '<span style="flex:1;min-width:0">GPS active · last fix '+esc(ageStr)+'</span>'+
+      '</div>';
     return;
   }
-  // Banner: red urgent
-  const ageStr=minutesAgo>=99999?"never seen today":minutesAgo+" min ago";
-  el.style.display="block";
+
+  // 🟡 YELLOW — slightly stale. Mid-size, "verify your phone is awake".
+  if(minutesAgo<TRACCAR_BANNER_STALE_MIN){
+    el.innerHTML=
+      '<div style="padding:10px 14px;background:#fef9c3;border:1.5px solid #eab308;border-radius:10px;color:#713f12;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+        '<span style="font-size:14px">🟡</span>'+
+        '<span style="flex:1;min-width:120px">GPS quiet · last fix '+esc(ageStr)+'. Open Traccar Client briefly if you\'re moving.</span>'+
+        '<button onclick="_traccarManualWake();return false" style="padding:6px 12px;background:#eab308;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:11px;cursor:pointer;flex-shrink:0">Wake</button>'+
+      '</div>';
+    return;
+  }
+
+  // 🔴 RED — sleeping, urgent.
   el.innerHTML=
-    '<div style="padding:14px 16px;background:#fee2e2;border:2px solid #dc2626;border-radius:12px;color:#7f1d1d;margin-bottom:14px;cursor:pointer" onclick="_traccarManualWake()">'+
+    '<div style="padding:14px 16px;background:#fee2e2;border:2px solid #dc2626;border-radius:12px;color:#7f1d1d;cursor:pointer" onclick="_traccarManualWake()">'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div style="font-size:22px">⚠️</div>'+
-        '<div style="flex:1;min-width:200px">'+
+        '<div style="flex:1;min-width:180px">'+
           '<div style="font-weight:800;font-size:15px;margin-bottom:2px">GPS is sleeping</div>'+
-          '<div style="font-size:13px;color:#991b1b">Last location: '+esc(ageStr)+' · iOS suspended the Traccar app</div>'+
+          '<div style="font-size:13px;color:#991b1b">Last location: '+esc(ageStr)+' · iOS suspended Traccar</div>'+
         '</div>'+
         '<button onclick="_traccarManualWake();event.stopPropagation();return false" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Reactivate GPS</button>'+
       '</div>'+
