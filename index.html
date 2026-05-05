@@ -5246,8 +5246,13 @@ const allTkts=[...active,...done].filter(t=>{
   if(isTech){
     // Hide tickets marked done by admin
     if(t.status==="done")return false;
-    // Also hide past-dated dispatch tickets if there's ANY completed/submitted report for that same customer
-    if(cust&&dt&&dt<today&&customerHasCompletedReport.has(cust))return false;
+    // NOTE: We deliberately do NOT hide past-dated dispatches based on the customer
+    // having ANY historical completed report. That filter caused tickets to vanish
+    // from a tech's calendar the day after the visit if the customer had ever been
+    // serviced before — even when the tech had not yet submitted the field report
+    // for THIS visit. The _hasMatchingReport() check above (±30 days + report
+    // created after dispatch) already handles legitimate "already done" cases for
+    // all roles. A tech sees the same outstanding dispatches the admin sees.
   }
   return true;
 });
