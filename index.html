@@ -202,6 +202,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .login-box h2{font-size:18px;font-weight:700;color:var(--br);margin-bottom:4px}
 .login-box .login-sub{font-size:11px;color:var(--ac);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:18px}
 .login-users{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:16px}
+.login-select{width:100%;padding:12px 14px;border:2px solid var(--ln);border-radius:10px;font-size:15px;font-weight:600;color:var(--ink);background:#fafaf8;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;font-family:inherit;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}.login-select:focus{border-color:var(--ac)}
 .login-user{padding:10px 18px;border-radius:24px;border:2px solid var(--ln);background:var(--cd);color:var(--ink);font-weight:600;font-size:14px;min-height:44px;cursor:pointer;transition:all .15s}.login-user:active{transform:scale(.96)}.login-user.on{border-color:var(--br);background:var(--br);color:#fff}
 .login-user.admin-pill{border-style:dashed;border-color:var(--ac);color:var(--ac)}.login-user.admin-pill.on{background:var(--ac);color:#fff;border-style:solid}
 .login-user.organizer-pill{border-color:var(--br);color:var(--br)}.login-user.organizer-pill.on{background:var(--br);color:#fff}
@@ -1806,32 +1807,49 @@ async function loadUsers(){
 async function saveUsers(){if(!db)return;try{await db.collection("config").doc("users").set({list:allUsers})}catch(e){}}
 function renderLoginScreen(){
   const c=document.getElementById("loginUsers");c.innerHTML="";
-  allUsers.forEach(u=>{
-    const b=document.createElement("button");
-    let cls="login-user";
-    if(u.role==="admin")cls+=" admin-pill";
-    else if(u.role==="organizer")cls+=" organizer-pill";
-    b.className=cls;
-    let icon="";
-    if(u.role==="admin")icon=" ⚙";
-    else if(u.role==="organizer")icon=" ⭐";
-    b.textContent=u.name+icon;
-    b.onclick=function(){selectLoginUser(u,this)};
-    c.appendChild(b);
+  const sel=document.createElement("select");
+  sel.id="loginUserSelect";
+  sel.className="login-select";
+  const ph=document.createElement("option");
+  ph.value="";ph.textContent="— Select your name —";ph.disabled=true;ph.selected=true;
+  sel.appendChild(ph);
+  allUsers.forEach((u,i)=>{
+    const opt=document.createElement("option");
+    opt.value=String(i);
+    let suf="";
+    if(u.role==="admin")suf=" ⚙";
+    else if(u.role==="organizer")suf=" ⭐";
+    opt.textContent=u.name+suf;
+    sel.appendChild(opt);
   });
+  sel.onchange=function(){
+    const idx=parseInt(sel.value,10);
+    if(isNaN(idx)||!allUsers[idx])return;
+    selectLoginUser(allUsers[idx]);
+  };
+  c.appendChild(sel);
 }
 let selectedLoginUser=null;
 function selectLoginUser(u,btn){
   selectedLoginUser=u;
-  document.querySelectorAll(".login-user").forEach(b=>b.classList.remove("on"));
-  btn.classList.add("on");
+  // Legacy button-mode support: if a button element was passed, mark it active.
+  if(btn&&btn.classList){
+    document.querySelectorAll(".login-user").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+  }
   document.getElementById("loginPinArea").classList.add("show");
   document.getElementById("loginHello").textContent=`Hi ${u.name} — enter your PIN`;
   document.getElementById("loginPinIn").value="";
   document.getElementById("loginPinErr").style.display="none";
   setTimeout(()=>document.getElementById("loginPinIn").focus(),150);
 }
-function cancelLogin(){selectedLoginUser=null;document.getElementById("loginPinArea").classList.remove("show");document.querySelectorAll(".login-user").forEach(b=>b.classList.remove("on"))}
+function cancelLogin(){
+  selectedLoginUser=null;
+  document.getElementById("loginPinArea").classList.remove("show");
+  document.querySelectorAll(".login-user").forEach(b=>b.classList.remove("on"));
+  const sel=document.getElementById("loginUserSelect");
+  if(sel)sel.value="";
+}
 function doLogin(){
   if(!selectedLoginUser)return;
   const pin=document.getElementById("loginPinIn").value;
@@ -6672,7 +6690,22 @@ function startTicketFrom(id){
   setTimeout(()=>{
     document.getElementById("fCust").value=t.customer||"";
     document.getElementById("fDate").value=t.date||localDateStr();
-    document.getElementById("fNotes").value=(t.notes||"")+"\n\n--- Service Update ---\n";
+    // Work Done / Notes is prefilled with just a date + tech header so the field
+    // captures ONLY the work this tech did on this visit. The original ticket
+    // notes (customer complaint, instructions, history) live on the dispatch
+    // ticket itself and are still viewable there — no need to copy them here.
+    // Format: MM/DD/YYYY TechName -
+    (function(){
+      let _dStr;
+      if(t.date&&/^\d{4}-\d{2}-\d{2}$/.test(t.date)){
+        const _p=t.date.split("-");_dStr=_p[1]+"/"+_p[2]+"/"+_p[0];
+      }else{
+        const _n=new Date();
+        _dStr=String(_n.getMonth()+1).padStart(2,"0")+"/"+String(_n.getDate()).padStart(2,"0")+"/"+_n.getFullYear();
+      }
+      const _who=(currentUser&&currentUser.name)||"";
+      document.getElementById("fNotes").value=_dStr+" "+_who+" - ";
+    })();
     // Auto-select current user as technician
     if(currentUser&&TECHS.includes(currentUser.name)&&!techs.includes(currentUser.name)){techs.push(currentUser.name);buildTechPills()}
     // Auto-fill Arrival from check-in time and Departure from check-out time.
@@ -7671,8 +7704,10 @@ async function _mapsAutoBackfillOncePerDay(){
   }catch(_e){}
   // Mark as ran first so concurrent tabs don't both backfill
   try{localStorage.setItem(todayKey,todayStr)}catch(_e){}
-  // Quietly compute last 7 days of routes — runs in background
-  await _mapsBackfillRecent(7);
+  // Quietly compute last 14 days of routes — runs in background.
+  // 14 days matches the "Last 14 Days · Driving Time" chart so it's always
+  // fully populated without the admin having to hit "Backfill 14d" by hand.
+  await _mapsBackfillRecent(14);
 }
 
 // Auto-init Maps page when admin first opens it (default to today)
