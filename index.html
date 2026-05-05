@@ -5617,8 +5617,9 @@ function openTktDetail(id){
     h+='<div><div class="lbl" style="font-size:10px">City</div><input id="dtCity" value="'+esc(_city)+'" class="time-input" style="width:100%"></div>';
     h+='<div><div class="lbl" style="font-size:10px">ZIP</div><input id="dtZip" value="'+esc(t.zip||'')+'" class="time-input" style="width:100%" maxlength="5" oninput="var z=ZIP_ZONES[this.value]||customZips[this.value+\'_zone\'];if(z)document.getElementById(\'dtZone\').value=z;var c=ZIP_CITIES[this.value]||customZips[this.value+\'_city\'];var ce=document.getElementById(\'dtCity\');if(c&&ce&&!ce.value)ce.value=c"></div></div>';
   }else{
-    h+='<div class="tp-row"><span>Customer</span><span>'+esc(t.customer)+'</span></div>';
-    // Build phone list (legacy phone + phone2 + phones[] array, deduped)
+    // ─── TECH VIEW — clean & minimal ──────────────────────────────
+    // Skip the redundant Customer line (modal title already shows it).
+    // Just show contact info as tappable rows.
     var _phList=[];
     if(t.phone)_phList.push(t.phone);
     if(t.phone2&&t.phone2!==t.phone)_phList.push(t.phone2);
@@ -5628,22 +5629,32 @@ function openTktDetail(id){
     });
     if(fullAddr)h+='<div class="tp-row"><span>Address</span><span><a href="'+mapsUrl+'" target="_blank" style="color:var(--ac);text-decoration:underline">'+esc(fullAddr)+'</a></span></div>';
     if(zone)h+='<div class="tp-row"><span>Zone</span><span><span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span></span></div>';
+    // ─── Badges row — only render flags that are actually set ────
+    // (instead of greyed-out disabled checkboxes for every flag)
+    var _flagBadges=[];
+    if(t.ccOnFile)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#d1fae5;color:#065f46">'+icon("credit-card",12,{color:"#065f46"})+'CC on File</span>');
+    if(t.ccRequested)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#fef3cd;color:#856404">'+icon("credit-card",12,{color:"#856404"})+'Request CC</span>');
+    if(t.isRepeat)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#fee2e2;color:#991b1b">⚠ Repeat</span>');
+    if(t.payCheck)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#dbeafe;color:#1e40af">Pay: Check</span>');
+    if(t.payCredit)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#d1fae5;color:#065f46">Pay: Credit</span>');
+    if(t.paid)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;background:#16a34a;color:#fff">'+icon("banknote",13,{color:"#fff"})+'PAID</span>');
+    if(_flagBadges.length){
+      h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">'+_flagBadges.join("")+'</div>';
+    }
   }
-  h+='<div style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:8px;margin-bottom:8px">';
-  var _dis=!isAdmin?' disabled':'';
-  var _cur=!isAdmin?';cursor:default;opacity:.85':';cursor:pointer';
-  h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--i2)'+_cur+'"><input type="checkbox" id="dtCcFile" '+(t.ccOnFile?'checked':'')+_dis+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> CC on File</label>';
-  h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ac)'+_cur+'"><input type="checkbox" id="dtCcReq" '+(t.ccRequested?'checked':'')+_dis+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Request CC</label>';
-  h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--r)'+_cur+'"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+_dis+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Repeat</label>';
-  h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#2563eb'+_cur+'"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+_dis+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Check</label>';
-  h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#059669'+_cur+'"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+_dis+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Credit</label>';
-  // Paid: only admin/organizer can toggle
-  if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")){
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#16a34a;cursor:pointer"><input type="checkbox" id="dtPaid" '+(t.paid?'checked':'')+' onchange="togglePaid(\''+t.id+'\','+(t.paid?'true':'false')+')" style="width:18px;height:18px">'+icon("banknote",15,{color:"#16a34a"})+'Paid</label>';
-  }else if(t.paid){
-    h+='<span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#16a34a">'+icon("banknote",15,{color:"#16a34a"})+'PAID</span>';
+  // Admin path: show editable checkboxes (techs use the badge row above instead).
+  if(isAdmin){
+    h+='<div style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:8px;margin-bottom:8px">';
+    h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--i2);cursor:pointer"><input type="checkbox" id="dtCcFile" '+(t.ccOnFile?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> CC on File</label>';
+    h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ac);cursor:pointer"><input type="checkbox" id="dtCcReq" '+(t.ccRequested?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Request CC</label>';
+    h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--r);cursor:pointer"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Repeat</label>';
+    h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#2563eb;cursor:pointer"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Check</label>';
+    h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#059669;cursor:pointer"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Credit</label>';
+    if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")){
+      h+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#16a34a;cursor:pointer"><input type="checkbox" id="dtPaid" '+(t.paid?'checked':'')+' onchange="togglePaid(\''+t.id+'\','+(t.paid?'true':'false')+')" style="width:18px;height:18px">'+icon("banknote",15,{color:"#16a34a"})+'Paid</label>';
+    }
+    h+='</div>';
   }
-  h+='</div>';
   h+='</div>';
   // Quick contact actions: Call + pre-written SMS templates
   var _phClean=(t.phone||'').replace(/[^0-9+]/g,'');
@@ -5664,43 +5675,52 @@ function openTktDetail(id){
       h+='<a href="tel:'+_phClean+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
       h+='<a href="'+_smsHref(_tpl.onway)+'" style="flex:1;min-width:140px;padding:12px 14px;background:#16a34a;color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
       h+='</div>';
-      // Secondary template buttons
-      h+='<div class="sms-tpl-row">';
+      // Secondary SMS templates collapsed behind a "More messages" toggle
+      // so the screen stays clean for the actions techs use most often.
+      var _moreId="moreMsg_"+t.id;
+      h+='<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--i3);padding:6px 0;list-style:none;display:inline-flex;align-items:center;gap:4px">'+icon("chevron-down",13,{color:"var(--i3)"})+'More messages</summary>';
+      h+='<div class="sms-tpl-row" style="margin-top:6px">';
       h+='<a class="sms-tpl late" href="'+_smsHref(_tpl.late)+'" title="Send: Running 15 min late">'+icon("clock",13,{color:"currentColor"})+'Running Late</a>';
       h+='<a class="sms-tpl noans" href="'+_smsHref(_tpl.noans)+'" title="Send: At your door, no answer">'+icon("door-closed",13,{color:"currentColor"})+'No Answer</a>';
       h+='<a class="sms-tpl done" href="'+_smsHref(_tpl.done)+'" title="Send: Job complete">'+icon("check-circle",13,{color:"currentColor"})+'Job Done</a>';
       h+='<a class="sms-tpl resched" href="'+_smsHref(_tpl.resched)+'" title="Send: Need to reschedule">'+icon("calendar-x",13,{color:"currentColor"})+'Reschedule</a>';
-      h+='</div>';
+      h+='</div></details>';
     }
   }
   // Editable fields
-  // Tech assignment: show only assigned tech(s); admin gets "Change" to expand the full roster
+  // Tech assignment: show only assigned tech(s); admin gets "Change" to expand the full roster.
+  // For techs viewing their own ticket, hide the section entirely if they're the only assigned
+  // tech (it's redundant — they know they're assigned to it). Show only if 2+ techs (co-work).
   var _assigned=(t.techs&&t.techs.length)?t.techs:[];
-  h+='<div style="margin-bottom:14px"><div class="lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">';
-  h+='<span>'+(isAdmin?'Assign Technician':'Technician')+'</span>';
-  if(isAdmin){
-    h+='<button type="button" onclick="dtToggleTechList(this)" style="padding:4px 10px;background:transparent;border:1px solid var(--ln);border-radius:6px;font-size:11px;font-weight:600;color:var(--i2);cursor:pointer">Change</button>';
-  }
-  h+='</div>';
-  h+='<div id="dtTechRow" style="display:flex;gap:6px;flex-wrap:wrap">';
-  if(_assigned.length===0&&!isAdmin){
-    h+='<span style="color:var(--i3);font-size:13px;font-style:italic">Unassigned</span>';
-  }
-  TECHS.forEach(function(tn){
-    var isOn=_assigned.includes(tn);
-    // Skip hidden techs unless they're currently assigned to this ticket (admin needs to be able to unassign them)
-    if(HIDDEN_TECHS.has(tn)&&!isOn)return;
-    if(!isAdmin){
-      // Tech role: render only assigned tech(s), read-only
-      if(!isOn)return;
-      h+='<button class="pill on" disabled style="cursor:default;opacity:.95">'+tn+'</button>';
-      return;
+  var _isMultiTech=_assigned.length>=2;
+  var _isTechOnSoloTicket=!isAdmin&&_assigned.length===1;
+  if(!_isTechOnSoloTicket){
+    h+='<div style="margin-bottom:14px"><div class="lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">';
+    h+='<span>'+(isAdmin?'Assign Technician':(_isMultiTech?'Technicians':'Technician'))+'</span>';
+    if(isAdmin){
+      h+='<button type="button" onclick="dtToggleTechList(this)" style="padding:4px 10px;background:transparent;border:1px solid var(--ln);border-radius:6px;font-size:11px;font-weight:600;color:var(--i2);cursor:pointer">Change</button>';
     }
-    // Admin role: assigned visible by default, unassigned hidden (revealed by Change toggle)
-    var hideStyle=isOn?'':'display:none';
-    h+='<button class="pill'+(isOn?' on':'')+'" id="dtPill_'+tn+'" onclick="dtToggleTech(this,\''+tn+'\')" style="'+hideStyle+'">'+tn+'</button>';
-  });
-  h+='</div></div>';
+    h+='</div>';
+    h+='<div id="dtTechRow" style="display:flex;gap:6px;flex-wrap:wrap">';
+    if(_assigned.length===0&&!isAdmin){
+      h+='<span style="color:var(--i3);font-size:13px;font-style:italic">Unassigned</span>';
+    }
+    TECHS.forEach(function(tn){
+      var isOn=_assigned.includes(tn);
+      // Skip hidden techs unless they're currently assigned to this ticket (admin needs to be able to unassign them)
+      if(HIDDEN_TECHS.has(tn)&&!isOn)return;
+      if(!isAdmin){
+        // Tech role: render only assigned tech(s), read-only
+        if(!isOn)return;
+        h+='<button class="pill on" disabled style="cursor:default;opacity:.95">'+tn+'</button>';
+        return;
+      }
+      // Admin role: assigned visible by default, unassigned hidden (revealed by Change toggle)
+      var hideStyle=isOn?'':'display:none';
+      h+='<button class="pill'+(isOn?' on':'')+'" id="dtPill_'+tn+'" onclick="dtToggleTech(this,\''+tn+'\')" style="'+hideStyle+'">'+tn+'</button>';
+    });
+    h+='</div></div>';
+  }
   if(isAdmin){
     h+='<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">';
     h+='<div><div class="lbl" style="font-size:10px">Date</div><input type="date" id="dtDate" value="'+(t.date||'')+'" class="time-input"></div>';
@@ -5714,28 +5734,34 @@ function openTktDetail(id){
   }
   // Notes
   // Techs see Spa Description and Notes as READ-ONLY — they add new info via Field Report.
+  // For techs, if the field is empty, hide the whole section (no ugly placeholder).
   var _isTechView=currentUser&&currentUser.role==="tech";
   // Spa Description
-  h+='<div class="lbl">Spa Description</div>';
+  var _spa=t.spaDesc||"";
   if(_isTechView){
-    var _spa=t.spaDesc||"";
-    h+='<div class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap;'+(_spa?'':'color:#aaa;font-style:italic')+'">'+esc(_spa||"(no spa description)")+'</div>';
-    h+='<div style="margin-bottom:10px"></div>';
+    if(_spa){
+      h+='<div class="lbl">Spa Description</div>';
+      h+='<div class="notes" style="min-height:60px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap">'+esc(_spa)+'</div>';
+      h+='<div style="margin-bottom:10px"></div>';
+    }
   }else{
-    h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(t.spaDesc||'')+'</textarea>';
+    h+='<div class="lbl">Spa Description</div>';
+    h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:13px;background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(_spa)+'</textarea>';
     h+='<div style="font-size:10px;color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
   }
   // Attachments section (rendered separately so it can re-render in place after upload/delete)
   h+='<div id="tdAttSection_'+t.id+'"></div>';
   // Notes / Updates
+  var _notes=t.notes||"";
   if(_isTechView){
-    h+='<div class="lbl"><span>Notes / Updates</span></div>';
-    var _notes=t.notes||"";
-    h+='<div class="notes" style="min-height:120px;font-size:14px;white-space:pre-wrap;'+(_notes?'':'color:#aaa;font-style:italic')+'">'+esc(_notes||"(no notes — add new info through your Field Report)")+'</div>';
+    if(_notes){
+      h+='<div class="lbl"><span>Notes / Updates</span></div>';
+      h+='<div class="notes" style="min-height:80px;font-size:14px;white-space:pre-wrap">'+esc(_notes)+'</div>';
+    }
   }else{
     h+='<div class="lbl" style="display:flex;align-items:center;justify-content:space-between"><span>Notes / Updates</span><span style="font-size:10px;color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Tap mic to dictate</span></div>';
     h+='<div class="notes-with-mic">';
-    h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(t.notes||'')+'</textarea>';
+    h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:15px" onblur="saveTktNotes(\''+t.id+'\')">'+esc(_notes)+'</textarea>';
     h+='<button type="button" class="mic-btn" id="micBtn_tktDetailNotes" onclick="voiceToggle(\'tktDetailNotes\')" title="Dictate notes" aria-label="Voice input">'+icon("mic",17,{color:"currentColor"})+'</button>';
     h+='</div>';
     h+='<div style="font-size:10px;color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
@@ -5747,15 +5773,25 @@ function openTktDetail(id){
   if(isAdmin){
     h+='<button onclick="saveDetailEdits(\''+t.id+'\')" style="padding:12px 18px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("save",15,{color:"#fff"})+'Save Changes</button>';
   }
-  h+='<button onclick="startTicketFrom(\''+t.id+'\')" style="padding:12px 18px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("clipboard-list",15,{color:"#fff"})+'Field Report</button>';
-  h+='<button onclick="startEstimateFrom(\''+t.id+'\')" style="padding:12px 18px;background:var(--cd);color:var(--ac);border:2px solid var(--ac);border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("file-text",15,{color:"var(--ac)"})+'Estimate</button>';
+  // Field Report — for techs, render as GIANT prominent button (their main action).
+  // For admins, keep regular size since it's one of many things they do.
+  if(_isTech){
+    h+='<button onclick="startTicketFrom(\''+t.id+'\')" style="flex:1;min-width:100%;padding:18px 22px;background:var(--br);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)">'+icon("clipboard-list",18,{color:"#fff"})+'Fill Field Report</button>';
+  }else{
+    h+='<button onclick="startTicketFrom(\''+t.id+'\')" style="padding:12px 18px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("clipboard-list",15,{color:"#fff"})+'Field Report</button>';
+  }
+  // Estimate — secondary, lower visual weight especially for techs
+  var _estStyle=_isTech?
+    "padding:9px 14px;background:transparent;color:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:12px;font-weight:600":
+    "padding:12px 18px;background:var(--cd);color:var(--ac);border:2px solid var(--ac);border-radius:10px;font-size:13px;font-weight:700";
+  h+='<button onclick="startEstimateFrom(\''+t.id+'\')" style="'+_estStyle+';display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("file-text",13,{color:"var(--ac)"})+'Estimate</button>';
   // Add to To-Do: only admin/organizer (NOT tech)
   if(!_isTech){
     h+='<button onclick="addTicketToTodo(\''+t.id+'\')" style="padding:12px 18px;background:#fef3c7;color:#92400e;border:2px solid #f59e0b;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("check-square",15,{color:"#92400e"})+'Add to To-Do</button>';
   }
   // Cancel Visit: techs see it (with reason prompt); admin sees it (no prompt)
   if(_isTech&&t.status!=="canceled"){
-    h+='<button onclick="showTechCancelForm(\''+t.id+'\')" style="padding:12px 18px;background:#fff3e0;color:#b45309;border:2px solid #f59e0b;border-radius:10px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("ban",15,{color:"#b45309"})+'Cancel Visit</button>';
+    h+='<button onclick="showTechCancelForm(\''+t.id+'\')" style="padding:9px 14px;background:transparent;color:#b45309;border:1.5px solid #f59e0b;border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("ban",13,{color:"#b45309"})+'Cancel Visit</button>';
   }
   if(isAdmin){
     if(t.status==="canceled"){
@@ -7446,10 +7482,10 @@ function _mapsInitOnFirstShow(){
 //
 // Lifecycle for a ticket created on or after CHECKIN_REQUIRED_FROM_DATE:
 //   1) Admin schedules dispatch ticket → ticket appears in Daily/Calendar
-//   2) Tech opens ticket on phone, taps "CHECK IN — Llegué"
+//   2) Tech opens ticket on phone, taps "CHECK IN — I'm here"
 //      → browser GPS one-shot, save lat/lng + timestamp + distance to address
 //      → if >100m from address, warn or block (configurable)
-//   3) Tech does the work, taps "CHECK OUT — Me voy"
+//   3) Tech does the work, taps "CHECK OUT — I'm leaving"
 //      → save departure timestamp + duration
 //      → ticket REMAINS in calendar (does not auto-clean)
 //   4) Later (at home, end of day, anywhere), tech opens ticket and submits
@@ -7535,9 +7571,9 @@ function _getCurrentGPS(){
       },
       function(err){
         let msg="GPS error";
-        if(err.code===1)msg="Permiso de ubicación denegado — actívalo en Ajustes del navegador";
-        else if(err.code===2)msg="No se pudo obtener ubicación — revisa que GPS esté activo";
-        else if(err.code===3)msg="Tiempo agotado — intenta de nuevo";
+        if(err.code===1)msg="Location permission denied — enable it in browser settings";
+        else if(err.code===2)msg="Could not get location — make sure GPS is on";
+        else if(err.code===3)msg="Timed out — try again";
         reject(new Error(msg));
       },
       {enableHighAccuracy:true,timeout:15000,maximumAge:30000}
@@ -7563,20 +7599,20 @@ async function _ticketAddressCoords(t){
 
 async function _doCheckIn(ticketId){
   const t=[...active,...done].find(function(x){return x.id===ticketId});
-  if(!t){toast("Ticket no encontrado","err");return}
-  if(!currentUser){toast("Inicia sesión primero","err");return}
-  if(!db){toast("Sin conexión a Firebase","err");return}
-  if(t.checkInAt){toast("Ya hiciste check-in para este cliente","warn");return}
+  if(!t){toast("Ticket not found","err");return}
+  if(!currentUser){toast("Please log in first","err");return}
+  if(!db){toast("No Firebase connection","err");return}
+  if(t.checkInAt){toast("You already checked in for this customer","warn");return}
 
   // Disable button to prevent double-tap
   const btn=document.getElementById("checkInBtn_"+ticketId);
-  if(btn){btn.disabled=true;btn.textContent="Obteniendo GPS…"}
+  if(btn){btn.disabled=true;btn.textContent="Getting GPS…"}
 
   let gps;
   try{gps=await _getCurrentGPS()}
   catch(e){
-    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — Llegué'}
-    toast(e.message||"Error de GPS","err");
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — I\'m here'}
+    toast(e.message||"GPS error","err");
     return;
   }
 
@@ -7593,13 +7629,13 @@ async function _doCheckIn(ticketId){
     if(distanceM>CHECKIN_GEOFENCE_WARN_M){
       // RED: probably wrong location — block unless tech confirms
       const proceed=confirm(
-        "⚠️ Estás a "+(distanceM>=1000?(distanceM/1000).toFixed(1)+" km":distanceM+" m")+
-        " de la dirección registrada de "+t.customer+".\n\n"+
-        "Dirección registrada: "+(t.address||"(sin dirección)")+"\n\n"+
-        "¿Estás seguro que estás en este cliente? El check-in se va a registrar como NO VERIFICADO."
+        "⚠️ You're "+(distanceM>=1000?(distanceM/1000).toFixed(1)+" km":distanceM+" m")+
+        " away from the registered address for "+t.customer+".\n\n"+
+        "Registered address: "+(t.address||"(no address)")+"\n\n"+
+        "Are you sure you're at this customer? Check-in will be recorded as NOT VERIFIED."
       );
       if(!proceed){
-        if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — Llegué'}
+        if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — I\'m here'}
         return;
       }
     }
@@ -7621,11 +7657,11 @@ async function _doCheckIn(ticketId){
     // Update local cache so UI re-renders correctly
     Object.assign(t,payload);
     if(verified){
-      toast("✓ Check-in registrado · "+(distanceM!==null?distanceM+"m de la dirección":"sin dirección registrada"),"ok");
+      toast("✓ Check-in recorded · "+(distanceM!==null?distanceM+"m from address":"no address on file"),"ok");
     }else if(distanceM===null||distanceM<=CHECKIN_GEOFENCE_WARN_M){
-      toast("✓ Check-in registrado","ok");
+      toast("✓ Check-in recorded","ok");
     }else{
-      toast("Check-in guardado (no verificado)","warn");
+      toast("Check-in saved (not verified)","warn");
     }
     // Re-render the ticket detail panel to show new state
     if(typeof openTktDetail==="function")openTktDetail(ticketId);
@@ -7633,26 +7669,26 @@ async function _doCheckIn(ticketId){
     try{rndrA();rndrD();if(typeof rndrCal==="function")rndrCal()}catch(_e){}
   }catch(e){
     console.warn("Check-in error:",e);
-    toast("Error al guardar check-in","err");
-    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — Llegué'}
+    toast("Error saving check-in","err");
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">▶</span>&nbsp; CHECK IN — I\'m here'}
   }
 }
 
 async function _doCheckOut(ticketId){
   const t=[...active,...done].find(function(x){return x.id===ticketId});
-  if(!t){toast("Ticket no encontrado","err");return}
-  if(!currentUser){toast("Inicia sesión primero","err");return}
-  if(!t.checkInAt){toast("Tienes que hacer check-in primero","warn");return}
-  if(t.checkOutAt){toast("Ya hiciste check-out","warn");return}
+  if(!t){toast("Ticket not found","err");return}
+  if(!currentUser){toast("Please log in first","err");return}
+  if(!t.checkInAt){toast("You need to check in first","warn");return}
+  if(t.checkOutAt){toast("You already checked out","warn");return}
 
   const btn=document.getElementById("checkOutBtn_"+ticketId);
-  if(btn){btn.disabled=true;btn.textContent="Obteniendo GPS…"}
+  if(btn){btn.disabled=true;btn.textContent="Getting GPS…"}
 
   let gps;
   try{gps=await _getCurrentGPS()}
   catch(e){
-    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">⏹</span>&nbsp; CHECK OUT — Me voy'}
-    toast(e.message||"Error de GPS","err");
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">⏹</span>&nbsp; CHECK OUT — I\'m leaving'}
+    toast(e.message||"GPS error","err");
     return;
   }
 
@@ -7682,13 +7718,13 @@ async function _doCheckOut(ticketId){
     Object.assign(t,payload);
     // Remove from "reminded" set since they checked out
     _checkOutRemindedTktIds.delete(ticketId);
-    toast("✓ Check-out registrado · duración "+_fmtElapsed(durationMin),"ok");
+    toast("✓ Check-out recorded · duration "+_fmtElapsed(durationMin),"ok");
     if(typeof openTktDetail==="function")openTktDetail(ticketId);
     try{rndrA();rndrD();if(typeof rndrCal==="function")rndrCal()}catch(_e){}
   }catch(e){
     console.warn("Check-out error:",e);
-    toast("Error al guardar check-out","err");
-    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">⏹</span>&nbsp; CHECK OUT — Me voy'}
+    toast("Error saving check-out","err");
+    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:18px">⏹</span>&nbsp; CHECK OUT — I\'m leaving'}
   }
 }
 
@@ -7709,18 +7745,18 @@ function _checkInPanelHTML(t){
     const inDistOK=t.checkInVerified||t.checkInDist<0;
     const outDistOK=t.checkOutVerified||t.checkOutDist<0;
     const verifiedBadge=(inDistOK&&outDistOK)?
-      '<span style="background:#dcfce7;color:#166534;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">✓ VERIFICADO</span>':
-      '<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">⚠ NO VERIFICADO</span>';
+      '<span style="background:#dcfce7;color:#166534;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">✓ VERIFIED</span>':
+      '<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700">⚠ NOT VERIFIED</span>';
     return '<div style="margin-bottom:14px;padding:14px 16px;background:#f0fdf4;border:2px solid #86efac;border-radius:12px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">'+
-        '<div style="font-weight:800;font-size:15px;color:#166534">✓ Visita completa</div>'+
+        '<div style="font-weight:800;font-size:15px;color:#166534">✓ Visit complete</div>'+
         verifiedBadge+
       '</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;color:#166534">'+
-        '<div><div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Llegada</div>'+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkInDist>=0?' · '+t.checkInDist+'m':'')+'</div>'+
-        '<div><div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Salida</div>'+esc(outT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkOutDist>=0?' · '+t.checkOutDist+'m':'')+'</div>'+
+        '<div><div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Arrival</div>'+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkInDist>=0?' · '+t.checkInDist+'m':'')+'</div>'+
+        '<div><div style="font-size:10px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Departure</div>'+esc(outT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkOutDist>=0?' · '+t.checkOutDist+'m':'')+'</div>'+
       '</div>'+
-      '<div style="margin-top:8px;font-size:12px;color:#15803d"><b>Duración:</b> '+esc(_fmtElapsed(dur))+' · Registrado por '+esc(t.checkInBy||"—")+'</div>'+
+      '<div style="margin-top:8px;font-size:12px;color:#15803d"><b>Duration:</b> '+esc(_fmtElapsed(dur))+' · Recorded by '+esc(t.checkInBy||"—")+'</div>'+
     '</div>';
   }
 
@@ -7728,23 +7764,23 @@ function _checkInPanelHTML(t){
   if(_ticketIsCheckedIn(t)){
     const inT=new Date(t.checkInAt);
     const elapsedMin=Math.round((Date.now()-inT.getTime())/60000);
-    const distInfo=t.checkInDist>=0?(t.checkInDist+'m de la dirección'):"";
+    const distInfo=t.checkInDist>=0?(t.checkInDist+'m from address'):"";
     const distColor=t.checkInVerified?"#166534":"#92400e";
     return '<div style="margin-bottom:14px;padding:14px 16px;background:#fefce8;border:2px solid #fde047;border-radius:12px">'+
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'+
-        '<div style="font-weight:800;font-size:15px;color:#78350f">⏱ En el cliente</div>'+
-        '<div style="font-size:13px;color:#92400e">desde '+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+' · '+esc(_fmtElapsed(elapsedMin))+'</div>'+
+        '<div style="font-weight:800;font-size:15px;color:#78350f">⏱ At customer</div>'+
+        '<div style="font-size:13px;color:#92400e">since '+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+' · '+esc(_fmtElapsed(elapsedMin))+'</div>'+
       '</div>'+
-      (distInfo?'<div style="font-size:12px;color:'+distColor+';margin-bottom:10px">📍 '+esc(distInfo)+(t.checkInVerified?' · ✓ verificado':' · ⚠ no verificado')+'</div>':'')+
-      '<button id="checkOutBtn_'+esc(t.id)+'" onclick="_doCheckOut(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:18px">⏹</span> CHECK OUT — Me voy</button>'+
+      (distInfo?'<div style="font-size:12px;color:'+distColor+';margin-bottom:10px">📍 '+esc(distInfo)+(t.checkInVerified?' · ✓ verified':' · ⚠ not verified')+'</div>':'')+
+      '<button id="checkOutBtn_'+esc(t.id)+'" onclick="_doCheckOut(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:18px">⏹</span> CHECK OUT — I\'m leaving</button>'+
     '</div>';
   }
 
   // Not checked in yet — show big check-in button
   return '<div style="margin-bottom:14px;padding:14px 16px;background:#eff6ff;border:2px solid #3b82f6;border-radius:12px">'+
-    '<div style="font-weight:800;font-size:15px;color:#1e3a8a;margin-bottom:6px">📍 Llegada al cliente</div>'+
-    '<div style="font-size:12px;color:#1e40af;margin-bottom:10px">Toca cuando llegues a la casa del cliente. Se registra tu hora y ubicación GPS.</div>'+
-    '<button id="checkInBtn_'+esc(t.id)+'" onclick="_doCheckIn(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:18px">▶</span> CHECK IN — Llegué</button>'+
+    '<div style="font-weight:800;font-size:15px;color:#1e3a8a;margin-bottom:6px">📍 Arrival at customer</div>'+
+    '<div style="font-size:12px;color:#1e40af;margin-bottom:10px">Tap when you arrive at the customer\'s house. Your time and GPS location are recorded.</div>'+
+    '<button id="checkInBtn_'+esc(t.id)+'" onclick="_doCheckIn(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:18px">▶</span> CHECK IN — I\'m here</button>'+
   '</div>';
 }
 
@@ -7761,7 +7797,7 @@ function _scanForForgottenCheckOuts(){
     const elapsedH=(Date.now()-new Date(t.checkInAt).getTime())/3600000;
     if(elapsedH>=CHECKOUT_REMINDER_HOURS){
       _checkOutRemindedTktIds.add(t.id);
-      toast("⏰ Lleva "+_fmtElapsed(elapsedH*60)+" en "+(t.customer||"un cliente")+" — ¿olvidaste hacer check-out?","warn");
+      toast("⏰ You've been at "+(t.customer||"a customer")+" for "+_fmtElapsed(elapsedH*60)+" — did you forget to check out?","warn");
     }
   });
 }
@@ -7782,8 +7818,8 @@ function _validateCheckInForSubmit(t){
   if(!_ticketRequiresCheckIn(t))return null; // grandfathered
   // Admin/organizer can override — they may be entering data on behalf of techs
   if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))return null;
-  if(!t.checkInAt)return "Tienes que hacer CHECK IN antes de entregar el Field Report. Abre el ticket y toca el botón verde de Check-In.";
-  if(!t.checkOutAt)return "Tienes que hacer CHECK OUT antes de entregar el Field Report. Abre el ticket y toca el botón rojo de Check-Out.";
+  if(!t.checkInAt)return "You need to CHECK IN before submitting the Field Report. Open the ticket and tap the green Check-In button.";
+  if(!t.checkOutAt)return "You need to CHECK OUT before submitting the Field Report. Open the ticket and tap the red Check-Out button.";
   return null;
 }
 
@@ -8665,12 +8701,12 @@ async function _traccarRenderTechBanner(){
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div style="font-size:22px">⚠️</div>'+
         '<div style="flex:1;min-width:200px">'+
-          '<div style="font-weight:800;font-size:15px;margin-bottom:2px">GPS está dormido</div>'+
-          '<div style="font-size:13px;color:#991b1b">Última ubicación: '+esc(ageStr)+' · iOS suspendió la app Traccar</div>'+
+          '<div style="font-weight:800;font-size:15px;margin-bottom:2px">GPS is sleeping</div>'+
+          '<div style="font-size:13px;color:#991b1b">Last location: '+esc(ageStr)+' · iOS suspended the Traccar app</div>'+
         '</div>'+
-        '<button onclick="_traccarManualWake();event.stopPropagation();return false" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Reactivar GPS</button>'+
+        '<button onclick="_traccarManualWake();event.stopPropagation();return false" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">Reactivate GPS</button>'+
       '</div>'+
-      '<div style="font-size:11px;color:#991b1b;margin-top:8px;opacity:.85">Si tienes el Shortcut "'+esc(TRACCAR_SHORTCUT_NAME)+'" configurado, el botón arranca el GPS automáticamente. Si no, abre la app Traccar Client manualmente.</div>'+
+      '<div style="font-size:11px;color:#991b1b;margin-top:8px;opacity:.85">If you have the "'+esc(TRACCAR_SHORTCUT_NAME)+'" Shortcut set up, this button starts GPS automatically. Otherwise, open the Traccar Client app manually.</div>'+
     '</div>';
 }
 
