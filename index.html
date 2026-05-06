@@ -1503,15 +1503,35 @@ try{
 }
 
 // ═══ SERVICE WORKER REGISTRATION (PWA / Offline support) ═══
-// Auto-checks for updates every 60s. When a new version is detected, prompts
-// the user to reload immediately — prevents the "stale cached version" problem
-// where Alberto deploys new code but his browser keeps showing the old HTML.
+// Auto-checks for updates every 60s while the tab is visible AND on every
+// foregrounding (visibilitychange + window focus + pageshow). This is critical
+// for iOS PWAs added to the home screen — iOS aggressively suspends background
+// JS, so a 60s setInterval alone is not enough. When a tech reopens the app
+// after hours/days of being suspended, the update check fires immediately on
+// foreground and we either auto-reload (if no unsaved work) or prompt.
+//
+// May 2026 incident: a fix was deployed but Jeremy's iPhone PWA was still
+// running cached code, so the buggy filter kept hiding his tickets. This block
+// is the safety net that ensures it never happens again.
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
     navigator.serviceWorker.register("sw.js").then(function(reg){
       console.log("✓ Service Worker registered — app installable & works offline");
-      // Check for new versions every 60 seconds while the app is open
-      setInterval(function(){try{reg.update()}catch(_e){}},60000);
+      var _swRegRef=reg;
+      // Helper: fire an update check, swallow errors. Called from many places.
+      function _checkForUpdate(){try{if(_swRegRef&&_swRegRef.update)_swRegRef.update()}catch(_e){}}
+      // Periodic check while tab is visible (60s)
+      setInterval(_checkForUpdate,60000);
+      // Foreground-event checks — these are the iOS-critical ones because the
+      // 60s interval doesn't run while the PWA is suspended.
+      document.addEventListener("visibilitychange",function(){
+        if(document.visibilityState==="visible")_checkForUpdate();
+      });
+      window.addEventListener("focus",_checkForUpdate);
+      // pageshow fires when the app is restored from bfcache (back/forward, or
+      // iOS app-switcher resume). Catches resume scenarios that visibilitychange
+      // sometimes misses on Safari.
+      window.addEventListener("pageshow",function(ev){if(ev.persisted)_checkForUpdate()});
       reg.addEventListener("updatefound",function(){
         var nw=reg.installing;
         if(nw){
@@ -5322,10 +5342,28 @@ const allTkts=[...active,...done].filter(t=>{
   }
   return true;
 });
+// Helper used by tech-side filters below: does this ticket's `techs` array
+// include the current tech, EITHER directly OR via pill resolution? This
+// matches the admin Team view's matching logic (line ~5602) so a ticket
+// assigned via a pill like "Fernando/Fabian" still shows up for Fernando.
+// Without this, strict `.includes(name)` could leave a tech blind to their
+// own work if the ticket was tagged with a pill name or a slightly-different
+// spelling that resolves to the same pill.
+function _ticketBelongsToCurrentTech(t){
+  if(!isTech||!currentUser)return false;
+  var arr=t.techs||[];
+  if(!arr.length)return false;
+  if(arr.indexOf(currentUser.name)>=0)return true;
+  var myPill=_resolveTechPill(currentUser.name);
+  for(var i=0;i<arr.length;i++){
+    if(_resolveTechPill(arr[i])===myPill)return true;
+  }
+  return false;
+}
 // Count tickets per tech (and unassigned) for the pill badges — count across the WHOLE dataset visible to user (before tech filter) so the user knows the totals
 const techCounts={};
 allTkts.forEach(t=>{
-  if(isTech&&!(t.techs||[]).includes(currentUser.name))return;
+  if(isTech&&!_ticketBelongsToCurrentTech(t))return;
   const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];
   // Resolve to pill name so "Fernando" tickets count toward "Fernando/Fabian" pill
   const seenPills=new Set();
@@ -5339,7 +5377,7 @@ allTkts.forEach(t=>{
   if(q&&!tktMatchesSearch(t,q))return;
   const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];
   if(isTech){
-    if(!techs.includes(currentUser.name))return;
+    if(!_ticketBelongsToCurrentTech(t))return;
   }else{
     // Ticket is visible if AT LEAST ONE of its tech tags resolves to a non-hidden pill
     const anyVisible=techs.some(tn=>!calHiddenTechs.has(_resolveTechPill(tn)));
@@ -5351,7 +5389,7 @@ allTkts.forEach(t=>{
 if(calView==="month"){document.getElementById("calTitle").textContent=MN[calMonth]+" "+calYear;document.getElementById("calGrid").className="cal-grid";rndrCalMonth(byDate,today)}
 else if(calView==="week"){const sel=calSelectedDate?new Date(calSelectedDate+"T12:00:00"):new Date();const dow=sel.getDay();const sun=new Date(sel);sun.setDate(sel.getDate()-dow);const sat=new Date(sun);sat.setDate(sun.getDate()+6);document.getElementById("calTitle").textContent=MN[sun.getMonth()]+" "+sun.getDate()+" – "+sat.getDate()+", "+sun.getFullYear();document.getElementById("calGrid").className="cal-grid";rndrCalWeek(sun,byDate,today)}
 else if(calView==="day"){const sel=calSelectedDate||today;const d=new Date(sel+"T12:00:00");document.getElementById("calTitle").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});document.getElementById("calGrid").className="";rndrCalDay(sel,byDate)}
-else if(calView==="list"){document.getElementById("calTitle").textContent=MN[calMonth]+" "+calYear;document.getElementById("calGrid").className="";rndrCalList(allTkts.filter(t=>{const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];if(isTech)return techs.includes(currentUser.name);return techs.some(tn=>!calHiddenTechs.has(_resolveTechPill(tn)))}),"",q)}
+else if(calView==="list"){document.getElementById("calTitle").textContent=MN[calMonth]+" "+calYear;document.getElementById("calGrid").className="";rndrCalList(allTkts.filter(t=>{if(isTech)return _ticketBelongsToCurrentTech(t);const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];return techs.some(tn=>!calHiddenTechs.has(_resolveTechPill(tn)))}),"",q)}
 else if(calView==="team"){const sel=calSelectedDate||today;const d=new Date(sel+"T12:00:00");document.getElementById("calTitle").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});document.getElementById("calGrid").className="";rndrCalTeam(sel,allTkts)}
 // Show day-detail panel only in MONTH or WEEK view (when user clicks a day cell from a higher-level view).
 // In DAY view, calGrid already renders the tickets — adding calDetail would render them twice.
@@ -5640,7 +5678,18 @@ function rndrCalDetail(ds,allTkts){
   const isTech=currentUser&&currentUser.role==="tech";
   let tkts=allTkts.filter(t=>t.date===ds);
   if(isTech){
-    tkts=tkts.filter(t=>(t.techs||[]).includes(currentUser.name));
+    // Pill-aware match: same logic as the byDate filter in rndrCal — handles
+    // ticket techs stored under a pill name (e.g. "Fernando/Fabian") or any
+    // alias that resolves to the same pill as the current user.
+    const myName=currentUser?currentUser.name:"";
+    const myPill=myName?_resolveTechPill(myName):"";
+    tkts=tkts.filter(t=>{
+      const arr=t.techs||[];
+      if(!arr.length)return false;
+      if(arr.indexOf(myName)>=0)return true;
+      for(let i=0;i<arr.length;i++)if(_resolveTechPill(arr[i])===myPill)return true;
+      return false;
+    });
   }else{
     tkts=tkts.filter(t=>{
       const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];
