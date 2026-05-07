@@ -8683,21 +8683,94 @@ function _gpsDateStrFromPos(p){
 
 // Save (merge) an array of positions for ONE device on ONE date.
 // Dedupes by Traccar's position id. Returns the count of NEWLY added.
+//
+// CHUNKING: Firestore has a hard 1 MB limit per document. A tech who drives
+// all day can produce 3000+ GPS points/day, which can push the JSON over 1 MB
+// and cause Firestore to reject the write ("size X bytes exceeds maximum
+// allowed size of 1,048,576 bytes"). To prevent this, we split a day's
+// positions across multiple chunk documents named:
+//
+//   gpsLogs/{deviceId}_{date}            ← chunk 1 (legacy name, no suffix)
+//   gpsLogs/{deviceId}_{date}_part2      ← chunk 2 when chunk 1 is full
+//   gpsLogs/{deviceId}_{date}_part3      ← chunk 3 when chunk 2 is full
+//   ...etc
+//
+// SAFE_BYTES is set well below 1 MB (the Firestore limit) to leave room for
+// metadata fields (deviceId, date, count, timestamps) and the next batch of
+// new positions on the following sync.
 async function _fbSavePositions(deviceId,dateStr,positionsForDay){
   if(!db||!positionsForDay||!positionsForDay.length)return 0;
-  const ref=db.collection("gpsLogs").doc(_gpsLogDocId(deviceId,dateStr));
-  const snap=await ref.get();
-  const existing=snap.exists?(snap.data().positions||[]):[];
-  const seenIds=new Set(existing.map(function(p){return p.id}));
+  const SAFE_BYTES=800000; // 800 KB — leaves headroom under 1 MB Firestore limit
+
+  // Read ALL existing chunks for this device+date so we can dedupe across them.
+  const q=await db.collection("gpsLogs")
+    .where("deviceId","==",deviceId)
+    .where("date","==",dateStr)
+    .get();
+  const chunks=[];
+  q.forEach(function(s){chunks.push({id:s.id,data:s.data()})});
+  // Sort by chunkNum (legacy docs without chunkNum default to 1)
+  chunks.sort(function(a,b){return (a.data.chunkNum||1)-(b.data.chunkNum||1)});
+
+  // Build dedup set across all chunks
+  const seenIds=new Set();
+  chunks.forEach(function(c){(c.data.positions||[]).forEach(function(p){if(p.id)seenIds.add(p.id)})});
   const newOnes=positionsForDay.filter(function(p){return p.id&&!seenIds.has(p.id)});
   if(!newOnes.length)return 0;
-  const merged=existing.concat(newOnes).sort(function(a,b){
+
+  // Decide which chunk to write into:
+  //  - If last chunk has room → append there
+  //  - Else → create a new chunk
+  const lastChunk=chunks.length?chunks[chunks.length-1]:null;
+  let targetChunkNum, targetExisting, targetDocId;
+
+  if(lastChunk){
+    const lastPositions=lastChunk.data.positions||[];
+    const lastChunkNum=lastChunk.data.chunkNum||1;
+    // Estimate size if we append newOnes to last chunk
+    const wouldBe=lastPositions.concat(newOnes);
+    const estBytes=JSON.stringify(wouldBe).length*1.1; // *1.1 for UTF-8/overhead safety
+    if(estBytes<=SAFE_BYTES){
+      // Fits — append
+      targetChunkNum=lastChunkNum;
+      targetExisting=lastPositions;
+      targetDocId=lastChunk.id;
+    }else{
+      // Last chunk is full → create a new one
+      targetChunkNum=lastChunkNum+1;
+      targetExisting=[];
+      targetDocId=deviceId+"_"+dateStr+"_part"+targetChunkNum;
+    }
+  }else{
+    // No chunks exist for this day — create the first
+    targetChunkNum=1;
+    targetExisting=[];
+    targetDocId=deviceId+"_"+dateStr; // legacy name (no suffix) for chunk 1
+  }
+
+  // Edge case: newOnes alone exceed SAFE_BYTES (extremely rare with 5-min sync,
+  // but possible after long offline periods). Split them across multiple chunks.
+  const newOnesBytes=JSON.stringify(newOnes).length*1.1;
+  if(targetExisting.length===0 && newOnesBytes>SAFE_BYTES){
+    console.warn("[_fbSavePositions] Large batch ("+Math.round(newOnesBytes/1024)+
+      " KB) for "+deviceId+"/"+dateStr+" — splitting across multiple chunks");
+    // Split newOnes in halves recursively until each half fits
+    const half=Math.ceil(newOnes.length/2);
+    let written=0;
+    written+=await _fbSavePositions(deviceId,dateStr,newOnes.slice(0,half));
+    written+=await _fbSavePositions(deviceId,dateStr,newOnes.slice(half));
+    return written;
+  }
+
+  // Merge + sort + write
+  const merged=targetExisting.concat(newOnes).sort(function(a,b){
     return new Date(_gpsPosTime(a)).getTime()-new Date(_gpsPosTime(b)).getTime();
   });
   const lastTime=_gpsPosTime(merged[merged.length-1]);
-  await ref.set({
+  await db.collection("gpsLogs").doc(targetDocId).set({
     deviceId:deviceId,
     date:dateStr,
+    chunkNum:targetChunkNum,
     positions:merged,
     count:merged.length,
     lastUpdated:firebase.firestore.FieldValue.serverTimestamp(),
@@ -8707,32 +8780,48 @@ async function _fbSavePositions(deviceId,dateStr,positionsForDay){
 }
 
 // Read positions for one device across an arbitrary time range. Spans
-// multiple date-docs if needed. Filters by exact time at the boundaries.
+// multiple date-docs AND multiple chunks-per-day if needed. Filters by exact
+// time at the boundaries.
 async function _fbGetPositions(deviceId,fromDate,toDate){
   if(!db)return[];
   const startStr=fmtD(fromDate),endStr=fmtD(toDate);
   const out=[];
   try{
+    // Always use a field-based query (NOT doc ID lookup) so it picks up all
+    // chunks for the date(s), including legacy single-doc days and new
+    // multi-chunk days.
+    let q;
     if(startStr===endStr){
-      const snap=await db.collection("gpsLogs").doc(_gpsLogDocId(deviceId,startStr)).get();
-      if(snap.exists&&snap.data().positions)out.push.apply(out,snap.data().positions);
+      q=await db.collection("gpsLogs")
+        .where("deviceId","==",deviceId)
+        .where("date","==",startStr)
+        .get();
     }else{
-      const q=await db.collection("gpsLogs")
+      q=await db.collection("gpsLogs")
         .where("deviceId","==",deviceId)
         .where("date",">=",startStr)
         .where("date","<=",endStr)
         .get();
-      q.forEach(function(s){
-        const ps=s.data().positions||[];
-        for(let i=0;i<ps.length;i++)out.push(ps[i]);
-      });
     }
+    q.forEach(function(s){
+      const ps=s.data().positions||[];
+      for(let i=0;i<ps.length;i++)out.push(ps[i]);
+    });
   }catch(_e){return[]}
+  // Dedupe by position id (in case of overlap between chunks) and filter by
+  // exact time range, then sort chronologically.
   const fromMs=fromDate.getTime(),toMs=toDate.getTime();
-  return out.filter(function(p){
+  const seen=new Set();
+  const filtered=[];
+  for(let i=0;i<out.length;i++){
+    const p=out[i];
+    if(!p.id||seen.has(p.id))continue;
     const t=new Date(_gpsPosTime(p)).getTime();
-    return t>=fromMs&&t<=toMs;
-  }).sort(function(a,b){
+    if(t<fromMs||t>toMs)continue;
+    seen.add(p.id);
+    filtered.push(p);
+  }
+  return filtered.sort(function(a,b){
     return new Date(_gpsPosTime(a)).getTime()-new Date(_gpsPosTime(b)).getTime();
   });
 }
