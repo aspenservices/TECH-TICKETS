@@ -1452,6 +1452,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -1485,6 +1486,28 @@ try{
   db=firebase.firestore();
   // Initialize Firebase Storage for photo uploads (much more efficient than base64)
   try{storage=firebase.storage()}catch(_se){console.warn("Storage init failed:",_se)}
+  // ═══ ANONYMOUS AUTH ═══
+  // Required by Firestore/Storage security rules so the database is NOT public.
+  // Rules check `request.auth != null` — this gives every visitor a stable
+  // anonymous Firebase identity (NOT linked to the PIN login system; it's only
+  // a key that proves "this client is using the app, not a random bot").
+  // Auth state is cached in localStorage, so it's a one-time cost per device.
+  // If sign-in fails (offline), Firestore queues writes locally and retries
+  // once the connection (and auth) come back, so the tech still keeps working.
+  try{
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+    firebase.auth().signInAnonymously().then(function(){
+      console.log("✓ Anonymous auth ready");
+    }).catch(function(err){
+      console.warn("Anonymous auth failed:",err.code||"",err.message||err);
+      // Most likely cause: Anonymous sign-in is disabled in Firebase Console.
+      // Show a clear, actionable message instead of a silent failure.
+      if(err.code==="auth/admin-restricted-operation"||err.code==="auth/operation-not-allowed"){
+        var w=document.getElementById("cfgErr");
+        if(w){w.style.display="block";w.innerHTML='<div class="cfg-err"><h2>⚠️ Anonymous Auth not enabled</h2><p>Open Firebase Console → Authentication → Sign-in method → enable <b>Anonymous</b>, then refresh this page.</p></div>'}
+      }
+    });
+  }catch(_ae){console.warn("Auth init error:",_ae)}
   // Enable offline persistence — caches data locally so app works without internet
   // Writes made offline are queued and synced automatically when connection returns
   db.enablePersistence({synchronizeTabs:true}).then(function(){
