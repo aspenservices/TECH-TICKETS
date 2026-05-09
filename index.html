@@ -2057,6 +2057,124 @@ function rndrAdminStats(){
     if(w.has===true&&w.type&&(w.type==="full"||w.type==="half"))return"warranty";
     return"nowarranty";
   }
+  // ─── Warranty sub-categorization (May 2026, v4 — 20 categories, 6 super-groups) ───
+  // Splits warranty tickets into 20 fine-grained buckets organized in 6 super-groups:
+  //   ⚡ ELECTRONICS:       spapack, topside, smart, audio
+  //   🌀 PUMPS:             therapypump, circpump, pumpcomp
+  //   🔧 PLUMBING:          pipes, valves, jets, features, filtration
+  //   ✨ ENVIRONMENT:       spalight, cabinetlight, salt, bromine
+  //   📦 COVERS:            spacover, coverlift     ← split from old PHYSICAL
+  //   🪑 PILLOWS & CABINET: pillows, cabtrim        ← split from old PHYSICAL
+  //
+  // Two flavors of counting:
+  //   classifyWarrantyType(t) → single category (priority chain)
+  //   getWarrantyBuckets(t)   → all categories the ticket touches (multi-bucket)
+  function getWarrantyBuckets(t){
+    var parts=t.parts||[];
+    var wt=(t.workTypes||[]).join(" ").toLowerCase();
+    var notes=(t.notes||"").toLowerCase();
+    var b={spapack:false,topside:false,smart:false,audio:false,therapypump:false,circpump:false,pumpcomp:false,pipes:false,valves:false,jets:false,features:false,filtration:false,spalight:false,cabinetlight:false,salt:false,bromine:false,spacover:false,coverlift:false,pillows:false,cabtrim:false};
+    // ── Per-part predicates ──
+    function isPumpComponent(p){return /\bimpeller|wet[\s\-]?end|wwser-we|pump[\s\-]?seal|pump[\s\-]?base|pump[\s\-]?trap|pump[\s\-]?vibration|euro[\s\-]?capacitor|pump\/euro\/capacitor/i.test(p.n||"")}
+    function isCircPump(p){return /circulat|\bcirc[\s\-]?pump|24[\s\-]?hour[\s\-]?(?:circ|pump)/i.test(p.n||"")}
+    function isTherapyPump(p){return /\bpump\b/i.test(p.n||"")}
+    function isSalt(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="BluWater - Salt")return true;return /in\.?clear|salt[\s\-]?cell|electrode|\banode\b|blu[\s\-]?fusion|salt[\s\-]?bypass/.test(n)}
+    function isSmart(p){return /in\.?touch|in\.?mix|in\.?stream|in\.?temp|water[\s\-]?lab/i.test(p.n||"")}
+    function isAudio(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Aquatic AV"||c==="Poly PQN")return true;return /\bstereo\b|\bsubwoofer\b|sub[\s\-]?box|aquatic[\s\-]?av|aquatic[\s\-]?tv|poly[\s\-]?planar|\bspa\d{2}-\dgf|bluetooth[\s\-]?audio|\bbt[\s\-]?sub\b/.test(n)}
+    function isTopside(p){return /topside|in\.?k(120|300|336|500|506|806|1000)|gecko[\s\-]?control|acc[\s\-]?control|\bk\.?1000\b|\bkp\d{3,4}\b|\bkpr\b|\blxl\b|xl3020|\bml[\s\-]?\d{3}\b|2000le|smart[\s\-]?touch|aspen[\s\-]?touch|holiday[\s\-]?control|aux[\s\-]?control|\bpanel\s*lamp|spa[\s\-]?board/i.test(p.n||"")}
+    function isCabinetLight(p){return /\bcabinet[\s\-]?light|atek[\s\-]?lux|atek[\s\-]?ss[\s\/]|j&j[\s\-]?cabinet|illuminex|deco[\s\-]?cabinet|cabinet[\s\-]?logo[\s\-]?box|cabinet[\s\-]?led/i.test(p.n||"")}
+    function isSpaLight(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="J&J")return true;return /\blight\b|\bled\b|\bspyder\b|\bbulb\b|chromatherapy|chroma[\s\-]?corner|light[\s\-]?cord|light[\s\-]?connector|cmp-light|ww-light|\batek\b/.test(n)}
+    function isBromine(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="King")return true;return /\bfrog\b|bromine[\s\-]?cart|mineral[\s\-]?cart|@ease|smartchlor|\bcanister\s*assy|canister[\s\-]?cap/.test(n)}
+    function isFiltration(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Pleatco")return true;return /\bfilter\b|\bfiltration\b|filbur|filterlily|weir[\s\-]?door|pre[\s\-]?filter|filter[\s\-]?body|filter[\s\-]?cartr|filter[\s\-]?face|filter[\s\-]?clip|float(ing)?[\s\-]?vane|marvel[\s\-]?x10|\bskim50|skim[\s\-]?filter|filter[\s\-]?weir|filter[\s\-]?mounting|filter[\s\-]?flosser/.test(n)}
+    function isFeature(p){return /\bwaterfall|\bfountain|\bbubbler|aquastream|aqua[\s\-]?bubbler|aqua[\s\-]?fountain|\blaminar|crystal[\s\-]?ball|crystal[\s\-]?base|ozone[\s\-]?wall|ozone[\s\-]?venturi|ozone[\s\-]?mister|ozone[\s\-]?injector|ozone[\s\-]?check|ozone[\s\-]?generator|ozonator|cmp-ozone|rmt-ozone|sculptured[\s\-]?ice|cascade/i.test(p.n||"")}
+    function isJet(p){return /\bjet\b|polystorm|powerstorm|ministorm|oz[\s\-]?storm|\bcluster|whirlpool[\s\-]?dir|whirlpool[\s\-]?poly|swim[\s\-]?jet|river[\s\-]?jet|rip[\s\-]?current|volcano|echo[\s\-]?jet|fog[\s\-]?jet/i.test(p.n||"")}
+    function isValve(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Magic")return true;return /diverter[\s\-]?v|diverter[\s\-]?cap|diverter[\s\-]?handle|diverter[\s\-]?valve|slice[\s\-]?valve|check[\s\-]?valve|drain[\s\-]?valve|spa[\s\-]?drain|shutoff|shut[\s\-]?valve|on[\s\-]?off[\s\-]?valve|pop[\s\-]?check|smart[\s\-]?check|\bunion\b|locking[\s\-]?union|sweep[\s\-]?locking|reducer[\s\-]?bushing|red\s+\d/.test(n)}
+    function isPipe(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="American Vinyl"||c==="Atlas lasco")return true;return /\bpvc\b|\bpipe\b|flex[\s\-]?hose|flex[\s\-]?\d|clear[\s\-]?tubing|shurgrip|\b90[\s\-]?ell|\b45[\s\-]?ell|street[\s\-]?ell|sweep[\s\-]?ell|\btee\b|\bcoup\b|coupling|barb[\s\-]?adapter|barb[\s\-]?coup|hose[\s\-]?clamp|inside[\s\-]?coup|\belbow\b|u[\s\-]?bend|water[\s\-]?man|air[\s\-]?man|\bmanifold|magicserv-air|barb[\s\-]?tee|\bwye\b|spigot/.test(n)}
+    function isSpaCover(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Covers"||c==="Covana")return true;return /\bspa[\s\-]?cover|swim[\s\-]?spa[\s\-]?cover|roll[\s\-]?up|cover[\s\-]?cap|cover[\s\-]?clips|cover[\s\-]?seal|\bspa[\s\-]?cap\b/.test(n)}
+    function isCoverLift(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Cover Lifts etc")return true;return /\bcover[\s\-]?lift|cover[\s\-]?mate|covermate|cover[\s\-]?valet|coverEX|cover[\s\-]?caddy|boomerang|freemount|hydraulic[\s\-]?mount|vanish[\s\-]?xl|vacu[\s\-]?seal|vacu[\s\-]?cover|vacu[\s\-]?convert|\bts-07\b|\bts-11\b|\bcm[\s\-]?i+\b/.test(n)}
+    function isPillow(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Foam Creations")return true;return /\bpillow\b|\blounge\s*fci|ergonomic[\s\-]?pillow|booster[\s\-]?seat/.test(n)}
+    function isCabTrim(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="BMF"||c==="Highwood")return true;return /\bcab\b[\s,\-]+(door|panel|frame|corner|up)|ss[\s\-]?band|stainless[\s\-]?steel[\s\-]?band|cabinet[\s\-]?door|cabinet[\s\-]?panel|cabinet[\s\-]?frame|cabinet[\s\-]?corner|cabinet[\s\-]?upgrade|kick[\s\-]?rail|t&g|backerboard|tear[\s\-]?aid/.test(n)}
+    function isSpaPack(p){var n=String(p.n||"").toLowerCase(),c=p.c||"";if(c==="Gecko"||c==="ACC"||c==="Balboa")return true;return /spa[\s\-]?pack|smtd|in\.?ye|in\.?yj|in\.?yt|el[\s\-]?\d{4}|\bel2001\b|\bel8000\b|vs[\s\-]?\d{3}|\bsimplex\b|gecko[\s\-]?control|acc[\s\-]?control|bal[\s\-]?aux|board[\s\-]?only|\bheater\b|heating[\s\-]?element|pressure[\s\-]?switch|\bsensor\b|\bfuse\b|contactor|input[\s\-]?block|\brelay\b/.test(n)}
+    // ── Per-part classification: each part lights up exactly ONE bucket (priority order) ──
+    // Pump check chain: components → circulation → therapy (catch-all for remaining "pump" parts)
+    // Note: isCabTrim runs BEFORE isSpaLight so that cabinet doors with integrated LED
+    // (e.g., "asa-cab, door - With SS and LED") classify as cabtrim, not as spa light.
+    parts.forEach(function(p){
+      if(!p)return;
+      if(isSalt(p))b.salt=true;
+      else if(isSmart(p))b.smart=true;
+      else if(isAudio(p))b.audio=true;
+      else if(isTopside(p))b.topside=true;
+      else if(isPumpComponent(p))b.pumpcomp=true;
+      else if(isCircPump(p))b.circpump=true;
+      else if(isTherapyPump(p))b.therapypump=true;
+      else if(isCabinetLight(p))b.cabinetlight=true;
+      else if(isCabTrim(p))b.cabtrim=true;
+      else if(isSpaLight(p))b.spalight=true;
+      else if(isBromine(p))b.bromine=true;
+      else if(isFiltration(p))b.filtration=true;
+      else if(isFeature(p))b.features=true;
+      else if(isJet(p))b.jets=true;
+      else if(isValve(p))b.valves=true;
+      else if(isPipe(p))b.pipes=true;
+      else if(isSpaCover(p))b.spacover=true;
+      else if(isCoverLift(p))b.coverlift=true;
+      else if(isPillow(p))b.pillows=true;
+      else if(isSpaPack(p))b.spapack=true;
+      else b.cabtrim=true;
+    });
+    // ── workType / notes detection (catches parts-less or generic tickets) ──
+    var wn=wt+" "+notes;
+    if(/\b(pack|topside|in\.?touch|in\.?mix|heater|heating[\s\-]?element|control[\s\-]?board|spa[\s\-]?pack|sensor|pressure[\s\-]?switch|\bfuse\b)\b/i.test(wn))b.spapack=true;
+    if(/\b(circulation|circ[\s\-]?pump|24[\s\-]?hour)\b/i.test(wn))b.circpump=true;
+    else if(/\b(impeller|wet[\s\-]?end|pump[\s\-]?seal)\b/i.test(wn))b.pumpcomp=true;
+    else if(/\bpump\b/i.test(wn))b.therapypump=true;
+    if(/plumb/i.test(wt))b.pipes=true;
+    if(/\b(leak|pipe|manifold|union|fitting)\b/i.test(notes))b.pipes=true;
+    if(/\b(valve|diverter|slice)\b/i.test(notes))b.valves=true;
+    if(/\b(jet|jets)\b/i.test(notes))b.jets=true;
+    if(/\b(filter|cartridge|weir)\b/i.test(notes))b.filtration=true;
+    if(/\b(light|led|bulb)\b/i.test(notes))b.spalight=true;
+    if(/\b(lifter|cover[\s\-]?lift)\b/i.test(notes))b.coverlift=true;
+    else if(/\bcover\b/i.test(notes))b.spacover=true;
+    if(/\b(salt|bromide|in\.?clear)\b/i.test(notes))b.salt=true;
+    if(/\b(frog|bromine)\b/i.test(notes))b.bromine=true;
+    if(/\bpillow\b/i.test(notes))b.pillows=true;
+    if(/\b(cabinet|band|panel|trim)\b/i.test(notes))b.cabtrim=true;
+    if(/waterfall|fountain|ozone/i.test(notes))b.features=true;
+    // Default to cabtrim (cabinet/trim catch-all) if absolutely nothing matched
+    var any=false;for(var k in b){if(b[k]){any=true;break;}}
+    if(!any)b.cabtrim=true;
+    return b;
+  }
+  function classifyWarrantyType(t){
+    // Priority order: Spa Pack > Therapy Pump > Circ Pump > Pump Components >
+    //                 Topside > Smart > Audio >
+    //                 Filtration > Valves > Jets > Features > Pipes >
+    //                 Spa Light > Cabinet Light > Salt > Bromine >
+    //                 Spa Cover > Cover Lift > Pillows > Cabinet & Trim
+    var b=getWarrantyBuckets(t);
+    if(b.spapack)return"spapack";
+    if(b.therapypump)return"therapypump";
+    if(b.circpump)return"circpump";
+    if(b.pumpcomp)return"pumpcomp";
+    if(b.topside)return"topside";
+    if(b.smart)return"smart";
+    if(b.audio)return"audio";
+    if(b.filtration)return"filtration";
+    if(b.valves)return"valves";
+    if(b.jets)return"jets";
+    if(b.features)return"features";
+    if(b.pipes)return"pipes";
+    if(b.spalight)return"spalight";
+    if(b.cabinetlight)return"cabinetlight";
+    if(b.salt)return"salt";
+    if(b.bromine)return"bromine";
+    if(b.spacover)return"spacover";
+    if(b.coverlift)return"coverlift";
+    if(b.pillows)return"pillows";
+    return"cabtrim";
+  }
   // Filter tickets: ONLY count tickets the tech has filled out AND completed
   // - Excludes: dispatch tickets (no tech work yet), canceled, reschedule, pending
   // - Includes: status "complete" (tech submitted field report) + "done" (admin closed)
@@ -2175,9 +2293,53 @@ function rndrAdminStats(){
   }
   // ─── Visit Type Breakdown (overall, with PF) ───
   var stats={warranty:0,nowarranty:0,cm:0,repeat:0,delivery:0,pf:0};
+  // 20-category warranty stats (single-bucket primary + multi-bucket touched)
+  var _wKeys=["spapack","topside","smart","audio","therapypump","circpump","pumpcomp","pipes","valves","jets","features","filtration","spalight","cabinetlight","salt","bromine","spacover","coverlift","pillows","cabtrim"];
+  // Map sub-cat key → super-group (for rollup totals)
+  var _wKeyToGroup={
+    spapack:'electronics',topside:'electronics',smart:'electronics',audio:'electronics',
+    therapypump:'pumps',circpump:'pumps',pumpcomp:'pumps',
+    pipes:'plumbing',valves:'plumbing',jets:'plumbing',features:'plumbing',filtration:'plumbing',
+    spalight:'environment',cabinetlight:'environment',salt:'environment',bromine:'environment',
+    spacover:'covers',coverlift:'covers',
+    pillows:'cabinet',cabtrim:'cabinet'
+  };
+  // Hybrid counting model:
+  //   • TOUCHED (multi-bucket) for most categories — each warranty ticket counts in
+  //     every category it hit, so a heater repair that also touched plumbing shows up
+  //     in BOTH electronics and plumbing.
+  //   • PRIMARY-ONLY for spacover & coverlift — covers are often replaced incidentally
+  //     during visits for other issues (a tech goes for a leak and also swaps the cover).
+  //     We don't want those to inflate the cover failure count, so covers/lifts only
+  //     count when they were the MAIN REASON for the visit.
+  var wStats={};
+  _wKeys.forEach(function(k){wStats[k]=0;});
+  // Tickets stored per category for drill-through. Same hybrid rule:
+  // covers/lifts only store tickets where they're the primary reason.
+  var wTicketsByCat={};
+  _wKeys.forEach(function(k){wTicketsByCat[k]=[];});
+  // Super-group rollups — count unique tickets that contributed to ANY sub-cat in
+  // the group (under the same hybrid rule). For COVERS group, this means only
+  // tickets whose primary classification falls in the group (spacover or coverlift).
+  var wGroupAll={electronics:0,pumps:0,plumbing:0,environment:0,covers:0,cabinet:0};
   pool.forEach(function(t){
     var c=classifyVisit(t);
     stats[c]++;
+    if(c==="warranty"){
+      var primary=classifyWarrantyType(t);
+      var b=getWarrantyBuckets(t);
+      var groupsCounted={};
+      _wKeys.forEach(function(k){
+        // Hybrid rule: covers/lifts only count when primary; everything else counts on touch
+        var shouldCount = (k==='spacover'||k==='coverlift') ? (primary===k) : !!b[k];
+        if(shouldCount){
+          wStats[k]++;
+          wTicketsByCat[k].push(t);
+          groupsCounted[_wKeyToGroup[k]]=true;
+        }
+      });
+      Object.keys(groupsCounted).forEach(function(g){wGroupAll[g]++;});
+    }
     if(isPF(t))stats.pf++;
   });
   var totalV=stats.warranty+stats.nowarranty+stats.cm+stats.repeat+stats.delivery;
@@ -2198,6 +2360,181 @@ function rndrAdminStats(){
       vh+='<div style="margin-bottom:10px;padding:10px 12px;background:'+r.bg+';border-radius:8px;border:1px solid '+r.color+'33">';
       vh+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:12px;font-weight:700;color:'+r.color+';display:inline-flex;align-items:center;gap:6px">'+icon(r.iconName,14,{color:r.color})+r.label+'</span><span style="font-size:13px;font-weight:800;color:'+r.color+'">'+r.val+' <span style="font-size:10px;font-weight:600;opacity:.7">('+pct+'%)</span></span></div>';
       vh+='<div style="height:6px;background:rgba(255,255,255,.6);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+r.color+';transition:width .3s"></div></div>';
+      // ─── Warranty sub-breakdown (18 categories grouped in 5 super-groups) ───
+      // Super-groups are COLLAPSIBLE — click chevron to expand/collapse sub-categories.
+      // Default = all collapsed (clean overview of 5 super-groups).
+      // MULTI super-group rollups count UNIQUE tickets touching any sub-cat (never >100%).
+      if(r.key==="warranty"&&r.val>0){
+        var catMeta=[
+          // ⚡ ELECTRONICS
+          {key:"spapack",     group:"electronics",groupLabel:"Electronics",groupColor:"#15803d",groupIcon:"zap",
+            label:"Spa Pack & Heater",iconName:"cpu",          color:"#15803d",hint:"Pack/board · heater · sensors · pressure switches · fuses · contactors"},
+          {key:"topside",     group:"electronics",
+            label:"Topside Control",  iconName:"tablet",       color:"#0d9488",hint:"Keypads (in.k, KP, ML, LXL, XL3020), overlays, panels"},
+          {key:"smart",       group:"electronics",
+            label:"Smart Systems",    iconName:"wifi",         color:"#7c3aed",hint:"in.touch · in.mix · in.stream · in.temp · water lab"},
+          {key:"audio",       group:"electronics",
+            label:"Audio",            iconName:"volume-2",     color:"#be185d",hint:"Aquatic AV · Poly PQN · stereos · speakers · subwoofers"},
+          // 🌀 PUMPS (own super-group)
+          {key:"therapypump", group:"pumps",groupLabel:"Pumps",groupColor:"#0e7490",groupIcon:"fan",
+            label:"Therapy Pumps",    iconName:"gauge",        color:"#0e7490",hint:"1-spd, 2-spd, swim/Viper pumps — full pump replacements"},
+          {key:"circpump",    group:"pumps",
+            label:"Circulation Pump", iconName:"refresh-cw",   color:"#0891b2",hint:"24-hour low-flow circ pump — runs continuously, replaced every 5-7 yrs"},
+          {key:"pumpcomp",    group:"pumps",
+            label:"Pump Components",  iconName:"settings-2",   color:"#155e75",hint:"Impellers, wet ends, seals, capacitors, vibration pads — partial repairs"},
+          // 🔧 PLUMBING (renamed from Hydraulics, no Pumps inside)
+          {key:"pipes",       group:"plumbing",groupLabel:"Plumbing",groupColor:"#7c2d12",groupIcon:"wrench",
+            label:"Pipes & Hoses",    iconName:"git-branch",   color:"#7c2d12",hint:"PVC pipes (Atlas) · flex hoses (American Vinyl) · tubing · manifolds"},
+          {key:"valves",      group:"plumbing",
+            label:"Valves & Unions",  iconName:"arrow-right-left",color:"#92400e",hint:"Diverter · slice · check · drain valves · unions · reducer bushings"},
+          {key:"jets",        group:"plumbing",
+            label:"Therapy Jets",     iconName:"droplet",      color:"#1d4ed8",hint:"Polystorm · powerstorm · ministorm · oz-storm · cluster · whirlpool"},
+          {key:"features",    group:"plumbing",
+            label:"Water Features",   iconName:"waves",        color:"#0369a1",hint:"Waterfalls · fountains · bubblers · ozone (wall/venturi/mister) · AquaStream"},
+          {key:"filtration",  group:"plumbing",
+            label:"Filtration",       iconName:"filter",       color:"#0d9488",hint:"Pleatco · Filbur · cartridges · weir doors · filter bodies"},
+          // ✨ ENVIRONMENT
+          {key:"spalight",    group:"environment",groupLabel:"Environment",groupColor:"#d97706",groupIcon:"sparkles",
+            label:"Spa Lighting",     iconName:"lightbulb",    color:"#d97706",hint:"Main pool lights — J&J master/slave/spyder · cmp-light · ww-light"},
+          {key:"cabinetlight",group:"environment",
+            label:"Cabinet Lighting", iconName:"flame",        color:"#ea580c",hint:"Exterior LED strips — Atek extrusion/SS/LED · J&J cabinet 12\"/60\"/72\""},
+          {key:"salt",        group:"environment",
+            label:"Salt System",      iconName:"flask-conical",color:"#65a30d",hint:"in.clear cell + accessories · BluWater Genesis · electrodes · anodes"},
+          {key:"bromine",     group:"environment",
+            label:"Bromine/Frog",     iconName:"shell",        color:"#16a34a",hint:"Frog systems (in-line/floating/@ease) · bromine cartridges · mineral cartridges"},
+          // 📦 COVERS (split out from old PHYSICAL — different vendors than cabinet/pillows)
+          {key:"spacover",    group:"covers",groupLabel:"Covers",groupColor:"#475569",groupIcon:"package",
+            label:"Spa Covers",       iconName:"package",      color:"#475569",hint:"Hot tub & swim spa covers — Aspen Covers · Covana automated · custom covers"},
+          {key:"coverlift",   group:"covers",
+            label:"Cover Lifts",      iconName:"move-up-right",color:"#0369a1",hint:"Cover lifters — CM I/III, CoverMate, Vacu, Boomerang, Freemount, Hydraulic Mount"},
+          // 🪑 PILLOWS & CABINET (was old PHYSICAL — split into pillows vs cabinet/trim)
+          {key:"pillows",     group:"cabinet",groupLabel:"Pillows & Cabinet",groupColor:"#78716c",groupIcon:"armchair",
+            label:"Pillows",          iconName:"armchair",     color:"#a8a29e",hint:"Spa pillows & comfort — Foam Creations · ergonomic pillows · lounge cushions · booster seats"},
+          {key:"cabtrim",     group:"cabinet",
+            label:"Cabinet & Trim",   iconName:"layers",       color:"#92400e",hint:"Exterior trim — SS bands (BMF) · cabinet panels/doors/frames · T&G/kick rails (Highwood)"}
+        ];
+        function _wRenderSection(badge,badgeBg,title,subtitle,source,groups,showSubs){
+          // Helper: render super-group rollup row (icon + label + count + bar)
+          function _rollup(sr,gv,gpct,withChev){
+            var x='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">';
+            if(withChev){
+              x+='<span class="wbd-chev" style="display:inline-flex;align-items:center;transition:transform .2s ease;flex-shrink:0;color:'+sr.groupColor+'">'+icon('chevron-right',11,{color:sr.groupColor})+'</span>';
+            }
+            x+='<span style="font-size:10.5px;font-weight:800;color:'+sr.groupColor+';display:inline-flex;align-items:center;gap:4px;text-transform:uppercase;letter-spacing:.4px;flex:1">'+icon(sr.groupIcon,11,{color:sr.groupColor})+sr.groupLabel+'</span>';
+            x+='<span style="font-size:11px;font-weight:800;color:'+sr.groupColor+'">'+gv+' <span style="font-size:9.5px;font-weight:700;opacity:.7">('+gpct+'%)</span></span>';
+            x+='</div>';
+            x+='<div style="height:5px;background:rgba(255,255,255,.7);border-radius:2.5px;overflow:hidden"><div style="width:'+gpct+'%;height:100%;background:'+sr.groupColor+';transition:width .3s"></div></div>';
+            return x;
+          }
+          // Helper: render the inner row of a sub-category (label + count + bar). When clickable, prefix with small chevron.
+          function _subRow(sr,v,spct,withChev){
+            var x='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">';
+            x+='<span style="font-size:10.5px;font-weight:600;color:'+sr.color+';display:inline-flex;align-items:center;gap:4px">';
+            if(withChev){
+              x+='<span class="wbd-chev-sm" style="display:inline-flex;align-items:center;transition:transform .2s ease;flex-shrink:0;color:'+sr.color+';opacity:.55">'+icon('chevron-right',9,{color:sr.color})+'</span>';
+            }
+            x+=icon(sr.iconName,11,{color:sr.color})+sr.label+'</span>';
+            x+='<span style="font-size:10.5px;font-weight:700;color:'+sr.color+'">'+v+' <span style="font-size:9px;font-weight:600;opacity:.65">('+spct+'%)</span></span>';
+            x+='</div>';
+            x+='<div style="height:3px;background:rgba(255,255,255,.6);border-radius:1.5px;overflow:hidden"><div style="width:'+spct+'%;height:100%;background:'+sr.color+';transition:width .3s"></div></div>';
+            return x;
+          }
+          // Helper: render the linked ticket list for a sub-cat (clickable cards opening full ticket detail)
+          function _ticketList(tkts,sr){
+            if(!tkts||!tkts.length)return'';
+            var x='<div style="margin-top:5px;padding:6px 8px;background:rgba(255,255,255,.55);border-radius:5px;border-left:2px solid '+sr.color+'66">';
+            tkts.forEach(function(t){
+              var cust=esc(t.customer||'—');
+              var date=t.date||'';
+              var techArr=t.techs||[];
+              var techs=techArr.slice(0,2).join(', ');
+              var moreT=techArr.length>2?' +'+(techArr.length-2):'';
+              x+='<div onclick="openTktDetail(\''+(t.id||'')+'\')" style="padding:5px 7px;margin:2px 0;border-radius:4px;cursor:pointer;background:#fff;border:1px solid '+sr.color+'1f;transition:background .12s,transform .08s" onmouseover="this.style.background=\''+sr.color+'0d\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'#fff\';this.style.transform=\'\'">';
+              x+='<div style="font-size:10px;font-weight:700;color:#1d1d1f;line-height:1.3">'+cust+'</div>';
+              x+='<div style="font-size:8.5px;color:var(--i3);margin-top:1px">'+(techs?esc(techs)+esc(moreT):'no tech')+(date?' · '+esc(date):'')+'</div>';
+              x+='</div>';
+            });
+            x+='</div>';
+            return x;
+          }
+          // Header (badge optional — when single section, show plain title)
+          var h='<div style="margin-bottom:10px">';
+          if(badge){
+            h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap">';
+            h+='<span style="display:inline-block;background:'+badgeBg+';color:#fff;font-size:8.5px;font-weight:800;letter-spacing:.6px;padding:2px 7px;border-radius:8px;text-transform:uppercase">'+badge+'</span>';
+            h+='<span style="font-size:11.5px;font-weight:700;color:'+r.color+';letter-spacing:.2px">'+title+'</span>';
+            h+='</div>';
+          }else if(title){
+            h+='<div style="font-size:12px;font-weight:700;color:'+r.color+';letter-spacing:.2px;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px">'+icon('list-tree',13,{color:r.color})+title+'</div>';
+          }
+          h+='<div style="font-size:9.5px;color:var(--i3);font-style:italic;line-height:1.4">'+subtitle+'</div>';
+          h+='</div>';
+          // Iterate super-groups: collapsible <details> if showSubs, else plain rollup row
+          var lastGroup=null;
+          catMeta.forEach(function(sr){
+            if(sr.group!==lastGroup){
+              var gv=groups[sr.group],gpct=r.val?Math.round((gv/r.val)*100):0;
+              var gdim=gv===0?'opacity:.5;':'';
+              if(showSubs){
+                if(lastGroup!==null) h+='</div></details>';
+                h+='<details class="wbd-grp" style="'+gdim+'">';
+                h+='<summary>';
+                h+=_rollup(sr,gv,gpct,true);
+                h+='</summary>';
+                h+='<div class="wbd-subs" style="padding:6px 0 2px 0">';
+              }else{
+                h+='<div style="margin-bottom:8px;'+gdim+'">';
+                h+=_rollup(sr,gv,gpct,false);
+                h+='</div>';
+              }
+              lastGroup=sr.group;
+            }
+            // Sub-category row — clickable <details> when there are linked tickets, plain <div> otherwise
+            if(showSubs){
+              var v=source[sr.key],spct=r.val?Math.round((v/r.val)*100):0;
+              var dim=v===0?'opacity:.32;':'';
+              var tkts=wTicketsByCat[sr.key]||[];
+              if(v>0 && tkts.length){
+                h+='<details class="wbd-sub" title="'+sr.hint+'" style="margin:4px 0 4px 17px;'+dim+'">';
+                h+='<summary>';
+                h+=_subRow(sr,v,spct,true);
+                h+='</summary>';
+                h+=_ticketList(tkts,sr);
+                h+='</details>';
+              }else{
+                h+='<div title="'+sr.hint+'" style="margin:4px 0 4px 17px;'+dim+'">';
+                h+=_subRow(sr,v,spct,false);
+                h+='</div>';
+              }
+            }
+          });
+          if(showSubs && lastGroup!==null) h+='</div></details>';
+          return h;
+        }
+        // Inject collapse/expand styles (one-time per render — fine, browser dedupes rules)
+        vh+='<style>'
+          +'.wbd-grp{margin-bottom:5px;border-radius:5px}'
+          +'.wbd-grp summary{display:block;list-style:none;cursor:pointer;user-select:none;outline:none;padding:5px 6px;border-radius:5px;transition:background .15s}'
+          +'.wbd-grp summary::-webkit-details-marker{display:none}'
+          +'.wbd-grp summary::marker{display:none}'
+          +'.wbd-grp summary:hover{background:rgba(0,0,0,.04)}'
+          +'.wbd-grp[open]>summary .wbd-chev{transform:rotate(90deg)}'
+          +'.wbd-sub{border-radius:4px}'
+          +'.wbd-sub summary{display:block;list-style:none;cursor:pointer;user-select:none;outline:none;padding:2px 4px;border-radius:4px;transition:background .12s}'
+          +'.wbd-sub summary::-webkit-details-marker{display:none}'
+          +'.wbd-sub summary::marker{display:none}'
+          +'.wbd-sub summary:hover{background:rgba(0,0,0,.03)}'
+          +'.wbd-sub[open]>summary .wbd-chev-sm{transform:rotate(90deg);opacity:1}'
+          +'</style>';
+        vh+='<div style="margin-top:10px;padding-top:10px;border-top:1px dashed '+r.color+'55">';
+        // Hybrid counting: TOUCHED (multi-bucket) for most categories, but PRIMARY-only for
+        // spacover/coverlift to avoid inflating the cover failure count with incidental swaps.
+        vh+='<div style="background:rgba(14,116,144,.04);border:1px solid '+r.color+'22;border-left:3px solid #0e7490;border-radius:6px;padding:10px 11px">';
+        vh+=_wRenderSection(null,null,'Warranty issues by category','A ticket lights up <b>every</b> category it hit · <b>covers &amp; lifts</b> only count when they were the <b style="font-style:normal">main reason</b> for the visit (so incidental cover swaps don\'t inflate the count) · <b style="font-style:normal">click ▸ to see linked tickets</b>',wStats,wGroupAll,true);
+        vh+='<div style="margin-top:8px;padding-top:7px;border-top:1px dashed '+r.color+'33;font-size:9px;color:var(--i3);text-align:center">'+r.val+' warranty ticket'+(r.val===1?'':'s')+' total · click any sub-category to see which tickets are linked to it</div>';
+        vh+='</div>';
+        vh+='</div>';
+      }
       vh+='</div>';
     });
     vh+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--ln);font-size:11px;color:var(--i3);text-align:center">Total: <b style="color:var(--ink)">'+totalV+'</b> ticket'+(totalV!==1?"s":"")+(stats.pf?' · <b style="color:#1e40af">'+stats.pf+'</b> with PF':'')+'</div>';
