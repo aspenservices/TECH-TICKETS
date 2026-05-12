@@ -11101,6 +11101,109 @@ function _traccarExportSummary(){
   toast("Exported "+filename,"ok");
 }
 
-init();</script>
+init();
+
+// ==================== AUTO-FILL FROM COVERS TRACKER ====================
+// When the Covers Tracker links here with ?new=1&type=cover_delivery_schedule
+// &customer=...&phone=...&po=...&notes=..., we auto-fill the New Service Call
+// form on the Service Log tab. Manager only needs to schedule date and click Create.
+(function autoFillFromCoversTracker(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('new') !== '1') return;
+
+  // Capture all params from the Covers Tracker link
+  const incoming = {
+    type: params.get('type') || '',
+    customer: params.get('customer') || '',
+    phone: params.get('phone') || '',
+    po: params.get('po') || '',
+    notes: params.get('notes') || '',
+    tech: params.get('tech') || '',
+    address: params.get('address') || '',
+  };
+
+  // Strip params from URL so a page refresh doesn't re-trigger this
+  try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e){}
+
+  // Poll for form availability (waits until logged in as admin/organizer with access to Service Log)
+  let attempts = 0;
+  const maxAttempts = 40; // ~20 seconds
+  const checkAndFill = () => {
+    attempts++;
+    const custInput = document.getElementById('slCustName');
+    const tab5 = document.getElementById('tab5');
+    if(custInput && tab5 && !tab5.classList.contains('hidden')){
+      doFill(incoming);
+      return;
+    }
+    if(attempts < maxAttempts) setTimeout(checkAndFill, 500);
+  };
+
+  function doFill(data){
+    // Navigate to Service Log tab
+    if(typeof showTab === 'function') showTab(5);
+
+    setTimeout(() => {
+      const customer = (data.customer || '').split('—')[0].trim();
+      const set = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+
+      set('slCustName', customer);
+      set('slCustPhone', data.phone);
+      set('slCustAddr', data.address);
+
+      // Compose notes: include PO# if not already there
+      let notesText = data.notes || '';
+      if(data.po && !notesText.includes(data.po)){
+        notesText = notesText ? `${notesText}\n\nPO# ${data.po}` : `PO# ${data.po}`;
+      }
+      set('slNotes', notesText);
+
+      // Spa Description: indicate this is a cover delivery from the Covers Tracker
+      if(data.type === 'cover_delivery_schedule'){
+        const spaDesc = document.getElementById('slSpaDesc');
+        if(spaDesc){
+          spaDesc.value = `📦 Cover delivery${data.po ? ' — PO# ' + data.po : ''}\nPending: schedule delivery date with customer.`;
+        }
+      }
+
+      // Default date to today
+      const dateEl = document.getElementById('slDate');
+      if(dateEl && !dateEl.value){
+        const t = new Date();
+        dateEl.value = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+      }
+
+      // Visual feedback: scroll the form into view + highlight pre-filled fields
+      const calSide = document.querySelector('#pg5 .cal-side');
+      if(calSide) calSide.scrollIntoView({behavior:'smooth', block:'start'});
+
+      ['slCustName','slCustPhone','slCustAddr','slNotes','slSpaDesc'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el){
+          el.style.transition = 'background .3s';
+          el.style.background = '#FFF4E0';
+          setTimeout(() => { el.style.background = ''; }, 2500);
+        }
+      });
+
+      // Banner with golden Aspen accent
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#B8924C 0%,#A07A38 100%);color:white;padding:14px 24px;border-radius:10px;font-family:system-ui,sans-serif;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 6px 20px rgba(184,146,76,0.4);display:flex;align-items:center;gap:12px;';
+      banner.innerHTML = '<span style="font-size:22px;">📦</span><span>Pre-filled from <strong>Covers Tracker</strong> — review and click <strong>+ Create Ticket</strong></span><span style="cursor:pointer;font-size:18px;opacity:0.7;margin-left:8px;" onclick="this.parentElement.remove()">✕</span>';
+      document.body.appendChild(banner);
+      setTimeout(() => { if(banner.parentElement) banner.style.opacity = '0'; banner.style.transition = 'opacity .5s'; }, 7000);
+      setTimeout(() => banner.remove(), 8000);
+
+      // Trigger input events so autocomplete + zone detection kick in
+      ['slCustName','slCustZip'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.dispatchEvent(new Event('input', {bubbles:true}));
+      });
+    }, 200);
+  }
+
+  // Start polling shortly after init() completes
+  setTimeout(checkAndFill, 400);
+})();</script>
 </body>
 </html>
