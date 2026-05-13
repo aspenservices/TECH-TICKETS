@@ -5696,52 +5696,61 @@ function rndrCalTechPills(counts){
   if(anyHidden)h+='<button class="cal-tech-pill" onclick="calShowAllTechs()" style="background:var(--br);color:#fff;border-color:var(--br)">Show All</button>';
   el.innerHTML=h;
 }
-function rndrCal(){if(!calYear)calInit();const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];const isTech=currentUser&&currentUser.role==="tech";const q=(document.getElementById("searchCal")||{}).value||"";
-// For techs, we hide dispatch tickets that have already been handled (report submitted or ticket marked done).
-const today=fmtD(new Date());
-// Customer-name matching uses the family-name-aware helper _custGroupKey
-// defined globally. This handles real-world variations like:
-//   "Bellinger, Vince"  ↔  "Bellinger, Vince and Mary"  → both → "fam:bellinger"
-// The previous simple alphanumeric normalization missed these and left
-// dispatch tickets in the calendar after their reports were filed.
-// Build a lookup of field reports already submitted, keyed by groupKey+date.
-const fieldReportKeys=new Set();
-// Also track "any report ever done for this customer" — used for past-dated stale dispatch tickets
-const customerHasCompletedReport=new Set();
-// Track all completed/submitted field reports per customer-key (for ±30 day matching).
-// Each entry: { date: "YYYY-MM-DD", createdMs: Number } — createdMs is when the report was created (server time)
-const customerReports={};
+
+// ─── DISPATCH VISIBILITY HELPERS ───────────────────────────────────────────
+// These three functions encapsulate the rules that decide whether a dispatch
+// ticket should be visible in a "planning" view (Calendar, Maps "Today's
+// Routes"). Centralising the logic guarantees that the Maps day-route panel
+// and the Calendar Team view never disagree about whether a ticket belongs
+// to today's work. (Earlier they did disagree: Maps showed any ticket with
+// techs assigned, Calendar applied stricter filters — so non-dispatch field
+// reports appeared as phantom stops in Maps but were absent from the calendar.)
+
+// Returns the millisecond timestamp when a ticket was created in Firestore.
+// Prefers serverTimestamp; falls back to the "submitted" string. 0 = unknown.
 function _ticketCreatedMs(t){
-  // Prefer Firestore serverTimestamp if present, fall back to parsing "submitted" string
-  if(t.createdAt&&typeof t.createdAt.toMillis==="function"){
+  if(t&&t.createdAt&&typeof t.createdAt.toMillis==="function"){
     try{return t.createdAt.toMillis()}catch(_){}
   }
-  if(t.submitted){
+  if(t&&t.submitted){
     var p=Date.parse(t.submitted);
     if(!isNaN(p))return p;
   }
-  return 0; // unknown — treated as "very old"
+  return 0;
 }
-[...active,...done].forEach(t=>{
-  if(t.source==="dispatch")return; // only count tech-submitted field reports
-  const cust=_custGroupKey(t.customer);
-  const dt=(t.date||"").trim();
-  if(!cust)return;
-  if(dt)fieldReportKeys.add(cust+"|"+dt);
-  // Any submitted (complete) or admin-completed (done) field report counts as "handled"
-  if(t.status==="done"||t.status==="complete"){
-    customerHasCompletedReport.add(cust);
-    if(dt){
-      if(!customerReports[cust])customerReports[cust]=[];
-      customerReports[cust].push({date:dt,createdMs:_ticketCreatedMs(t)});
+
+// Builds the field-report index used by _isVisibleDispatch.
+// Scans all non-dispatch tickets (i.e. field reports) and records:
+//   fieldReportKeys      — Set of "customerGroupKey|date" with any report on that day
+//   customerHasCompletedReport — Set of customers that have ANY done/complete report ever
+//   customerReports      — { customerGroupKey: [{date, createdMs}, ...] }
+// Reused by every caller in the same render tick — cheap (linear scan of active+done).
+function _buildFieldReportIndex(){
+  const fieldReportKeys=new Set();
+  const customerHasCompletedReport=new Set();
+  const customerReports={};
+  [...active,...done].forEach(t=>{
+    if(t.source==="dispatch")return; // only tech-submitted field reports
+    const cust=_custGroupKey(t.customer);
+    const dt=(t.date||"").trim();
+    if(!cust)return;
+    if(dt)fieldReportKeys.add(cust+"|"+dt);
+    if(t.status==="done"||t.status==="complete"){
+      customerHasCompletedReport.add(cust);
+      if(dt){
+        if(!customerReports[cust])customerReports[cust]=[];
+        customerReports[cust].push({date:dt,createdMs:_ticketCreatedMs(t)});
+      }
     }
-  }
-});
-// Helper: is there a field report within ±30 days of this dispatch's visit date,
+  });
+  return {fieldReportKeys,customerHasCompletedReport,customerReports};
+}
+
+// Is there a field report within ±30 days of this dispatch's visit date,
 // AND that report was created AFTER the dispatch was created?
-// (If the report was created BEFORE the dispatch, the dispatch is a NEW separate visit
-// and must NOT be hidden — common when a customer needs a follow-up visit.)
-function _hasMatchingReport(cust,dispatchDate,dispatchCreatedMs){
+// (If the report came BEFORE the dispatch, the dispatch is a NEW separate
+// visit and must NOT be hidden — common when a customer needs a follow-up.)
+function _hasMatchingReport(cust,dispatchDate,dispatchCreatedMs,customerReports,today){
   if(!cust||!dispatchDate)return false;
   const reports=customerReports[cust];
   if(!reports||!reports.length)return false;
@@ -5751,57 +5760,52 @@ function _hasMatchingReport(cust,dispatchDate,dispatchCreatedMs){
     const r=reports[i];
     const t2=Date.parse(r.date+"T00:00:00");
     if(isNaN(t2))continue;
-    // Visit dates must be within ±30 days of each other
     if(Math.abs(Math.round((t2-t1)/86400000))>30)continue;
-    // Report must have been created AFTER the dispatch (or both unknown — fallback to date-in-past rule)
     if(dispatchCreatedMs>0&&r.createdMs>0){
       if(r.createdMs>dispatchCreatedMs)return true;
-      // else: report was created before dispatch — different visit, do NOT hide
-    } else {
-      // Timestamps missing (legacy data) — fall back to: hide only if dispatch date is in the past
+    }else{
+      // Timestamps missing (legacy data) — hide only if dispatch date is in the past
       if(dispatchDate<today)return true;
     }
   }
   return false;
 }
-const allTkts=[...active,...done].filter(t=>{
+
+// THE master filter. Returns true if this ticket should appear in planning
+// views (Calendar, Maps "Today's Routes"). idx must come from
+// _buildFieldReportIndex(). today is YYYY-MM-DD. isTech narrows the filter
+// for technician users (they don't see admin-completed dispatches).
+function _isVisibleDispatch(t,idx,today,isTech){
+  if(!t)return false;
   if(t.source!=="dispatch")return false;
   if(t.fieldReportSubmitted)return false;
   if(t.status==="canceled")return false;
-  // NOTE (May 2026 fix — Johnson, Philip & Jill incident):
-  // We do NOT hide tickets just because the tech recorded check-in + check-out.
-  // Physical work being done is NOT the same as the field report being filed.
-  // The previous behavior (`if(_dispatchIsDone(t))return false`) caused tickets
-  // to vanish from the calendar after check-out, leaving the tech no way to
-  // find them to submit the report — and admin saw the customer card still
-  // marked ACTIVE with no dispatch in sight. The two real "report exists"
-  // signals are below: the fieldReportKeys set (exact customer+date match) and
-  // _hasMatchingReport (±30 day match, report created after dispatch). Those
-  // are the correct race-condition guards. _dispatchIsDone() is still used for
-  // capacity counting in heatmapHTML/dayProgressHTML — that's correct there.
-  // Apply this safety net to ALL users (admin + tech): if a field report already exists
-  // for the same customer + date, the dispatch ticket should never appear in the calendar.
-  // This protects against race conditions where fieldReportSubmitted flag failed to update.
   const cust=_custGroupKey(t.customer);
   const dt=(t.date||"").trim();
-  if(cust&&dt&&fieldReportKeys.has(cust+"|"+dt))return false;
-  // Extended safety net: hide dispatch if there is a completed field report for the same
-  // customer within ±30 days, AND that report was created after this dispatch.
+  if(cust&&dt&&idx.fieldReportKeys.has(cust+"|"+dt))return false;
   const dispatchCreatedMs=_ticketCreatedMs(t);
-  if(cust&&dt&&_hasMatchingReport(cust,dt,dispatchCreatedMs))return false;
-  if(isTech){
-    // Hide tickets marked done by admin
-    if(t.status==="done")return false;
-    // NOTE: We deliberately do NOT hide past-dated dispatches based on the customer
-    // having ANY historical completed report. That filter caused tickets to vanish
-    // from a tech's calendar the day after the visit if the customer had ever been
-    // serviced before — even when the tech had not yet submitted the field report
-    // for THIS visit. The _hasMatchingReport() check above (±30 days + report
-    // created after dispatch) already handles legitimate "already done" cases for
-    // all roles. A tech sees the same outstanding dispatches the admin sees.
-  }
+  if(cust&&dt&&_hasMatchingReport(cust,dt,dispatchCreatedMs,idx.customerReports,today))return false;
+  if(isTech&&t.status==="done")return false;
   return true;
-});
+}
+
+function rndrCal(){if(!calYear)calInit();const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];const isTech=currentUser&&currentUser.role==="tech";const q=(document.getElementById("searchCal")||{}).value||"";
+// For techs, we hide dispatch tickets that have already been handled (report submitted or ticket marked done).
+const today=fmtD(new Date());
+// Customer-name matching uses the family-name-aware helper _custGroupKey
+// defined globally. This handles real-world variations like:
+//   "Bellinger, Vince"  ↔  "Bellinger, Vince and Mary"  → both → "fam:bellinger"
+// The previous simple alphanumeric normalization missed these and left
+// dispatch tickets in the calendar after their reports were filed.
+// Field-report index + visibility filter live in shared helpers above so
+// that Maps "Today's Routes" uses the EXACT same rules. This prevents the
+// phantom-ticket bug where a non-dispatch ticket (e.g. ad-hoc field report)
+// appeared in Maps but not in the calendar.
+const _fri=_buildFieldReportIndex();
+const fieldReportKeys=_fri.fieldReportKeys;
+const customerHasCompletedReport=_fri.customerHasCompletedReport;
+const customerReports=_fri.customerReports;
+const allTkts=[...active,...done].filter(t=>_isVisibleDispatch(t,_fri,today,isTech));
 // Helper used by tech-side filters below: does this ticket's `techs` array
 // include the current tech, EITHER directly OR via pill resolution? This
 // matches the admin Team view's matching logic (line ~5602) so a ticket
@@ -7838,16 +7842,32 @@ async function _osrmRoute(coords){
 // Build {techName: [stop, stop, ...]} for the given date, sorted by arrival time.
 // Each stop already has lat/lng (from geocodeTicket cache or fresh geocode).
 async function _mapsBuildDayRoutes(dateStr){
+  // Use the SAME dispatch visibility filter as the calendar so the two views
+  // never disagree about which tickets belong to today's plan. Earlier this
+  // function used a looser filter (any non-canceled ticket with techs) — that
+  // surfaced field-report-only entries as "phantom" stops in Maps that didn't
+  // exist in the calendar (Wilson, John & Patricia incident, May 13 2026).
+  const todayStr=(typeof fmtD==="function")?fmtD(new Date()):"";
+  const idx=_buildFieldReportIndex();
+  const isTech=currentUser&&currentUser.role==="tech";
   const allTkts=[...active,...done];
   const dayTkts=allTkts.filter(function(t){
-    if(t.status==="canceled")return false;
     if(t.date!==dateStr)return false;
+    if(!_isVisibleDispatch(t,idx,todayStr,isTech))return false;
     return(t.techs||[]).length>0; // unassigned tickets aren't part of any route
   });
   if(!dayTkts.length)return{};
-  // Group by tech (a ticket assigned to multiple techs counts for each)
+  // Group by tech (a ticket assigned to multiple techs counts for each).
+  // Pill resolution mirrors the calendar Team view (line ~6100) so a ticket
+  // tagged "Fernando" appears under the "Fernando/Fabian" pill if one exists.
   const byTech={};
-  dayTkts.forEach(function(t){(t.techs||[]).forEach(function(tn){if(!byTech[tn])byTech[tn]=[];byTech[tn].push(t)})});
+  dayTkts.forEach(function(t){
+    (t.techs||[]).forEach(function(tn){
+      const pill=(typeof _resolveTechPill==="function")?_resolveTechPill(tn):tn;
+      if(!byTech[pill])byTech[pill]=[];
+      byTech[pill].push(t);
+    });
+  });
   // Sort each tech's stops by arrival time
   Object.keys(byTech).forEach(function(tn){byTech[tn].sort(function(a,b){return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")})});
   // Geocode each ticket — done in PARALLEL across techs to speed things up.
