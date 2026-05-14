@@ -1155,7 +1155,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
           <div class="field" style="width:90px"><input type="text" id="slCustZip" placeholder="ZIP" maxlength="5" inputmode="numeric" autocomplete="off" oninput="slAutoZone()"></div>
         </div>
         <div id="slZoneBadge" style="display:none;margin-bottom:10px"></div>
-        <div class="field" style="margin-bottom:10px"><input type="date" id="slDate"></div>
+        <div class="field" style="margin-bottom:10px"><input type="date" id="slDate" onchange="this.dataset.userTouched='1'"></div>
         <!-- Warranty section (so the tech gets warranty pre-filled) -->
         <div style="margin-bottom:12px;padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--ln)">
           <div class="lbl" style="margin-bottom:6px">Spa Warranty</div>
@@ -3735,15 +3735,24 @@ function initFirebase(){
     const dailyCount=isTechNow?dailyPool.filter(t=>(t.techs||[]).includes(currentUser.name)).length:dailyPool.length;
     if(b1){if(dailyCount){b1.style.display="inline";b1.textContent=dailyCount}else b1.style.display="none"}
     if(b2){if(done.length){b2.style.display="inline";b2.textContent=done.length}else b2.style.display="none"}
-    // Re-render ALL visible tabs
-    if(document.getElementById("pg1").classList.contains("show"))rndrA();
-    if(document.getElementById("pg2").classList.contains("show"))rndrD();
-    if(document.getElementById("pg4").classList.contains("show"))rndrCal();
-    if(document.getElementById("pg5").classList.contains("show"))rndrSlog();
-    if(document.getElementById("pg6").classList.contains("show"))rndrCust();
-    if(document.getElementById("pg4").classList.contains("show"))rndrCal();
-    if(document.getElementById("pg5").classList.contains("show"))rndrSlog();
-    if(document.getElementById("pg6").classList.contains("show"))rndrCust();
+    // Re-render ALL visible tabs.
+    // AUDIT FIX: the previous version of this block listed pg4/pg5/pg6 twice
+    // (a clear typo/duplication) and had no try/catch wrappers — so a single
+    // failing render (e.g. the _normCust ReferenceError that existed in
+    // rndrCalQueue) would silently abort all subsequent renders in the
+    // snapshot, leaving tabs stale until the next snapshot fired. Each call
+    // is now isolated.
+    function _safeRender(pgId,fn,label){
+      try{
+        var pg=document.getElementById(pgId);
+        if(pg&&pg.classList.contains("show"))fn();
+      }catch(e){console.warn("[render "+label+"]",e)}
+    }
+    _safeRender("pg1",rndrA,"active");
+    _safeRender("pg2",rndrD,"done");
+    _safeRender("pg4",rndrCal,"calendar");
+    _safeRender("pg5",rndrSlog,"slog");
+    _safeRender("pg6",rndrCust,"customers");
   },err=>{console.error("Firestore error:",err);toast("Sync error - check console","err")});
   // Listen for to-do list updates
   db.collection("todos").onSnapshot(snap=>{
@@ -5369,10 +5378,33 @@ function rndrD(){
 function tktMatchesSearch(t,q){if(!q)return true;const s=q.toLowerCase();const qDigits=q.replace(/\D/g,"");if(qDigits.length>=3){const phD=(t.phone||"").replace(/\D/g,"");const ph2D=(t.phone2||"").replace(/\D/g,"");if((phD&&phD.includes(qDigits))||(ph2D&&ph2D.includes(qDigits)))return true}return(t.customer||"").toLowerCase().includes(s)||(t.phone||"").toLowerCase().includes(s)||(t.address||"").toLowerCase().includes(s)||(effectiveCity(t)||"").toLowerCase().includes(s)||(t.zip||"").includes(s)||(effectiveZone(t)||"").toLowerCase().includes(s)||(t.notes||"").toLowerCase().includes(s)||((t.techs||[]).join(" ")).toLowerCase().includes(s)||((t.workTypes||[]).join(" ")).toLowerCase().includes(s)}
 let slogPreviewId=null;
 function rndrSlog(){
-  const slDt=document.getElementById("slDate");if(slDt&&!slDt.value)slDt.value=fmtD(new Date());
+  // Reset date to today on render if it's empty OR if the stored value is in the
+  // past. Previously the date was only set to today if empty, so a tab navigation
+  // could leave the form with yesterday's date and the next ticket created would
+  // be backdated — and then potentially eaten by the cleanup matching against an
+  // older field report.
+  const slDt=document.getElementById("slDate");
+  if(slDt){
+    var _todayStr=fmtD(new Date());
+    if(!slDt.value||(slDt.value<_todayStr&&!slDt.dataset.userTouched))slDt.value=_todayStr;
+  }
   const el=document.getElementById("slogList");const sf=document.getElementById("slogFilter");
   const q=(document.getElementById("searchSlog")||{}).value||"";
-  const all=[...active,...done].filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled").filter(t=>tktMatchesSearch(t,q));
+  // BUG FIX (audit): use the canonical _buildFieldReportIndex so Service Log
+  // agrees with Calendar/Maps about what counts as "already done". Previously the
+  // Service Log only checked t.fieldReportSubmitted, which meant a window of up
+  // to 30 seconds (auto-cleanup debounce) where a dispatch that had already been
+  // served (field report exists) still appeared as a pending service call.
+  var _slIdx=_buildFieldReportIndex();
+  var _slToday=fmtD(new Date());
+  function _slServed(t){
+    var c=_custGroupKey(t.customer);var d=(t.date||"").trim();
+    if(!c||!d)return false;
+    if(_slIdx.fieldReportKeys.has(c+"|"+d))return true;
+    var dCreatedMs=_ticketCreatedMs(t);
+    return _hasMatchingReport(c,d,dCreatedMs,_slIdx.customerReports,_slToday);
+  }
+  const all=[...active,...done].filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_slServed(t)).filter(t=>tktMatchesSearch(t,q));
   if(!all.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
   const zones=new Set();all.forEach(t=>{zones.add(effectiveZone(t)||"No Zone")});
   sf.innerHTML=["all",...[...zones].sort()].map(z=>`<button class="${slogZone===z?"on":""}" onclick="slogZone='${z}';rndrSlog()">${z==="all"?"All Zones":z}</button>`).join("");
@@ -5469,7 +5501,27 @@ function rndrSlog(){
   });
   h+=`</div>`;el.innerHTML=h;
 }
-async function slToggleTech(docId,techName){if(!db)return;try{const doc=await db.collection("tickets").doc(docId).get();const d=doc.data();let techs=(d.techs||[]).slice();if(techs.includes(techName))techs=techs.filter(x=>x!==techName);else techs.push(techName);await db.collection("tickets").doc(docId).update({techs,status:techs.length?"complete":"pending"});toast(techs.length?techName+" updated":"Unassigned");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
+async function slToggleTech(docId,techName){
+  if(!db)return;
+  try{
+    const doc=await db.collection("tickets").doc(docId).get();
+    const d=doc.data();
+    let techs=(d.techs||[]).slice();
+    if(techs.includes(techName))techs=techs.filter(x=>x!==techName);
+    else techs.push(techName);
+    // AUDIT FIX: previously this set status="complete" the moment any tech was
+    // assigned, conflating "scheduled" with "work done". A dispatch with a tech
+    // assigned but no field report yet is still pending — let status stay
+    // "pending" until a field report actually closes it. Only preserve terminal
+    // states (done / canceled) and active states like reschedule.
+    var nextStatus;
+    if(d.status==="done"||d.status==="canceled"||d.status==="reschedule")nextStatus=d.status;
+    else nextStatus="pending";
+    await db.collection("tickets").doc(docId).update({techs,status:nextStatus});
+    toast(techs.length?techName+" updated":"Unassigned");
+    setTimeout(refreshAll,500);
+  }catch(e){toast("Error","err")}
+}
 async function slUpdateField(docId,field,val){
   // Service Log inline edits are admin/organizer only (UI hides this control from techs)
   if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit Service Log","err");return}
@@ -5571,10 +5623,47 @@ async function askDeleteWithWarning(docId){
   }
   if(!(await confirmDialog(msg)))return;
   if(!db)return;
+  // AUDIT FIX: if we're deleting a FIELD REPORT (non-dispatch), find any dispatch
+  // tickets that this report closed (fieldReportSubmitted=true with fieldReportId
+  // pointing here, OR same customer/date within ±30 days) and offer to restore
+  // them so they don't end up as orphans hidden from every view.
+  var ghostDispatches=[];
+  if(t.source!=="dispatch"){
+    var tDate=(t.date||"").trim();
+    ghostDispatches=[...active,...done].filter(function(x){
+      if(x.id===docId)return false;
+      if(x.source!=="dispatch")return false;
+      if(!x.fieldReportSubmitted)return false;
+      if(x.status==="canceled")return false;
+      if(x.fieldReportId===docId)return true;
+      if(_custSameCustomer(x.customer,t.customer)&&tDate){
+        var diff=_dayDiff((x.date||"").trim(),tDate);
+        if(diff!==-999&&Math.abs(diff)<=30)return true;
+      }
+      return false;
+    });
+  }
   try{
     await db.collection("tickets").doc(docId).delete();
     toast("Ticket deleted");
     closeTktDetail();
+    // Offer to restore the dispatches that this field report had closed.
+    if(ghostDispatches.length){
+      var listStr=ghostDispatches.map(function(d){return "• "+d.customer+(d.date?" · "+d.date:"")}).join("\n");
+      var rMsg="This field report had closed "+ghostDispatches.length+" dispatch ticket"+(ghostDispatches.length!==1?"s":"")+":\n\n"+listStr+"\n\nRestore them to the calendar so the visit can be re-scheduled?";
+      if(await confirmDialog(rMsg)){
+        for(var i=0;i<ghostDispatches.length;i++){
+          try{
+            await db.collection("tickets").doc(ghostDispatches[i].id).update({
+              fieldReportSubmitted:false,
+              fieldReportId:firebase.firestore.FieldValue.delete(),
+              fieldReportSubmittedAt:firebase.firestore.FieldValue.delete()
+            });
+          }catch(rErr){console.warn("Could not restore "+ghostDispatches[i].id,rErr)}
+        }
+        toast("Restored "+ghostDispatches.length+" ticket"+(ghostDispatches.length!==1?"s":"")+" ✓");
+      }
+    }
     setTimeout(refreshAll,500);
   }catch(e){toast("Error: "+e.message,"err")}
 }
@@ -5693,6 +5782,11 @@ async function slCreateCall(){
     document.getElementById("slZoneBadge").style.display="none";
     document.getElementById("slCcFile").checked=false;
     document.getElementById("slCcReq").checked=false;
+    // Reset the date stickiness: after a successful create, let the date go back
+    // to today on the next render so the next ticket isn't accidentally
+    // backdated to whatever the user last picked.
+    var _slDtClr=document.getElementById("slDate");
+    if(_slDtClr){_slDtClr.value="";delete _slDtClr.dataset.userTouched}
     slResetWarranty();
     slClearMedia();
     rndrSlog();
@@ -6717,11 +6811,19 @@ function rndrCalQueue(){
   const el=document.getElementById("calQueue");
   if(currentUser&&currentUser.role==="tech"){el.innerHTML="";return}
   const q=(document.getElementById("searchCal")||{}).value||"";
-  // Build the same key sets as in rndrCal so we can apply the safety net here too
-  var _frKeys=new Set();
-  [...active,...done].forEach(function(_t){if(_t.source==="dispatch")return;var _c=_normCust(_t.customer);var _dt=(_t.date||"").trim();if(_c&&_dt)_frKeys.add(_c+"|"+_dt)});
+  // BUG FIX: previous code called _normCust(...) which is not defined anywhere in
+  // the file — every render of this panel threw ReferenceError silently, so the
+  // safety net that's supposed to hide dispatches whose customer/date already has
+  // a field report was never actually working. Replace with the canonical
+  // _buildFieldReportIndex + _custGroupKey used by Calendar/Maps so all views
+  // agree on what counts as "already done".
+  var _idx=_buildFieldReportIndex();
+  function _hasReport(t){
+    var c=_custGroupKey(t.customer);var d=(t.date||"").trim();
+    return c&&d&&_idx.fieldReportKeys.has(c+"|"+d);
+  }
   // Only show unassigned DISPATCH tickets — also exclude any whose customer+date already has a field report
-  let unassigned=active.filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_frKeys.has(_normCust(t.customer)+"|"+(t.date||"").trim()));
+  let unassigned=active.filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_hasReport(t));
   if(q)unassigned=unassigned.filter(t=>tktMatchesSearch(t,q));
   unassigned.sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));
   if(!unassigned.length){el.innerHTML=active.length?"":'';return}
@@ -6768,7 +6870,15 @@ function rndrCcReminders(){
   const el=document.getElementById("calCcReminders");
   if(!el||!isAdmin){if(el)el.innerHTML="";return}
   const today=fmtD(new Date());
-  const ccTkts=[...active].filter(function(t){return t.ccRequested&&t.date&&t.date>=today&&t.source==="dispatch"&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_frKeys.has(_normCust(t.customer)+"|"+(t.date||"").trim())});
+  // BUG FIX: same as rndrCalQueue — original code referenced undefined _normCust
+  // AND tried to use _frKeys from a sibling function's local scope (out of scope
+  // here, would throw ReferenceError). Use the canonical field-report index.
+  var _ccIdx=_buildFieldReportIndex();
+  function _ccHasReport(t){
+    var c=_custGroupKey(t.customer);var d=(t.date||"").trim();
+    return c&&d&&_ccIdx.fieldReportKeys.has(c+"|"+d);
+  }
+  const ccTkts=[...active].filter(function(t){return t.ccRequested&&t.date&&t.date>=today&&t.source==="dispatch"&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_ccHasReport(t)});
   if(!ccTkts.length){el.innerHTML="";return}
   ccTkts.sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
   var h='<div class="cc-reminders"><div class="cc-hdr" style="display:flex;align-items:center;gap:6px">'+icon("credit-card",16)+'Pending Credit Card Requests — '+ccTkts.length+'</div><div class="cc-grid">';
@@ -6853,7 +6963,17 @@ async function calSaveAssign(docId){
   var arrival=(document.getElementById("qTime_"+docId)||{}).value||"";
   if(!techs.length){toast("Select at least one technician","warn");return}
   try{
-    var upd={techs:techs,status:"complete"};if(date)upd.date=date;if(arrival)upd.arrival=arrival;
+    // AUDIT FIX: previously this set status:"complete" the moment you assigned
+    // techs from the calendar queue — same semantic bug that slToggleTech had.
+    // Look up the current status and only override pending → pending. Keep
+    // terminal (done/canceled) and active (reschedule) untouched.
+    var curDoc=await db.collection("tickets").doc(docId).get();
+    var curData=curDoc.exists?curDoc.data():{};
+    var nextStatus;
+    if(curData.status==="done"||curData.status==="canceled"||curData.status==="reschedule")nextStatus=curData.status;
+    else nextStatus="pending";
+    var upd={techs:techs,status:nextStatus};
+    if(date)upd.date=date;if(arrival)upd.arrival=arrival;
     await db.collection("tickets").doc(docId).update(upd);
     calPreviewId=null;toast(techs.join(", ")+" assigned ✓");setTimeout(refreshAll,500);
   }catch(e){toast("Error","err")}
@@ -7137,12 +7257,31 @@ function openTktDetail(id){
     }else if(t.source==="dispatch"){
       if(t.fieldReportSubmitted){
         _whereWarn.push("Marked as field-report-submitted — hidden from Service Log. If no field report actually exists, restore from Admin → Orphan Dispatches.");
-      }else if(!t.techs||!t.techs.length){
-        _whereTags.push("Service Log");
-        if(t.date)_whereTags.push("Calendar");
       }else{
-        _whereTags.push("Calendar");
-        _whereTags.push("Daily (assigned techs)");
+        // Check the SAME visibility logic that Calendar/Maps use: is there a
+        // field report for the same customer/date that's hiding this dispatch?
+        try{
+          var _wIdx=_buildFieldReportIndex();
+          var _wCust=_custGroupKey(t.customer);
+          var _wDate=(t.date||"").trim();
+          var _wToday=fmtD(new Date());
+          var _wCreatedMs=_ticketCreatedMs(t);
+          var _wExactSameDay=_wCust&&_wDate&&_wIdx.fieldReportKeys.has(_wCust+"|"+_wDate);
+          var _wSoftMatch=_wCust&&_wDate&&_hasMatchingReport(_wCust,_wDate,_wCreatedMs,_wIdx.customerReports,_wToday);
+          if(_wExactSameDay||_wSoftMatch){
+            _whereWarn.push("A field report exists for "+t.customer+" on or around "+(_wDate||"this date")+", so the planning views (Calendar / Maps / Service Log) hide this dispatch as already served. Auto-cleanup will mark it submitted on the next pass — or open the field report and re-link it.");
+          }else if(!t.techs||!t.techs.length){
+            _whereTags.push("Service Log");
+            if(t.date)_whereTags.push("Calendar");
+          }else{
+            _whereTags.push("Calendar");
+            _whereTags.push("Daily (assigned techs)");
+          }
+        }catch(_we){
+          // If the helpers somehow fail, fall back to the simple logic
+          if(!t.techs||!t.techs.length){_whereTags.push("Service Log");if(t.date)_whereTags.push("Calendar")}
+          else{_whereTags.push("Calendar");_whereTags.push("Daily (assigned techs)")}
+        }
       }
     }else{
       // Non-dispatch = field report
@@ -7307,11 +7446,23 @@ async function saveDetailEdits(id){
     }
   }
   if(isAdmin){
-    var ce=document.getElementById("dtCust");if(ce)upd.customer=ce.value.trim();
-    // Collect all phones from the dynamic list
+    var ce=document.getElementById("dtCust");
+    if(ce){
+      var _cuVal=ce.value.trim();
+      // AUDIT FIX: guard against accidentally clearing the customer name. An
+      // empty customer would orphan the ticket from the Customers tab and
+      // break the customer-grouping logic in cleanup/matching.
+      if(!_cuVal){toast("Customer name can't be empty","warn");return}
+      upd.customer=_cuVal;
+    }
+    // Collect all phones from the dynamic list — normalize each so the saved
+    // form matches what slCreateCall/calCreateCall produce (was previously
+    // saved raw, leading to mixed formats in the same DB).
     var _phs=[];
     document.querySelectorAll("#dtPhWrap .dt-ph").forEach(function(inp){
       var v=(inp.value||"").trim();
+      if(!v)return;
+      v=(typeof _normalizePhone==="function")?_normalizePhone(v):v;
       if(v&&_phs.indexOf(v)<0)_phs.push(v);
     });
     upd.phone=_phs[0]||"";
@@ -8301,11 +8452,20 @@ function selectCustSuggest(prefix,name){
 function slAutoFillCust(){var name=document.getElementById("slCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("slCustPhone").value)document.getElementById("slCustPhone").value=c.phone;if(c.phone2){var _p2=document.getElementById("slCustPhone2");if(_p2&&!_p2.value){_p2.value=c.phone2;slTogglePhone2(true)}}if(c.address&&!document.getElementById("slCustAddr").value)document.getElementById("slCustAddr").value=c.address;if(c.city&&!document.getElementById("slCustCity").value)document.getElementById("slCustCity").value=c.city;if(c.zip&&!document.getElementById("slCustZip").value){document.getElementById("slCustZip").value=c.zip;slAutoZone()}if(c.spaDesc&&document.getElementById("slSpaDesc"))document.getElementById("slSpaDesc").value=c.spaDesc;if(c.notes&&document.getElementById("slNotes")&&!document.getElementById("slNotes").value)document.getElementById("slNotes").value=c.notes}
 function calAutoFillCust(){var name=document.getElementById("calCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("calCustPhone").value)document.getElementById("calCustPhone").value=c.phone;if(c.address&&!document.getElementById("calCustAddr").value)document.getElementById("calCustAddr").value=c.address;if(c.city&&!document.getElementById("calCustCity").value)document.getElementById("calCustCity").value=c.city;if(c.zip&&!document.getElementById("calCustZip").value){document.getElementById("calCustZip").value=c.zip;calAutoZone()}if(c.spaDesc&&document.getElementById("calSpaDesc"))document.getElementById("calSpaDesc").value=c.spaDesc;if(c.notes&&document.getElementById("calNotes")&&!document.getElementById("calNotes").value)document.getElementById("calNotes").value=c.notes}
 function refreshAll(){
-  if(document.getElementById("pg1").classList.contains("show"))rndrA();
-  if(document.getElementById("pg2").classList.contains("show"))rndrD();
-  if(document.getElementById("pg4").classList.contains("show"))rndrCal();
-  if(document.getElementById("pg5").classList.contains("show"))rndrSlog();
-  if(document.getElementById("pg6").classList.contains("show"))rndrCust();
+  // AUDIT FIX: wrap each render in try/catch. Previously a single render
+  // throwing would silently abort the rest, leaving views stale. This matches
+  // the protection added in the Firestore snapshot handler.
+  function _safeR(pgId,fn,label){
+    try{
+      var pg=document.getElementById(pgId);
+      if(pg&&pg.classList.contains("show"))fn();
+    }catch(e){console.warn("[refreshAll "+label+"]",e)}
+  }
+  _safeR("pg1",rndrA,"active");
+  _safeR("pg2",rndrD,"done");
+  _safeR("pg4",rndrCal,"calendar");
+  _safeR("pg5",rndrSlog,"slog");
+  _safeR("pg6",rndrCust,"customers");
 }
 
 // ═══ KEYBOARD SHORTCUTS (desktop power-user nav) ═══
