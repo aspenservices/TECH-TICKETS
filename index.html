@@ -1238,6 +1238,26 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
       </span>
     </label>
   </div>
+  <!-- ─── AI Settings (anthropic API key) — admin only, key stored in localStorage ─── -->
+  <div class="card" style="margin-bottom:12px;border-left:4px solid #8b5cf6">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:2px solid var(--ln);margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">🤖</span>
+        <span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">AI Settings</span>
+      </div>
+      <div id="aiKeyStatus" style="font-size:var(--fs-sm)"></div>
+    </div>
+    <div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:10px;line-height:1.5">
+      The <strong>✨ Improve</strong> button on Customer Reports uses Anthropic's Claude to rewrite technician notes into professional English. Paste your Anthropic API key below to enable it.
+      <br><br>
+      <strong style="color:#047857">🔒 Your key stays in this browser only.</strong> It's saved in localStorage on this device and never uploaded to GitHub, Firebase, or any other server — only sent directly to api.anthropic.com when you click Improve. Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#8b5cf6;text-decoration:underline">console.anthropic.com</a>.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="password" id="aiKeyInput" placeholder="sk-ant-api03-..." style="flex:1;min-width:200px;padding:10px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-md);outline:none;background:var(--bg);font-family:ui-monospace,SFMono-Regular,monospace" autocomplete="off">
+      <button onclick="saveAIKey()" style="padding:10px 16px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-size:var(--fs-base);font-weight:700;white-space:nowrap;cursor:pointer">Save Key</button>
+      <button onclick="clearAIKey()" style="padding:10px 16px;background:transparent;color:#dc2626;border:1.5px solid #dc2626;border-radius:8px;font-size:var(--fs-base);font-weight:700;white-space:nowrap;cursor:pointer">Clear Key</button>
+    </div>
+  </div>
   <!-- Today's Capacity panel (rendered by rndrAdminCapacity) -->
   <div id="adminCapacity" style="margin-bottom:12px"></div>
   <!-- Orphan Tickets panel (dispatches marked fieldReportSubmitted=true with
@@ -2351,7 +2371,8 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminCapacity();rndrAdminOrphans();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse()
+  rndrAdminCapacity();rndrAdminOrphans();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
+  try{renderAIKeyStatus()}catch(_e){}
 }
 
 // ─── ORPHAN TICKET DETECTION ───────────────────────────────────────────────
@@ -5559,32 +5580,78 @@ let _repCurrentTicket=null;
 // Calls our Firebase Cloud Function (which holds the Anthropic API key as
 // a server-side secret). The frontend never sees or transmits the API key.
 // Requires the user to be signed in to Firebase Auth (anonymous works).
-const AI_IMPROVE_FN_URL="https://us-central1-tech-tickets-a9485.cloudfunctions.net/improveNotes";
+// ─── API key storage (localStorage only — never committed to GitHub) ───
+function getAIKey(){
+  try{return localStorage.getItem("aspenAIKey")||""}catch(_e){return ""}
+}
+function saveAIKey(){
+  const inp=document.getElementById("aiKeyInput");
+  if(!inp)return;
+  const k=(inp.value||"").trim();
+  if(!k){toast("Please paste your API key first","warn");return}
+  if(!k.startsWith("sk-ant-")){toast("This doesn't look like an Anthropic key (must start with sk-ant-)","err");return}
+  try{
+    localStorage.setItem("aspenAIKey",k);
+    inp.value="";
+    renderAIKeyStatus();
+    toast("API key saved in this browser ✓");
+  }catch(e){toast("Could not save key: "+e.message,"err")}
+}
+function clearAIKey(){
+  if(!confirm("Remove the API key from this browser?"))return;
+  try{
+    localStorage.removeItem("aspenAIKey");
+    renderAIKeyStatus();
+    toast("API key removed ✓");
+  }catch(e){toast("Could not remove key: "+e.message,"err")}
+}
+function renderAIKeyStatus(){
+  const el=document.getElementById("aiKeyStatus");
+  if(!el)return;
+  const has=!!getAIKey();
+  el.innerHTML=has
+    ?'<span style="color:#047857;font-weight:600">✓ Connected</span> <span style="color:var(--mu);font-size:var(--fs-sm)">— AI Improve button is active</span>'
+    :'<span style="color:#dc2626;font-weight:600">○ Not configured</span> <span style="color:var(--mu);font-size:var(--fs-sm)">— Paste your Anthropic key below to enable AI Improve</span>';
+}
+
+// ─── Call Anthropic directly from the browser using the locally-stored key ───
+// The key lives only in localStorage (this browser only). It is never sent to
+// GitHub, Firebase, or any other server — only directly to api.anthropic.com.
+const AI_IMPROVE_SYSPROMPT="You are a professional service technician writing customer-facing service reports for Aspen Spas (a hot tub and swim spa service company in St. Louis, MO). Rewrite the technician's raw notes into a polished, professional, customer-friendly summary in English. Rules: (1) Use past tense, third person ('Our technician inspected...', 'The pump was replaced...'). (2) Do NOT include prices, costs, technician names, customer names, or dates. (3) Be concise — one or two short paragraphs maximum. (4) Use clear, non-technical language a homeowner would understand. (5) If the notes are in Spanish or mixed, translate to English. (6) Return ONLY the rewritten report text, no preamble, no explanation, no quotes.";
+
 async function improveNotesWithAI(rawText){
   if(!rawText||!rawText.trim())return rawText||"";
-  if(typeof firebase==="undefined"||!firebase.auth){
-    throw new Error("Firebase Auth not available");
+  const apiKey=getAIKey();
+  if(!apiKey){
+    throw new Error("Please configure your AI key in the Admin tab first");
   }
-  const user=firebase.auth().currentUser;
-  if(!user){
-    throw new Error("Not signed in — please refresh the page");
-  }
-  const idToken=await user.getIdToken();
-  const response=await fetch(AI_IMPROVE_FN_URL,{
+  const response=await fetch("https://api.anthropic.com/v1/messages",{
     method:"POST",
     headers:{
       "Content-Type":"application/json",
-      "Authorization":"Bearer "+idToken
+      "x-api-key":apiKey,
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true"
     },
-    body:JSON.stringify({text:rawText})
+    body:JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:1000,
+      system:AI_IMPROVE_SYSPROMPT,
+      messages:[{role:"user",content:rawText}]
+    })
   });
   if(!response.ok){
     let errMsg="AI request failed ("+response.status+")";
-    try{const e=await response.json();if(e&&e.error)errMsg+=": "+e.error}catch(_e){}
+    try{
+      const e=await response.json();
+      if(e&&e.error&&e.error.message)errMsg+=": "+e.error.message;
+    }catch(_e){}
+    if(response.status===401)errMsg+=" — your API key may be invalid. Check it in the Admin tab.";
     throw new Error(errMsg);
   }
   const data=await response.json();
-  return data.improved||rawText;
+  const improved=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+  return improved||rawText;
 }
 
 // ── Refresh the live HTML preview after notes are edited (manually or by AI)
