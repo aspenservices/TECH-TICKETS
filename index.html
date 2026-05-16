@@ -3916,12 +3916,16 @@ function _resolveOpen(eventId, ev){
     if(parts.length)html+='<div style="font-size:12px;color:#4b5563;margin-top:3px">'+parts.join(' · ')+'</div>';
   }
   if(info)info.innerHTML=html;
-  // Reset method picks + clear note
+  // Reset method picks + clear note + reset hint/label
   document.querySelectorAll('.resolve-method-btn').forEach(b=>{b.style.background='white';b.style.color='#374151';b.style.borderColor='#d1d5db'});
   const noteEl=document.getElementById('resolveNoteInput');
-  if(noteEl)noteEl.value='';
+  if(noteEl){noteEl.value='';noteEl.placeholder='Pick a method above first — examples will appear';}
+  const hintEl=document.getElementById('resolveNoteHint');
+  if(hintEl)hintEl.textContent='';
+  const labelEl=document.getElementById('resolveNoteLabel');
+  if(labelEl)labelEl.innerHTML='Note for Nela <span style="color:#9ca3af;text-transform:none;font-weight:400;letter-spacing:0;">(optional but recommended)</span>';
   const submitBtn=document.getElementById('resolveSubmitBtn');
-  if(submitBtn){submitBtn.disabled=true;submitBtn.style.opacity='0.5';submitBtn.style.cursor='not-allowed'}
+  if(submitBtn){submitBtn.disabled=true;submitBtn.style.opacity='0.5';submitBtn.style.cursor='not-allowed';submitBtn.textContent='✓ Resolve';}
   document.getElementById('resolveAlertBg').style.display='flex';
 }
 
@@ -3938,8 +3942,52 @@ function _resolvePickMethod(method){
     if(b.dataset.method===method){b.style.background='#10b981';b.style.color='white';b.style.borderColor='#059669'}
     else {b.style.background='white';b.style.color='#374151';b.style.borderColor='#d1d5db'}
   });
+  // Update the placeholder + hint with a method-specific example
+  // so Celia knows what kind of note is useful for Nela
+  const noteEl=document.getElementById('resolveNoteInput');
+  const hintEl=document.getElementById('resolveNoteHint');
+  const labelEl=document.getElementById('resolveNoteLabel');
+  const PLACEHOLDERS={
+    card_collected: 'e.g., Got new card ending 4521, customer authorized to retry tomorrow',
+    customer_paid:  'e.g., Paid by check #1234, deposited today — or Zelle confirmed at 2:30pm',
+    reminder_sent:  'e.g., Sent text + email this morning, will follow up Friday if no response',
+    contacted:      'e.g., Spoke with Mike, he\'ll call back Monday with payment info',
+    no_contact:     'e.g., 3 calls + 2 voicemails this week, no response — escalating to admin',
+    written_off:    'e.g., Customer moved out of state, no forwarding info — closing account',
+    other:          'Please explain what happened (this method requires a note)'
+  };
+  const HINTS={
+    card_collected: '💡 Tip: include the last 4 digits + when it can be retried',
+    customer_paid:  '💡 Tip: include the payment method and any reference number',
+    reminder_sent:  '💡 Tip: mention what channel (text/email/call) and when',
+    contacted:      '💡 Tip: include what they said + when to follow up',
+    no_contact:     '💡 Tip: list attempts (calls/texts) and dates',
+    written_off:    '💡 Tip: explain why — moved, bankruptcy, business closed, etc.',
+    other:          '⚠ A note is required for "Other" — explain what happened'
+  };
+  if(noteEl)noteEl.placeholder=PLACEHOLDERS[method]||'';
+  if(hintEl)hintEl.textContent=HINTS[method]||'';
+  if(labelEl){
+    if(method==='other'){
+      labelEl.innerHTML='Note for Nela <span style="color:#dc2626;font-weight:700;text-transform:none;letter-spacing:0;font-size:11px;">— REQUIRED</span>';
+    } else {
+      labelEl.innerHTML='Note for Nela <span style="color:#9ca3af;text-transform:none;font-weight:400;letter-spacing:0;">(optional but recommended)</span>';
+    }
+  }
+  _resolveUpdateSubmitState();
+}
+
+// Enable/disable the Resolve button based on method + (for "Other") note presence
+function _resolveUpdateSubmitState(){
   const submitBtn=document.getElementById('resolveSubmitBtn');
-  if(submitBtn){submitBtn.disabled=false;submitBtn.style.opacity='1';submitBtn.style.cursor='pointer'}
+  if(!submitBtn)return;
+  const noteEl=document.getElementById('resolveNoteInput');
+  const noteVal=(noteEl&&noteEl.value||'').trim();
+  let canSubmit=!!_resolveMethod;
+  if(_resolveMethod==='other' && !noteVal)canSubmit=false;
+  submitBtn.disabled=!canSubmit;
+  submitBtn.style.opacity=canSubmit?'1':'0.5';
+  submitBtn.style.cursor=canSubmit?'pointer':'not-allowed';
 }
 
 async function _resolveSubmit(){
@@ -3984,12 +4032,14 @@ function _resolveBuildModal(){
       '</div>'+
       '<div style="padding:18px 20px;">'+
         '<div id="resolveAlertInfo" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:11px 13px;margin-bottom:14px"></div>'+
+        '<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:#1e3a8a;line-height:1.4;"><b>💡 Nela will see this in her Invoice Tracker.</b> Pick what you did and (if useful) leave her a quick note so she knows the context.</div>'+
         '<div style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">How was it resolved?</div>'+
         '<div style="display:grid;gap:6px;margin-bottom:16px">'+
           methods.map(m=>'<button type="button" class="resolve-method-btn" data-method="'+m.key+'" onclick="_resolvePickMethod(\''+m.key+'\')" style="text-align:left;background:white;border:1.5px solid #d1d5db;color:#374151;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:13px;transition:all 0.15s"><div style="font-weight:600">'+m.label+'</div><div style="font-size:11px;color:#6b7280;margin-top:2px">'+m.desc+'</div></button>').join('')+
         '</div>'+
-        '<div style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Note for Nela <span style="color:#9ca3af;text-transform:none;font-weight:400;letter-spacing:0;">(optional but recommended)</span></div>'+
-        '<textarea id="resolveNoteInput" placeholder="e.g., Customer gave me new card ending 4521 — will retry tomorrow morning" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>'+
+        '<div id="resolveNoteLabel" style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Note for Nela <span style="color:#9ca3af;text-transform:none;font-weight:400;letter-spacing:0;">(optional but recommended)</span></div>'+
+        '<textarea id="resolveNoteInput" oninput="_resolveUpdateSubmitState()" placeholder="Pick a method above first — examples will appear" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>'+
+        '<div id="resolveNoteHint" style="font-size:11px;color:#6b7280;margin-top:6px;font-style:italic;"></div>'+
       '</div>'+
       '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;">'+
         '<button onclick="_resolveClose()" style="background:white;border:1px solid #d1d5db;color:#374151;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>'+
