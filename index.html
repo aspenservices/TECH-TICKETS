@@ -1793,7 +1793,10 @@ if("serviceWorker" in navigator){
       // Helper: fire an update check, swallow errors. Called from many places.
       function _checkForUpdate(){try{if(_swRegRef&&_swRegRef.update)_swRegRef.update()}catch(e){console.warn("[sw update]",e)}}
       // Periodic check while tab is visible (60s)
-      setInterval(_checkForUpdate,60000);
+      // AUDIT FIX: Use _timers.setInterval if available so logout() can clean it up.
+      // Falls back to native setInterval if _timers hasn't been defined yet (it's
+      // declared further down in the script, but SW registration fires after `load`).
+      (typeof _timers!=="undefined"?_timers:window).setInterval(_checkForUpdate,60000);
       // Foreground-event checks — these are the iOS-critical ones because the
       // 60s interval doesn't run while the PWA is suspended.
       document.addEventListener("visibilitychange",function(){
@@ -2056,7 +2059,7 @@ TECHS.push(n);saveTechs();buildTechPills();toast(n+" added ✓");
 
 // Work type management
 async function loadWT(){if(!db)return;try{const doc=await db.collection("config").doc("workTypes").get();if(doc.exists&&doc.data().list){WT=doc.data().list;buildWTPills()}}catch(e){}}
-async function saveWT(){if(!db)return;try{await db.collection("config").doc("workTypes").set({list:WT})}catch(e){}}
+async function saveWT(){if(!db)return;try{await db.collection("config").doc("workTypes").set({list:WT})}catch(e){console.warn("[saveWT]",e);if(typeof toast==="function")toast("Could not save work types","err")}}
 function buildWTPills(){const wr=document.getElementById("wtRow");wr.innerHTML="";WT.forEach(w=>{const b=document.createElement("button");b.className="wt"+(wTypes.includes(w)?" on":"");b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{
 if(wTypes.includes(w)){wTypes=wTypes.filter(x=>x!==w);onWTRemove(w)}else{wTypes.push(w);onWTAdd(w)}
 wr.querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)));rndr()};wr.appendChild(b)})}
@@ -2216,7 +2219,7 @@ async function loadUsers(){
   });
   if(changed)await saveUsers();
 }
-async function saveUsers(){if(!db)return;try{await db.collection("config").doc("users").set({list:allUsers})}catch(e){}}
+async function saveUsers(){if(!db)return;try{await db.collection("config").doc("users").set({list:allUsers})}catch(e){console.warn("[saveUsers]",e);if(typeof toast==="function")toast("Could not save users","err")}}
 function renderLoginScreen(){
   const c=document.getElementById("loginUsers");c.innerHTML="";
   // ── Avatar color palette — deterministic by name hash so each user keeps "their" color ──
@@ -3077,6 +3080,77 @@ function _custSameCustomer(a,b){
   var ka=_custKeys(a),kb=_custKeys(b);
   for(var i=0;i<ka.length;i++)if(kb.indexOf(ka[i])>=0)return true;
   return false;
+}
+// AUDIT FIX (May 2026 — Alberto's report): When a chemical-maintenance dispatch
+// lands in the Service Log it comes in with ONLY the customer name (no phone,
+// no address). Previously openTktDetail() rendered an empty modal even though
+// the same family already had a full record under a slightly different name
+// ("Ruck, Linda" vs "Ruck, Linda & Jim").
+//
+// _findExistingCustomerData scans all tickets (active + done) for the same
+// family via _custSameCustomer and returns the best contact record we can
+// build from history. The richest values win (longest phone/address) so a
+// half-empty old ticket never overrides a full newer one.
+//
+// Returns null if nothing is found. Callers should merge this onto the
+// dispatch ticket BEFORE rendering / saving.
+function _findExistingCustomerData(name,excludeTicketId){
+  if(!name)return null;
+  var pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  var matches=pool.filter(function(t){
+    if(!t||!t.customer)return false;
+    if(excludeTicketId&&t.id===excludeTicketId)return false;
+    return _custSameCustomer(name,t.customer);
+  });
+  if(!matches.length)return null;
+  // Build the richest possible contact record from all matches
+  var data={phone:"",phone2:"",phones:[],address:"",city:"",zip:"",zone:"",email:"",bestName:""};
+  var allPhones=[];
+  matches.forEach(function(t){
+    if(t.phone&&allPhones.indexOf(t.phone)<0)allPhones.push(t.phone);
+    if(t.phone2&&allPhones.indexOf(t.phone2)<0)allPhones.push(t.phone2);
+    if(Array.isArray(t.phones))t.phones.forEach(function(p){if(p&&allPhones.indexOf(p)<0)allPhones.push(p)});
+    if(t.address&&t.address.length>data.address.length)data.address=t.address;
+    var _ec=(typeof effectiveCity==="function")?effectiveCity(t):(t.city||"");
+    if(_ec&&_ec.length>data.city.length)data.city=_ec;
+    if(t.zip&&!data.zip)data.zip=t.zip;
+    var _ez=(typeof effectiveZone==="function")?effectiveZone(t):(t.zone||"");
+    if(_ez&&!data.zone)data.zone=_ez;
+    if(t.email&&!data.email)data.email=t.email;
+    // Prefer the LONGEST customer-name variant ("Ruck, Linda & Jim" beats
+    // "Ruck, Linda") since it carries more info.
+    if(t.customer&&t.customer.length>data.bestName.length)data.bestName=t.customer;
+  });
+  data.phone=allPhones[0]||"";
+  data.phone2=allPhones[1]||"";
+  data.phones=allPhones.slice(2);
+  data.matchCount=matches.length;
+  // Return null if we genuinely have nothing useful — the caller can skip
+  // applying empty data.
+  if(!data.phone&&!data.address&&!data.city&&!data.zip&&!data.zone)return null;
+  return data;
+}
+// Convenience: merge existing customer data INTO a ticket object in-place when
+// fields are missing. Used before rendering so the UI shows the contact info
+// the user expects. Mutates the passed object — pass a clone if you don't
+// want side effects.
+function _enrichTicketWithExistingCustomer(t){
+  if(!t||!t.customer)return t;
+  // Only enrich when at least one critical field is missing
+  var needsEnrich=!t.phone&&!t.phone2&&!t.address&&!t.city&&!t.zip;
+  if(!needsEnrich)return t;
+  var d=_findExistingCustomerData(t.customer,t.id);
+  if(!d)return t;
+  if(!t.phone&&d.phone)t.phone=d.phone;
+  if(!t.phone2&&d.phone2)t.phone2=d.phone2;
+  if((!t.phones||!t.phones.length)&&d.phones.length)t.phones=d.phones;
+  if(!t.address&&d.address)t.address=d.address;
+  if(!t.city&&d.city)t.city=d.city;
+  if(!t.zip&&d.zip)t.zip=d.zip;
+  if(!t.zone&&d.zone)t.zone=d.zone;
+  if(!t.email&&d.email)t.email=d.email;
+  t._enrichedFromHistory=true; // marker so UI can hint "auto-filled from history"
+  return t;
 }
 // Normalize a phone string for storage / display. Returns a 10- or 11-digit
 // formatted string like "(314) 555-1234", or the trimmed original if it can't
@@ -5060,7 +5134,13 @@ async function tdRemoveMedia(ticketId,mediaIdx){
 function mkCh(){const r=document.getElementById("cR");r.innerHTML="";["All",...CS].forEach(k=>{const c=document.createElement("button");c.className="ch"+(cat===k?" on":"");c.textContent=k;c.onclick=()=>{cat=k;mkCh();doFlt()};r.appendChild(c)})}
 function openPk(){document.getElementById("mBg").classList.add("open");document.getElementById("sI").value="";cat="All";mkCh();doFlt();setTimeout(()=>document.getElementById("sI").focus(),150)}
 function closePk(){document.getElementById("mBg").classList.remove("open")}
-function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+// AUDIT FIX (May 2026): Previously esc() only escaped &, <, > — leaving " and '
+// unescaped. That was a real XSS hazard wherever esc() is used inside an HTML
+// attribute (e.g. `href="${esc(url)}"`, `title="${esc(name)}"`). A customer
+// name with a stray " could break out of the attribute. The full HTML-entity
+// set is now applied so the same function is safe in both element bodies and
+// attribute values.
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
 
 // Returns YYYY-MM-DD for the given date in LOCAL time (not UTC).
 // We previously used localDateStr() which is buggy:
@@ -5672,7 +5752,7 @@ ${lb&&lb.free?`<div style="display:flex;justify-content:space-between;font-size:
 ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:var(--fs-sm);color:var(--i3);margin-top:4px">Internal RDA: $${t.totalRda.toFixed(2)}</div>`:""}
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:var(--fs-sm);color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
-${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${m.url||m.data}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
+${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
 <div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
@@ -5748,8 +5828,8 @@ function saveAIKey(){
     toast("API key saved in this browser ✓");
   }catch(e){toast("Could not save key: "+e.message,"err")}
 }
-function clearAIKey(){
-  if(!confirm("Remove the API key from this browser?"))return;
+async function clearAIKey(){
+  if(!(await confirmDialog("Remove the API key from this browser?")))return;
   try{
     localStorage.removeItem("aspenAIKey");
     renderAIKeyStatus();
@@ -6252,6 +6332,13 @@ function rndrSlog(){
     return _hasMatchingReport(c,d,dCreatedMs,_slIdx.customerReports,_slToday);
   }
   const all=[...active,...done].filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_slServed(t)).filter(t=>tktMatchesSearch(t,q));
+  // AUDIT FIX (May 2026 — Alberto's report): chemical-maintenance dispatch
+  // tickets come in with ONLY the customer name. Enrich each one with the
+  // matching existing-customer record (by family-name match) so the Service
+  // Log cards show phone / address / zone immediately, and the modal opens
+  // with the right info — no more "empty Ruck, Linda" cards next to a fully
+  // populated "Ruck, Linda & Jim" in Customers.
+  all.forEach(function(t){try{_enrichTicketWithExistingCustomer(t)}catch(_e){}});
   if(!all.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
   const zones=new Set();all.forEach(t=>{zones.add(effectiveZone(t)||"No Zone")});
   sf.innerHTML=["all",...[...zones].sort()].map(z=>`<button class="${slogZone===z?"on":""}" onclick="slogZone='${z}';rndrSlog()">${z==="all"?"All Zones":z}</button>`).join("");
@@ -7863,6 +7950,14 @@ var _curOpenTktId=null;
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
+  // AUDIT FIX (May 2026 — Alberto's report): If this dispatch ticket arrived
+  // with only a customer name (typical for chemical-maintenance ingest from
+  // other Aspen apps), look up the same family in history and auto-fill the
+  // missing contact fields BEFORE rendering. This stops the modal from
+  // showing an empty Ruck, Linda when Ruck, Linda & Jim already has a full
+  // record. Mutates the live object so subsequent saves include the
+  // enriched values automatically.
+  try{_enrichTicketWithExistingCustomer(t)}catch(_e){console.warn("[enrich]",_e)}
   document.getElementById("tktDetailTitle").textContent=t.customer||"Ticket";
   const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
   const _city=effectiveCity(t);
@@ -8157,6 +8252,14 @@ function openTktDetail(id){
   // Populate the attachments section (rendered separately so we can re-render in place)
   if(typeof renderTdAttachments==="function")renderTdAttachments(t.id);
   document.getElementById("tktDetailBg").classList.add("open");
+  // AUDIT FIX (May 2026 — Alberto's report): if we just auto-filled missing
+  // fields from another ticket of the same family, surface that to the user
+  // with a one-time toast so they know the info came from history (and not
+  // freshly typed). Cleared after the toast fires.
+  if(t._enrichedFromHistory){
+    if(typeof toast==="function")toast("✓ Auto-filled contact info from existing customer history","info");
+    t._enrichedFromHistory=false;
+  }
 }
 function dtToggleTech(btn,name){
   btn.classList.toggle("on");
@@ -8985,8 +9088,21 @@ function rndrCust(){
   }
   const allTkts=[...active,...done];const custMap={};
   allTkts.forEach(t=>{
-    const key=(t.customer||"").trim().toLowerCase();if(!key)return;
-    if(!custMap[key])custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[],lastDate:""};
+    if(!t.customer||!t.customer.trim())return;
+    // AUDIT FIX (May 2026 — Alberto's report): use the family-name group key
+    // so "Ruck, Linda" and "Ruck, Linda & Jim" collapse into ONE customer
+    // card instead of two near-duplicates with split history. Falls back to
+    // the literal name when _custGroupKey can't derive a family signal.
+    const key=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+    if(!key)return;
+    if(!custMap[key]){
+      // Use the LONGEST name variant as the canonical display name (it
+      // typically carries the most info — "Ruck, Linda & Jim" beats just
+      // "Ruck, Linda"). We may upgrade this as we see more tickets below.
+      custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[],lastDate:""};
+    } else if(t.customer.length>custMap[key].name.length){
+      custMap[key].name=t.customer;
+    }
     custMap[key].tickets.push(t);
     if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
     if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
@@ -9058,9 +9174,20 @@ function qbCustCloseDetail(){
 function qbCustSetTab(tab){
   qbCustTab=tab;
   // re-render only the detail (faster)
+  // AUDIT FIX (May 2026 — Alberto's report): mirror rndrCust's family-name
+  // grouping so the detail pane stays in sync with the sidebar. Previously
+  // this used a plain lowercase customer-name key, so switching tabs after
+  // selecting a customer could land on a different bucket than the sidebar.
   const allTkts=[...active,...done];const custMap={};
-  allTkts.forEach(t=>{const key=(t.customer||"").trim().toLowerCase();if(!key)return;
-    if(!custMap[key])custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[]};
+  allTkts.forEach(t=>{
+    if(!t.customer||!t.customer.trim())return;
+    const key=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+    if(!key)return;
+    if(!custMap[key]){
+      custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[]};
+    } else if(t.customer.length>custMap[key].name.length){
+      custMap[key].name=t.customer;
+    }
     custMap[key].tickets.push(t);
     if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
     if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
@@ -9252,7 +9379,7 @@ async function custSaveSpaDesc(){
   try{await batch.commit();toast("Spa description saved on "+count+" ticket"+(count!==1?"s":"")+" ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}
 }
 
-async function saveCustomZips(){if(!db)return;try{await db.collection("config").doc("customZips").set(customZips)}catch(e){}}
+async function saveCustomZips(){if(!db)return;try{await db.collection("config").doc("customZips").set(customZips)}catch(e){console.warn("[saveCustomZips]",e);if(typeof toast==="function")toast("Could not save ZIP overrides","err")}}
 async function loadCustomZips(){if(!db)return;try{var doc=await db.collection("config").doc("customZips").get();if(doc.exists)customZips=doc.data()||{}}catch(e){}}
 function getCustData(name){if(!name)return null;var key=name.trim().toLowerCase();var allTkts=[...active,...done];var c={phone:"",phone2:"",email:"",address:"",city:"",zip:"",zone:"",spaDesc:"",notes:""};var found=false;allTkts.forEach(function(t){if((t.customer||"").trim().toLowerCase()===key){found=true;if(t.phone&&!c.phone)c.phone=t.phone;if(t.phone2&&!c.phone2)c.phone2=t.phone2;if(t.email&&!c.email)c.email=t.email;if(t.address&&!c.address)c.address=t.address;var _ec=effectiveCity(t);if(_ec&&!c.city)c.city=_ec;if(t.zip&&!c.zip)c.zip=t.zip;var _ez=effectiveZone(t);if(_ez&&!c.zone)c.zone=_ez;if(t.spaDesc&&!c.spaDesc)c.spaDesc=t.spaDesc;if(t.notes&&t.notes.length>c.notes.length)c.notes=t.notes}});return found?c:null}
 async function custSaveInfo(){
@@ -10387,10 +10514,12 @@ function _scanForForgottenCheckOuts(){
 function _startCheckOutReminderPoll(){
   if(_checkOutReminderTimer)return;
   _scanForForgottenCheckOuts();
-  _checkOutReminderTimer=setInterval(_scanForForgottenCheckOuts,CHECKOUT_REMINDER_CHECK_INTERVAL_MS);
+  // AUDIT FIX: Use _timers.setInterval so logout() flushes this poll (previously
+  // it kept running after logout, draining battery on mobile).
+  _checkOutReminderTimer=_timers.setInterval(_scanForForgottenCheckOuts,CHECKOUT_REMINDER_CHECK_INTERVAL_MS);
 }
 function _stopCheckOutReminderPoll(){
-  if(_checkOutReminderTimer){clearInterval(_checkOutReminderTimer);_checkOutReminderTimer=null}
+  if(_checkOutReminderTimer){_timers.clearInterval(_checkOutReminderTimer);_checkOutReminderTimer=null}
   _checkOutRemindedTktIds.clear();
 }
 
@@ -10631,8 +10760,9 @@ async function _rainRadarToggle(){
     //   - HRRR published a newer run (init time advanced), OR
     //   - 15+ minutes of wall-clock time passed (so the "now" frame would
     //     shift forward to a later forecast minute).
-    if(_rainRadarRefreshTimer)clearInterval(_rainRadarRefreshTimer);
-    _rainRadarRefreshTimer=setInterval(async function(){
+    if(_rainRadarRefreshTimer)_timers.clearInterval(_rainRadarRefreshTimer);
+    // AUDIT FIX: Use _timers.setInterval so this stops on logout
+    _rainRadarRefreshTimer=_timers.setInterval(async function(){
       if(!_rainRadarEnabled||!_mapsInstance)return;
       const fresh=await _rainRadarFetchHRRRMeta();
       if(!fresh)return;
@@ -10650,7 +10780,7 @@ async function _rainRadarToggle(){
     },5*60*1000);
   }else{
     _rainRadarPause();
-    if(_rainRadarRefreshTimer){clearInterval(_rainRadarRefreshTimer);_rainRadarRefreshTimer=null}
+    if(_rainRadarRefreshTimer){_timers.clearInterval(_rainRadarRefreshTimer);_rainRadarRefreshTimer=null}
     if(_mapsInstance)_rainRadarClearCache(_mapsInstance);
     if(player)player.style.display="none";
     if(status)status.textContent="";
