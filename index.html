@@ -11310,6 +11310,152 @@ function _exportCheckinVerify(){
 // ════════════════════════════════════════════════════════════════════════════
 let _summaryData=[];
 
-init();</script>
+init();
+
+// ════════════════════════════════════════════════════════════
+// AUTO-FILL FROM COVERS TRACKER — v2 (robust)
+// Injected by Nela's Covers Tracker integration. Does not modify any existing code.
+// When the Covers Tracker links here with ?new=1&type=cover_delivery_schedule
+// &customer=...&phone=...&po=...&notes=...&bw=1, we auto-fill the
+// New Service Call form on the Service Log tab.
+// ════════════════════════════════════════════════════════════
+(function autoFillFromCoversTracker(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('new') !== '1') return;
+
+  console.log('[CoversTracker→TECH-TICKETS] Auto-fill triggered with params:', Object.fromEntries(params));
+
+  const incoming = {
+    type: params.get('type') || '',
+    customer: params.get('customer') || '',
+    phone: params.get('phone') || '',
+    po: params.get('po') || '',
+    notes: params.get('notes') || '',
+    tech: params.get('tech') || '',
+    address: params.get('address') || '',
+    bw: params.get('bw') === '1',
+  };
+
+  try { sessionStorage.setItem('aspen_pending_autofill', JSON.stringify(incoming)); } catch(e){}
+  try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e){}
+
+  let filled = false;
+
+  function tryFill(){
+    const custInput = document.getElementById('slCustName');
+    const tab5 = document.getElementById('tab5');
+    if(!custInput || !tab5 || tab5.classList.contains('hidden')) return false;
+    if(custInput.offsetParent === null) return false;
+    doFill(incoming);
+    filled = true;
+    return true;
+  }
+
+  function doFill(data){
+    console.log('[CoversTracker→TECH-TICKETS] Filling form with:', data);
+    if(typeof showTab === 'function'){
+      try { showTab(5); } catch(e){ console.warn('showTab(5) failed:', e); }
+    }
+    setTimeout(() => {
+      const customer = (data.customer || '').split('—')[0].trim();
+      const set = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+
+      set('slCustName', customer);
+      set('slCustPhone', data.phone);
+      set('slCustAddr', data.address);
+
+      let notesText = data.notes || '';
+      if(data.bw && !notesText.includes('BW') && !notesText.includes('Bluewater')){
+        notesText = '🌊 BLUEWATER COVER (BW) — special order, not standard Aspen.\n\n' + notesText;
+      }
+      if(data.po && !notesText.includes(data.po)){
+        notesText = notesText ? `${notesText}\n\nPO# ${data.po}` : `PO# ${data.po}`;
+      }
+      set('slNotes', notesText);
+
+      if(data.type === 'cover_delivery_schedule'){
+        const spaDesc = document.getElementById('slSpaDesc');
+        if(spaDesc){
+          const bwLabel = data.bw ? '🌊 BLUEWATER (BW) ' : '';
+          spaDesc.value = `📦 ${bwLabel}Cover delivery${data.po ? ' — PO# ' + data.po : ''}\n${data.bw?'⚠️ Special-order Bluewater cover. ':''}Pending: schedule delivery date with customer.`;
+        }
+      }
+
+      const dateEl = document.getElementById('slDate');
+      if(dateEl && !dateEl.value){
+        const t = new Date();
+        dateEl.value = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+      }
+
+      const calSide = document.querySelector('#pg5 .cal-side');
+      if(calSide) calSide.scrollIntoView({behavior:'smooth', block:'start'});
+
+      ['slCustName','slCustPhone','slCustAddr','slNotes','slSpaDesc'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el){
+          el.style.transition = 'background .3s';
+          el.style.background = data.bw ? '#E3F2FD' : '#FFF4E0';
+          setTimeout(() => { el.style.background = ''; }, 3000);
+        }
+      });
+
+      // Banner
+      document.querySelectorAll('.aspen-autofill-banner').forEach(n => n.remove());
+      const banner = document.createElement('div');
+      banner.className = 'aspen-autofill-banner';
+      const bgGrad = data.bw
+        ? 'linear-gradient(135deg,#1976D2 0%,#0D47A1 100%)'
+        : 'linear-gradient(135deg,#B8924C 0%,#A07A38 100%)';
+      const shadow = data.bw ? 'rgba(25,118,210,0.4)' : 'rgba(184,146,76,0.4)';
+      banner.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);background:${bgGrad};color:white;padding:14px 24px;border-radius:10px;font-family:system-ui,sans-serif;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 6px 20px ${shadow};display:flex;align-items:center;gap:12px;max-width:90vw;`;
+      banner.innerHTML = `<span style="font-size:22px;">${data.bw?'🌊':'📦'}</span><span>${data.bw?'<strong>BLUEWATER (BW)</strong> · ':''}Pre-filled from <strong>Covers Tracker</strong> — review and click <strong>+ Create Ticket</strong></span><span style="cursor:pointer;font-size:18px;opacity:0.7;margin-left:8px;" onclick="this.parentElement.remove()">✕</span>`;
+      document.body.appendChild(banner);
+      setTimeout(() => { if(banner.parentElement){ banner.style.opacity='0'; banner.style.transition='opacity .5s'; } }, 10000);
+      setTimeout(() => banner.remove(), 11000);
+
+      ['slCustName','slCustZip'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.dispatchEvent(new Event('input', {bubbles:true}));
+      });
+
+      try { sessionStorage.removeItem('aspen_pending_autofill'); } catch(e){}
+    }, 200);
+  }
+
+  // Strategy 1: Try immediately
+  setTimeout(() => { if(!filled) tryFill(); }, 400);
+
+  // Strategy 2: Poll for up to 30 seconds
+  let attempts = 0;
+  const pollInterval = setInterval(() => {
+    attempts++;
+    if(filled || attempts > 60){ clearInterval(pollInterval); return; }
+    tryFill();
+  }, 500);
+
+  // Strategy 3: MutationObserver — catch login completion
+  const observer = new MutationObserver(() => {
+    if(filled){ observer.disconnect(); return; }
+    tryFill();
+  });
+  observer.observe(document.body, {attributes: true, childList: true, subtree: true});
+  setTimeout(() => observer.disconnect(), 30000);
+
+  // Strategy 4: Re-apply on tab5 click if form got cleared
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if(t && t.id === 'tab5'){
+      setTimeout(() => {
+        const cn = document.getElementById('slCustName');
+        if(cn && !cn.value){
+          try {
+            const pending = sessionStorage.getItem('aspen_pending_autofill');
+            if(pending) doFill(JSON.parse(pending));
+          } catch(e){}
+        }
+      }, 200);
+    }
+  });
+})();</script>
 </body>
 </html>
