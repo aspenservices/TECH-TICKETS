@@ -25,7 +25,7 @@
   --ink:#1a1a1a;--i2:#555;--i3:#999;
   --ln:#e5e5e5;--bg:#FAFAF7;--cd:#fff;
   --hdr-bg:#211712;     /* Branded header background — Aspen brown, deeper than --br */
-  --rad:12px;
+  --rad:16px;
   --sb:env(safe-area-inset-bottom,0px);
 
   /* ─── SEMANTIC COLORS (use these instead of inline hex codes) ─── */
@@ -58,14 +58,14 @@
   --sp-5:20px; --sp-6:24px; --sp-8:32px;
 
   /* ─── RADIUS SCALE ─── */
-  --r-xs:4px; --r-sm:6px; --r-md:8px;
-  --r-lg:10px; --r-xl:12px; --r-2xl:16px;
+  --r-xs:5px; --r-sm:7px; --r-md:10px;
+  --r-lg:13px; --r-xl:16px; --r-2xl:20px;
 
   /* ─── ELEVATION (shadows) ─── */
-  --sh-xs:0 1px 2px rgba(0,0,0,.04);
-  --sh-sm:0 1px 3px rgba(0,0,0,.06);
-  --sh-md:0 4px 12px rgba(0,0,0,.08);
-  --sh-lg:0 8px 24px rgba(0,0,0,.12);
+  --sh-xs:0 1px 2px rgba(60,43,31,.05);
+  --sh-sm:0 1px 3px rgba(60,43,31,.05),0 6px 16px rgba(60,43,31,.05);
+  --sh-md:0 2px 8px rgba(60,43,31,.06),0 14px 30px rgba(60,43,31,.07);
+  --sh-lg:0 8px 20px rgba(60,43,31,.1),0 24px 50px rgba(60,43,31,.12);
 
   /* ─── Z-INDEX LAYERS (use semantic names, not magic numbers) ─── */
   --z-base:1;       /* Default content */
@@ -101,17 +101,17 @@
    styles in HTML/JS reference light colors directly and would need refactor first. */
 body.dark-mode{
   --ink:#f5f5f4;--i2:#a8a29e;--i3:#78716c;
-  --ln:#2a2521;--bg:#161311;--cd:#1f1a17;
+  --ln:#39312b;--bg:#221d18;--cd:#2c2520;
   --br:#D4772C;--brl:#E89A5C;
-  --hdr-bg:#0d0a08;
+  --hdr-bg:#171310;
   --acl:#3a2818;
-  --c-success-bg:#0f3b1f;--c-success-fg:#86efac;
-  --c-warning-bg:#3d2a0a;--c-warning-fg:#fcd34d;
-  --c-danger-bg:#3b1212;--c-danger-fg:#fca5a5;
-  --c-info-bg:#0f2545;--c-info-fg:#93c5fd;
-  --c-money-bg:#0f3b29;--c-money-fg:#6ee7b7;
-  --c-neutral-bg:#252220;--c-neutral-fg:#a8a29e;--c-neutral-border:#2a2521;
-  --c-ash:#1f1a17;--c-ash-2:#252220;
+  --c-success-bg:#16432a;--c-success-fg:#86efac;
+  --c-warning-bg:#43300d;--c-warning-fg:#fcd34d;
+  --c-danger-bg:#431616;--c-danger-fg:#fca5a5;
+  --c-info-bg:#142d50;--c-info-fg:#93c5fd;
+  --c-money-bg:#14432f;--c-money-fg:#6ee7b7;
+  --c-neutral-bg:#2c2825;--c-neutral-fg:#a8a29e;--c-neutral-border:#39312b;
+  --c-ash:#2c2520;--c-ash-2:#322b26;
   --c-paid-tint:#0f3b29;
 }
 
@@ -148,7 +148,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   box-shadow:inset 0 -2px 0 var(--ac);
 }
 html{font-size:var(--fs-lg);-webkit-text-size-adjust:100%}
-html{font-size:115%;overflow-x:hidden}body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;overflow-x:hidden;max-width:100vw}
+html{font-size:115%;overflow-x:hidden}body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;overflow-x:hidden;max-width:100vw;letter-spacing:-.1px}
 input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor:pointer}
 
 /* Header — liminal, branded brown, no shouty orange bar */
@@ -350,14 +350,14 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .login-select{width:100%;padding:12px 14px;border:1.5px solid var(--ln);border-radius:var(--r-lg);font-size:var(--fs-md);font-weight:600;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;font-family:inherit;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}.login-select:focus{border-color:var(--ac)}
 
 /* ─── User cards with initials avatars — Slack-workspace / Apple-ID style ─── */
-.login-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;max-height:340px;overflow-y:auto;padding:2px}
+.login-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px;padding:2px}
 .login-grid::-webkit-scrollbar{width:6px}.login-grid::-webkit-scrollbar-thumb{background:var(--ln);border-radius:3px}
-.login-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px 12px;background:var(--cd);border:1.5px solid var(--ln);border-radius:var(--r-xl);cursor:pointer;transition:all var(--dur-fast) var(--ease-snap);text-align:center;-webkit-tap-highlight-color:transparent}
+.login-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 5px 9px;background:var(--cd);border:1.5px solid var(--ln);border-radius:var(--r-lg);cursor:pointer;transition:all var(--dur-fast) var(--ease-snap);text-align:center;-webkit-tap-highlight-color:transparent}
 .login-card:hover{border-color:var(--ac);background:var(--acl);transform:translateY(-1px)}
 .login-card:active{transform:scale(.97)}
 .login-card.on{border-color:var(--ac);background:var(--acl);box-shadow:0 0 0 3px rgba(212,119,44,.18)}
-.login-avatar{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:var(--fs-lg);letter-spacing:.5px;flex-shrink:0;font-variant-numeric:tabular-nums;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08)}
-.login-card-name{font-size:var(--fs-base);font-weight:700;color:var(--ink);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.login-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:var(--fs-md);letter-spacing:.5px;flex-shrink:0;font-variant-numeric:tabular-nums;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08)}
+.login-card-name{font-size:var(--fs-sm);font-weight:700;color:var(--ink);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .login-card-role{font-size:9.5px;font-weight:700;color:var(--i3);letter-spacing:.4px;text-transform:uppercase;padding:1px 7px;border-radius:var(--r-xs);background:var(--c-neutral-bg)}
 .login-card-role.r-admin{color:var(--acd);background:var(--acl)}
 .login-card-role.r-organizer{color:var(--c-info-fg);background:var(--c-info-bg)}
