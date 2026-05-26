@@ -6092,7 +6092,7 @@ ${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
 </div>
-${isDone&&isAdmin?`<button onclick="event.stopPropagation();openReportModal(true,${i})" style="margin-top:8px;width:100%;padding:11px;background:${t.reportSent?"#fff":"var(--br)"};color:${t.reportSent?"var(--br)":"#fff"};border:${t.reportSent?"1.5px solid var(--br)":"none"};border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">📤 ${t.reportSent?"Resend Customer Report":"Send Customer Report"}</button>`:""}
+${isDone&&_canSendCustomerReport()?`<button onclick="event.stopPropagation();openReportModal(true,${i})" style="margin-top:8px;width:100%;padding:11px;background:${t.reportSent?"#fff":"var(--br)"};color:${t.reportSent?"var(--br)":"#fff"};border:${t.reportSent?"1.5px solid var(--br)":"none"};border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">📤 ${t.reportSent?"Resend Customer Report":"Send Customer Report"}</button>`:""}
 <div class="tkt-meta">Submitted: ${t.submitted||""}${t.completedAt?" · Completed: "+t.completedAt:""}</div>
 ${!isDone?(isAdmin?`<div style="display:flex;gap:8px;margin-top:10px"><button class="tkt-done-btn" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="event.stopPropagation();markDone('${t.id}')">${icon("check",16,{color:"#fff"})}Completed</button><button onclick="event.stopPropagation();markResched('${t.id}')" style="flex:1;padding:12px;background:none;border:2px solid var(--ac);border-radius:10px;font-size:var(--fs-md);font-weight:700;color:var(--ac);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("rotate-ccw",16,{color:"var(--ac)"})}Reschedule</button></div>`:""):`<button onclick="event.stopPropagation();askDelete('${t.id}')" style="margin-top:10px;padding:10px 20px;background:none;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i3);width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("trash-2",13,{color:"var(--i3)"})}Delete Ticket</button>`}</div></div>`}
 
@@ -6408,8 +6408,14 @@ function buildCustomerReport(t,notesOverride){
 }
 
 // ── Modal open/close ────────────────────────────────────────────────────────
+// Customer Report (Send / Improve) is limited to Nela + admins. Other
+// organizers (e.g. Celia) and techs do not get it — Nela controls what reaches
+// the customer, then copies into QuickBooks / Invoice Tracker from there.
+function _canSendCustomerReport(){
+  return !!(currentUser&&(currentUser.role==="admin"||currentUser.name==="Nela"));
+}
 function openReportModal(isDone,i){
-  if(!isAdmin){toast("Admin only","warn");return}
+  if(!_canSendCustomerReport()){toast("Customer reports are handled by Nela / admin","warn");return}
   const list=isDone?done:active;
   const t=list[i];if(!t)return;
   _repCurrentTicket=t;
