@@ -5728,6 +5728,19 @@ document.addEventListener("keydown",function(e){
 // tdAddMedia: append new photos/PDFs to a ticket that's already in Firestore.
 // tdRemoveMedia: remove a single attachment.
 // All admin/organizer actions are gated by isAdmin (which is true for both).
+// When a Storage photo URL fails to load (usually Firebase Storage read rules),
+// swap the broken <img> for a clear placeholder instead of the ugly broken icon.
+// The parent card keeps its click-to-open handler so the user can still try the URL.
+function _imgFallback(img){
+  try{
+    img.onerror=null;
+    var ph=document.createElement('div');
+    ph.style.cssText='height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c-ash-2);color:var(--i3);gap:2px;padding:8px;text-align:center';
+    ph.innerHTML='<span style="font-size:24px">\u26A0\uFE0F</span><span style="font-size:var(--fs-xs);font-weight:700">Image unavailable</span><span style="font-size:10px;opacity:.7">tap to open</span>';
+    if(img.parentNode)img.parentNode.insertBefore(ph,img);
+    img.style.display='none';
+  }catch(_e){}
+}
 function renderTdAttachments(ticketId){
   const container=document.getElementById("tdAttSection_"+ticketId);
   if(!container)return;
@@ -5751,7 +5764,7 @@ function renderTdAttachments(ticketId){
         h+='<div style="height:120px;background:linear-gradient(135deg,var(--c-danger-bg) 0%,var(--c-danger-bg) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b91c1c"><div style="font-size:46px;line-height:1">📄</div><div style="font-size:var(--fs-xs);font-weight:800;letter-spacing:1.5px;margin-top:4px">PDF</div></div>';
         h+='<div style="padding:6px 8px;font-size:var(--fs-sm);font-weight:600;color:var(--c-danger-fg);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff" title="'+safeName+'">'+safeName+'</div>';
       }else{
-        h+='<img src="'+safeUrl+'" loading="lazy" style="width:100%;height:120px;object-fit:cover;display:block;background:var(--c-ash-2)">';
+        h+='<img src="'+safeUrl+'" loading="lazy" onerror="_imgFallback(this)" style="width:100%;height:120px;object-fit:cover;display:block;background:var(--c-ash-2)">';
         h+='<div style="padding:5px 8px;font-size:var(--fs-xs);color:var(--i2);text-align:center;background:#fff;display:flex;align-items:center;justify-content:center;gap:4px"><span class="lucide-mount" data-lucide="camera" data-size="12" data-color="currentColor"></span><span>Photo</span></div>';
       }
       if(isAdmin){
@@ -6582,9 +6595,11 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     var live=_pool.find(function(x){return x.id===srcDocId})||srcData;
 
     // ── Guard: an auto-dispatch was already created for this reschedule and
-    //    it's still open → don't make another one.
+    //    it's still OPEN (not served, not done, not canceled) → don't duplicate.
+    //    A prior dispatch that was already field-report-submitted or completed
+    //    is NOT a valid open call, so we must create a fresh one.
     if(live.reschedDispatchId){
-      var prior=(typeof active!=="undefined"?active:[]).find(function(x){return x.id===live.reschedDispatchId&&x.status!=="canceled"});
+      var prior=(typeof active!=="undefined"?active:[]).find(function(x){return x.id===live.reschedDispatchId&&x.status!=="canceled"&&x.status!=="done"&&!x.fieldReportSubmitted});
       if(prior)return;
     }
 
@@ -6646,6 +6661,36 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     });
     try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:docRef.id})}catch(_e){}
   }catch(e){console.warn("[_autoCreateReschedDispatch]",e)}
+}
+// Safety net: find reschedule field reports whose customer has NO open Service
+// Log call — these "fell through the cracks" and need to be re-booked. Returns
+// one entry per customer (most recent reschedule).
+function _orphanRescheds(){
+  try{
+    var pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var orphans=pool.filter(function(r){
+      if(r.status!=="reschedule")return false;
+      var hasOpen=(typeof active!=="undefined"?active:[]).some(function(d){
+        return d&&d.source==="dispatch"&&!d.fieldReportSubmitted&&d.status!=="canceled"&&d.status!=="done"&&_custSameCustomer(d.customer,r.customer);
+      });
+      return !hasOpen;
+    });
+    var seen={},out=[];
+    orphans.forEach(function(r){var k=_custGroupKey(r.customer);if(seen[k])return;seen[k]=1;out.push(r)});
+    return out;
+  }catch(_e){return[]}
+}
+// One-click: create the missing Service Log dispatch for an orphan reschedule.
+async function _readdReschedToSlog(id){
+  var t=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]).find(function(x){return x.id===id});
+  if(!t){toast("Ticket not found","err");return}
+  try{
+    // clear any stale mapping so a fresh open call is guaranteed
+    if(t.reschedDispatchId){try{await db.collection("tickets").doc(id).update({reschedDispatchId:""})}catch(_e){}t.reschedDispatchId="";}
+    await _autoCreateReschedDispatch(id,t);
+    toast(esc(t.customer)+" added to Service Log \u21BB");
+    setTimeout(refreshAll,400);
+  }catch(e){toast("Error","err")}
 }
 
 async function markResched(docId){
@@ -7490,14 +7535,25 @@ function rndrSlog(){
   // with the right info — no more "empty Ruck, Linda" cards next to a fully
   // populated "Ruck, Linda & Jim" in Customers.
   all.forEach(function(t){try{_enrichTicketWithExistingCustomer(t)}catch(_e){}});
-  if(!all.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
+  // ── Safety net: reschedule reports with NO open Service Log call ──
+  var _orphans=(typeof _orphanRescheds==="function")?_orphanRescheds():[];
+  var _orphanBanner="";
+  if(_orphans.length){
+    _orphanBanner='<div style="background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:14px;margin-bottom:16px">'+
+      '<div style="font-size:var(--fs-base);font-weight:800;color:var(--c-warning-fg);margin-bottom:4px;display:flex;align-items:center;gap:6px">'+icon("alert-triangle",15,{color:"var(--c-warning-fg)"})+'Rescheduled visits not in Service Log ('+_orphans.length+')</div>'+
+      '<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);margin-bottom:10px;line-height:1.4">A tech marked these Reschedule but they have no open service call. Tap a name to add it so the customer gets re-booked.</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
+      _orphans.map(function(r){return '<button onclick="_readdReschedToSlog(\''+r.id+'\')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1.5px solid var(--c-warning-strong);border-radius:9px;font-size:var(--fs-sm);font-weight:700;color:var(--c-warning-fg);cursor:pointer">'+icon("rotate-ccw",13,{color:"var(--c-warning-fg)"})+esc(r.customer)+'</button>'}).join("")+
+      '</div></div>';
+  }
+  if(!all.length){el.innerHTML=_orphanBanner+'<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
   const zones=new Set();all.forEach(t=>{zones.add(effectiveZone(t)||"No Zone")});
   sf.innerHTML=""; // Top zone row removed — the clickable LOAD summary below is the single zone filter
   const filtered=slogZone==="all"?all:all.filter(t=>(effectiveZone(t)||"No Zone")===slogZone);
-  if(!filtered.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("map-pin-off",28,{color:"var(--i3)"})+'</div><h3>Nothing in this zone</h3><p>No unassigned tickets in this zone right now. Try another zone above or check back later.</p></div>';return}
+  if(!filtered.length){el.innerHTML=_orphanBanner+'<div class="empty-state"><div class="es-ico">'+icon("map-pin-off",28,{color:"var(--i3)"})+'</div><h3>Nothing in this zone</h3><p>No unassigned tickets in this zone right now. Try another zone above or check back later.</p></div>';return}
   const byZone={};filtered.forEach(t=>{const z=effectiveZone(t)||"No Zone";if(!byZone[z])byZone[z]=[];byZone[z].push(t)});
   Object.values(byZone).forEach(arr=>arr.sort((a,b)=>(a.date||"").localeCompare(b.date||"")));
-  let h='';
+  let h=_orphanBanner;
   // ── Zone load summary (all unassigned calls, by zone — at-a-glance balance) ──
   var _loadByZone={};all.forEach(function(t){var z=effectiveZone(t)||"No Zone";_loadByZone[z]=(_loadByZone[z]||0)+1});
   var _loadKeys=Object.keys(_loadByZone).sort(function(a,b){return _loadByZone[b]-_loadByZone[a]});
