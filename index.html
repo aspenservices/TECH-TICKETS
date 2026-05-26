@@ -1155,6 +1155,16 @@ body.dark-mode .tkt:hover{box-shadow:0 8px 24px rgba(0,0,0,.45)}
 .tkt-techline .app-av{margin-right:-7px;border:2px solid var(--cd)}
 .tkt-techline .app-av:last-of-type{margin-right:2px}
 .tkt-techtxt{margin-left:4px}
+/* Online presence dot on avatars */
+.app-av{position:relative}
+.app-av-dot{position:absolute;right:-1px;bottom:-1px;width:34%;height:34%;min-width:8px;min-height:8px;border-radius:50%;background:#22c55e;border:2px solid var(--bg);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:kpiPulse 2s infinite}
+.tech-col-hdr .app-av-dot{border-color:var(--bg)}
+@media(prefers-reduced-motion:reduce){.app-av-dot{animation:none}}
+/* Center the header logo on mobile (keep theme/lock buttons on the right) */
+@media(max-width:480px){
+  .hdr{justify-content:flex-end}
+  .hdr-logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:48vw;height:24px}
+}
 /* ── #5 Premium ticket cards — rounder, softer elevation, smoother hover (colors untouched) ── */
 .tkt{border-radius:16px}
 @media(hover:hover){.tkt{transition:transform .2s var(--ease-out,ease),box-shadow .25s var(--ease-out,ease)}.tkt:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(0,0,0,.18)}}
@@ -1169,6 +1179,19 @@ body.dark-mode .tkt:hover{box-shadow:0 10px 28px -8px rgba(0,0,0,.55)}
 body.dark-mode .tech-col-hdr{background:var(--bg)!important}
 body.dark-mode .usr-card,body.dark-mode .usr-name{color:var(--ink)}
 body.dark-mode .welcome-hero{background:linear-gradient(135deg,#2c2723,var(--cd))}
+/* Modal sticky glass header was white in dark mode — make it dark glass */
+body.dark-mode .mt{background:rgba(20,22,27,.82)!important;border-bottom-color:var(--ln)!important}
+body.dark-mode .mt-bar{background:rgba(255,255,255,.22)}
+/* #3 Flag chips in the ticket modal (replaces plain checkboxes; keeps logic) */
+.dt-chip{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;border:1.5px solid var(--ln);background:var(--cd);font-size:var(--fs-sm);font-weight:700;color:var(--i2);cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .12s;-webkit-user-select:none;user-select:none;position:relative}
+.dt-chip input{position:absolute;opacity:0;width:0;height:0;pointer-events:none;margin:0}
+.dt-chip:hover{border-color:var(--chip-c,var(--ac));transform:translateY(-1px)}
+.dt-chip:active{transform:scale(.97)}
+.dt-chip:has(input:checked){background:var(--chip-bg,var(--acl));border-color:var(--chip-c,var(--ac));color:var(--chip-c,var(--ac));box-shadow:inset 0 0 0 1px var(--chip-c,var(--ac))}
+/* #1 Section cards inside the ticket modal */
+.dt-sec{background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:14px 15px;margin-bottom:12px}
+.dt-sec-t{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--i3);font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+body.dark-mode .dt-sec{background:var(--c-ash)}
 /* #3 — Skeleton dark-mode aware (light gradient is invisible on dark bg) */
 body.dark-mode .skel{background:linear-gradient(90deg,#23262d 0%,#30343c 50%,#23262d 100%);background-size:200% 100%}
 body.dark-mode .skel-card{background:var(--cd);border-color:var(--ln)}
@@ -1246,6 +1269,15 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
     <div id="warrantyBlocker" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,.75);border-radius:12px;z-index:5;display:none;align-items:center;justify-content:center;padding:20px;text-align:center"><div style="font-size:var(--fs-base);font-weight:600;color:var(--i2);background:#fff;padding:10px 16px;border-radius:10px;border:2px solid var(--ln);box-shadow:0 2px 8px rgba(0,0,0,.08)"><span id="warrantyBlockerMsg">Warranty not applicable</span></div></div>
     <div class="lbl">Spa Warranty</div>
     <div class="w-row"><button class="wb yes" id="warYes" onclick="setWYN(true)">✓ Under warranty</button><button class="wb no" id="warNo" onclick="setWYN(false)">✕ No warranty</button></div>
+    <div id="part90Box" style="margin-top:10px;padding:11px 12px;border:1px dashed var(--ln);border-radius:10px;display:none;background:var(--c-ash)">
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)">
+        <input type="checkbox" id="part90Chk" onchange="_part90Toggle()" style="width:17px;height:17px;flex-shrink:0">🛠️ Replaced part has 90-day warranty <span style="font-weight:500;color:var(--i3)">(part only)</span>
+      </label>
+      <div id="part90Sub" style="display:none;margin-top:9px">
+        <input type="text" id="part90Name" placeholder="Which part? (optional — e.g. heater, pump, control)" style="width:100%;padding:9px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);box-sizing:border-box;font-family:inherit;background:var(--cd);color:var(--ink)">
+        <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px">Tub is out of warranty, but this replaced part is covered for <b>90 days</b> from the service date. After 90 days, no warranty.</div>
+      </div>
+    </div>
     <div class="w-step" id="wS2"><div class="lbl" style="margin-top:4px">Spa Model</div><div class="w-row"><button class="wb w-model" onclick="setMod('es')"><b>ES</b><small>Elite Series</small></button><button class="wb w-model" onclick="setMod('gs')"><b>GS</b><small>Gold Series</small></button><button class="wb w-model" onclick="setMod('vs')"><b>VS</b><small>Value Series</small></button><button class="wb w-model" onclick="setMod('ss')"><b>SS</b><small>Swim Spa</small></button></div></div>
     <div class="w-step" id="wS3"><div class="lbl" style="margin-top:4px">Year of Spa</div><div class="w-row" style="justify-content:center"><button class="wb w-yr" onclick="setYr(1)">1</button><button class="wb w-yr" onclick="setYr(2)">2</button><button class="wb w-yr" onclick="setYr(3)">3</button><button class="wb w-yr" onclick="setYr(4)">4</button><button class="wb w-yr" onclick="setYr(5)">5</button><button class="wb w-yr" onclick="setYr(6)">5+</button></div></div>
     <div class="w-result" id="wR" style="display:none"></div>
@@ -2254,10 +2286,12 @@ function gWL(){if(!wHas)return"N/W";if(!wMod)return"Warranty";const m=wMod.toUpp
 if(wMod==="ss"&&wYr>=4)return`SS Yr${y} No warranty`;
 if(wYr>5)return`${m} Yr${y} No warranty`;
 const w=gWT();return w==="full"?`${m} Yr${y} 100%`:w==="half"?`${m} Yr${y} 50%`:`${m} Yr${y} RDA`}
-function setWYN(v){wHas=v;wMod="";wYr=0;document.getElementById("warYes").className="wb yes"+(v===true?" on-y":"");document.getElementById("warNo").className="wb no"+(v===false?" on-n":"");document.getElementById("wS2").classList.toggle("show",v);document.getElementById("wS3").classList.remove("show");upWR();rndr()}
+function setWYN(v){wHas=v;wMod="";wYr=0;document.getElementById("warYes").className="wb yes"+(v===true?" on-y":"");document.getElementById("warNo").className="wb no"+(v===false?" on-n":"");document.getElementById("wS2").classList.toggle("show",v);document.getElementById("wS3").classList.remove("show");var _p90=document.getElementById("part90Box");if(_p90)_p90.style.display=(v===false)?"block":"none";upWR();rndr()}
+// Show/hide the "which part" field when the 90-day part warranty box is checked
+function _part90Toggle(){var c=document.getElementById("part90Chk"),s=document.getElementById("part90Sub");if(c&&s)s.style.display=c.checked?"block":"none";if(typeof upWR==="function")upWR()}
 function setMod(m){wMod=m;wYr=0;document.querySelectorAll(".w-model").forEach(b=>b.className=b.className.replace(/ on-m/g,""));document.querySelectorAll(".w-model").forEach(b=>{if(b.querySelector("b").textContent.toLowerCase()===m)b.classList.add("on-m")});document.getElementById("wS3").classList.add("show");document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));upWR();rndr()}
 function setYr(y){wYr=y;document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.querySelectorAll(".w-yr").forEach(b=>{const v=b.textContent==="5+"?6:+b.textContent;if(v===y)b.classList.add("on-yr")});upWR();rndr()}
-function upWR(){const e=document.getElementById("wR");if(!wHas&&wHas!==false){e.style.display="none";return}if(!wHas){e.style.display="block";e.className="w-result rda-cov";e.innerHTML="<b>No warranty</b> — Parts at RDA.";return}if(!wMod||!wYr){e.style.display="none";return}const w=gWT(),lw=gLabWT(),m=wMod.toUpperCase(),y=wYr>5?"5+":wYr;
+function upWR(){const e=document.getElementById("wR");if(!wHas&&wHas!==false){e.style.display="none";return}if(!wHas){var _p90c=(document.getElementById("part90Chk")||{}).checked;var _p90n=(document.getElementById("part90Name")||{}).value||"";e.style.display="block";e.className="w-result rda-cov";e.innerHTML="<b>No warranty</b> — Parts at RDA."+(_p90c?'<br>🛠️ <b>Part 90-day warranty</b>'+(_p90n?' ('+_p90n.replace(/</g,"&lt;")+')':'')+' — covered 90 days from service date.':'');return}if(!wMod||!wYr){e.style.display="none";return}const w=gWT(),lw=gLabWT(),m=wMod.toUpperCase(),y=wYr>5?"5+":wYr;
 // Swim Spa year 4+: 3-year warranty has expired, treat as no warranty
 if(wMod==="ss"&&wYr>=4){e.style.display="block";e.className="w-result rda-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>3-yr warranty expired. <b>No warranty</b> — Parts at RDA, Labor charged in full.`;return}
 if(wYr>5){e.style.display="block";e.className="w-result rda-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Warranty expired. <b>RDA price</b>.`;return}
@@ -4325,6 +4359,69 @@ function getCustomerAlerts(c){
   });
 }
 
+// ── Payment-alert banner shown INSIDE a ticket (from Invoice Tracker via cross_app_events) ──
+function _paymentAlertBannerHTML(t){
+  try{
+    if(!t||!t.customer||typeof getCustomerAlerts!=="function")return"";
+    var alerts=getCustomerAlerts({name:t.customer});
+    if(!alerts||!alerts.length)return"";
+    var rows=alerts.map(function(ev){
+      var p=ev.payload||{};
+      var info=(typeof _alertReasonInfo==="function")?_alertReasonInfo(p.reason):{group:"Payment issue",color:"#b45309"};
+      var label=p.reasonLabel||info.group||"Payment issue";
+      var bits=[];
+      if(p.invoiceNumber||p.invoiceNum)bits.push("Invoice #"+esc(String(p.invoiceNumber||p.invoiceNum)));
+      if(p.amount!=null)bits.push("$"+esc(String(p.amount)));
+      if(p.technician||ev.assignedTech||p.tech)bits.push("Tech: "+esc(String(p.technician||ev.assignedTech||p.tech)));
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--c-warning-bd,#fde68a)">'
+        +'<div style="min-width:0"><div style="font-weight:800;color:'+(info.color||"#b45309")+';font-size:var(--fs-sm)">'+esc(label)+'</div>'
+        +(bits.length?'<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:1px">'+bits.join(" · ")+'</div>':'')+'</div>'
+        +'<button onclick="event.stopPropagation();_payAlertMarkPaid(\''+ev.id+'\')" title="Customer paid — close this invoice and sync to Invoice Tracker" style="flex-shrink:0;padding:6px 12px;background:var(--c-success-strong);color:#fff;border:none;border-radius:8px;font-size:var(--fs-xs);font-weight:800;cursor:pointer">💵 Mark paid</button>'
+        +'</div>';
+    }).join("");
+    return '<div style="margin-bottom:14px;padding:11px 13px;border:1.5px solid var(--c-warning-strong,#d97706);background:var(--c-warning-bg,#fffbeb);border-radius:12px">'
+      +'<div style="display:flex;align-items:center;gap:7px;font-weight:800;color:var(--c-warning-fg,#92400e);font-size:var(--fs-sm)">'+icon("alert-triangle",15,{color:"var(--c-warning-fg,#92400e)"})+'Payment alert from Invoice Tracker</div>'
+      +rows
+      +'<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:7px">Marking this ticket <b>Paid</b> below will also resolve these automatically.</div>'
+      +'</div>';
+  }catch(_e){return""}
+}
+// Resolve ONE specific invoice alert as paid (precise per-invoice) and sync to Invoice Tracker
+async function _payAlertMarkPaid(eventId){
+  if(!db||!eventId)return;
+  var user=(currentUser&&currentUser.name)||"tech-tickets";
+  try{
+    await db.collection("cross_app_events").doc(eventId).update({
+      status:"resolved",
+      resolvedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      resolvedBy:user,
+      resolutionMethod:"paid-in-app",
+      resolutionNote:"Invoice marked Paid in TECH-TICKETS by "+user
+    });
+    toast("Invoice marked paid ✓ — synced to Invoice Tracker");
+    if(_curOpenTktId&&typeof openTktDetail==="function")setTimeout(function(){openTktDetail(_curOpenTktId)},400);
+  }catch(e){toast("Error: "+e.message,"err")}
+}
+// Auto-resolve on Paid — ONLY when there is exactly ONE open invoice alert (unambiguous).
+// Returns: count resolved (>=1), 0 if none, -1 if MULTIPLE (caller should ask to resolve the specific one).
+async function _autoResolvePaymentAlerts(customerName){
+  try{
+    if(!db||!customerName||typeof getCustomerAlerts!=="function")return 0;
+    var alerts=getCustomerAlerts({name:customerName});
+    if(!alerts||!alerts.length)return 0;
+    if(alerts.length>1)return -1; // multiple invoices pending — don't blanket-close
+    var user=(currentUser&&currentUser.name)||"tech-tickets";
+    await db.collection("cross_app_events").doc(alerts[0].id).update({
+      status:"resolved",
+      resolvedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      resolvedBy:user,
+      resolutionMethod:"paid-in-app",
+      resolutionNote:"Marked Paid in TECH-TICKETS by "+user
+    });
+    return 1;
+  }catch(_e){console.warn("[CrossApp] auto-resolve",_e);return 0}
+}
+
 function _updateCrossAppTabBadge(){
   const tab=document.getElementById('tab8');
   if(!tab)return;
@@ -5015,8 +5112,21 @@ function _countUp(el,target){
 function _todayKey(){return new Date().toISOString().slice(0,10)}
 function _renderWelcomeKPIs(){
   var box=document.getElementById("welcomeKPIs");if(!box)return;
-  // Only for admin/organizer (Nela & Alberto) — techs get their focused task list.
-  if(!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))){box.style.display="none";return}
+  if(!currentUser){box.style.display="none";return}
+  var hour=new Date().getHours();
+  var greet=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+  var who=(currentUser&&currentUser.name)?currentUser.name:"";
+  // Techs get a friendly greeting + their own ticket count (no admin KPI cards)
+  if(!(currentUser.role==="admin"||currentUser.role==="organizer")){
+    var mine=(Array.isArray(active)?active:[]).filter(function(t){return (t.techs||[]).includes(currentUser.name)}).length;
+    var tsig="tech|"+greet+"|"+who+"|"+mine;
+    box.style.display="block";
+    if(box.dataset.sig===tsig)return;
+    box.dataset.sig=tsig;
+    box.innerHTML='<div class="kpi-hello">'+icon("sparkles",18,{color:"var(--ac)"})+greet+(who?", "+esc(who):"")+'</div>'
+      +'<div class="kpi-sub">'+(mine?('You have '+mine+' ticket'+(mine===1?"":"s")+' assigned. Let\'s get to work! 💪'):'All caught up — no tickets assigned right now.')+'</div>';
+    return;
+  }
   var today=_todayKey();
   var a=Array.isArray(active)?active:[];
   var d=Array.isArray(done)?done:[];
@@ -5028,9 +5138,6 @@ function _renderWelcomeKPIs(){
   // First-time fix rate (completed vs reschedules)
   var totalForFtf=d.length+resched;
   var ftf=totalForFtf?Math.round(d.length/totalForFtf*100):100;
-  var hour=new Date().getHours();
-  var greet=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
-  var who=(currentUser&&currentUser.name)?currentUser.name:"";
   box.style.display="block";
   // Skip re-render/re-animation if nothing changed (e.g. user is typing in search)
   var sig=[scheduledToday,doneToday,resched,ftf,who,greet].join("|");
@@ -5087,14 +5194,16 @@ function _presIsOnline(rec){return rec&&rec.online&&(Date.now()-(rec.ts||0)<7000
 // Cluster of tech avatars for a ticket (reused in cards, history, calendar)
 function _techAvatars(t,size){return ((t&&t.techs)||[]).map(function(n){return _avatarHTML(n,size||16)}).join("")}
 // Reusable colored avatar (initials) — same color logic as the login screen (#1)
-function _avatarHTML(name,size,extraCls){
+// showPresence: when true, adds a pulsing green dot if that person is online now
+function _avatarHTML(name,size,extraCls,showPresence){
   size=size||28;
   var avHash=function(s){var h=0;for(var i=0;i<(s||"").length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return Math.abs(h)};
   var parts=(name||"?").trim().split(/\s+/);
   var ini=(parts.length>=2?(parts[0][0]+parts[parts.length-1][0]):(parts[0]||"?").slice(0,2)).toUpperCase();
   var ci=(avHash(name||"")%8)+1;
   var fs=Math.round(size*0.4);
-  return '<span class="app-av av-c'+ci+(extraCls?' '+extraCls:'')+'" style="width:'+size+'px;height:'+size+'px;font-size:'+fs+'px" title="'+esc(name||"")+'">'+esc(ini)+'</span>';
+  var on=showPresence&&typeof _presIsOnline==="function"&&_presIsOnline(_presenceUsers[name]);
+  return '<span class="app-av av-c'+ci+(extraCls?' '+extraCls:'')+(on?' is-online':'')+'" style="width:'+size+'px;height:'+size+'px;font-size:'+fs+'px" title="'+esc(name||"")+(on?' · online':'')+'">'+esc(ini)+(on?'<span class="app-av-dot"></span>':'')+'</span>';
 }
 // Start listening to presence (safe to call pre-login under anon auth)
 function _presenceStart(){
@@ -5952,6 +6061,9 @@ async function submitTkt(st){
       customer:cu||"",date:document.getElementById("fDate").value||"",
       techs:techs||[],workTypes:wTypes||[],
       warranty:{has:wHas===true?true:wHas===false?false:null,model:wMod||"",year:wYr||0,type:gWT()||"rda",label:gWL()||"N/W"},
+      partWarranty90:(document.getElementById("part90Chk")||{}).checked||false,
+      partWarranty90Start:((document.getElementById("part90Chk")||{}).checked)?(document.getElementById("fDate").value||new Date().toISOString().slice(0,10)):null,
+      partWarranty90Name:(((document.getElementById("part90Chk")||{}).checked)?((document.getElementById("part90Name")||{}).value||""):""),
       visitNum:visitNum||1,
       noLabor:noLabor===true,
       wcType:wcType||"",
@@ -6096,6 +6208,7 @@ async function submitTkt(st){
       toast(st==="complete"?(_off?"Saved offline ✓ — will sync when back online":"Ticket sent ✓"):(_off?"Saved offline ↻ — will sync + added to Service Log":"Saved — Reschedule ↻ added to Service Log"),st==="complete"&&!_off?null:"warn");
     }
     if(typeof clearDraft==="function")clearDraft();
+    if(st==="complete"&&typeof celebrate==="function")celebrate({count:110});
     resetForm();
   }catch(e){console.error(e);toast("Error: "+e.message,"err")}
   btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";
@@ -6109,6 +6222,7 @@ function resetForm(){
   techs=[];wTypes=[];sel=[];mediaFiles=[];videoLinks=[];
   wHas=null;wMod="";wYr=0;
   visitNum=1;noLabor=false;wcType="";
+  try{var _p90=document.getElementById("part90Chk");if(_p90)_p90.checked=false;var _p90n=document.getElementById("part90Name");if(_p90n)_p90n.value="";var _p90s=document.getElementById("part90Sub");if(_p90s)_p90s.style.display="none";var _p90b=document.getElementById("part90Box");if(_p90b)_p90b.style.display="none";}catch(_e){}
 
   // Reset pill states
   document.querySelectorAll(".pill,.wt").forEach(b=>b.classList.remove("on"));
@@ -6522,6 +6636,7 @@ function editTkt(i,isDone){
   const w=t.warranty||{};
   if(w.has===true){setWYN(true);if(w.model){setMod(w.model);if(w.year)setYr(w.year)}}
   else if(w.has===false){setWYN(false)}
+  try{var _p90=document.getElementById("part90Chk");if(_p90){_p90.checked=!!t.partWarranty90;var _p90n=document.getElementById("part90Name");if(_p90n)_p90n.value=t.partWarranty90Name||"";_part90Toggle();if(t.partWarranty90){var _p90b=document.getElementById("part90Box");if(_p90b)_p90b.style.display="block"}}}catch(_e){}
 
   // Parts - filter out any bad data
   sel=(t.parts||[]).filter(p=>p&&typeof p==="object"&&p.n).map(p=>({...p,qty:p.qty||1,id:Date.now()+Math.random()}));
@@ -6621,7 +6736,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${_part90Badge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})</div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -7254,7 +7369,7 @@ function rndrA(){
   const techMap={};pool.forEach(t=>{const key=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";if(!techMap[key])techMap[key]=[];techMap[key].push(t)});
   const techNames=Object.keys(techMap).sort((a,b)=>{if(a==="Unassigned")return 1;if(b==="Unassigned")return-1;return a.localeCompare(b)});
   let h='<div class="tech-cols">';
-  techNames.forEach(tn=>{const items=techMap[tn];const dayMap={};items.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));h+=`<div class="tech-col"><div class="tech-col-hdr">${tn==="Unassigned"?'':_avatarHTML(tn,26)}<span class="tech-col-name">${esc(tn)}</span><span class="tech-col-cnt">${items.length}</span></div>`;days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});h+='</div>'});
+  techNames.forEach(tn=>{const items=techMap[tn];const dayMap={};items.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));h+=`<div class="tech-col"><div class="tech-col-hdr">${tn==="Unassigned"?'':_avatarHTML(tn,26,null,true)}<span class="tech-col-name">${esc(tn)}</span><span class="tech-col-cnt">${items.length}</span></div>`;days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});h+='</div>'});
   h+='</div>';el.innerHTML=canceledHTML+h;
 }
 let slogZone="all";
@@ -7315,7 +7430,7 @@ function rndrSlog(){
   all.forEach(function(t){try{_enrichTicketWithExistingCustomer(t)}catch(_e){}});
   if(!all.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
   const zones=new Set();all.forEach(t=>{zones.add(effectiveZone(t)||"No Zone")});
-  sf.innerHTML=["all",...[...zones].sort()].map(z=>`<button class="${slogZone===z?"on":""}" onclick="slogZone='${z}';rndrSlog()">${z==="all"?"All Zones":z}</button>`).join("");
+  sf.innerHTML=""; // Top zone row removed — the clickable LOAD summary below is the single zone filter
   const filtered=slogZone==="all"?all:all.filter(t=>(effectiveZone(t)||"No Zone")===slogZone);
   if(!filtered.length){el.innerHTML='<div class="empty-state"><div class="es-ico">'+icon("map-pin-off",28,{color:"var(--i3)"})+'</div><h3>Nothing in this zone</h3><p>No unassigned tickets in this zone right now. Try another zone above or check back later.</p></div>';return}
   const byZone={};filtered.forEach(t=>{const z=effectiveZone(t)||"No Zone";if(!byZone[z])byZone[z]=[];byZone[z].push(t)});
@@ -7325,12 +7440,13 @@ function rndrSlog(){
   var _loadByZone={};all.forEach(function(t){var z=effectiveZone(t)||"No Zone";_loadByZone[z]=(_loadByZone[z]||0)+1});
   var _loadKeys=Object.keys(_loadByZone).sort(function(a,b){return _loadByZone[b]-_loadByZone[a]});
   if(_loadKeys.length){
-    h+='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:10px 12px;background:var(--c-ash-2);border-radius:10px">';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:2px 0">';
     h+='<span style="font-size:var(--fs-xs);font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--i3);margin-right:2px">Load</span>';
-    h+='<span style="font-size:var(--fs-sm);font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--ln);padding:3px 10px;border-radius:999px">Total '+all.length+'</span>';
+    h+='<button onclick="slogZone=\'all\';rndrSlog()" style="font-size:var(--fs-sm);font-weight:800;color:var(--ink);background:var(--cd);border:'+(slogZone==="all"?"2px solid var(--ac)":"1px solid var(--ln)")+';padding:3px 12px;border-radius:999px;cursor:pointer">Total '+all.length+'</button>';
     _loadKeys.forEach(function(z){
       var zc=ZONE_COLORS[z]||{bg:"#fff",text:"var(--i2)"};
-      h+='<button onclick="slogZone=\''+z.replace(/'/g,"\\'")+'\';rndrSlog()" style="font-size:var(--fs-sm);font-weight:700;color:'+zc.text+';background:'+zc.bg+';border:1px solid var(--ln);padding:3px 10px;border-radius:999px;cursor:pointer">'+esc(z)+' '+_loadByZone[z]+'</button>';
+      var _on=slogZone===z;
+      h+='<button onclick="slogZone=\''+z.replace(/'/g,"\\'")+'\';rndrSlog()" style="font-size:var(--fs-sm);font-weight:700;color:'+zc.text+';background:'+zc.bg+';border:'+(_on?"2px solid var(--ac)":"1px solid var(--ln)")+';padding:3px 10px;border-radius:999px;cursor:pointer;'+(_on?"box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent)":"")+'">'+esc(z)+' '+_loadByZone[z]+'</button>';
     });
     h+='</div>';
   }
@@ -8699,6 +8815,22 @@ function rndrCalTeam(sel,allTkts){
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
 function _qbHistBadge(t){return t&&t.qbCopied?'<span class="qb-note-status" style="background:var(--c-money-bg);color:var(--c-money-fg)" title="Copied to QuickBooks'+(t.qbCopiedAt?' · '+t.qbCopiedAt:'')+'">📋 IN QB</span>':''}
+// 90-day part warranty badge: shows days left (green) or expired (gray) for old-tub part coverage
+function _part90Badge(t){
+  if(!t||!t.partWarranty90||!t.partWarranty90Start)return"";
+  var start=new Date(t.partWarranty90Start+"T12:00:00");
+  if(isNaN(start))return"";
+  var days=Math.floor((Date.now()-start.getTime())/86400000);
+  var left=90-days;
+  var end=new Date(start.getTime()+90*86400000);
+  var endStr=end.toISOString().slice(0,10);
+  var nm=t.partWarranty90Name?(" — "+t.partWarranty90Name):"";
+  if(left>=0){
+    var col=left<=14?"var(--c-warning-strong)":"var(--c-success-strong)";
+    return '<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700;border:1px solid '+col+'" title="Part-only 90-day warranty'+esc(nm)+' · expires '+endStr+'">🛠️ Part warranty: '+left+'d left</span>';
+  }
+  return '<span class="tkt-tag" style="background:var(--c-neutral-bg);color:var(--i3);font-weight:700;text-decoration:line-through" title="Part-only 90-day warranty expired on '+endStr+esc(nm)+'">🛠️ Part warranty expired</span>';
+}
 function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return "";if(s==="complete")return '<span class="st-badge st-complete">Submitted</span>';if(s==="done")return '<span class="st-badge st-done">'+icon("check",10,{color:"#047857"})+'Done</span>';if(s==="canceled")return '<span class="st-badge st-canceled">Canceled</span>';if(s==="reschedule")return '<span class="st-badge st-reschedule">Reschedule</span>';return ""}
 function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;const _isTechView=currentUser&&currentUser.role==="tech";
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
@@ -8720,6 +8852,13 @@ async function togglePaid(id,currentlyPaid){
   try{
     await db.collection("tickets").doc(id).update({paid:newVal,paidAt:newVal?new Date().toLocaleString():null});
     toast(newVal?"Marked as Paid 💰":"Marked as unpaid");
+    if(newVal){
+      try{
+        var _tk=[...active,...done].find(function(x){return x.id===id});
+        var _cust=_tk&&_tk.customer;
+        if(_cust){var _n=await _autoResolvePaymentAlerts(_cust);if(_n>0)toast(_n+" payment alert"+(_n===1?"":"s")+" resolved ✓ — synced to Invoice Tracker");else if(_n===-1)toast("Multiple invoices pending — open the ticket and use 💵 Mark paid on the right invoice","warn");}
+      }catch(_re){console.warn("[CrossApp] resolve-on-paid",_re)}
+    }
   }catch(e){toast("Error: "+e.message,"err")}
 }
 function rndrCalDetail(ds,allTkts){
@@ -9015,6 +9154,7 @@ function openTktDetail(id){
   // for any ticket dated >= CHECKIN_REQUIRED_FROM_DATE (defined in Check-in
   // module). Renders as: big check-in button / ongoing visit / completed.
   let h="";
+  try{if(typeof _paymentAlertBannerHTML==="function")h+=_paymentAlertBannerHTML(t)}catch(_e){}
   try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
   h+='<div style="margin-bottom:16px">';
   if(isAdmin){
@@ -9071,18 +9211,18 @@ function openTktDetail(id){
   }
   // Admin path: show editable checkboxes (techs use the badge row above instead).
   if(isAdmin){
-    h+='<div style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:8px;margin-bottom:8px">';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--i2);cursor:pointer"><input type="checkbox" id="dtCcFile" '+(t.ccOnFile?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> CC on File</label>';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--ac);cursor:pointer"><input type="checkbox" id="dtCcReq" '+(t.ccRequested?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Request CC</label>';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--r);cursor:pointer"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Repeat</label>';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-danger-strong);cursor:pointer"><input type="checkbox" id="dtUrgent" '+(t.isUrgent?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> 🔥 Urgent</label>';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-purple-strong);cursor:pointer"><input type="checkbox" id="dtNewSpa" '+(t.isNewSpa?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> ✨ New Spa</label>';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--c-info-strong);cursor:pointer"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Check</label>';
-    h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--c-money-strong);cursor:pointer"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')" style="width:18px;height:18px"> Credit</label>';
+    h+='<div class="dt-sec"><div class="dt-sec-t">🏷️ Flags &amp; Payment</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
+    h+='<label class="dt-chip" style="--chip-c:var(--i2);--chip-bg:var(--c-neutral-bg)"><input type="checkbox" id="dtCcFile" '+(t.ccOnFile?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> CC on File</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--ac);--chip-bg:var(--acl)"><input type="checkbox" id="dtCcReq" '+(t.ccRequested?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Request CC</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--r);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ↻ Repeat</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--c-danger-strong);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtUrgent" '+(t.isUrgent?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> 🔥 Urgent</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--c-purple-strong);--chip-bg:var(--c-purple-bg)"><input type="checkbox" id="dtNewSpa" '+(t.isNewSpa?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ✨ New Spa</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--c-info-strong);--chip-bg:var(--c-info-bg)"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Check</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--c-money-strong);--chip-bg:var(--c-money-bg)"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Credit</label>';
     if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")){
-      h+='<label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-success-strong);cursor:pointer"><input type="checkbox" id="dtPaid" '+(t.paid?'checked':'')+' onchange="togglePaid(\''+t.id+'\','+(t.paid?'true':'false')+')" style="width:18px;height:18px">'+icon("banknote",15,{color:"var(--c-success-strong)"})+'Paid</label>';
+      h+='<label class="dt-chip" style="--chip-c:var(--c-success-strong);--chip-bg:var(--c-success-bg)"><input type="checkbox" id="dtPaid" '+(t.paid?'checked':'')+' onchange="togglePaid(\''+t.id+'\','+(t.paid?'true':'false')+')"> 💵 Paid</label>';
     }
-    h+='</div>';
+    h+='</div></div>';
   }
   h+='</div>';
   // Quick contact actions: Call + pre-written SMS templates
@@ -10316,7 +10456,7 @@ function qbCustRenderDetail(customers){
   }
 
   // ── HEADER: "Customer Information" (mimics QB)
-  h+='<div class="qb-cust-info-hdr"><h2 class="qb-cust-info-title">'+esc(c.name)+'</h2></div>';
+  h+='<div class="qb-cust-info-hdr" style="display:flex;align-items:center;gap:12px">'+_avatarHTML(c.name,44)+'<h2 class="qb-cust-info-title" style="margin:0">'+esc(c.name)+'</h2></div>';
 
   // ── INFO GRID (two columns, label-on-left like QB)
   h+='<div class="qb-cust-info-grid">';
@@ -10374,7 +10514,7 @@ function qbCustRenderDetail(customers){
         h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
         h+=pin;
         h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
-        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+(wt?' · <span style="font-weight:500;color:var(--i3)">'+esc(wt)+'</span>':'')+status+_qbHistBadge(t)+'</div>';
+        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+(wt?' · <span style="font-weight:500;color:var(--i3)">'+esc(wt)+'</span>':'')+status+_qbHistBadge(t)+_part90Badge(t)+'</div>';
         if(noteTxt)h+='<div>'+esc(noteTxt)+'</div>';
         h+='</div>';
         h+='</div>';
@@ -10399,7 +10539,7 @@ function qbCustRenderDetail(customers){
         h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
         h+='<span class="qb-note-pin"></span>';
         h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
-        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+status+_qbHistBadge(t)+'</div>';
+        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+status+_qbHistBadge(t)+_part90Badge(t)+'</div>';
         if(wt)h+='<div style="color:var(--i3);font-size:11.5px;margin-bottom:3px">'+esc(wt)+'</div>';
         if(t.notes)h+='<div>'+esc(t.notes.substring(0,200))+(t.notes.length>200?"...":"")+'</div>';
         h+='</div>';
