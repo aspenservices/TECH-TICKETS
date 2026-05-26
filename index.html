@@ -6328,6 +6328,21 @@ function buildCustomerReport(t,notesOverride){
   plain+="  4609 McRee Avenue, Saint Louis, MO 63110\n\n";
   plain+="Thank you for trusting us with your spa.\n\nAspen Spas Service Team";
 
+  // ── QUICKBOOKS TEXT (Nela's copy → paste into QB invoice) ────────────────
+  // Just the work summary — no "Hello", no address/contact footer, no
+  // "Thank you". QuickBooks adds its own customer header, so this keeps it clean.
+  let qb="";
+  if(techList)qb+="Technician: "+techList+"\n";
+  if(durLabel)qb+="Time on site: "+durLabel+" ("+(t.arrival||"")+" - "+(t.departure||"")+")\n";
+  if(t.spaDesc)qb+="Spa: "+t.spaDesc+"\n";
+  if(techList||durLabel||t.spaDesc)qb+="\n";
+  if(notesToUse)qb+="Work performed:\n"+notesToUse.trim()+"\n";
+  if(parts.length){
+    qb+="\nParts used/replaced:\n";
+    parts.forEach(p=>{qb+="  - "+(p.qty||1)+"x "+p.n+(p.c?" ("+p.c+")":"")+"\n"});
+  }
+  qb=qb.trim();
+
   // ── SHORT TEXT (SMS-friendly) ────────────────────────────────────────────
   let short="Hi "+(t.customer||"there")+", your Aspen Spas service is complete";
   if(dateLabel)short+=" ("+dateLabel+")";
@@ -6404,7 +6419,7 @@ function buildCustomerReport(t,notesOverride){
   html+='<div style="margin-top:14px;font-size:14px;color:#1a1a1a">Thank you for trusting us with your spa.<br><strong>— Aspen Spas Service Team</strong></div>';
   html+='</div>';
 
-  return{textPlain:plain,textShort:short,htmlBody:html,photoUrls:photoUrls,subject:"Aspen Spas — Service Report"+(dateLabel?" ("+dateLabel+")":"")};
+  return{textPlain:plain,textShort:short,textQB:qb,htmlBody:html,photoUrls:photoUrls,subject:"Aspen Spas — Service Report"+(dateLabel?" ("+dateLabel+")":"")};
 }
 
 // ── Modal open/close ────────────────────────────────────────────────────────
@@ -6536,13 +6551,23 @@ async function copyReportText(){
   const t=_repCurrentTicket;if(!t)return;
   const editedNotes=(document.getElementById("repNotesEdit")||{}).value||"";
   const rep=buildCustomerReport(t,editedNotes);
+  // Copy the QuickBooks-friendly version (no greeting / address / footer).
+  const textToCopy=rep.textQB||rep.textPlain;
   try{
-    await navigator.clipboard.writeText(rep.textPlain);
-    toast("Report copied ✓");
+    await navigator.clipboard.writeText(textToCopy);
+    toast("Copied for QuickBooks ✓");
   }catch(e){
-    const ta=document.createElement("textarea");ta.value=rep.textPlain;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);toast("Copied ✓");
+    const ta=document.createElement("textarea");ta.value=textToCopy;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);toast("Copied ✓");
   }
-  await markReportSent(t.id,"copied");
+  // Ask before marking as "sent" — copying for QuickBooks is NOT the same as
+  // sending to the customer (Nela sends from QB / Invoice Tracker, not here).
+  const markSent=await confirmDialog(
+    "Copied to clipboard for QuickBooks.\n\nDid you already SEND this report to the customer? Only mark it as sent if the customer actually received it.",
+    {title:"Mark as sent?",tone:"info",okLabel:"Yes, mark as sent",cancelLabel:"No, just copied"}
+  );
+  if(markSent){
+    await markReportSent(t.id,"copied");
+  }
   closeReportModal();
 }
 
