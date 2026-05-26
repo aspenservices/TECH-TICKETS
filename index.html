@@ -567,8 +567,9 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .cal-tkt-mini{padding:8px 10px;background:#fff;border:1px solid var(--ln);border-radius:var(--r-md);margin-bottom:5px;cursor:grab;box-shadow:var(--sh-xs)}
 .cal-tkt-mini:active{cursor:grabbing}
 .cal-tkt-mini.dragging{opacity:.4}
-.cal-tkt-mini h5{font-size:var(--fs-base);font-weight:600;color:var(--ink);margin-bottom:2px}
-.cal-tkt-mini p{font-size:var(--fs-sm);color:var(--i3)}
+.cal-tkt-mini h5{font-size:var(--fs-lg);font-weight:800;color:var(--ink);margin-bottom:3px;letter-spacing:-.2px}
+.cal-tkt-mini p{font-size:var(--fs-base);color:var(--i2)}
+.cal-tkt-mini p a{font-size:var(--fs-base)!important;font-weight:600}
 .cal-tkt-mini .cal-tkt-techs{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
 .cal-tkt-mini .cal-tech-dot{font-size:var(--fs-xs);padding:2px 6px;border-radius:var(--r-xs);font-weight:600}
 .cal-filter{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
@@ -785,7 +786,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .zone-card-hdr{padding:10px 14px;font-size:var(--fs-sm);font-weight:700;display:flex;justify-content:space-between;align-items:center}
 .zone-card-body{max-height:400px;overflow-y:auto;padding:0 10px 10px}
 .zone-card-item{padding:8px 10px;background:var(--bg);border-radius:var(--r-md);margin-bottom:4px;font-size:var(--fs-sm);cursor:pointer}.zone-card-item:hover{background:var(--acl)}
-.zone-card-item h6{font-size:var(--fs-sm);font-weight:700;color:var(--br);margin:0}.zone-card-item p{font-size:var(--fs-xs);color:var(--i3);margin:2px 0 0}
+.zone-card-item h6{font-size:var(--fs-md);font-weight:800;color:var(--br);margin:0}.zone-card-item p{font-size:var(--fs-sm);color:var(--i2);margin:2px 0 0}
 /* ═══ TEAM VIEW ═══
    Desktop (>680px): horizontal scrolling columns (drag-and-drop friendly).
    Mobile (≤680px):  vertical stack with collapsible accordion headers.
@@ -1380,6 +1381,13 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
             </div>
           </div>
           <div id="slWResult" style="display:none;padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600"></div>
+          <div id="slPart90Box" style="display:none;margin-top:8px;padding:9px 10px;border:1px dashed var(--ln);border-radius:8px;background:var(--c-ash)">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)"><input type="checkbox" id="slPart90Chk" onchange="_slPart90Toggle()" style="width:16px;height:16px;flex-shrink:0"> 🛠️ Replaced part has 90-day warranty <span style="font-weight:500;color:var(--i3)">(part only)</span></label>
+            <div id="slPart90Sub" style="display:none;margin-top:7px">
+              <input type="text" id="slPart90Name" placeholder="Which part? (optional — e.g. heater, pump)" style="width:100%;padding:7px;border:1.5px solid var(--ln);border-radius:7px;font-size:var(--fs-sm);box-sizing:border-box;font-family:inherit;background:var(--cd);color:var(--ink)">
+              <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:5px">Old tub out of warranty, but this part is covered <b>90 days</b> from the service date.</div>
+            </div>
+          </div>
         </div>
         <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px 14px">
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--i2);cursor:pointer"><input type="checkbox" id="slCcFile" style="width:18px;height:18px"> CC on File</label>
@@ -1390,6 +1398,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--c-info-strong);cursor:pointer"><input type="checkbox" id="slCheck" style="width:18px;height:18px"> Check</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--c-money-strong);cursor:pointer"><input type="checkbox" id="slCredit" style="width:18px;height:18px"> Credit</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-success-strong);cursor:pointer"><input type="checkbox" id="slPaid" style="width:18px;height:18px"> 💰 Paid</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--r);cursor:pointer" title="Customer must pay BEFORE the tech does any work"><input type="checkbox" id="slPBS" style="width:18px;height:18px"> 💳 Payment before service</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-warning-fg);cursor:pointer" title="This job needs an extra technician (2-person job)"><input type="checkbox" id="slNeed2" style="width:18px;height:18px"> 👥 Needs 2nd tech</label>
         </div>
         <div style="margin-bottom:10px">
           <div class="lbl" style="margin-bottom:4px">Spa Description</div>
@@ -2289,6 +2299,7 @@ const w=gWT();return w==="full"?`${m} Yr${y} 100%`:w==="half"?`${m} Yr${y} 50%`:
 function setWYN(v){wHas=v;wMod="";wYr=0;document.getElementById("warYes").className="wb yes"+(v===true?" on-y":"");document.getElementById("warNo").className="wb no"+(v===false?" on-n":"");document.getElementById("wS2").classList.toggle("show",v);document.getElementById("wS3").classList.remove("show");var _p90=document.getElementById("part90Box");if(_p90)_p90.style.display=(v===false)?"block":"none";upWR();rndr()}
 // Show/hide the "which part" field when the 90-day part warranty box is checked
 function _part90Toggle(){var c=document.getElementById("part90Chk"),s=document.getElementById("part90Sub");if(c&&s)s.style.display=c.checked?"block":"none";if(typeof upWR==="function")upWR()}
+function _needOtherTechToggle(){var c=document.getElementById("needOtherTech"),s=document.getElementById("needOtherTechSub");if(c&&s)s.style.display=c.checked?"block":"none"}
 function setMod(m){wMod=m;wYr=0;document.querySelectorAll(".w-model").forEach(b=>b.className=b.className.replace(/ on-m/g,""));document.querySelectorAll(".w-model").forEach(b=>{if(b.querySelector("b").textContent.toLowerCase()===m)b.classList.add("on-m")});document.getElementById("wS3").classList.add("show");document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));upWR();rndr()}
 function setYr(y){wYr=y;document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.querySelectorAll(".w-yr").forEach(b=>{const v=b.textContent==="5+"?6:+b.textContent;if(v===y)b.classList.add("on-yr")});upWR();rndr()}
 function upWR(){const e=document.getElementById("wR");if(!wHas&&wHas!==false){e.style.display="none";return}if(!wHas){var _p90c=(document.getElementById("part90Chk")||{}).checked;var _p90n=(document.getElementById("part90Name")||{}).value||"";e.style.display="block";e.className="w-result rda-cov";e.innerHTML="<b>No warranty</b> — Parts at RDA."+(_p90c?'<br>🛠️ <b>Part 90-day warranty</b>'+(_p90n?' ('+_p90n.replace(/</g,"&lt;")+')':'')+' — covered 90 days from service date.':'');return}if(!wMod||!wYr){e.style.display="none";return}const w=gWT(),lw=gLabWT(),m=wMod.toUpperCase(),y=wYr>5?"5+":wYr;
@@ -2449,6 +2460,7 @@ function renderLoginScreen(){
   try{
     const ln=localStorage.getItem("aspLastUser");
     if(ln)lastUser=allUsers.find(u=>(u.name||"")===ln)||null;
+    if(lastUser&&lastUser.hidden)lastUser=null; // don't show a hidden ex-employee as the welcome-back hero
   }catch(_e){}
   // ── Welcome-back hero ──
   if(lastUser){
@@ -2477,6 +2489,7 @@ function renderLoginScreen(){
   car.className="login-carousel";car.id="loginCarousel";
   if(lastUser)car.style.display="none"; // hidden until "Switch profile" tapped
   allUsers.forEach((u,i)=>{
+    if(u.hidden)return; // hidden ex-employees don't show on the login screen
     const ci=(avHash(u.name||"")%8)+1;
     const card=document.createElement("button");
     card.type="button";card.className="lc-card";
@@ -4186,7 +4199,7 @@ function adminZipCancelImport(){
 }
 function rndrAdminUsers(){
   const el=document.getElementById("adminUserList");
-  el.innerHTML=allUsers.map((u,i)=>`<div class="usr-card"><div class="usr-name">${esc(u.name)}</div><span class="usr-role r-${u.role}">${u.role.toUpperCase()}</span><span class="usr-pin">${u.pin}</span><div class="usr-actions"><button class="usr-edit" onclick="renameUser(${i})">✏️</button><button class="usr-edit" onclick="editUserPin(${i})">PIN</button><button class="usr-edit" onclick="toggleUserRole(${i})">→${u.role==="tech"?"Org":u.role==="organizer"?"Admin":"Tech"}</button>${allUsers.length>1?`<button class="usr-del" onclick="removeUser(${i})">✕</button>`:""}</div></div>`).join("");
+  el.innerHTML=allUsers.map((u,i)=>`<div class="usr-card"${u.hidden?' style="opacity:.55"':''}><div class="usr-name">${esc(u.name)}${u.hidden?' <span style="font-size:var(--fs-xs);font-weight:700;color:var(--i3);background:var(--c-ash);padding:1px 6px;border-radius:5px;letter-spacing:.5px">HIDDEN</span>':''}</div><span class="usr-role r-${u.role}">${u.role.toUpperCase()}</span><span class="usr-pin">${u.pin}</span><div class="usr-actions"><button class="usr-edit" title="${u.hidden?'Show on login':'Hide from login (keeps history)'}" onclick="toggleUserHidden(${i})">${u.hidden?'👁':'🚫'}</button><button class="usr-edit" onclick="renameUser(${i})">✏️</button><button class="usr-edit" onclick="editUserPin(${i})">PIN</button><button class="usr-edit" onclick="toggleUserRole(${i})">→${u.role==="tech"?"Org":u.role==="organizer"?"Admin":"Tech"}</button>${allUsers.length>1?`<button class="usr-del" onclick="removeUser(${i})">✕</button>`:""}</div></div>`).join("");
   var c=document.getElementById("adminUserCount");if(c)c.textContent=allUsers.length;
 }
 async function adminAddTech(){
@@ -4261,6 +4274,13 @@ async function toggleUserRole(i){
 async function removeUser(i){
   if(!(await confirmDialog(`Remove ${allUsers[i].name}?`)))return;
   const name=allUsers[i].name;allUsers.splice(i,1);await saveUsers();rndrAdmin();toast(name+" removed");
+}
+// Hide/show a user on the login screen WITHOUT deleting them — keeps their past
+// ticket history intact for ex-employees that no longer work here.
+async function toggleUserHidden(i){
+  allUsers[i].hidden=!allUsers[i].hidden;
+  await saveUsers();rndrAdmin();
+  toast(allUsers[i].hidden?(allUsers[i].name+" hidden from login — history kept"):(allUsers[i].name+" visible again ✓"));
 }
 
 // ═══ FIREBASE REALTIME ═══
@@ -4420,6 +4440,44 @@ async function _autoResolvePaymentAlerts(customerName){
     });
     return 1;
   }catch(_e){console.warn("[CrossApp] auto-resolve",_e);return 0}
+}
+
+// ── "Payment before service" banner — tech must collect payment BEFORE starting ──
+// Per-CUSTOMER: if ANY ticket for this customer is flagged pay-before-service,
+// the flag applies to ALL their tickets (past + future).
+function _isCustPayFirst(name){
+  try{
+    if(!name)return false;
+    var k=_custGroupKey(name);if(!k)return false;
+    var all=[].concat(Array.isArray(active)?active:[],Array.isArray(done)?done:[]);
+    return all.some(function(t){return t&&t.paymentBeforeService&&_custGroupKey(t.customer)===k});
+  }catch(_e){return false}
+}
+function _payBeforeServiceBannerHTML(t){
+  try{
+    if(!t)return"";
+    var on=t.paymentBeforeService||_isCustPayFirst(t.customer);
+    if(!on)return"";
+    if(t.paidBeforeServiceOK){
+      return '<div style="margin-bottom:14px;padding:11px 13px;border:1.5px solid var(--c-success-strong);background:var(--c-success-bg);border-radius:12px;display:flex;align-items:center;gap:8px;font-weight:800;color:var(--c-success-fg);font-size:var(--fs-sm)">'
+        +icon("check-circle",16,{color:"var(--c-success-fg)"})+'Paid before service'+(t.paidBeforeServiceBy?' — confirmed by '+esc(t.paidBeforeServiceBy):'')+'</div>';
+    }
+    return '<div style="margin-bottom:14px;padding:12px 14px;border:2px solid var(--c-danger-strong);background:var(--c-danger-bg);border-radius:12px">'
+      +'<div style="display:flex;align-items:center;gap:8px;font-weight:900;color:var(--c-danger-fg);font-size:var(--fs-md);letter-spacing:.3px">'+icon("alert-triangle",18,{color:"var(--c-danger-fg)"})+'PAYMENT BEFORE SERVICE</div>'
+      +'<div style="font-size:var(--fs-sm);color:var(--c-danger-fg);margin-top:3px;font-weight:600">This customer must PAY FIRST. Collect payment before starting any work.</div>'
+      +'<button onclick="event.stopPropagation();_confirmPaidBeforeService(\''+t.id+'\')" style="margin-top:10px;width:100%;padding:10px;background:var(--c-success-strong);color:#fff;border:none;border-radius:9px;font-size:var(--fs-sm);font-weight:800;cursor:pointer">✓ Customer paid — OK to start</button>'
+      +'</div>';
+  }catch(_e){return""}
+}
+async function _confirmPaidBeforeService(id){
+  if(!db||!id)return;
+  var user=(currentUser&&currentUser.name)||"tech";
+  try{
+    await db.collection("tickets").doc(id).update({paidBeforeServiceOK:true,paidBeforeServiceBy:user,paidBeforeServiceAt:new Date().toLocaleString()});
+    toast("Payment confirmed ✓ — OK to start service");
+    if(typeof celebrate==="function")celebrate({count:60});
+    if(_curOpenTktId&&typeof openTktDetail==="function")setTimeout(function(){openTktDetail(_curOpenTktId)},400);
+  }catch(e){toast("Error: "+e.message,"err")}
 }
 
 function _updateCrossAppTabBadge(){
@@ -6064,6 +6122,8 @@ async function submitTkt(st){
       partWarranty90:(document.getElementById("part90Chk")||{}).checked||false,
       partWarranty90Start:((document.getElementById("part90Chk")||{}).checked)?(document.getElementById("fDate").value||new Date().toISOString().slice(0,10)):null,
       partWarranty90Name:(((document.getElementById("part90Chk")||{}).checked)?((document.getElementById("part90Name")||{}).value||""):""),
+      needsOtherTech:(st==="reschedule"&&_reschedInfo)?!!_reschedInfo.needsOtherTech:false,
+      needsOtherTechReason:((st==="reschedule"&&_reschedInfo&&_reschedInfo.needsOtherTech)?(_reschedInfo.note||""):""),
       visitNum:visitNum||1,
       noLabor:noLabor===true,
       wcType:wcType||"",
@@ -6223,6 +6283,7 @@ function resetForm(){
   wHas=null;wMod="";wYr=0;
   visitNum=1;noLabor=false;wcType="";
   try{var _p90=document.getElementById("part90Chk");if(_p90)_p90.checked=false;var _p90n=document.getElementById("part90Name");if(_p90n)_p90n.value="";var _p90s=document.getElementById("part90Sub");if(_p90s)_p90s.style.display="none";var _p90b=document.getElementById("part90Box");if(_p90b)_p90b.style.display="none";}catch(_e){}
+  try{var _not=document.getElementById("needOtherTech");if(_not)_not.checked=false;var _notr=document.getElementById("needOtherTechReason");if(_notr)_notr.value="";var _nots=document.getElementById("needOtherTechSub");if(_nots)_nots.style.display="none";}catch(_e2){}
 
   // Reset pill states
   document.querySelectorAll(".pill,.wt").forEach(b=>b.classList.remove("on"));
@@ -6476,7 +6537,8 @@ function _askReschedReason(){
     box.innerHTML='<div style="font-size:17px;font-weight:800;color:#111;margin-bottom:4px">\u21BB Reschedule reason</div>'+
       '<div style="font-size:13px;color:#6b7280;margin-bottom:14px">Why couldn\u2019t the visit be completed? This is added to the Service Log call and helps spot recurring issues.</div>'+
       '<div id="_rrBtns" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>'+
-      '<textarea id="_rrNote" placeholder="Optional details (what\u2019s needed to finish)..." style="width:100%;min-height:64px;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;margin-bottom:14px"></textarea>'+
+      '<textarea id="_rrNote" placeholder="Optional details (what\u2019s needed to finish)..." style="width:100%;min-height:64px;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;margin-bottom:12px"></textarea>'+
+      '<label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:14px;font-weight:700;color:#92400e;background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:10px 12px;margin-bottom:14px"><input type="checkbox" id="_rrNeed2" style="width:17px;height:17px;flex-shrink:0">\uD83D\uDC65 This job needs an EXTRA technician (2-person job)</label>'+
       '<div style="display:flex;gap:8px;justify-content:flex-end"><button id="_rrCancel" style="padding:10px 16px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:14px;font-weight:600;color:#374151;cursor:pointer">Cancel</button><button id="_rrOk" style="padding:10px 18px;background:var(--ac);border:none;border-radius:9px;font-size:14px;font-weight:700;color:#fff;cursor:pointer">Confirm reschedule</button></div>';
     bg.appendChild(box);document.body.appendChild(bg);
     var btnWrap=box.querySelector("#_rrBtns");
@@ -6496,7 +6558,7 @@ function _askReschedReason(){
     box.querySelector("#_rrOk").onclick=function(){
       var note=(box.querySelector("#_rrNote").value||"").trim();
       if(!picked&&!note){toast("Pick a reason or add a note","warn");return}
-      done({reason:picked||"Other",note:note});
+      done({reason:picked||"Other",note:note,needsOtherTech:!!box.querySelector("#_rrNeed2").checked});
     };
     bg.onclick=function(e){if(e.target===bg)done(null)};
   });
@@ -6593,7 +6655,7 @@ async function markResched(docId){
   try{_info=await _askReschedReason()}catch(_e){_info=null}
   if(!_info)return; // canceled — leave the ticket as-is
   try{
-    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||""});
+    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||"",needsOtherTech:!!_info.needsOtherTech,needsOtherTechReason:_info.needsOtherTech?(_info.note||""):""});
     // Auto-create / resurface a Service Log call so the reschedule isn't forgotten.
     try{
       var _src=[...active,...done].find(function(x){return x.id===docId});
@@ -6736,7 +6798,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${_part90Badge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})</div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -7459,7 +7521,7 @@ function rndrSlog(){
     urgents.forEach(function(t){
       var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
       h+='<div style="background:#fff;border:1px solid #fecaca;border-left:3px solid var(--c-danger-strong);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="font-weight:700;font-size:var(--fs-base);color:var(--ink);margin-bottom:6px;line-height:1.3">'+esc(t.customer)+'</div>'+
+        '<div style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
@@ -7484,7 +7546,7 @@ function rndrSlog(){
       }
       var reasonHtml=t.reschedReason?'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);margin-bottom:4px;font-style:italic">'+esc(t.reschedReason)+'</div>':'';
       h+='<div style="background:#fff;border:1px solid var(--c-warning-bg);border-left:3px solid var(--c-warning-fg);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:700;font-size:var(--fs-base);color:var(--ink);line-height:1.3">'+esc(t.customer)+'</span>'+ageHtml+'</div>'+
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span>'+ageHtml+'</div>'+
         reasonHtml+
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
@@ -7501,7 +7563,7 @@ function rndrSlog(){
     newSpas.forEach(function(t){
       var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
       h+='<div style="background:#fff;border:1px solid var(--c-purple-bg);border-left:3px solid var(--c-purple-strong);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="font-weight:700;font-size:var(--fs-base);color:var(--ink);margin-bottom:6px;line-height:1.3">'+esc(t.customer)+'</div>'+
+        '<div style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
@@ -7518,7 +7580,7 @@ function rndrSlog(){
     repeats.forEach(function(t){
       var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
       h+='<div style="background:#fff;border:1px solid #fecaca;border-left:3px solid var(--c-danger-fg);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="font-weight:700;font-size:var(--fs-base);color:var(--ink);margin-bottom:6px;line-height:1.3">'+esc(t.customer)+'</div>'+
+        '<div style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
@@ -7543,7 +7605,7 @@ function rndrSlog(){
     ccReqs.forEach(function(t){
       var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
       h+='<div style="background:#fff;border:1px solid #fde68a;border-left:3px solid #d97706;border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="font-weight:700;font-size:var(--fs-base);color:var(--ink);margin-bottom:6px;line-height:1.3">'+esc(t.customer)+'</div>'+
+        '<div style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
@@ -7747,11 +7809,13 @@ else if(w==="full"&&lw==="none"){r.style.display="block";r.style.cssText="paddin
 else if(w==="half"&&lw==="tc-only"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts 50% Retail, Labor TC only"}
 else if(w==="half"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts 50% Retail"}
 else{r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts at RDA"}}
+function _slPart90Toggle(){var c=document.getElementById("slPart90Chk"),s=document.getElementById("slPart90Sub");if(c&&s)s.style.display=c.checked?"block":"none"}
 function slSetWYN(v){slWHas=v;slWMod="";slWYr=0;
   document.getElementById("slWarYes").style.cssText=v===true?"flex:1;padding:8px;background:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer":"flex:1;padding:8px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer";
   document.getElementById("slWarNo").style.cssText=v===false?"flex:1;padding:8px;background:var(--r);border:1.5px solid var(--r);border-radius:8px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer":"flex:1;padding:8px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer";
   document.getElementById("slWModelRow").style.display=v===true?"block":"none";
   document.getElementById("slWYearRow").style.display="none";
+  var _sp90=document.getElementById("slPart90Box");if(_sp90)_sp90.style.display=(v===false)?"block":"none";
   document.querySelectorAll("#slWModelRow .sl-w-model").forEach(function(b){b.style.cssText="flex:1;padding:6px;background:#fff;border:1.5px solid var(--ln);border-radius:6px;font-size:var(--fs-sm);font-weight:700;cursor:pointer"});
   document.querySelectorAll("#slWYearRow .sl-w-yr").forEach(function(b){b.style.cssText="flex:1;padding:6px 2px;background:#fff;border:1.5px solid var(--ln);border-radius:6px;font-size:var(--fs-sm);font-weight:700;cursor:pointer"});
   slUpWR();
@@ -7772,6 +7836,10 @@ function slResetWarranty(){slWHas=null;slWMod="";slWYr=0;
   var mr=document.getElementById("slWModelRow");if(mr)mr.style.display="none";
   var yr=document.getElementById("slWYearRow");if(yr)yr.style.display="none";
   var r=document.getElementById("slWResult");if(r)r.style.display="none";
+  var _p90=document.getElementById("slPart90Chk");if(_p90)_p90.checked=false;
+  var _p90n=document.getElementById("slPart90Name");if(_p90n)_p90n.value="";
+  var _p90s=document.getElementById("slPart90Sub");if(_p90s)_p90s.style.display="none";
+  var _p90b=document.getElementById("slPart90Box");if(_p90b)_p90b.style.display="none";
 }
 
 function slAutoZone(){const zip=document.getElementById("slCustZip").value.trim();const badge=document.getElementById("slZoneBadge");const zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";const city=ZIP_CITIES[zip]||customZips[zip+"_city"]||"";if(zip.length===5&&zone){const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};badge.style.display="block";badge.innerHTML='<span style="padding:5px 12px;border-radius:8px;font-size:var(--fs-sm);font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span>';if(!document.getElementById("slCustCity").value&&city)document.getElementById("slCustCity").value=city}else if(zip.length===5){badge.style.display="block";badge.innerHTML='<input id="slManualZone" placeholder="Enter zone" class="time-input" style="width:120px;font-size:var(--fs-sm)">'}else{badge.style.display="none"}}
@@ -7810,6 +7878,11 @@ async function slCreateCall(){
       isNewSpa:(document.getElementById("slNewSpa")||{}).checked||false,
       payCheck:document.getElementById("slCheck").checked,
       payCredit:document.getElementById("slCredit").checked,
+      paymentBeforeService:(document.getElementById("slPBS")||{}).checked||false,
+      needsOtherTech:(document.getElementById("slNeed2")||{}).checked||false,
+      partWarranty90:(document.getElementById("slPart90Chk")||{}).checked||false,
+      partWarranty90Start:((document.getElementById("slPart90Chk")||{}).checked)?(dt||new Date().toISOString().slice(0,10)):null,
+      partWarranty90Name:(((document.getElementById("slPart90Chk")||{}).checked)?((document.getElementById("slPart90Name")||{}).value||""):""),
       media:[],videoLinks:null,source:"dispatch",status:"pending",
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       submitted:new Date().toLocaleString()
@@ -7833,6 +7906,8 @@ async function slCreateCall(){
     document.getElementById("slCheck").checked=false;
     document.getElementById("slCredit").checked=false;
     if(_slP)_slP.checked=false;
+    var _spbs2=document.getElementById("slPBS");if(_spbs2)_spbs2.checked=false;
+    var _sn2b=document.getElementById("slNeed2");if(_sn2b)_sn2b.checked=false;
     document.getElementById("slCustName").value="";
     document.getElementById("slCustPhone").value="";
     var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";
@@ -9134,6 +9209,22 @@ async function calCreateCall(){if(!db){toast("Firebase not configured","err");re
 // Tracks which ticket is currently visible in the detail modal (used by features
 // that need to refresh it in place, like ZIP override saves).
 var _curOpenTktId=null;
+// Quick info chips for the ticket detail modal: # visits, last visit, zone, warranty.
+function _dtSummaryChips(t){
+  try{
+    var chips=[];
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):(t.customer||"");
+    var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
+    chips.push({ic:"🧾",label:mine.length+" visit"+(mine.length===1?"":"s")});
+    var dates=mine.filter(function(x){return x.id!==t.id&&x.date}).map(function(x){return x.date}).sort();
+    if(dates.length)chips.push({ic:"📅",label:"Last: "+dates[dates.length-1]});
+    var z=(typeof effectiveZone==="function")?effectiveZone(t):(t.zone||"");if(z)chips.push({ic:"📍",label:z});
+    var wl=(t.warranty&&t.warranty.label)||"";if(wl&&wl!=="N/W")chips.push({ic:"🛡️",label:wl});
+    if(!chips.length)return"";
+    return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">'+chips.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--cd);border:1px solid var(--ln);border-radius:999px;font-size:var(--fs-xs);font-weight:700;color:var(--i2)">'+c.ic+' '+esc(c.label)+'</span>'}).join("")+'</div>';
+  }catch(_e){return""}
+}
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -9145,7 +9236,7 @@ function openTktDetail(id){
   // record. Mutates the live object so subsequent saves include the
   // enriched values automatically.
   try{_enrichTicketWithExistingCustomer(t)}catch(_e){console.warn("[enrich]",_e)}
-  document.getElementById("tktDetailTitle").textContent=t.customer||"Ticket";
+  document.getElementById("tktDetailTitle").innerHTML='<span style="display:inline-flex;align-items:center;gap:10px;min-width:0">'+_avatarHTML(t.customer,32)+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.customer||"Ticket")+'</span></span>';
   const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
   const _city=effectiveCity(t);
   const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");
@@ -9154,11 +9245,14 @@ function openTktDetail(id){
   // for any ticket dated >= CHECKIN_REQUIRED_FROM_DATE (defined in Check-in
   // module). Renders as: big check-in button / ongoing visit / completed.
   let h="";
+  try{if(typeof _payBeforeServiceBannerHTML==="function")h+=_payBeforeServiceBannerHTML(t)}catch(_e){}
   try{if(typeof _paymentAlertBannerHTML==="function")h+=_paymentAlertBannerHTML(t)}catch(_e){}
   try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
+  try{if(typeof _dtSummaryChips==="function")h+=_dtSummaryChips(t)}catch(_e){}
   h+='<div style="margin-bottom:16px">';
   if(isAdmin){
-    h+='<div style="margin-bottom:12px"><div class="lbl" style="font-size:var(--fs-xs)">Customer</div><input id="dtCust" value="'+esc(t.customer)+'" class="time-input" style="width:100%;font-size:var(--fs-md);font-weight:700"></div>';
+    h+='<div class="dt-sec"><div class="dt-sec-t">📇 Customer &amp; Address</div>';
+    h+='<div style="margin-bottom:12px"><div class="lbl" style="font-size:var(--fs-xs)">Customer</div><input id="dtCust" value="'+esc(t.customer)+'" class="time-input" style="width:100%;font-size:var(--fs-lg);font-weight:800;letter-spacing:-.2px"></div>';
     h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
     // Build phone list: legacy phone + phone2 + any in phones[] array (deduped)
     var _phList=[];
@@ -9180,6 +9274,7 @@ function openTktDetail(id){
     h+='<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">';
     h+='<div><div class="lbl" style="font-size:var(--fs-xs)">City</div><input id="dtCity" value="'+esc(_city)+'" class="time-input" style="width:100%"></div>';
     h+='<div><div class="lbl" style="font-size:var(--fs-xs)">ZIP</div><input id="dtZip" value="'+esc(t.zip||'')+'" class="time-input" style="width:100%" maxlength="5" oninput="var z=ZIP_ZONES[this.value]||customZips[this.value+\'_zone\'];if(z)document.getElementById(\'dtZone\').value=z;var c=ZIP_CITIES[this.value]||customZips[this.value+\'_city\'];var ce=document.getElementById(\'dtCity\');if(c&&ce&&!ce.value)ce.value=c"></div></div>';
+    h+='</div>';
   }else{
     // ─── TECH VIEW — clean & minimal ──────────────────────────────
     // Skip the redundant Customer line (modal title already shows it).
@@ -9219,6 +9314,7 @@ function openTktDetail(id){
     h+='<label class="dt-chip" style="--chip-c:var(--c-purple-strong);--chip-bg:var(--c-purple-bg)"><input type="checkbox" id="dtNewSpa" '+(t.isNewSpa?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ✨ New Spa</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-info-strong);--chip-bg:var(--c-info-bg)"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Check</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-money-strong);--chip-bg:var(--c-money-bg)"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Credit</label>';
+    h+='<label class="dt-chip" style="--chip-c:var(--c-danger-strong);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtPayB4" '+(t.paymentBeforeService?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> 💳 Pay before service</label>';
     if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")){
       h+='<label class="dt-chip" style="--chip-c:var(--c-success-strong);--chip-bg:var(--c-success-bg)"><input type="checkbox" id="dtPaid" '+(t.paid?'checked':'')+' onchange="togglePaid(\''+t.id+'\','+(t.paid?'true':'false')+')"> 💵 Paid</label>';
     }
@@ -9313,14 +9409,15 @@ function openTktDetail(id){
   var _spa=t.spaDesc||"";
   if(_isTechView){
     if(_spa){
-      h+='<div class="lbl">Spa Description</div>';
+      h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
       h+='<div class="notes" style="min-height:60px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap">'+esc(_spa)+'</div>';
-      h+='<div style="margin-bottom:10px"></div>';
+      h+='</div>';
     }
   }else{
-    h+='<div class="lbl">Spa Description</div>';
+    h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
     h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(_spa)+'</textarea>';
-    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px;margin-bottom:10px">Spa description auto-saves when you tap away</div>';
+    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">Spa description auto-saves when you tap away</div>';
+    h+='</div>';
   }
   // Attachments section (rendered separately so it can re-render in place after upload/delete)
   h+='<div id="tdAttSection_'+t.id+'"></div>';
@@ -9328,16 +9425,18 @@ function openTktDetail(id){
   var _notes=t.notes||"";
   if(_isTechView){
     if(_notes){
-      h+='<div class="lbl"><span>Notes / Updates</span></div>';
+      h+='<div class="dt-sec"><div class="dt-sec-t">📋 Notes &amp; Updates</div>';
       h+='<div class="notes" style="min-height:80px;font-size:var(--fs-md);white-space:pre-wrap">'+esc(_notes)+'</div>';
+      h+='</div>';
     }
   }else{
-    h+='<div class="lbl" style="display:flex;align-items:center;justify-content:space-between"><span>Notes / Updates</span><span style="font-size:var(--fs-xs);color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Tap mic to dictate</span></div>';
+    h+='<div class="dt-sec"><div class="dt-sec-t" style="display:flex;align-items:center;justify-content:space-between"><span>📋 Notes &amp; Updates</span><span style="font-size:var(--fs-xs);color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Tap mic to dictate</span></div>';
     h+='<div class="notes-with-mic">';
     h+='<textarea id="tktDetailNotes" class="notes" style="min-height:220px;font-size:var(--fs-md)" onblur="saveTktNotes(\''+t.id+'\')">'+esc(_notes)+'</textarea>';
     h+='<button type="button" class="mic-btn" id="micBtn_tktDetailNotes" onclick="voiceToggle(\'tktDetailNotes\')" title="Dictate notes" aria-label="Voice input">'+icon("mic",17,{color:"currentColor"})+'</button>';
     h+='</div>';
     h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px">Notes auto-save when you tap away</div>';
+    h+='</div>';
   }
   // Actions
   h+='<div id="tktDetailActionsWrap" style="margin-top:16px;padding-top:16px;border-top:2px solid var(--ln)"><div class="lbl">Actions</div><div id="tktDetailActions" style="display:flex;gap:8px;flex-wrap:wrap">';
@@ -9364,9 +9463,11 @@ function openTktDetail(id){
   }
   // Cancel Visit: techs see it (with reason prompt); admin sees it (no prompt)
   if(_isTech&&t.status!=="canceled"){
+    h+='<div style="width:100%;height:1px;background:var(--ln);margin:6px 0 2px"></div>';
     h+='<button onclick="showTechCancelForm(\''+t.id+'\')" style="padding:9px 14px;background:transparent;color:var(--c-warning-fg);border:1.5px solid var(--c-warning-strong);border-radius:8px;font-size:var(--fs-sm);font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("ban",13,{color:"var(--c-warning-fg)"})+'Cancel Visit</button>';
   }
   if(isAdmin){
+    h+='<div style="width:100%;height:1px;background:var(--ln);margin:6px 0 2px"></div>';
     if(t.status==="canceled"){
       h+='<button onclick="uncancelVisit(\''+t.id+'\')" style="padding:12px 18px;background:var(--c-money-bg);color:var(--c-money-fg);border:none;border-radius:10px;font-size:var(--fs-base);font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("rotate-ccw",15,{color:"var(--c-money-fg)"})+'Reactivate Visit</button>';
     }else{
@@ -9977,7 +10078,7 @@ function _renderRouteStopsList(){
     h+='<div style="display:flex;gap:10px;padding:10px;background:#fff;border-radius:10px;margin-bottom:8px;border:1px solid var(--ln);'+(noLocation?'opacity:.65':'')+'" onclick="_focusStop('+i+')" role="button">';
     h+='<div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:'+techCol+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:var(--fs-base)">'+stopNum+'</div>';
     h+='<div style="flex:1;min-width:0">';
-    h+='<div style="font-weight:700;font-size:var(--fs-base);color:var(--ink);line-height:1.3">'+esc(t.customer||"—")+'</div>';
+    h+='<div style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);line-height:1.25">'+esc(t.customer||"—")+'</div>';
     h+='<div style="font-size:var(--fs-sm);color:var(--i3);margin-top:2px">'+(t.arrival?'<b style="color:var(--ac)">'+esc(t.arrival)+'</b> · ':'')+esc((t.techs||[]).join(", ")||"Unassigned")+'</div>';
     if(s.address)h+='<div style="font-size:var(--fs-sm);color:var(--i3);margin-top:2px;line-height:1.3">📍 '+esc(s.address)+'</div>';
     if(noLocation)h+='<div style="font-size:var(--fs-xs);color:var(--c-danger-strong);margin-top:4px">⚠️ Address not found on map</div>';
@@ -10093,7 +10194,7 @@ async function dtUpdateCC(id){
   // The UI shows the editable checkboxes only to admins; techs see read-only badges.
   if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit ticket flags","err");return}
   if(!db)return;
-  try{var upd={ccOnFile:document.getElementById("dtCcFile").checked,ccRequested:document.getElementById("dtCcReq").checked};var rp=document.getElementById("dtRepeat");if(rp)upd.isRepeat=rp.checked;var ug=document.getElementById("dtUrgent");if(ug)upd.isUrgent=ug.checked;var ns=document.getElementById("dtNewSpa");if(ns)upd.isNewSpa=ns.checked;var ck=document.getElementById("dtCheck");if(ck)upd.payCheck=ck.checked;var cr=document.getElementById("dtCredit");if(cr)upd.payCredit=cr.checked;await db.collection("tickets").doc(id).update(upd);toast("CC updated ✓");setTimeout(refreshAll,500)}
+  try{var upd={ccOnFile:document.getElementById("dtCcFile").checked,ccRequested:document.getElementById("dtCcReq").checked};var rp=document.getElementById("dtRepeat");if(rp)upd.isRepeat=rp.checked;var ug=document.getElementById("dtUrgent");if(ug)upd.isUrgent=ug.checked;var ns=document.getElementById("dtNewSpa");if(ns)upd.isNewSpa=ns.checked;var ck=document.getElementById("dtCheck");if(ck)upd.payCheck=ck.checked;var cr=document.getElementById("dtCredit");if(cr)upd.payCredit=cr.checked;var pb=document.getElementById("dtPayB4");if(pb)upd.paymentBeforeService=pb.checked;await db.collection("tickets").doc(id).update(upd);toast("CC updated ✓");setTimeout(refreshAll,500)}
   catch(e){toast("Error: "+e.message,"err")}
 }
 async function saveTktNotes(id){
@@ -10681,7 +10782,7 @@ async function custCreateTicket(){
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
-function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();slClearMedia();toast("Form cleared")}
+function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();slClearMedia();toast("Form cleared")}
 function calClearForm(){document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;var sd=document.getElementById("calSpaDesc");if(sd)sd.value="";toast("Form cleared")}
 function showCustSuggest(prefix){
   var input=document.getElementById(prefix+"CustName");
