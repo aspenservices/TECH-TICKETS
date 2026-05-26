@@ -187,7 +187,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   box-shadow:inset 0 -2px 0 var(--ac);
 }
 html{font-size:var(--fs-lg);-webkit-text-size-adjust:100%}
-html{font-size:115%;overflow-x:hidden}body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;overflow-x:hidden;max-width:100vw;letter-spacing:-.1px}
+html{font-size:115%;overflow-x:hidden}body{font-family:'Manrope',-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;overflow-x:hidden;max-width:100vw;letter-spacing:-.1px}
 input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor:pointer}
 
 /* Header — liminal, branded brown, no shouty orange bar */
@@ -1105,6 +1105,65 @@ body.dark-mode .tkt:hover{box-shadow:0 8px 24px rgba(0,0,0,.45)}
 .kpi-live{width:7px;height:7px;border-radius:50%;background:var(--c-success-strong);box-shadow:0 0 0 0 color-mix(in srgb,var(--c-success-strong) 60%,transparent);animation:kpiPulse 2s infinite}
 @keyframes kpiPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c-success-strong) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.kpi-live{animation:none}.kpi-card:hover{transform:none}}
+/* ── #10 REAL-TIME PRESENCE ── */
+.pres-strip{display:flex;align-items:center;gap:10px;margin:2px 0 14px;flex-wrap:wrap;animation:fu .4s var(--ease-out,ease)}
+.pres-lbl{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--i3);font-weight:700;display:flex;align-items:center;gap:6px}
+.pres-avatars{display:flex;align-items:center}
+.pres-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-8px;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.pres-av:first-child{margin-left:0}
+.pres-av::after{content:"";position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:#22c55e;border:2px solid var(--bg);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:kpiPulse 2s infinite}
+.pres-more{font-size:var(--fs-sm);color:var(--i2);font-weight:600;margin-left:4px}
+.pres-none{font-size:var(--fs-sm);color:var(--i3)}
+/* Online dot on the login "Who are you?" cards */
+.login-card{position:relative}
+.login-dot{position:absolute;top:12px;right:12px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid var(--cd,#21242b);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:kpiPulse 2s infinite;display:none}
+.login-dot.on{display:block}
+.login-card .login-onlinelbl{position:absolute;top:10px;left:12px;font-size:9px;font-weight:800;letter-spacing:.5px;color:#22c55e;text-transform:uppercase;display:none}
+.login-card .login-onlinelbl.on{display:block}
+/* ── Netflix-style profile picker + welcome-back hero ── */
+#loginBox.wide{width:min(620px,94vw)}
+.lwb{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 14px;animation:fu .35s var(--ease-out,ease)}
+.lwb-av{width:104px;height:104px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:38px;letter-spacing:.5px;cursor:pointer;position:relative;box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 0 -3px 0 rgba(0,0,0,.12);border:3px solid transparent;transition:transform .2s var(--ease-out,ease),border-color .2s,box-shadow .25s}
+.lwb-av:hover{transform:translateY(-3px) scale(1.03);border-color:var(--ac);box-shadow:0 16px 40px -8px color-mix(in srgb,var(--ac) 45%,rgba(0,0,0,.5))}
+.lwb-av:active{transform:scale(.98)}
+.lwb-dot{position:absolute;right:6px;bottom:6px;width:18px;height:18px;border-radius:50%;background:#22c55e;border:3px solid var(--cd);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:kpiPulse 2s infinite}
+.lwb-name{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.3px;margin-top:8px}
+.lwb-hint{font-size:var(--fs-sm);color:var(--i3)}
+.lwb-switch{margin-top:2px;background:none;border:none;color:var(--ac);font-size:var(--fs-sm);font-weight:700;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background .15s}
+.lwb-switch:hover{background:var(--acl)}
+.login-carousel{display:flex;gap:16px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;padding:8px 4px 14px;margin-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.login-carousel::-webkit-scrollbar{height:6px}
+.login-carousel::-webkit-scrollbar-thumb{background:var(--ln);border-radius:3px}
+.lc-card{scroll-snap-align:center;flex:0 0 auto;width:104px;display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 4px;background:none;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:14px;transition:transform .18s var(--ease-snap,ease)}
+.lc-card:hover{transform:translateY(-3px)}
+.lc-card:active{transform:scale(.96)}
+.lc-av{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:30px;letter-spacing:.5px;position:relative;border:3px solid transparent;box-shadow:0 6px 18px -4px rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.1);transition:border-color .18s,box-shadow .22s}
+.lc-card:hover .lc-av{border-color:var(--ac);box-shadow:0 12px 30px -6px color-mix(in srgb,var(--ac) 40%,rgba(0,0,0,.5))}
+.lc-card.on .lc-av{border-color:var(--ac);box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 22%,transparent)}
+.lc-dot{position:absolute;right:3px;bottom:3px;width:15px;height:15px;border-radius:50%;background:#22c55e;border:3px solid var(--cd);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:kpiPulse 2s infinite;display:none}
+.lc-dot.on{display:block}
+.lc-name{font-size:var(--fs-sm);font-weight:800;color:var(--ink);line-height:1.15;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-role{font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--i3)}
+.lc-role.r-admin{color:var(--acd)}.lc-role.r-organizer{color:var(--c-info-fg)}
+.login-or{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.8px;color:var(--i3);font-weight:700;margin:4px 0 2px;text-align:center}
+@media(prefers-reduced-motion:reduce){.lwb-dot,.lc-dot{animation:none}.lc-card:hover,.lwb-av:hover{transform:none}}
+/* ── #1 Reusable avatar across the app ── */
+.app-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:800;letter-spacing:.3px;flex-shrink:0;vertical-align:middle;box-shadow:inset 0 -2px 0 rgba(0,0,0,.1);font-variant-numeric:tabular-nums}
+.tech-col-hdr .app-av{box-shadow:inset 0 -2px 0 rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.18)}
+/* ── #5 Premium ticket cards — rounder, softer elevation, smoother hover (colors untouched) ── */
+.tkt{border-radius:16px}
+@media(hover:hover){.tkt{transition:transform .2s var(--ease-out,ease),box-shadow .25s var(--ease-out,ease)}.tkt:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(0,0,0,.18)}}
+body.dark-mode .tkt:hover{box-shadow:0 10px 28px -8px rgba(0,0,0,.55)}
+/* ── #3 Consistent pill SHAPE/typography only — keeps Alberto's status COLORS ── */
+.tkt-tag{border-radius:999px;padding:3px 10px;font-weight:700;letter-spacing:.2px;line-height:1.45;display:inline-flex;align-items:center;gap:4px}
+/* ── #4 Smooth tab transition ── */
+.wrap.show{animation:tabIn .32s var(--ease-out,ease)}
+@keyframes tabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.wrap.show{animation:none}}
+/* ── #6 Extra dark-mode coverage for remaining light surfaces ── */
+body.dark-mode .tech-col-hdr{background:var(--bg)!important}
+body.dark-mode .usr-card,body.dark-mode .usr-name{color:var(--ink)}
+body.dark-mode .welcome-hero{background:linear-gradient(135deg,#2c2723,var(--cd))}
 /* #3 — Skeleton dark-mode aware (light gradient is invisible on dark bg) */
 body.dark-mode .skel{background:linear-gradient(90deg,#23262d 0%,#30343c 50%,#23262d 100%);background-size:200% 100%}
 body.dark-mode .skel-card{background:var(--cd);border-color:var(--ln)}
@@ -1125,6 +1184,9 @@ body.dark-mode .mt{background:rgba(44,37,32,.82)}
 .welcome-hero{background:linear-gradient(135deg,var(--acl),var(--cd));border:1px solid var(--ln);border-radius:var(--rad);padding:18px 20px;margin-bottom:14px}
 body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd))}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -1133,11 +1195,11 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 </div>
 <!-- ══ LOGIN SCREEN ══ -->
 <div class="login-bg" id="loginScreen">
-<div class="login-box">
+<div class="login-box" id="loginBox">
 <img id="loginLogo" class="login-logo" alt="" aria-hidden="true" style="max-width:200px;width:auto;height:auto;max-height:50px;margin:0 auto 12px;display:block;object-fit:contain">
 <h2>ASPEN SPAS</h2>
 <div class="login-sub">Service Ticket System</div>
-<div class="lbl" style="text-align:left">Who are you?</div>
+<div id="loginHeading" class="lbl" style="text-align:center">Who's working today?</div>
 <div class="login-users" id="loginUsers"></div>
 <div class="login-pin-area" id="loginPinArea">
 <div class="login-hello" id="loginHello"></div>
@@ -1222,7 +1284,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 </div>
 
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="aList"></div></div>
+<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div id="presenceStrip" class="pres-strip" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="aList"></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -2333,39 +2395,74 @@ async function loadUsers(){
 async function saveUsers(){if(!db)return;try{await db.collection("config").doc("users").set({list:allUsers})}catch(e){console.warn("[saveUsers]",e);if(typeof toast==="function")toast("Could not save users","err")}}
 function renderLoginScreen(){
   const c=document.getElementById("loginUsers");c.innerHTML="";
-  // ── Avatar color palette — deterministic by name hash so each user keeps "their" color ──
+  const box=document.getElementById("loginBox");if(box)box.classList.add("wide");
+  const heading=document.getElementById("loginHeading");
   const avHash=s=>{let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return Math.abs(h)};
   const initials=name=>{
     const parts=(name||"?").trim().split(/\s+/);
     if(parts.length>=2)return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
     return (parts[0]||"?").slice(0,2).toUpperCase();
   };
-  const grid=document.createElement("div");
-  grid.className="login-grid";
+  const roleLabelOf=r=>r==="admin"?"Admin":r==="organizer"?"Organizer":"Tech";
+  const roleClsOf=r=>r==="admin"?"r-admin":r==="organizer"?"r-organizer":"r-tech";
+  // ── Auto-recognize: did someone log in on THIS device before? (#4) ──
+  let lastUser=null;
+  try{
+    const ln=localStorage.getItem("aspLastUser");
+    if(ln)lastUser=allUsers.find(u=>(u.name||"")===ln)||null;
+  }catch(_e){}
+  // ── Welcome-back hero ──
+  if(lastUser){
+    if(heading)heading.style.display="none";
+    const ci=(avHash(lastUser.name||"")%8)+1;
+    const wb=document.createElement("div");
+    wb.className="lwb";
+    wb.innerHTML=
+      `<div class="lwb-av av-c${ci}" data-uname="${(lastUser.name||"").replace(/"/g,"")}" role="button" tabindex="0">`+
+        `${initials(lastUser.name)}<span class="lwb-dot" style="display:none"></span></div>`+
+      `<div class="lwb-name">Welcome back, ${(lastUser.name||"").replace(/</g,"&lt;")}</div>`+
+      `<div class="lwb-hint">Tap your photo to enter your PIN</div>`+
+      `<button type="button" class="lwb-switch" id="lwbSwitch">Not you? Switch profile ▾</button>`;
+    c.appendChild(wb);
+    wb.querySelector(".lwb-av").onclick=function(){selectLoginUser(lastUser,null)};
+    wb.querySelector(".lwb-av").onkeydown=function(e){if(e.key==="Enter"||e.key===" ")selectLoginUser(lastUser,null)};
+  }else if(heading){heading.style.display="";}
+  // ── "Or choose another" label (only when hero is shown) ──
+  if(lastUser){
+    const or=document.createElement("div");or.className="login-or";or.id="loginOr";
+    or.textContent="Switch profile";or.style.display="none";
+    c.appendChild(or);
+  }
+  // ── Netflix-style horizontal carousel of all profiles ──
+  const car=document.createElement("div");
+  car.className="login-carousel";car.id="loginCarousel";
+  if(lastUser)car.style.display="none"; // hidden until "Switch profile" tapped
   allUsers.forEach((u,i)=>{
+    const ci=(avHash(u.name||"")%8)+1;
     const card=document.createElement("button");
-    card.type="button";
-    card.className="login-card";
-    card.setAttribute("data-uidx",String(i));
-    const colorIdx=(avHash(u.name||"")%8)+1;
-    const roleLabel = u.role==="admin" ? "Admin"
-                    : u.role==="organizer" ? "Organizer"
-                    : "Tech";
-    const roleCls = u.role==="admin" ? "r-admin"
-                  : u.role==="organizer" ? "r-organizer"
-                  : "r-tech";
-    card.innerHTML =
-      `<span class="login-avatar av-c${colorIdx}" aria-hidden="true">${initials(u.name)}</span>`+
-      `<span class="login-card-name">${(u.name||"").replace(/</g,"&lt;")}</span>`+
-      `<span class="login-card-role ${roleCls}">${roleLabel}</span>`;
+    card.type="button";card.className="lc-card";
+    card.setAttribute("data-uname",u.name||"");
+    card.innerHTML=
+      `<span class="lc-av av-c${ci}">${initials(u.name)}<span class="lc-dot"></span></span>`+
+      `<span class="lc-name">${(u.name||"").replace(/</g,"&lt;")}</span>`+
+      `<span class="lc-role ${roleClsOf(u.role)}">${roleLabelOf(u.role)}</span>`;
     card.onclick=function(){
-      document.querySelectorAll(".login-card").forEach(b=>b.classList.remove("on"));
+      document.querySelectorAll(".lc-card").forEach(b=>b.classList.remove("on"));
       card.classList.add("on");
-      selectLoginUser(u,card);
+      selectLoginUser(u,null);
     };
-    grid.appendChild(card);
+    car.appendChild(card);
   });
-  c.appendChild(grid);
+  c.appendChild(car);
+  // Wire the "Switch profile" toggle to reveal the carousel
+  const sw=document.getElementById("lwbSwitch");
+  if(sw)sw.onclick=function(){
+    const or=document.getElementById("loginOr");
+    car.style.display="flex";if(or)or.style.display="block";
+    sw.style.display="none";
+    try{_renderPresenceLogin()}catch(_e){}
+  };
+  try{_renderPresenceLogin()}catch(_e){}
 }
 let selectedLoginUser=null;
 function selectLoginUser(u,btn){
@@ -2384,7 +2481,7 @@ function selectLoginUser(u,btn){
 function cancelLogin(){
   selectedLoginUser=null;
   document.getElementById("loginPinArea").classList.remove("show");
-  document.querySelectorAll(".login-user,.login-card").forEach(b=>b.classList.remove("on"));
+  document.querySelectorAll(".login-user,.login-card,.lc-card").forEach(b=>b.classList.remove("on"));
   const sel=document.getElementById("loginUserSelect");
   if(sel)sel.value="";
 }
@@ -2395,6 +2492,8 @@ function doLogin(){
   currentUser=selectedLoginUser;
   isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
   sessionStorage.setItem("aspUser",JSON.stringify(currentUser));
+  try{localStorage.setItem("aspLastUser",currentUser.name||"")}catch(_e){}
+  try{_presenceOnLogin()}catch(_e){}
   document.getElementById("loginScreen").style.display="none";
   updAdmin();
   // Refresh views so tech sees their own tickets, admin sees all
@@ -2419,6 +2518,7 @@ function logout(){
   // Clean up active timers and listeners to prevent memory leaks across sessions.
   try{if(typeof _stopCheckOutReminderPoll==="function")_stopCheckOutReminderPoll()}catch(e){console.warn("[logout]",e)}
   try{_timers.clearAll()}catch(e){console.warn("[logout timers]",e)}
+  try{_presenceStop()}catch(e){}
   // Reset state
   currentUser=null;
   isAdmin=false;
@@ -4960,6 +5060,118 @@ function _dateOnly(s){
   return "";
 }
 
+// ── #10 REAL-TIME PRESENCE (who's online now) ───────────────────────────────
+// Lightweight Firestore presence: each logged-in user writes a heartbeat doc.
+// Fully defensive — if DB rules block the `presence` collection, it degrades
+// silently (no errors, just no dots shown).
+var _presenceUsers={};      // name -> {name,role,ts,online}
+var _presenceHbTimer=null;  // heartbeat interval
+var _presenceUnsub=null;    // snapshot unsubscribe
+var _presenceColors={};     // name -> color (matches login avatar hash)
+function _presNameId(n){return (n||"").toLowerCase().replace(/[^a-z0-9]+/g,"_").slice(0,60)||"x"}
+function _presColor(name){
+  var pal=["#2563eb","#16a34a","#db2777","#0891b2","#7c3aed","#ea580c","#0d9488","#c026d3"];
+  var h=0,s=name||"";for(var i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;
+  return pal[Math.abs(h)%pal.length];
+}
+function _presInitials(name){
+  var p=(name||"?").trim().split(/\s+/);
+  return (p.length>=2?(p[0][0]+p[p.length-1][0]):(p[0]||"?").slice(0,2)).toUpperCase();
+}
+function _presIsOnline(rec){return rec&&rec.online&&(Date.now()-(rec.ts||0)<70000)}
+// Reusable colored avatar (initials) — same color logic as the login screen (#1)
+function _avatarHTML(name,size,extraCls){
+  size=size||28;
+  var avHash=function(s){var h=0;for(var i=0;i<(s||"").length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return Math.abs(h)};
+  var parts=(name||"?").trim().split(/\s+/);
+  var ini=(parts.length>=2?(parts[0][0]+parts[parts.length-1][0]):(parts[0]||"?").slice(0,2)).toUpperCase();
+  var ci=(avHash(name||"")%8)+1;
+  var fs=Math.round(size*0.4);
+  return '<span class="app-av av-c'+ci+(extraCls?' '+extraCls:'')+'" style="width:'+size+'px;height:'+size+'px;font-size:'+fs+'px" title="'+esc(name||"")+'">'+esc(ini)+'</span>';
+}
+// Start listening to presence (safe to call pre-login under anon auth)
+function _presenceStart(){
+  if(!db||_presenceUnsub)return;
+  try{
+    _presenceUnsub=db.collection("presence").onSnapshot(function(snap){
+      _presenceUsers={};
+      snap.forEach(function(doc){var v=doc.data()||{};if(v.name)_presenceUsers[v.name]=v});
+      try{_renderPresenceLogin()}catch(_e){}
+      try{_renderPresenceCluster()}catch(_e){}
+    },function(_err){/* rules may block; ignore */});
+  }catch(_e){}
+}
+// Write/refresh my own heartbeat
+function _presenceBeat(){
+  if(!db||!currentUser)return;
+  try{
+    db.collection("presence").doc(_presNameId(currentUser.name)).set({
+      name:currentUser.name,role:currentUser.role||"",online:true,ts:Date.now()
+    },{merge:true});
+  }catch(_e){}
+}
+function _presenceOnLogin(){
+  _presenceBeat();
+  if(_presenceHbTimer)clearInterval(_presenceHbTimer);
+  _presenceHbTimer=setInterval(_presenceBeat,25000);
+  // Mark offline if the tab is hidden/closed (best-effort)
+  document.addEventListener("visibilitychange",_presVis);
+  window.addEventListener("beforeunload",_presBye);
+}
+function _presVis(){if(document.hidden)_presBye();else _presenceBeat()}
+function _presBye(){
+  if(!db||!currentUser)return;
+  try{db.collection("presence").doc(_presNameId(currentUser.name)).set({online:false,ts:Date.now()},{merge:true})}catch(_e){}
+}
+function _presenceStop(){
+  _presBye();
+  if(_presenceHbTimer){clearInterval(_presenceHbTimer);_presenceHbTimer=null}
+  document.removeEventListener("visibilitychange",_presVis);
+  window.removeEventListener("beforeunload",_presBye);
+}
+// Show green dots on the login "Who are you?" cards
+function _renderPresenceLogin(){
+  // Carousel cards
+  document.querySelectorAll(".lc-card[data-uname]").forEach(function(card){
+    var on=_presIsOnline(_presenceUsers[card.getAttribute("data-uname")]);
+    var dot=card.querySelector(".lc-dot");
+    if(dot)dot.classList.toggle("on",on);
+  });
+  // Welcome-back hero avatar
+  document.querySelectorAll(".lwb-av[data-uname]").forEach(function(av){
+    var on=_presIsOnline(_presenceUsers[av.getAttribute("data-uname")]);
+    var dot=av.querySelector(".lwb-dot");
+    if(dot)dot.style.display=on?"block":"none";
+  });
+  // Legacy grid (in case it's still present)
+  document.querySelectorAll(".login-card[data-uname]").forEach(function(card){
+    var on=_presIsOnline(_presenceUsers[card.getAttribute("data-uname")]);
+    var dot=card.querySelector(".login-dot"),lbl=card.querySelector(".login-onlinelbl");
+    if(dot)dot.classList.toggle("on",on);
+    if(lbl)lbl.classList.toggle("on",on);
+  });
+}
+// Show an "Online now" avatar cluster in the Daily welcome area
+function _renderPresenceCluster(){
+  var el=document.getElementById("presenceStrip");if(!el)return;
+  if(!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))){el.style.display="none";return}
+  var online=Object.keys(_presenceUsers).map(function(k){return _presenceUsers[k]}).filter(_presIsOnline);
+  online.sort(function(a,b){return (a.name||"").localeCompare(b.name||"")});
+  el.style.display="flex";
+  if(!online.length){
+    el.innerHTML='<span class="pres-lbl"><span class="kpi-live"></span> Live</span><span class="pres-none">No one else online right now</span>';
+    return;
+  }
+  var shown=online.slice(0,6),extra=online.length-shown.length;
+  var avs=shown.map(function(u){
+    return '<span class="pres-av" style="background:'+_presColor(u.name)+'" title="'+esc(u.name)+(u.name===(currentUser&&currentUser.name)?" (you)":"")+'">'+esc(_presInitials(u.name))+'</span>';
+  }).join("");
+  el.innerHTML='<span class="pres-lbl"><span class="kpi-live"></span> Online now</span>'
+    +'<span class="pres-avatars">'+avs+'</span>'
+    +(extra>0?'<span class="pres-more">+'+extra+'</span>':'')
+    +'<span class="pres-more">'+online.length+' active</span>';
+}
+
 async function init(){
   // Check if this is a customer-facing estimate link
   const isEstLink=await loadCustEstimate();
@@ -4969,6 +5181,8 @@ async function init(){
   // Apply saved/system theme and add the header light/dark toggle button
   _applyTheme();
   _mountThemeToggle();
+  // Start real-time presence once Firestore is ready (safe under anon auth)
+  setTimeout(function(){try{_presenceStart()}catch(_e){}},2000);
   // Copy the brand logo from the header to the login screen for visual continuity
   try{
     const hdrLogo=document.querySelector(".hdr-logo");
@@ -4996,7 +5210,7 @@ async function init(){
   TECHS.forEach(t=>{if(!allUsers.find(u=>u.name===t)){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});
   if(synced)await saveUsers();
   initTodoCollapse();
-  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
+  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{_presenceOnLogin()}catch(_e){}try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
     if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
     // ─── Traccar startup hooks DISABLED 2026-05-13 ───
     // See comment in doLogin(). Clear any stale banner from prior session.
@@ -6981,6 +7195,7 @@ function rndrA(){
   const el=document.getElementById("aList");
   try{_renderQbCopyBadge()}catch(_e){}
   try{_renderWelcomeKPIs()}catch(_e){}
+  try{_renderPresenceCluster()}catch(_e){}
   // Show skeleton placeholders during initial data load (before Firestore's
   // first snapshot arrives). Prevents the empty-list flash on cold open.
   if(!_dataLoaded&&!active.length&&!done.length){el.innerHTML=_skeletonHTML(4);return}
@@ -7032,7 +7247,7 @@ function rndrA(){
   const techMap={};pool.forEach(t=>{const key=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";if(!techMap[key])techMap[key]=[];techMap[key].push(t)});
   const techNames=Object.keys(techMap).sort((a,b)=>{if(a==="Unassigned")return 1;if(b==="Unassigned")return-1;return a.localeCompare(b)});
   let h='<div class="tech-cols">';
-  techNames.forEach(tn=>{const items=techMap[tn];const dayMap={};items.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));h+=`<div class="tech-col"><div class="tech-col-hdr"><span class="tech-col-name">${esc(tn)}</span><span class="tech-col-cnt">${items.length}</span></div>`;days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});h+='</div>'});
+  techNames.forEach(tn=>{const items=techMap[tn];const dayMap={};items.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));h+=`<div class="tech-col"><div class="tech-col-hdr">${tn==="Unassigned"?'':_avatarHTML(tn,26)}<span class="tech-col-name">${esc(tn)}</span><span class="tech-col-cnt">${items.length}</span></div>`;days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});h+='</div>'});
   h+='</div>';el.innerHTML=canceledHTML+h;
 }
 let slogZone="all";
