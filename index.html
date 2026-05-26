@@ -95,25 +95,64 @@
   --fs-2xl:22px;  /* Hero / display */
 }
 
-/* ─── DARK MODE TOKENS (opt-in via <body class="dark-mode"> — not auto-activated) ─── */
-/* These define the dark palette; flip the body class when ready to ship dark mode.
-   Auto-activation via prefers-color-scheme is intentionally NOT enabled — many inline
-   styles in HTML/JS reference light colors directly and would need refactor first. */
+/* ─── DARK MODE TOKENS — refined "graphite/slate" palette (Claude-like, high contrast) ─── */
 body.dark-mode{
-  --ink:#f5f5f4;--i2:#a8a29e;--i3:#78716c;
-  --ln:#39312b;--bg:#221d18;--cd:#2c2520;
-  --br:#D4772C;--brl:#E89A5C;
-  --hdr-bg:#171310;
-  --acl:#3a2818;
-  --c-success-bg:#16432a;--c-success-fg:#86efac;
-  --c-warning-bg:#43300d;--c-warning-fg:#fcd34d;
-  --c-danger-bg:#431616;--c-danger-fg:#fca5a5;
-  --c-info-bg:#142d50;--c-info-fg:#93c5fd;
-  --c-money-bg:#14432f;--c-money-fg:#6ee7b7;
-  --c-neutral-bg:#2c2825;--c-neutral-fg:#a8a29e;--c-neutral-border:#39312b;
-  --c-ash:#2c2520;--c-ash-2:#322b26;
-  --c-paid-tint:#0f3b29;
+  --ink:#ECECEC;--i2:#b6bac2;--i3:#878d99;
+  --ln:#323742;--bg:#16181d;--cd:#21242b;
+  --br:#E8923D;--brl:#F0A862;
+  --ac:#E8923D;--acd:#D4772C;
+  --hdr-bg:#0f1115;
+  --acl:#2c2723;
+  --r:#f87171;
+  --c-success-bg:#10331f;--c-success-fg:#7ee0a6;--c-success-border:#1f5235;--c-success-strong:#22c55e;
+  --c-warning-bg:#3a2c0c;--c-warning-fg:#fbd24e;--c-warning-border:#5a4310;--c-warning-strong:#f59e0b;
+  --c-danger-bg:#3a1518;--c-danger-fg:#fca5a5;--c-danger-border:#5a2024;--c-danger-strong:#ef4444;
+  --c-info-bg:#15243f;--c-info-fg:#93c5fd;--c-info-border:#1e3a63;--c-info-strong:#3b82f6;
+  --c-money-bg:#0f3326;--c-money-fg:#6ee7b7;--c-money-strong:#10b981;
+  --c-neutral-bg:#23262d;--c-neutral-fg:#b6bac2;--c-neutral-border:#323742;
+  --c-purple-bg:#2a2245;--c-purple-fg:#c4b5fd;--c-purple-strong:#8b5cf6;
+  --c-ash:#21242b;--c-ash-2:#262a31;
+  --c-paid-tint:#0e3326;
 }
+/* Dark-mode polish: neutralize inline light surfaces & hardcoded light borders so the
+   whole app reads as a consistent professional dark (images & text stay legible). */
+body.dark-mode .card{border-color:var(--ln)}
+body.dark-mode [style*="background:#fff"]:not(#repPreviewBox):not([style*="border-radius:50%"]){background:var(--cd)!important;border-color:var(--ln)!important}
+body.dark-mode .tkt,body.dark-mode .usr-card{background:var(--cd)}
+/* Keep the customer report preview looking like white paper (it simulates the email/printout) */
+body.dark-mode #repPreviewBox{background:#fff!important}
+body.dark-mode #repPreviewBox [style*="color:#111"],body.dark-mode #repPreviewBox [style*="color:#1a1a1a"]{color:#1a1a1a!important}
+/* Slightly stronger card shadows on dark so cards read as elevated surfaces */
+body.dark-mode .card,body.dark-mode .tkt{box-shadow:0 1px 3px rgba(0,0,0,.45)}
+/* Images: soften pure-white photo edges against dark with a subtle border */
+body.dark-mode .media-thumb,body.dark-mode .hdr-logo{box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+/* ── Comprehensive dark overrides for components whose CSS hardcodes light colors ── */
+/* Calendar grid was bright white — make cells dark with visible gridlines */
+body.dark-mode .cal-grid,body.dark-mode .cal-day,body.dark-mode .cal-day.today,body.dark-mode .cal-day.other{background:var(--cd)!important;color:var(--ink)!important}
+body.dark-mode .cal-day:hover{background:var(--c-ash-2)!important}
+body.dark-mode .cal-day.selected{background:#332617!important}
+body.dark-mode .cal-day.drop-over{background:#3a2a18!important}
+body.dark-mode .cal-tkt-mini{background:var(--c-ash-2)!important;color:var(--ink)}
+body.dark-mode .cal-nav,body.dark-mode .cal-vb,body.dark-mode .cal-filter,body.dark-mode .cal-call-form,body.dark-mode .cal-tech-pill{background:var(--cd)!important;color:var(--ink)}
+body.dark-mode .cal-day .dn,body.dark-mode .cal-day .cal-daynum,body.dark-mode .cal-day>span{color:var(--ink)!important}
+body.dark-mode .cal-day.other .dn{color:var(--i3)!important}
+/* Customer center (list + detail + notes/history) */
+body.dark-mode .qb-cust-search,body.dark-mode .qb-cust-sort,body.dark-mode .qb-spa-desc-box,body.dark-mode .qb-note-row,body.dark-mode .qb-cust-btn{background:var(--cd)!important;color:var(--ink)}
+body.dark-mode .qb-note-row:hover,body.dark-mode .qb-cust-row:hover{background:var(--c-ash-2)!important}
+body.dark-mode .qb-note-row.active,body.dark-mode .qb-cust-row.active{background:#332617!important}
+body.dark-mode .qb-cust-info-cell input,body.dark-mode .qb-cust-info-cell textarea{background:transparent;color:var(--ink)}
+body.dark-mode .qb-cust-info-cell input:hover,body.dark-mode .qb-cust-info-cell textarea:hover{background:var(--c-ash-2)!important;border-color:var(--ln)!important}
+/* Inputs, search bars, notes, suggestion dropdowns */
+body.dark-mode .si,body.dark-mode .tkt-notes,body.dark-mode .cust-suggest,body.dark-mode .zip-search-input,body.dark-mode .zip-rcard,body.dark-mode .zip-table,body.dark-mode .zip-drop,body.dark-mode .cap-panel,body.dark-mode .todo-input-row,body.dark-mode .todo-item,body.dark-mode .mt-col,body.dark-mode .empty-state kbd,body.dark-mode .media-pdf,body.dark-mode .tkt-att-pdf,body.dark-mode .mic-btn{background:var(--cd)!important;color:var(--ink)}
+body.dark-mode .cust-suggest-item:hover{background:var(--c-ash-2)!important}
+body.dark-mode .zip-table .zip-row-input{background:var(--cd)!important;color:var(--ink)!important;border-color:var(--ln)!important}
+body.dark-mode .st-pending{background:var(--c-neutral-bg)!important;color:var(--c-neutral-fg)!important}
+body.dark-mode .attn-cell:hover{background:var(--c-ash-2)!important}
+/* Inputs everywhere: ensure dark field + readable text + visible placeholder */
+body.dark-mode input,body.dark-mode textarea,body.dark-mode select{background:var(--cd);color:var(--ink);border-color:var(--ln)}
+body.dark-mode input::placeholder,body.dark-mode textarea::placeholder{color:var(--i3);opacity:1}
+/* Native date/time pickers: make the little calendar/clock glyph visible on dark */
+body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,body.dark-mode input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(.85)}
 
 /* ─── ICON SYSTEM (Lucide) ─── */
 .lucide-icon{display:inline-block;vertical-align:middle;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -1030,6 +1069,61 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .lp-tooltip::after{content:"";position:absolute;left:50%;transform:translateX(-50%);width:0;height:0;border:5px solid transparent}
 .lp-tooltip.below::after{top:-10px;border-bottom-color:rgba(17,17,17,.95)}
 .lp-tooltip.above::after{bottom:-10px;border-top-color:rgba(17,17,17,.95)}
+/* ═══════════════ DESIGN UPGRADE (theme toggle, transitions, confetti) ═══════════════ */
+body,.card,.tkt,.hdr,input,textarea,select,.pill,.wb{transition:background-color .35s var(--ease-out,ease),color .35s var(--ease-out,ease),border-color .35s var(--ease-out,ease)}
+.theme-btn{background:none;border:none;color:inherit;cursor:pointer;padding:6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;opacity:.85;transition:opacity .15s var(--ease-snap,ease),transform .15s var(--ease-snap,ease)}
+.theme-btn:hover{opacity:1}
+.theme-btn:active{transform:scale(.88)}
+@media(hover:hover){.tkt{transition:box-shadow var(--dur-base,.22s) var(--ease-out,ease),transform var(--dur-base,.22s) var(--ease-out,ease)}.tkt:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.10)}}
+body.dark-mode .tkt:hover{box-shadow:0 8px 24px rgba(0,0,0,.45)}
+#confettiCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99999;display:none}
+@media(prefers-reduced-motion:reduce){.tkt:hover{transform:none}#confettiCanvas{display:none!important}}
+/* ── #4 GLASSMORPHISM: sticky frosted header ── */
+.hdr{position:sticky;top:0;z-index:50;-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);background:color-mix(in srgb,var(--hdr-bg) 80%,transparent);border-bottom:1px solid rgba(255,255,255,.06)}
+@supports not (background:color-mix(in srgb,#000 50%,transparent)){.hdr{background:var(--hdr-bg)}}
+/* ── #5 WELCOME DASHBOARD — high-tech animated KPI cards ── */
+.kpi-wrap{margin:0 0 16px;animation:wrapIn .4s var(--ease-out,ease)}
+.kpi-hello{font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.2px;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.kpi-sub{font-size:var(--fs-sm);color:var(--i3);margin-bottom:12px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi-card{position:relative;overflow:hidden;background:
+   radial-gradient(120% 140% at 100% 0%, color-mix(in srgb,var(--kpi-ac,var(--ac)) 14%,transparent) 0%, transparent 55%),
+   var(--cd);
+  border:1px solid var(--ln);border-radius:18px;padding:16px 18px;cursor:pointer;
+  box-shadow:var(--sh-xs,0 1px 3px rgba(0,0,0,.06));
+  transition:transform .2s var(--ease-out,ease),box-shadow .25s var(--ease-out,ease),border-color .2s ease}
+.kpi-card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--kpi-ac,var(--ac)) 55%,var(--ln));box-shadow:0 10px 30px -6px color-mix(in srgb,var(--kpi-ac,var(--ac)) 35%,transparent)}
+.kpi-card:active{transform:translateY(-1px) scale(.99)}
+@supports not (background:color-mix(in srgb,#000 50%,transparent)){.kpi-card{background:var(--cd)}.kpi-card:hover{border-color:var(--kpi-ac,var(--ac))}}
+.kpi-card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--kpi-ac,var(--ac));box-shadow:0 0 12px color-mix(in srgb,var(--kpi-ac,var(--ac)) 70%,transparent)}
+.kpi-val{font-size:34px;font-weight:800;line-height:1;color:var(--kpi-ac,var(--ink));font-variant-numeric:tabular-nums;letter-spacing:-1px;text-shadow:0 0 18px color-mix(in srgb,var(--kpi-ac,var(--ac)) 25%,transparent)}
+.kpi-val small{font-size:16px;font-weight:700;opacity:.7}
+.kpi-lbl{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--i2);font-weight:700;margin-top:8px;display:flex;align-items:center;gap:6px}
+.kpi-go{font-size:11px;color:var(--kpi-ac,var(--ac));opacity:0;transform:translateX(-4px);transition:opacity .2s,transform .2s;font-weight:700}
+.kpi-card:hover .kpi-go{opacity:1;transform:translateX(0)}
+.kpi-ico{position:absolute;top:14px;right:14px;opacity:.22}
+.kpi-live{width:7px;height:7px;border-radius:50%;background:var(--c-success-strong);box-shadow:0 0 0 0 color-mix(in srgb,var(--c-success-strong) 60%,transparent);animation:kpiPulse 2s infinite}
+@keyframes kpiPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c-success-strong) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@media(prefers-reduced-motion:reduce){.kpi-live{animation:none}.kpi-card:hover{transform:none}}
+/* #3 — Skeleton dark-mode aware (light gradient is invisible on dark bg) */
+body.dark-mode .skel{background:linear-gradient(90deg,#23262d 0%,#30343c 50%,#23262d 100%);background-size:200% 100%}
+body.dark-mode .skel-card{background:var(--cd);border-color:var(--ln)}
+/* #4 — Glassmorphism: frosted backdrop behind bottom-sheet modals + glass header */
+.mbg{background:rgba(0,0,0,.42);-webkit-backdrop-filter:blur(7px) saturate(120%);backdrop-filter:blur(7px) saturate(120%)}
+.pin-bg{-webkit-backdrop-filter:blur(7px) saturate(120%);backdrop-filter:blur(7px) saturate(120%)}
+.mt{position:sticky;top:0;z-index:3;background:rgba(255,255,255,.80);-webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);border-bottom:1px solid var(--ln)}
+body.dark-mode .mt{background:rgba(44,37,32,.82)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.mt{background:var(--cd)}.mbg{background:rgba(0,0,0,.5)}}
+/* #5 — Welcome dashboard KPI cards (glassy, animated count-up) */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
+.kpi-card{position:relative;overflow:hidden;background:var(--cd);border:1px solid var(--ln);border-radius:var(--rad);padding:16px 16px 14px;box-shadow:var(--sh-xs,0 1px 3px rgba(0,0,0,.06));animation:cardIn var(--dur-base,.22s) var(--ease-out,ease) backwards}
+.kpi-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kpi-ac,var(--ac))}
+.kpi-card:nth-child(2){animation-delay:.05s}.kpi-card:nth-child(3){animation-delay:.1s}.kpi-card:nth-child(4){animation-delay:.15s}.kpi-card:nth-child(5){animation-delay:.2s}
+.kpi-num{font-size:34px;font-weight:800;line-height:1;letter-spacing:-1px;color:var(--kpi-ac,var(--ac));font-variant-numeric:tabular-nums}
+.kpi-lbl{font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-top:6px;text-transform:uppercase;letter-spacing:.4px}
+.kpi-sub{font-size:var(--fs-xs);color:var(--i3);margin-top:3px}
+.welcome-hero{background:linear-gradient(135deg,var(--acl),var(--cd));border:1px solid var(--ln);border-radius:var(--rad);padding:18px 20px;margin-bottom:14px}
+body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd))}
 </style>
 </head>
 <body>
@@ -1128,7 +1222,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 </div>
 
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="aList"></div></div>
+<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="aList"></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -1224,6 +1318,8 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 <!-- ══ ADMIN PAGE ══ -->
 <div class="wrap" id="pg3">
+  <!-- Welcome dashboard with animated count-up KPIs (rendered by rndrAdminWelcome) -->
+  <div id="adminWelcome"></div>
   <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
     <div>
       <h1 style="font-size:var(--fs-2xl);font-weight:800;color:var(--br);margin:0 0 4px;letter-spacing:-.3px;display:flex;align-items:center;gap:10px"><span class="lucide-mount" data-lucide="settings" data-size="22"></span>Settings</h1>
@@ -1873,7 +1969,18 @@ let _dataLoaded=false;
 function _skeletonHTML(n){
   n=n||3;var h="";
   for(var i=0;i<n;i++){
-    h+='<div class="skel-card"><div class="skel" style="width:70%"></div><div class="skel" style="width:90%"></div><div class="skel" style="width:50%"></div></div>';
+    h+='<div class="skel-card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">'
+      +'<div class="skel" style="width:46%;height:17px"></div>'
+      +'<div class="skel" style="width:76px;height:22px;border-radius:99px"></div>'
+      +'</div>'
+      +'<div class="skel" style="width:64%;margin-bottom:10px"></div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:4px">'
+      +'<div class="skel" style="width:70px;height:20px;border-radius:6px"></div>'
+      +'<div class="skel" style="width:54px;height:20px;border-radius:6px"></div>'
+      +'<div class="skel" style="width:84px;height:20px;border-radius:6px"></div>'
+      +'</div>'
+      +'</div>';
   }
   return h;
 }
@@ -2378,7 +2485,7 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
+  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -3318,7 +3425,78 @@ async function calDismissTicket(id,custName,ev){
     toast("Removed from calendar ✓");
   }catch(e){toast("Error: "+e.message,"err")}
 }
-// ─── FIRST-TIME FIX RATE (per technician) ───────────────────────────────────
+// ─── WELCOME DASHBOARD (animated count-up KPIs, admin/organizer) ────────────
+function _isTodayTs(d){
+  if(!d)return false;var x=new Date(d);if(isNaN(x.getTime()))return false;
+  var n=new Date();return x.getFullYear()===n.getFullYear()&&x.getMonth()===n.getMonth()&&x.getDate()===n.getDate();
+}
+// Animate a number from 0 → target with easing (respects reduced-motion).
+function _countUp(el,to,suffix){
+  suffix=suffix||"";
+  if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){el.textContent=to+suffix;return}
+  var dur=900,start=null;
+  function step(ts){
+    if(!start)start=ts;
+    var p=Math.min(1,(ts-start)/dur);
+    var eased=1-Math.pow(1-p,3); // easeOutCubic
+    el.textContent=Math.round(to*eased)+suffix;
+    if(p<1)requestAnimationFrame(step);else el.textContent=to+suffix;
+  }
+  requestAnimationFrame(step);
+}
+function rndrAdminWelcome(){
+  var el=document.getElementById("adminWelcome");if(!el)return;
+  if(!isAdmin){el.innerHTML="";return}
+  var todayStr=(typeof fmtD==="function")?fmtD(new Date()):"";
+  // KPIs
+  var todayStops=active.filter(function(t){return t&&(t.date||"")===todayStr&&t.status!=="canceled"}).length;
+  var completedToday=done.filter(function(t){return t&&_isTodayTs(t.completedAt)}).length;
+  var pendingDispatch=active.filter(function(t){return t&&t.source==="dispatch"&&t.status==="pending"}).length;
+  // Team first-time-fix rate (this month) — same logic as the FTF panel
+  var now=new Date();var monthStart=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
+  var fixed=0,resched=0;
+  [].concat(active,done).forEach(function(t){
+    if(!t||t.source==="dispatch")return;
+    if(t.status!=="complete"&&t.status!=="done"&&t.status!=="reschedule")return;
+    if((t.date||"")<monthStart)return;
+    if(t.status==="reschedule")resched++;else fixed++;
+  });
+  var ftfTot=fixed+resched,ftf=ftfTot?Math.round(fixed/ftfTot*100):0;
+  var qbToday=(typeof _getQbCopyCount==="function")?_getQbCopyCount():0;
+  var name=(currentUser&&currentUser.name)?currentUser.name:"there";
+  var dateLbl=now.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+  var ftfCol=ftf>=85?"var(--c-success-strong)":ftf>=70?"var(--c-warning-fg)":"var(--c-danger-strong)";
+
+  function card(val,suffix,label,sub,accent){
+    return '<div class="kpi-card" style="--kpi-ac:'+accent+'">'
+      +'<div class="kpi-num" data-count="'+val+'" data-suffix="'+(suffix||"")+'">0'+(suffix||"")+'</div>'
+      +'<div class="kpi-lbl">'+label+'</div>'
+      +(sub?'<div class="kpi-sub">'+sub+'</div>':'')
+      +'</div>';
+  }
+  var h='<div class="welcome-hero">';
+  h+='<div style="font-size:var(--fs-xl);font-weight:800;color:var(--br);letter-spacing:-.3px">Welcome back, '+esc(name)+' 👋</div>';
+  h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-top:2px">'+dateLbl+' · Here\'s your team at a glance</div>';
+  h+='</div>';
+  h+='<div class="kpi-grid">';
+  h+=card(todayStops,"","Today\u2019s Stops","Scheduled for "+(todayStr||"today"),"var(--ac)");
+  h+=card(completedToday,"","Completed Today","Jobs finished","var(--c-success-strong)");
+  h+=card(pendingDispatch,"","Pending Dispatch","Awaiting scheduling","var(--c-warning-strong)");
+  h+=card(ftf,"%","Team Fix Rate","First-time fix · this month",ftfCol);
+  if(typeof _canSendCustomerReport==="function"&&_canSendCustomerReport()){
+    h+=card(qbToday,"","Reports \u2192 QB","Copied today","var(--c-money-strong)");
+  }
+  h+='</div>';
+  el.innerHTML=h;
+  // Kick off count-up animations
+  var nums=el.querySelectorAll(".kpi-num[data-count]");
+  for(var i=0;i<nums.length;i++){
+    var target=parseInt(nums[i].getAttribute("data-count")||"0",10);
+    _countUp(nums[i],target,nums[i].getAttribute("data-suffix")||"");
+  }
+}
+
+
 // % of a tech's visits completed on the first try vs. sent back to reschedule.
 // The #1 field-service ops metric: a low rate means parts aren't on the truck,
 // diagnoses are off, or training is needed.
@@ -4641,12 +4819,156 @@ async function editTech(i){
 
 function checkGate(){const a=document.getElementById("fArr").value;document.getElementById("formGate").style.display=a?"block":"none";document.getElementById("gateHint").style.display=a?"none":"block"}
 
+// ═══════════════ DESIGN: THEME (dark/light) + CONFETTI + WELCOME KPIs ═══════════════
+// Apply saved theme, or follow the system preference when the user hasn't chosen.
+function _applyTheme(){
+  try{
+    var saved=localStorage.getItem("aspenTheme");
+    var dark = saved ? (saved==="dark")
+                     : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.body.classList.toggle("dark-mode",!!dark);
+    _syncThemeBtn(dark);
+  }catch(_e){}
+}
+function _syncThemeBtn(dark){
+  var b=document.getElementById("themeToggleBtn");
+  if(b)b.innerHTML=icon(dark?"sun":"moon",20,{color:"currentColor"});
+}
+function toggleTheme(){
+  var dark=!document.body.classList.contains("dark-mode");
+  document.body.classList.add("dark-mode"); // force transition baseline
+  document.body.classList.toggle("dark-mode",dark);
+  try{localStorage.setItem("aspenTheme",dark?"dark":"light")}catch(_e){}
+  _syncThemeBtn(dark);
+}
+// Inject the toggle button into the header (before the lock button).
+function _mountThemeToggle(){
+  try{
+    var hdr=document.querySelector(".hdr"),lock=document.getElementById("lockBtn");
+    if(!hdr||!lock||document.getElementById("themeToggleBtn"))return;
+    var b=document.createElement("button");
+    b.id="themeToggleBtn";b.className="theme-btn";b.type="button";
+    b.title="Light / dark mode";b.setAttribute("aria-label","Toggle dark mode");
+    b.onclick=toggleTheme;
+    hdr.insertBefore(b,lock);
+    _syncThemeBtn(document.body.classList.contains("dark-mode"));
+  }catch(_e){}
+}
+// Lightweight self-contained confetti burst (no library). Used on wins.
+function celebrate(opts){
+  try{
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+    var cv=document.getElementById("confettiCanvas");
+    if(!cv){cv=document.createElement("canvas");cv.id="confettiCanvas";document.body.appendChild(cv)}
+    var dpr=window.devicePixelRatio||1;
+    cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;cv.style.display="block";
+    var ctx=cv.getContext("2d");ctx.scale(dpr,dpr);
+    var colors=["#D4772C","#16a34a","#2563eb","#f59e0b","#dc2626","#7c3aed"];
+    var N=(opts&&opts.count)||120, parts=[];
+    var ox=(opts&&opts.x!=null)?opts.x:innerWidth/2, oy=(opts&&opts.y!=null)?opts.y:innerHeight*0.32;
+    for(var i=0;i<N;i++){
+      var a=Math.random()*Math.PI*2, sp=4+Math.random()*7;
+      parts.push({x:ox,y:oy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-4,
+        w:6+Math.random()*6,h:8+Math.random()*8,
+        rot:Math.random()*6.28,vr:(Math.random()-0.5)*0.4,
+        c:colors[(Math.random()*colors.length)|0],life:0});
+    }
+    var max=110;
+    function frame(){
+      ctx.clearRect(0,0,cv.width,cv.height);
+      var alive=false;
+      for(var i=0;i<parts.length;i++){
+        var p=parts[i];if(p.life>max)continue;alive=true;
+        p.life++;p.vy+=0.22;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;
+        var al=Math.max(0,1-p.life/max);
+        ctx.save();ctx.globalAlpha=al;ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+        ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+      }
+      if(alive)requestAnimationFrame(frame);
+      else{cv.style.display="none";ctx.clearRect(0,0,cv.width,cv.height);}
+    }
+    requestAnimationFrame(frame);
+  }catch(_e){}
+}
+
+// ── #5 WELCOME DASHBOARD: animated count-up KPIs (shown atop Daily for admin/organizer) ──
+function _countUp(el,target){
+  try{
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      el.textContent=target;return;
+    }
+    var dur=700,start=performance.now(),from=0;
+    function step(now){
+      var t=Math.min(1,(now-start)/dur);
+      var eased=1-Math.pow(1-t,3); // easeOutCubic
+      el.textContent=Math.round(from+(target-from)*eased);
+      if(t<1)requestAnimationFrame(step);else el.textContent=target;
+    }
+    requestAnimationFrame(step);
+  }catch(_e){el.textContent=target}
+}
+function _todayKey(){return new Date().toISOString().slice(0,10)}
+function _renderWelcomeKPIs(){
+  var box=document.getElementById("welcomeKPIs");if(!box)return;
+  // Only for admin/organizer (Nela & Alberto) — techs get their focused task list.
+  if(!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))){box.style.display="none";return}
+  var today=_todayKey();
+  var a=Array.isArray(active)?active:[];
+  var d=Array.isArray(done)?done:[];
+  var scheduledToday=a.filter(function(t){return t.date===today}).length;
+  var doneToday=d.filter(function(t){return (t.completedAt||"").length && _dateOnly(t.completedAt)===today}).length
+              || d.filter(function(t){return t.date===today}).length;
+  var pending=a.filter(function(t){return t.status==="pending"||t.status==="reschedule"}).length;
+  var resched=a.filter(function(t){return t.status==="reschedule"}).length;
+  // First-time fix rate (completed vs reschedules)
+  var totalForFtf=d.length+resched;
+  var ftf=totalForFtf?Math.round(d.length/totalForFtf*100):100;
+  var hour=new Date().getHours();
+  var greet=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+  var who=(currentUser&&currentUser.name)?currentUser.name:"";
+  box.style.display="block";
+  // Skip re-render/re-animation if nothing changed (e.g. user is typing in search)
+  var sig=[scheduledToday,doneToday,resched,ftf,who,greet].join("|");
+  if(box.dataset.sig===sig)return;
+  box.dataset.sig=sig;
+  box.innerHTML=''
+    +'<div class="kpi-hello">'+icon("sparkles",18,{color:"var(--ac)"})+greet+(who?", "+esc(who):"")+' <span class="kpi-live" title="Live data"></span></div>'
+    +'<div class="kpi-sub">Here\'s today\'s service snapshot — tap a card to open it.</div>'
+    +'<div class="kpi-grid">'
+      +_kpiCard("scheduledToday",scheduledToday,"Scheduled today","var(--c-info-strong)","calendar","showTab(4)","Open calendar")
+      +_kpiCard("doneToday",doneToday,"Completed today","var(--c-success-strong)","check-circle","showTab(2)","View completed")
+      +_kpiCard("reschedK",resched,"Reschedules — need date","var(--c-warning-strong)","rotate-ccw","showTab(5)","Open service log")
+      +_kpiCard("ftfK",ftf,"First-time fix","var(--ac)","target","showTab(2)","See details",true)
+    +'</div>';
+  mountLucideIcons(box);
+  _countUp(document.getElementById("kpi_scheduledToday"),scheduledToday);
+  _countUp(document.getElementById("kpi_doneToday"),doneToday);
+  _countUp(document.getElementById("kpi_reschedK"),resched);
+  _countUp(document.getElementById("kpi_ftfK"),ftf);
+}
+function _kpiCard(id,val,label,color,ico,onclickJs,goText,isPct){
+  return '<div class="kpi-card" style="--kpi-ac:'+color+'" onclick="'+onclickJs+'" role="button" tabindex="0">'
+    +'<span class="kpi-ico">'+icon(ico,30,{color:color})+'</span>'
+    +'<div class="kpi-val"><span id="kpi_'+id+'">0</span>'+(isPct?'<small>%</small>':'')+'</div>'
+    +'<div class="kpi-lbl">'+label+'</div>'
+    +'<div class="kpi-go">'+esc(goText||"")+' →</div>'
+    +'</div>';
+}
+// Helper: extract YYYY-MM-DD from a localized timestamp string if possible
+function _dateOnly(s){
+  try{var dt=new Date(s);if(!isNaN(dt))return dt.toISOString().slice(0,10)}catch(_e){}
+  return "";
+}
+
 async function init(){
   // Check if this is a customer-facing estimate link
   const isEstLink=await loadCustEstimate();
   if(isEstLink)return;
   // Mount any static Lucide icons in the HTML (replaces .lucide-mount spans with SVG)
   mountLucideIcons();
+  // Apply saved/system theme and add the header light/dark toggle button
+  _applyTheme();
+  _mountThemeToggle();
   // Copy the brand logo from the header to the login screen for visual continuity
   try{
     const hdrLogo=document.querySelector(".hdr-logo");
@@ -5803,7 +6125,7 @@ async function promptDialog(message, opts){
 })();
 
 // ═══ MARK DONE ═══
-async function markDone(docId){if(!db)return;try{await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});toast("Ticket completed ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
+async function markDone(docId){if(!db)return;try{await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});toast("Ticket completed ✓");if(typeof celebrate==="function")celebrate({count:90});setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
 // ═══ RESCHEDULE REASON PICKER ═══
 // Quick-pick modal shown when a tech reschedules a visit. Returns a Promise
 // that resolves to {reason, note} or null if canceled. Structured reasons let
@@ -6078,7 +6400,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p>${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p>${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})</div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -6092,7 +6414,7 @@ ${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
 </div>
-${isDone&&_canSendCustomerReport()?`<button onclick="event.stopPropagation();openReportModal(true,${i})" style="margin-top:8px;width:100%;padding:11px;background:${t.reportSent?"#fff":"var(--br)"};color:${t.reportSent?"var(--br)":"#fff"};border:${t.reportSent?"1.5px solid var(--br)":"none"};border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">📤 ${t.reportSent?"Resend Customer Report":"Send Customer Report"}</button>`:""}
+${_canSendCustomerReport()?`<button onclick="event.stopPropagation();openReportModal(${isDone?"true":"false"},${i})" style="margin-top:8px;width:100%;padding:11px;background:${t.reportSent?"#fff":"var(--br)"};color:${t.reportSent?"var(--br)":"#fff"};border:${t.reportSent?"1.5px solid var(--br)":"none"};border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">${isDone?("📤 "+(t.reportSent?"Resend Customer Report":"Send Customer Report")):"✨ AI Report — Copy for QuickBooks"}</button>`:""}
 <div class="tkt-meta">Submitted: ${t.submitted||""}${t.completedAt?" · Completed: "+t.completedAt:""}</div>
 ${!isDone?(isAdmin?`<div style="display:flex;gap:8px;margin-top:10px"><button class="tkt-done-btn" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="event.stopPropagation();markDone('${t.id}')">${icon("check",16,{color:"#fff"})}Completed</button><button onclick="event.stopPropagation();markResched('${t.id}')" style="flex:1;padding:12px;background:none;border:2px solid var(--ac);border-radius:10px;font-size:var(--fs-md);font-weight:700;color:var(--ac);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("rotate-ccw",16,{color:"var(--ac)"})}Reschedule</button></div>`:""):`<button onclick="event.stopPropagation();askDelete('${t.id}')" style="margin-top:10px;padding:10px 20px;background:none;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i3);width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("trash-2",13,{color:"var(--i3)"})}Delete Ticket</button>`}</div></div>`}
 
@@ -6249,6 +6571,15 @@ async function improveNotesClick(){
     repRefreshPreview();
     const undoBtn=document.getElementById("repUndoBtn");
     if(undoBtn)undoBtn.style.display="inline-flex";
+    // Persist the polished text on the ticket so it's not lost and we can flag
+    // the card as "AI ready" (Nela pulls it later / Alberto sees the clean one).
+    try{
+      const _t=_repCurrentTicket;
+      if(_t&&_t.id&&db){
+        db.collection("tickets").doc(_t.id).update({aiReportNotes:improved,reportImproved:true,reportImprovedAt:new Date().toLocaleString()});
+        _t.aiReportNotes=improved;_t.reportImproved=true;
+      }
+    }catch(_pe){console.warn("[persist ai notes]",_pe)}
     toast("Notes improved with AI ✓");
   }catch(e){
     console.error("AI improve failed:",e);
@@ -6332,14 +6663,21 @@ function buildCustomerReport(t,notesOverride){
   // Just the work summary — no "Hello", no address/contact footer, no
   // "Thank you". QuickBooks adds its own customer header, so this keeps it clean.
   let qb="";
+  if(dateLabel)qb+="Service date: "+dateLabel+"\n";
   if(techList)qb+="Technician: "+techList+"\n";
   if(durLabel)qb+="Time on site: "+durLabel+" ("+(t.arrival||"")+" - "+(t.departure||"")+")\n";
   if(t.spaDesc)qb+="Spa: "+t.spaDesc+"\n";
-  if(techList||durLabel||t.spaDesc)qb+="\n";
+  if(dateLabel||techList||durLabel||t.spaDesc)qb+="\n";
   if(notesToUse)qb+="Work performed:\n"+notesToUse.trim()+"\n";
   if(parts.length){
     qb+="\nParts used/replaced:\n";
     parts.forEach(p=>{qb+="  - "+(p.qty||1)+"x "+p.n+(p.c?" ("+p.c+")":"")+"\n"});
+  }
+  if(photoUrls.length){
+    qb+="\nPhotos ("+photoUrls.length+"):\n";
+    photoUrls.forEach(u=>{qb+="  "+u+"\n"});
+  }else if(photoBase64Count){
+    qb+="\nPhotos: "+photoBase64Count+" photo"+(photoBase64Count!==1?"s":"")+" on this ticket (download from the ticket to attach).\n";
   }
   qb=qb.trim();
 
@@ -6461,13 +6799,14 @@ function openReportModal(isDone,i){
   h+='<button type="button" id="repImproveBtn" onclick="improveNotesClick()" style="padding:6px 12px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:6px;font-size:var(--fs-xs);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px">✨ Improve / Translate</button>';
   h+='</div>';
   h+='</div>';
-  h+='<textarea id="repNotesEdit" oninput="repRefreshPreview()" style="width:100%;min-height:110px;padding:10px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);outline:none;font-family:inherit;line-height:1.5;resize:vertical;box-sizing:border-box">'+escH(t.notes||"")+'</textarea>';
-  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px">The technician\'s original notes are kept untouched on the ticket — edits here only affect the customer report.</div>';
+  h+='<textarea id="repNotesEdit" oninput="repRefreshPreview()" style="width:100%;min-height:110px;padding:10px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);outline:none;font-family:inherit;line-height:1.5;resize:vertical;box-sizing:border-box">'+escH(t.aiReportNotes||t.notes||"")+'</textarea>';
+  h+=(t.aiReportNotes?'<div style="font-size:var(--fs-xs);color:var(--c-success-strong);margin-top:4px;font-weight:600">✨ Showing the AI-polished version (the technician\'s original notes are kept on the ticket).</div>':'')+'<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px">The technician\'s original notes are kept untouched on the ticket — edits here only affect the customer report.</div>';
   h+='</div>';
   // Preview
   h+='<div style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.5px;color:var(--i3);font-weight:700;margin-bottom:6px">Report preview</div>';
   h+='<div id="repPreviewBox" style="border:1px solid var(--ln);border-radius:10px;padding:8px;background:#fff;max-height:340px;overflow-y:auto;margin-bottom:14px">'+rep.htmlBody+'</div>';
   // Action buttons
+  h+='<button onclick="improveAndCopyQB()" style="width:100%;margin-bottom:8px;padding:13px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">✨ Improve &amp; Copy for QuickBooks</button>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
   h+='<button onclick="sendReportEmail()" style="flex:1;min-width:160px;padding:12px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer">📧 Email (.eml)</button>';
   h+='<button onclick="sendReportText()" style="flex:1;min-width:160px;padding:12px;background:var(--c-success-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer">📱 Text</button>';
@@ -6568,7 +6907,52 @@ async function copyReportText(){
   if(markSent){
     await markReportSent(t.id,"copied");
   }
+  // Flag that this ticket's text was pulled into QuickBooks (Feature 3/9).
+  try{
+    if(db&&t.id){
+      db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()});
+      t.qbCopied=true;
+    }
+    _bumpQbCopyCount();
+    if(typeof celebrate==="function")celebrate({count:80});
+  }catch(_qe){console.warn("[qbCopied flag]",_qe)}
   closeReportModal();
+}
+
+// ── One-shot: Improve with AI, then copy QB text, in a single click (Feature 2)
+async function improveAndCopyQB(){
+  const t=_repCurrentTicket;if(!t)return;
+  const notesEl=document.getElementById("repNotesEdit");
+  if(!notesEl)return;
+  const orig=(notesEl.value||"").trim();
+  // Only call AI if the text hasn't already been improved this session.
+  if(orig&&!t.aiReportNotes){
+    try{await improveNotesClick()}catch(_e){}
+  }
+  // Now copy whatever is in the box (improved or edited).
+  await copyReportText();
+}
+
+// ── Daily counter of reports copied to QuickBooks today (Feature 9) ──────────
+function _qbCopyTodayKey(){return "qbCopyCount_"+(new Date().toISOString().slice(0,10))}
+function _bumpQbCopyCount(){
+  try{
+    var k=_qbCopyTodayKey();
+    var n=parseInt(localStorage.getItem(k)||"0",10)+1;
+    localStorage.setItem(k,String(n));
+    if(typeof _renderQbCopyBadge==="function")_renderQbCopyBadge();
+  }catch(_e){}
+}
+function _getQbCopyCount(){try{return parseInt(localStorage.getItem(_qbCopyTodayKey())||"0",10)}catch(_e){return 0}}
+function _renderQbCopyBadge(){
+  var el=document.getElementById("qbCopyToday");if(!el)return;
+  var n=_getQbCopyCount();
+  if(n>0&&typeof _canSendCustomerReport==="function"&&_canSendCustomerReport()){
+    el.style.display="inline-flex";
+    el.innerHTML="📋 "+n+" report"+(n===1?"":"s")+" copied to QuickBooks today";
+  }else{
+    el.style.display="none";
+  }
 }
 
 // ── Persist sent state to Firebase ─────────────────────────────────────────
@@ -6595,6 +6979,8 @@ function daySepHTML(label){return`<div class="day-sep"><div class="day-line"></d
 
 function rndrA(){
   const el=document.getElementById("aList");
+  try{_renderQbCopyBadge()}catch(_e){}
+  try{_renderWelcomeKPIs()}catch(_e){}
   // Show skeleton placeholders during initial data load (before Firestore's
   // first snapshot arrives). Prevents the empty-list flash on cold open.
   if(!_dataLoaded&&!active.length&&!done.length){el.innerHTML=_skeletonHTML(4);return}
