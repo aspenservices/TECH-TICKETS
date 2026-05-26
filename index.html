@@ -1266,6 +1266,8 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
   <div id="adminOrphans" style="margin-bottom:12px"></div>
   <!-- First-Time Fix Rate per technician (rendered by rndrAdminFTF) -->
   <div id="adminFTF" style="margin-bottom:12px"></div>
+  <!-- Repeated reschedules (operational flag — rendered by rndrAdminRepeatResched) -->
+  <div id="adminRepeatResched" style="margin-bottom:12px"></div>
   <!-- Technicians + Users & PINs side by side (2 columns), both collapsible -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px">
     <div class="card" style="margin:0">
@@ -2376,7 +2378,7 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
+  rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -3374,8 +3376,37 @@ function rndrAdminFTF(){
       h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px">'+d.fixed+' fixed first time \u00B7 '+d.resched+' rescheduled \u00B7 '+tot+' total</div>';
       h+='</div>';
     });
-    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:8px;font-style:italic">Higher is better. Low rates often mean missing parts, off diagnoses, or access issues \u2014 check the Repeated Reschedules alerts.</div>';
+    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:8px;font-style:italic">Higher is better. Low rates often mean missing parts, off diagnoses, or access issues \u2014 see the Repeated Reschedules panel below.</div>';
   }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+// ─── REPEATED RESCHEDULES (operational flag, admin) ─────────────────────────
+// A customer rescheduled 2+ times is a red flag (bad address, chronic no-access,
+// an unresolved technical issue). Lives in Admin — NOT in the Alerts tab, which
+// is reserved for Invoice Tracker payment alerts.
+function rndrAdminRepeatResched(){
+  var el=document.getElementById("adminRepeatResched");if(!el)return;
+  if(!isAdmin){el.innerHTML="";return}
+  var list=[];try{list=_repeatedReschedAlerts()}catch(_e){list=[]}
+  if(!list.length){el.innerHTML="";return} // hide when clean — no clutter
+  var h='<div class="card" style="margin:0">';
+  h+='<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #f59e0b;margin-bottom:12px">';
+  h+='<span style="font-size:18px">\uD83D\uDD01</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Repeated Reschedules</span>';
+  h+='<span style="background:#b45309;color:#fff;font-size:var(--fs-sm);font-weight:700;border-radius:999px;padding:2px 9px;margin-left:auto">'+list.length+'</span>';
+  h+='</div>';
+  list.forEach(function(g){
+    h+='<div style="background:#fff;border:1px solid #fde68a;border-left:3px solid #f59e0b;border-radius:9px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px">';
+    h+='<div style="flex:1;min-width:0">';
+    h+='<div style="font-weight:700;color:var(--ink);font-size:var(--fs-md);margin-bottom:3px">'+esc(g.name||"Unknown")+' <span style="background:#dc2626;color:#fff;font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">'+g.count+'\u00D7 rescheduled</span></div>';
+    if(g.reasons&&g.reasons.length)h+='<div style="font-size:var(--fs-sm);color:#92400e;margin-bottom:3px">Reasons: '+esc(g.reasons.join(", "))+'</div>';
+    if(g.phone){var pc=String(g.phone).replace(/[^+0-9]/g,'');h+='<div style="font-size:var(--fs-sm)"><a href="tel:'+esc(pc)+'" style="color:#1d4ed8;text-decoration:none;font-weight:600">\uD83D\uDCDE '+esc(g.phone)+'</a></div>';}
+    h+='</div>';
+    h+='<button onclick="_jumpToReschedCustomer(\''+esc((g.name||"").replace(/'/g,"\\'"))+'\')" style="background:#fff;border:1px solid #d1d5db;color:#374151;padding:7px 13px;border-radius:7px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;white-space:nowrap">View in Service Log \u203A</button>';
+    h+='</div>';
+  });
+  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px;font-style:italic">Customers who needed rescheduling 2+ times. Worth a call \u2014 often a chronic access issue or an unresolved repair.</div>';
   h+='</div>';
   el.innerHTML=h;
 }
@@ -3966,8 +3997,7 @@ function initFirebase(){
     _safeRender("pg4",rndrCal,"calendar");
     _safeRender("pg5",rndrSlog,"slog");
     _safeRender("pg6",rndrCust,"customers");
-    _safeRender("pg8",rndrAlerts,"alerts");
-    try{_updateCrossAppTabBadge()}catch(_e){}
+    _safeRender("pg3",rndrAdmin,"admin");
   },err=>{console.error("Firestore error:",err);toast("Sync error - check console","err")});
   // Listen for to-do list updates
   db.collection("todos").onSnapshot(snap=>{
@@ -4016,8 +4046,7 @@ function _updateCrossAppTabBadge(){
   const tab=document.getElementById('tab8');
   if(!tab)return;
   let badge=tab.querySelector('.crossapp-tab-badge');
-  let internalCount=0;try{internalCount=_repeatedReschedAlerts().length}catch(_e){}
-  const count=crossAppEvents.length+internalCount;
+  const count=crossAppEvents.length;
   if(count===0){if(badge)badge.remove();return}
   if(!badge){
     badge=document.createElement('span');
@@ -4265,33 +4294,9 @@ function rndrAlerts(){
   const cntEl=document.getElementById('alertsTabCount');
   if(!body)return;
   const events=crossAppEvents||[];
-  const repeatResched=_repeatedReschedAlerts();
-  const totalAlerts=events.length+repeatResched.length;
-  if(cntEl){if(totalAlerts){cntEl.style.display='inline-flex';cntEl.textContent=totalAlerts}else cntEl.style.display='none'}
-  // Internal alerts (repeated reschedules) render at the very top, above the
-  // cross-app payment groups.
-  var internalHtml='';
-  if(repeatResched.length){
-    internalHtml+='<div style="margin-bottom:22px">';
-    internalHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #f59e0b55">';
-    internalHtml+='<span style="font-size:18px">\uD83D\uDD01</span>';
-    internalHtml+='<h4 style="margin:0;font-size:13px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px">Repeated Reschedules</h4>';
-    internalHtml+='<span style="background:#b45309;color:white;font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:auto">'+repeatResched.length+'</span>';
-    internalHtml+='</div>';
-    repeatResched.forEach(function(g){
-      internalHtml+='<div style="background:white;border:1px solid #fde68a;border-left:3px solid #f59e0b;border-radius:9px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,0.03)">';
-      internalHtml+='<div style="flex:1;min-width:0">';
-      internalHtml+='<div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:3px">'+esc(g.name||"Unknown")+' <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">'+g.count+'\u00D7 rescheduled</span></div>';
-      if(g.reasons&&g.reasons.length)internalHtml+='<div style="font-size:12px;color:#92400e;margin-bottom:3px">Reasons: '+esc(g.reasons.join(", "))+'</div>';
-      if(g.phone){var pc=String(g.phone).replace(/[^+0-9]/g,'');internalHtml+='<div style="font-size:12px"><a href="tel:'+esc(pc)+'" style="color:#1d4ed8;text-decoration:none;font-weight:600">\uD83D\uDCDE '+esc(g.phone)+'</a></div>';}
-      internalHtml+='</div>';
-      internalHtml+='<button onclick="_jumpToReschedCustomer(\''+esc((g.name||"").replace(/'/g,"\\'"))+'\')" style="background:white;border:1px solid #d1d5db;color:#374151;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">View \u203A</button>';
-      internalHtml+='</div>';
-    });
-    internalHtml+='</div>';
-  }
+  if(cntEl){if(events.length){cntEl.style.display='inline-flex';cntEl.textContent=events.length}else cntEl.style.display='none'}
   if(!events.length){
-    body.innerHTML=internalHtml+(internalHtml?'':'<div style="text-align:center;padding:80px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px"><div style="font-size:64px;margin-bottom:14px">🎉</div><h3 style="margin:0 0 6px;color:var(--i1);font-size:18px">All clear!</h3><p style="margin:0;font-size:13px">No active alerts. When other Aspen apps publish payment issues or service flags, they\'ll appear here.</p></div>');
+    body.innerHTML='<div style="text-align:center;padding:80px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px"><div style="font-size:64px;margin-bottom:14px">🎉</div><h3 style="margin:0 0 6px;color:var(--i1);font-size:18px">All clear!</h3><p style="margin:0;font-size:13px">No active alerts. When other Aspen apps publish payment issues or service flags, they\'ll appear here.</p></div>';
     return;
   }
   const groups={};
@@ -4364,7 +4369,7 @@ function rndrAlerts(){
     });
     html+='</div>';
   });
-  body.innerHTML=internalHtml+html;
+  body.innerHTML=html;
 }
 
 function goToCustomerFromAlert(eventId){
