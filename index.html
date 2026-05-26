@@ -1264,6 +1264,8 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
        no matching field report — usually a race condition during upload).
        Hidden when empty so it doesn't clutter the admin tab in normal operation. -->
   <div id="adminOrphans" style="margin-bottom:12px"></div>
+  <!-- First-Time Fix Rate per technician (rendered by rndrAdminFTF) -->
+  <div id="adminFTF" style="margin-bottom:12px"></div>
   <!-- Technicians + Users & PINs side by side (2 columns), both collapsible -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px">
     <div class="card" style="margin:0">
@@ -2374,7 +2376,7 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminCapacity();rndrAdminOrphans();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
+  rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -3314,6 +3316,70 @@ async function calDismissTicket(id,custName,ev){
     toast("Removed from calendar ✓");
   }catch(e){toast("Error: "+e.message,"err")}
 }
+// ─── FIRST-TIME FIX RATE (per technician) ───────────────────────────────────
+// % of a tech's visits completed on the first try vs. sent back to reschedule.
+// The #1 field-service ops metric: a low rate means parts aren't on the truck,
+// diagnoses are off, or training is needed.
+var _ftfPeriod="month";
+function setFtfPeriod(p){_ftfPeriod=p;rndrAdminFTF()}
+function rndrAdminFTF(){
+  var el=document.getElementById("adminFTF");if(!el)return;
+  if(!isAdmin){el.innerHTML="";return}
+  var now=new Date();var startDate="";
+  if(_ftfPeriod==="month"){startDate=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01"}
+  else if(_ftfPeriod==="week"){var w=new Date(now);w.setDate(w.getDate()-w.getDay());startDate=fmtD(w)}
+  // Only real field visits (not dispatch placeholders), within the period.
+  var pool=[...active,...done].filter(function(t){
+    if(!t||t.source==="dispatch")return false;
+    if(t.status!=="complete"&&t.status!=="done"&&t.status!=="reschedule")return false;
+    if(startDate&&(t.date||"")<startDate)return false;
+    return true;
+  });
+  var byTech={};
+  pool.forEach(function(t){
+    (t.techs||[]).forEach(function(tn){
+      if(typeof HIDDEN_TECHS!=="undefined"&&HIDDEN_TECHS.has&&HIDDEN_TECHS.has(tn))return;
+      if(!byTech[tn])byTech[tn]={fixed:0,resched:0};
+      if(t.status==="reschedule")byTech[tn].resched++;else byTech[tn].fixed++;
+    });
+  });
+  var techs=Object.keys(byTech).sort(function(a,b){
+    var ra=byTech[a].fixed+byTech[a].resched,rb=byTech[b].fixed+byTech[b].resched;
+    var pa=ra?byTech[a].fixed/ra:0,pb=rb?byTech[b].fixed/rb:0;
+    return pb-pa;
+  });
+  var perLabel=_ftfPeriod==="month"?"This month":_ftfPeriod==="week"?"This week":"All time";
+  function pillBtn(val,label){return '<button onclick="setFtfPeriod(\''+val+'\')" style="padding:4px 10px;border:1px solid var(--ln);border-radius:6px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;background:'+(_ftfPeriod===val?'var(--ac)':'var(--bg)')+';color:'+(_ftfPeriod===val?'#fff':'var(--i2)')+'">'+label+'</button>'}
+  var h='<div class="card" style="margin:0">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ac);margin-bottom:12px">';
+  h+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83C\uDFAF</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">First-Time Fix Rate</span></div>';
+  h+='<div style="display:flex;gap:6px">'+pillBtn("month","Month")+pillBtn("week","Week")+pillBtn("all","All")+'</div>';
+  h+='</div>';
+  if(!techs.length){
+    h+='<div style="text-align:center;padding:24px;color:var(--i3);font-size:var(--fs-sm)">No completed or rescheduled visits in this period yet.</div>';
+  }else{
+    // Team total
+    var tF=0,tR=0;techs.forEach(function(tn){tF+=byTech[tn].fixed;tR+=byTech[tn].resched});
+    var tTot=tF+tR,tRate=tTot?Math.round(tF/tTot*100):0;
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:8px 12px;background:var(--c-ash-2);border-radius:8px">';
+    h+='<span style="font-size:var(--fs-sm);font-weight:700;color:var(--i2)">TEAM \u2014 '+perLabel+'</span>';
+    h+='<span style="font-size:var(--fs-md);font-weight:800;color:'+(tRate>=85?'var(--c-success-strong)':tRate>=70?'var(--c-warning-fg)':'var(--c-danger-strong)')+'">'+tRate+'% <span style="font-weight:600;color:var(--i3);font-size:var(--fs-sm)">('+tF+' fixed / '+tR+' resched)</span></span>';
+    h+='</div>';
+    techs.forEach(function(tn){
+      var d=byTech[tn],tot=d.fixed+d.resched,rate=tot?Math.round(d.fixed/tot*100):0;
+      var col=rate>=85?'var(--c-success-strong)':rate>=70?'var(--c-warning-fg)':'var(--c-danger-strong)';
+      h+='<div style="margin-bottom:12px">';
+      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:var(--fs-md);font-weight:700;color:var(--ink)">'+esc(tn)+'</span><span style="font-size:var(--fs-md);font-weight:800;color:'+col+'">'+rate+'%</span></div>';
+      h+='<div style="height:8px;background:var(--c-ash-2);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+rate+'%;background:'+col+';border-radius:99px;transition:width .3s"></div></div>';
+      h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px">'+d.fixed+' fixed first time \u00B7 '+d.resched+' rescheduled \u00B7 '+tot+' total</div>';
+      h+='</div>';
+    });
+    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:8px;font-style:italic">Higher is better. Low rates often mean missing parts, off diagnoses, or access issues \u2014 check the Repeated Reschedules alerts.</div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
 function rndrAdminTechs(){
   const el=document.getElementById("adminTechList");
   el.innerHTML=TECHS.map(function(t,i){
@@ -3900,6 +3966,8 @@ function initFirebase(){
     _safeRender("pg4",rndrCal,"calendar");
     _safeRender("pg5",rndrSlog,"slog");
     _safeRender("pg6",rndrCust,"customers");
+    _safeRender("pg8",rndrAlerts,"alerts");
+    try{_updateCrossAppTabBadge()}catch(_e){}
   },err=>{console.error("Firestore error:",err);toast("Sync error - check console","err")});
   // Listen for to-do list updates
   db.collection("todos").onSnapshot(snap=>{
@@ -3948,7 +4016,8 @@ function _updateCrossAppTabBadge(){
   const tab=document.getElementById('tab8');
   if(!tab)return;
   let badge=tab.querySelector('.crossapp-tab-badge');
-  const count=crossAppEvents.length;
+  let internalCount=0;try{internalCount=_repeatedReschedAlerts().length}catch(_e){}
+  const count=crossAppEvents.length+internalCount;
   if(count===0){if(badge)badge.remove();return}
   if(!badge){
     badge=document.createElement('span');
@@ -4162,14 +4231,67 @@ function openAlertPdf(eventId){
   }catch(e){console.error('[openAlertPdf]',e);toast('Error opening PDF: '+e.message,'err')}
 }
 
+// ═══ REPEATED-RESCHEDULE DETECTOR (internal alert) ═══
+// A customer rescheduled 2+ times is a red flag (bad address, chronic no-access,
+// an unresolved technical issue, or a difficult account). Surfaces in Alerts.
+function _repeatedReschedAlerts(){
+  var pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  var groups={};
+  pool.forEach(function(t){
+    if(!t||t.status!=="reschedule")return;
+    var k=_custGroupKey(t.customer);if(!k)return;
+    if(!groups[k])groups[k]={key:k,name:t.customer||"",count:0,reasons:[],phone:"",last:0};
+    groups[k].count++;
+    if(t.reschedReason&&groups[k].reasons.indexOf(t.reschedReason)<0)groups[k].reasons.push(t.reschedReason);
+    if(t.phone&&!groups[k].phone)groups[k].phone=t.phone;
+    var ms=(typeof _ticketCreatedMs==="function"?_ticketCreatedMs(t):0)||0;
+    if(ms>groups[k].last)groups[k].last=ms;
+    if(t.customer&&t.customer.length>(groups[k].name||"").length)groups[k].name=t.customer;
+  });
+  return Object.keys(groups).map(function(k){return groups[k]})
+    .filter(function(g){return g.count>=2})
+    .sort(function(a,b){return b.count-a.count});
+}
+function _jumpToReschedCustomer(name){
+  try{
+    if(typeof showTab==="function")showTab(5);
+    var sb=document.getElementById("searchSlog");
+    if(sb){sb.value=name||"";if(typeof rndrSlog==="function")rndrSlog()}
+  }catch(e){console.warn("[jump resched]",e)}
+}
+
 function rndrAlerts(){
   const body=document.getElementById('alertsTabBody');
   const cntEl=document.getElementById('alertsTabCount');
   if(!body)return;
   const events=crossAppEvents||[];
-  if(cntEl){if(events.length){cntEl.style.display='inline-flex';cntEl.textContent=events.length}else cntEl.style.display='none'}
+  const repeatResched=_repeatedReschedAlerts();
+  const totalAlerts=events.length+repeatResched.length;
+  if(cntEl){if(totalAlerts){cntEl.style.display='inline-flex';cntEl.textContent=totalAlerts}else cntEl.style.display='none'}
+  // Internal alerts (repeated reschedules) render at the very top, above the
+  // cross-app payment groups.
+  var internalHtml='';
+  if(repeatResched.length){
+    internalHtml+='<div style="margin-bottom:22px">';
+    internalHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #f59e0b55">';
+    internalHtml+='<span style="font-size:18px">\uD83D\uDD01</span>';
+    internalHtml+='<h4 style="margin:0;font-size:13px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px">Repeated Reschedules</h4>';
+    internalHtml+='<span style="background:#b45309;color:white;font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:auto">'+repeatResched.length+'</span>';
+    internalHtml+='</div>';
+    repeatResched.forEach(function(g){
+      internalHtml+='<div style="background:white;border:1px solid #fde68a;border-left:3px solid #f59e0b;border-radius:9px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,0.03)">';
+      internalHtml+='<div style="flex:1;min-width:0">';
+      internalHtml+='<div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:3px">'+esc(g.name||"Unknown")+' <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">'+g.count+'\u00D7 rescheduled</span></div>';
+      if(g.reasons&&g.reasons.length)internalHtml+='<div style="font-size:12px;color:#92400e;margin-bottom:3px">Reasons: '+esc(g.reasons.join(", "))+'</div>';
+      if(g.phone){var pc=String(g.phone).replace(/[^+0-9]/g,'');internalHtml+='<div style="font-size:12px"><a href="tel:'+esc(pc)+'" style="color:#1d4ed8;text-decoration:none;font-weight:600">\uD83D\uDCDE '+esc(g.phone)+'</a></div>';}
+      internalHtml+='</div>';
+      internalHtml+='<button onclick="_jumpToReschedCustomer(\''+esc((g.name||"").replace(/'/g,"\\'"))+'\')" style="background:white;border:1px solid #d1d5db;color:#374151;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">View \u203A</button>';
+      internalHtml+='</div>';
+    });
+    internalHtml+='</div>';
+  }
   if(!events.length){
-    body.innerHTML='<div style="text-align:center;padding:80px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px"><div style="font-size:64px;margin-bottom:14px">🎉</div><h3 style="margin:0 0 6px;color:var(--i1);font-size:18px">All clear!</h3><p style="margin:0;font-size:13px">No active alerts. When other Aspen apps publish payment issues or service flags, they\'ll appear here.</p></div>';
+    body.innerHTML=internalHtml+(internalHtml?'':'<div style="text-align:center;padding:80px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px"><div style="font-size:64px;margin-bottom:14px">🎉</div><h3 style="margin:0 0 6px;color:var(--i1);font-size:18px">All clear!</h3><p style="margin:0;font-size:13px">No active alerts. When other Aspen apps publish payment issues or service flags, they\'ll appear here.</p></div>');
     return;
   }
   const groups={};
@@ -4242,7 +4364,7 @@ function rndrAlerts(){
     });
     html+='</div>';
   });
-  body.innerHTML=html;
+  body.innerHTML=internalHtml+html;
 }
 
 function goToCustomerFromAlert(eventId){
@@ -5259,6 +5381,13 @@ async function submitTkt(st){
     }
   }
 
+  // RESCHEDULE → ask for a structured reason first (cancelable).
+  var _reschedInfo=null;
+  if(st==="reschedule"){
+    try{_reschedInfo=await _askReschedReason()}catch(_e){_reschedInfo=null}
+    if(!_reschedInfo)return; // tech canceled the reschedule
+  }
+
   const btnS=document.getElementById("btnSend"),btnR=document.getElementById("btnResched");
   btnS.disabled=true;btnR.disabled=true;btnS.textContent="Saving...";
 
@@ -5289,6 +5418,10 @@ async function submitTkt(st){
       phone:"",address:"",city:"",zip:"",zone:"",
       status:st||"complete"
     };
+    if(st==="reschedule"&&_reschedInfo){
+      tktData.reschedReason=_reschedInfo.reason||"";
+      tktData.reschedNote=_reschedInfo.note||"";
+    }
 
     // Sanitize: remove any undefined values that Firestore rejects
     function sanitize(obj){if(!obj||typeof obj!=="object")return obj;if(Array.isArray(obj))return obj.map(sanitize);var o={};Object.keys(obj).forEach(function(k){if(obj[k]!==undefined)o[k]=typeof obj[k]==="object"&&obj[k]!==null&&!Array.isArray(obj[k])?sanitize(obj[k]):obj[k]});return o}
@@ -5339,7 +5472,12 @@ async function submitTkt(st){
           }
         }catch(autoErrE){console.warn("Auto-match on edit error:",autoErrE)}
       }
-      toast("Ticket updated ✓");
+      // If the tech marked this report for RESCHEDULE, make sure a Service Log
+      // call exists so the customer gets re-booked (idempotent / no duplicates).
+      if(st==="reschedule"){
+        try{await _autoCreateReschedDispatch(editingDocId,cleanData)}catch(_re){console.warn("[resched auto-dispatch edit]",_re)}
+      }
+      toast(!navigator.onLine?"Saved offline ✓ — will sync when back online":"Ticket updated ✓",!navigator.onLine?"warn":undefined);
     }else{
       // Create new ticket
       cleanData.media=compressedMedia;
@@ -5401,7 +5539,13 @@ async function submitTkt(st){
         // for this customer/date that the targeted match might have missed.
         try{_runDispatchCleanup({silent:true,force:true})}catch(_e){}
       }
-      toast(st==="complete"?"Ticket sent ✓":"Saved — Reschedule",st==="complete"?null:"warn");
+      // RESCHEDULE on a brand-new report → ensure a Service Log call exists so
+      // the customer is re-booked and nothing slips through the cracks.
+      if(st==="reschedule"){
+        try{await _autoCreateReschedDispatch(newRef.id,cleanData)}catch(_re){console.warn("[resched auto-dispatch new]",_re)}
+      }
+      var _off=!navigator.onLine;
+      toast(st==="complete"?(_off?"Saved offline ✓ — will sync when back online":"Ticket sent ✓"):(_off?"Saved offline ↻ — will sync + added to Service Log":"Saved — Reschedule ↻ added to Service Log"),st==="complete"&&!_off?null:"warn");
     }
     if(typeof clearDraft==="function")clearDraft();
     resetForm();
@@ -5476,6 +5620,51 @@ function resetForm(){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 function toast(m,t){const e=document.getElementById("toast");e.textContent=m;e.className="toast show"+(t==="warn"?" warn":t==="err"?" err":"");setTimeout(()=>e.classList.remove("show"),2500)}
+
+// ═══ OFFLINE STATUS INDICATOR (Feature 10) ═══
+// Firestore offline persistence is already enabled (writes queue locally and
+// sync when the connection returns). This adds a visible banner so techs in
+// the field KNOW they're offline and that their saved work will sync — instead
+// of fearing it was lost.
+(function(){
+  function _ensureBanner(){
+    var b=document.getElementById("offlineBanner");
+    if(!b){
+      b=document.createElement("div");
+      b.id="offlineBanner";
+      b.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:99998;background:#1f2937;color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;align-items:center;gap:8px;max-width:92vw";
+      document.body.appendChild(b);
+    }
+    return b;
+  }
+  function _update(){
+    var b=_ensureBanner();
+    if(navigator.onLine){
+      // Briefly confirm we're back, then hide.
+      if(b.dataset.wasOffline==="1"){
+        b.style.background="#047857";
+        b.innerHTML="\u2713 Back online \u2014 syncing changes";
+        b.style.display="inline-flex";
+        b.dataset.wasOffline="0";
+        clearTimeout(b._hideT);
+        b._hideT=setTimeout(function(){b.style.display="none"},2600);
+      }else{
+        b.style.display="none";
+      }
+    }else{
+      clearTimeout(b._hideT);
+      b.style.background="#b45309";
+      b.innerHTML="\u26A0 Offline \u2014 your work is saved and will sync automatically";
+      b.style.display="inline-flex";
+      b.dataset.wasOffline="1";
+    }
+  }
+  window.addEventListener("online",_update);
+  window.addEventListener("offline",_update);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",_update);
+  else _update();
+  window._refreshOnlineStatus=_update;
+})();
 
 // ─── Custom dialog helpers (replace native confirm/prompt) ─────────────────
 // confirmDialog(message, opts?) → Promise<bool>
@@ -5610,7 +5799,148 @@ async function promptDialog(message, opts){
 
 // ═══ MARK DONE ═══
 async function markDone(docId){if(!db)return;try{await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});toast("Ticket completed ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
-async function markResched(docId){if(!db)return;try{await db.collection("tickets").doc(docId).update({status:"reschedule"});toast("Marked for reschedule ↻");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
+// ═══ RESCHEDULE REASON PICKER ═══
+// Quick-pick modal shown when a tech reschedules a visit. Returns a Promise
+// that resolves to {reason, note} or null if canceled. Structured reasons let
+// us track recurring problems (no access, missing parts, weather, etc.).
+function _askReschedReason(){
+  return new Promise(function(resolve){
+    var reasons=["Customer not home","No access to spa","Parts not available","Weather","Customer rescheduled","Wrong/incomplete diagnosis","Other"];
+    var picked="";
+    var bg=document.createElement("div");
+    bg.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px";
+    var box=document.createElement("div");
+    box.style.cssText="background:#fff;border-radius:16px;max-width:430px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;overflow:auto";
+    box.innerHTML='<div style="font-size:17px;font-weight:800;color:#111;margin-bottom:4px">\u21BB Reschedule reason</div>'+
+      '<div style="font-size:13px;color:#6b7280;margin-bottom:14px">Why couldn\u2019t the visit be completed? This is added to the Service Log call and helps spot recurring issues.</div>'+
+      '<div id="_rrBtns" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>'+
+      '<textarea id="_rrNote" placeholder="Optional details (what\u2019s needed to finish)..." style="width:100%;min-height:64px;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;margin-bottom:14px"></textarea>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end"><button id="_rrCancel" style="padding:10px 16px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:14px;font-weight:600;color:#374151;cursor:pointer">Cancel</button><button id="_rrOk" style="padding:10px 18px;background:var(--ac);border:none;border-radius:9px;font-size:14px;font-weight:700;color:#fff;cursor:pointer">Confirm reschedule</button></div>';
+    bg.appendChild(box);document.body.appendChild(bg);
+    var btnWrap=box.querySelector("#_rrBtns");
+    reasons.forEach(function(r){
+      var b=document.createElement("button");
+      b.type="button";b.textContent=r;
+      b.style.cssText="padding:7px 12px;background:#f3f4f6;border:1.5px solid #e5e7eb;border-radius:999px;font-size:13px;font-weight:600;color:#374151;cursor:pointer";
+      b.onclick=function(){
+        picked=r;
+        Array.from(btnWrap.children).forEach(function(c){c.style.background="#f3f4f6";c.style.borderColor="#e5e7eb";c.style.color="#374151"});
+        b.style.background="var(--acl)";b.style.borderColor="var(--ac)";b.style.color="var(--acd)";
+      };
+      btnWrap.appendChild(b);
+    });
+    function done(val){if(bg.parentNode)bg.parentNode.removeChild(bg);resolve(val)}
+    box.querySelector("#_rrCancel").onclick=function(){done(null)};
+    box.querySelector("#_rrOk").onclick=function(){
+      var note=(box.querySelector("#_rrNote").value||"").trim();
+      if(!picked&&!note){toast("Pick a reason or add a note","warn");return}
+      done({reason:picked||"Other",note:note});
+    };
+    bg.onclick=function(e){if(e.target===bg)done(null)};
+  });
+}
+// Whole days elapsed since a millisecond timestamp (used for reschedule aging).
+function _daysSince(ms){
+  if(!ms||isNaN(ms))return null;
+  return Math.floor((Date.now()-ms)/86400000);
+}
+
+// ═══ AUTO-CREATE SERVICE-LOG TICKET FROM A RESCHEDULE ═══
+// When a tech marks a visit "reschedule", the customer still needs a new
+// appointment — but it's easy to forget to re-add them to the Service Log by
+// hand. This helper guarantees a pending dispatch ticket exists so the office
+// always sees a "needs a new date" call. It is idempotent (won't create
+// duplicates) and de-duplicates against any dispatch the report was filed from.
+async function _autoCreateReschedDispatch(srcDocId,srcData){
+  if(!db||!srcData||!srcData.customer)return;
+  try{
+    var _pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+    var live=_pool.find(function(x){return x.id===srcDocId})||srcData;
+
+    // ── Guard: an auto-dispatch was already created for this reschedule and
+    //    it's still open → don't make another one.
+    if(live.reschedDispatchId){
+      var prior=(typeof active!=="undefined"?active:[]).find(function(x){return x.id===live.reschedDispatchId&&x.status!=="canceled"});
+      if(prior)return;
+    }
+
+    var cust=srcData.customer;
+    var origDate=(srcData.date||"").trim();
+    var techStr=(srcData.techs||[]).join(", ");
+    var reason=(srcData.reschedReason||"").trim();
+    var reasonNote=(srcData.reschedNote||"").trim();
+    var noteHead="\u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"+(origDate?(" on "+origDate):"")+". Needs a new appointment date.";
+    if(reason)noteHead+="\nReason: "+reason+(reasonNote?(" \u2014 "+reasonNote):"");
+    var origNotes=(srcData.notes||"").trim();
+    var newNotes=noteHead+(origNotes?("\n\n\u2014 Tech notes \u2014\n"+origNotes):"");
+    var stamp=new Date().toLocaleString();
+    var stampMs=Date.now();
+
+    // ── If an OPEN dispatch already exists for this customer (typically the
+    //    parent the field report was filed against), reuse it instead of
+    //    creating a duplicate: clear its date so it resurfaces as "needs a
+    //    new date", and flag it as a reschedule.
+    var openDisp=(typeof active!=="undefined"?active:[]).find(function(t){
+      return t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
+        &&!t.fieldReportSubmitted&&t.id!==srcDocId
+        &&_custSameCustomer(t.customer,cust);
+    });
+    if(openDisp){
+      await db.collection("tickets").doc(openDisp.id).update({
+        date:"",status:"pending",techs:[],autoFromResched:true,
+        reschedFromId:srcDocId,notes:newNotes,reschedAt:stamp,reschedAtMs:stampMs,
+        reschedReason:reason||"",reschedNote:reasonNote||""
+      });
+      try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:openDisp.id})}catch(_e){}
+      return;
+    }
+
+    // ── Otherwise build a fresh dispatch ticket, enriching contact info from
+    //    customer history (field reports don't carry phone/address).
+    var cd=null;try{cd=_findExistingCustomerData(cust,srcDocId)}catch(_e){}
+    var w=srcData.warranty||{};
+    var wt=(srcData.workTypes||[]).filter(function(x){return x&&x!=="Service Call"});
+    if(!wt.length)wt=["Service Call"];
+    var docRef=await db.collection("tickets").add({
+      customer:(cd&&cd.bestName&&cd.bestName.length>cust.length)?cd.bestName:cust,
+      date:"",techs:[],workTypes:wt,
+      warranty:{has:w.has===true?true:w.has===false?false:null,model:w.model||"",year:w.year||0,type:w.type||"rda",label:w.label||"N/W"},
+      visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
+      spaDesc:srcData.spaDesc||"",notes:newNotes,
+      phone:(cd&&cd.phone)||srcData.phone||"",phone2:(cd&&cd.phone2)||srcData.phone2||"",
+      email:(cd&&cd.email)||srcData.email||"",
+      address:(cd&&cd.address)||srcData.address||"",city:(cd&&cd.city)||srcData.city||"",
+      zip:(cd&&cd.zip)||srcData.zip||"",zone:(cd&&cd.zone)||srcData.zone||"",
+      ccOnFile:srcData.ccOnFile||false,ccRequested:srcData.ccRequested||false,
+      isRepeat:false,isUrgent:srcData.isUrgent||false,isNewSpa:false,
+      payCheck:srcData.payCheck||false,payCredit:srcData.payCredit||false,
+      media:[],videoLinks:null,source:"dispatch",status:"pending",
+      autoFromResched:true,reschedFromId:srcDocId,reschedAt:stamp,reschedAtMs:stampMs,
+      reschedReason:reason||"",reschedNote:reasonNote||"",
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      submitted:stamp
+    });
+    try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:docRef.id})}catch(_e){}
+  }catch(e){console.warn("[_autoCreateReschedDispatch]",e)}
+}
+
+async function markResched(docId){
+  if(!db)return;
+  // Ask the tech WHY (structured reason) before rescheduling.
+  var _info=null;
+  try{_info=await _askReschedReason()}catch(_e){_info=null}
+  if(!_info)return; // canceled — leave the ticket as-is
+  try{
+    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||""});
+    // Auto-create / resurface a Service Log call so the reschedule isn't forgotten.
+    try{
+      var _src=[...active,...done].find(function(x){return x.id===docId});
+      if(_src){_src=Object.assign({},_src,{reschedReason:_info.reason||"",reschedNote:_info.note||""});await _autoCreateReschedDispatch(docId,_src);}
+    }catch(_re){console.warn("[markResched auto-dispatch]",_re)}
+    toast("Reschedule \u21BB \u2014 added to Service Log");
+    setTimeout(refreshAll,500)
+  }catch(e){toast("Error","err")}
+}
 
 // ═══ EDIT TICKET ═══
 function editTkt(i,isDone){
@@ -6347,6 +6677,19 @@ function rndrSlog(){
   const byZone={};filtered.forEach(t=>{const z=effectiveZone(t)||"No Zone";if(!byZone[z])byZone[z]=[];byZone[z].push(t)});
   Object.values(byZone).forEach(arr=>arr.sort((a,b)=>(a.date||"").localeCompare(b.date||"")));
   let h='';
+  // ── Zone load summary (all unassigned calls, by zone — at-a-glance balance) ──
+  var _loadByZone={};all.forEach(function(t){var z=effectiveZone(t)||"No Zone";_loadByZone[z]=(_loadByZone[z]||0)+1});
+  var _loadKeys=Object.keys(_loadByZone).sort(function(a,b){return _loadByZone[b]-_loadByZone[a]});
+  if(_loadKeys.length){
+    h+='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:10px 12px;background:var(--c-ash-2);border-radius:10px">';
+    h+='<span style="font-size:var(--fs-xs);font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--i3);margin-right:2px">Load</span>';
+    h+='<span style="font-size:var(--fs-sm);font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--ln);padding:3px 10px;border-radius:999px">Total '+all.length+'</span>';
+    _loadKeys.forEach(function(z){
+      var zc=ZONE_COLORS[z]||{bg:"#fff",text:"var(--i2)"};
+      h+='<button onclick="slogZone=\''+z.replace(/'/g,"\\'")+'\';rndrSlog()" style="font-size:var(--fs-sm);font-weight:700;color:'+zc.text+';background:'+zc.bg+';border:1px solid var(--ln);padding:3px 10px;border-radius:999px;cursor:pointer">'+esc(z)+' '+_loadByZone[z]+'</button>';
+    });
+    h+='</div>';
+  }
   // ── Urgent section (highest priority — bright red, fire emoji, top of list) ──
   var urgents=filtered.filter(function(t){return t.isUrgent});
   if(urgents.length){
@@ -6358,6 +6701,31 @@ function rndrSlog(){
       h+='<div style="background:#fff;border:1px solid #fecaca;border-left:3px solid var(--c-danger-strong);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="font-weight:700;font-size:var(--fs-base);color:var(--ink);margin-bottom:6px;line-height:1.3">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
+        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+        (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
+      '</div>';
+    });
+    h+='</div></div>';
+  }
+  // ── Rescheduled section (amber — auto-created when a tech marks reschedule) ──
+  var rescheds=filtered.filter(function(t){return t.autoFromResched});
+  if(rescheds.length){
+    h+='<div style="margin-bottom:18px">';
+    h+='<div class="lbl" style="color:var(--c-warning-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("rotate-ccw",16,{color:"var(--c-warning-fg)"})+'Rescheduled \u2014 needs new date <span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+rescheds.length+'</span></div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">';
+    rescheds.forEach(function(t){
+      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var days=_daysSince(t.reschedAtMs);
+      var ageHtml='';
+      if(days!==null){
+        var stale=days>=3;
+        var ageTxt=days===0?'today':(days===1?'1 day':days+' days');
+        ageHtml='<span style="font-size:var(--fs-xs);font-weight:800;padding:2px 7px;border-radius:6px;'+(stale?'background:var(--c-danger-strong);color:#fff':'background:var(--c-warning-bg);color:var(--c-warning-fg)')+'">'+(stale?'\u26A0 ':'')+'waiting '+ageTxt+'</span>';
+      }
+      var reasonHtml=t.reschedReason?'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);margin-bottom:4px;font-style:italic">'+esc(t.reschedReason)+'</div>':'';
+      h+='<div style="background:#fff;border:1px solid var(--c-warning-bg);border-left:3px solid var(--c-warning-fg);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:700;font-size:var(--fs-base);color:var(--ink);line-height:1.3">'+esc(t.customer)+'</span>'+ageHtml+'</div>'+
+        reasonHtml+
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
       '</div>';
@@ -6429,7 +6797,7 @@ function rndrSlog(){
     h+=`<div class="zone-card"><div class="zone-card-hdr" style="background:${zc.bg};color:${zc.text}"><span>${z}</span><span>${items.length}</span></div><div class="zone-card-body">`;
     items.forEach(t=>{
       const isDone=t.status==="done";const noTech=!t.techs||!t.techs.length;
-      h+=`<div class="zone-card-item" onclick="openTktDetail('${t.id}')" style="${t.isUrgent?"border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)":t.isNewSpa?"border-left:3px solid var(--c-purple-strong);background:#faf5ff":noTech?"border-left:3px solid var(--r)":""}${isDone?";opacity:.6":""}"><h6>${esc(t.customer)}${t.isUrgent?' <span style="color:var(--c-danger-strong);font-size:var(--fs-xs);font-weight:800">🔥 URGENT</span>':''}${t.isNewSpa?' <span style="color:var(--c-purple-strong);font-size:var(--fs-xs);font-weight:800">✨ NEW SPA</span>':''}${t.isRepeat?' <span style="color:var(--r);font-size:var(--fs-xs);font-weight:700">🔄 REPEAT</span>':''}${ticketHasOpenTodo(t.id)?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700">📋 TO DO</span>':''}${t.payCheck?' <span style="color:var(--c-info-strong);font-size:var(--fs-xs);font-weight:700">✓ CHECK</span>':''}</h6><p>${(t.techs||[]).join(", ")||"Unassigned"} · ${t.date||""}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓":""}</p>${t.phone?`<p>📞 ${esc(t.phone)}</p>`:""}</div>`;
+      h+=`<div class="zone-card-item" onclick="openTktDetail('${t.id}')" style="${t.isUrgent?"border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)":t.isNewSpa?"border-left:3px solid var(--c-purple-strong);background:#faf5ff":t.autoFromResched?"border-left:3px solid var(--c-warning-fg);background:var(--c-warning-bg)":noTech?"border-left:3px solid var(--r)":""}${isDone?";opacity:.6":""}"><h6>${esc(t.customer)}${t.isUrgent?' <span style="color:var(--c-danger-strong);font-size:var(--fs-xs);font-weight:800">🔥 URGENT</span>':''}${t.isNewSpa?' <span style="color:var(--c-purple-strong);font-size:var(--fs-xs);font-weight:800">✨ NEW SPA</span>':''}${t.isRepeat?' <span style="color:var(--r);font-size:var(--fs-xs);font-weight:700">🔄 REPEAT</span>':''}${t.autoFromResched?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:800">↻ RESCHEDULE</span>':''}${ticketHasOpenTodo(t.id)?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700">📋 TO DO</span>':''}${t.payCheck?' <span style="color:var(--c-info-strong);font-size:var(--fs-xs);font-weight:700">✓ CHECK</span>':''}</h6><p>${(t.techs||[]).join(", ")||"Unassigned"} · ${t.date||""}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓":""}</p>${t.phone?`<p>📞 ${esc(t.phone)}</p>`:""}</div>`;
     });
     h+=`</div></div>`;
   });
@@ -7890,6 +8258,39 @@ function rndrAttnPanel(){
   h+='</div></div>';
   el.innerHTML=h;
 }
+// ─── SCHEDULE CONFLICT DETECTION ───────────────────────────────────────────
+// Warns before assigning a tech to a time that overlaps another stop they
+// already have that day (within 90 minutes). Prevents accidental double-booking.
+function _minutesOf(hhmm){
+  if(!hhmm||String(hhmm).indexOf(":")<0)return null;
+  var p=String(hhmm).split(":");var h=parseInt(p[0],10),m=parseInt(p[1],10);
+  if(isNaN(h)||isNaN(m))return null;return h*60+m;
+}
+async function _confirmScheduleConflict(techs,date,arrival,excludeId){
+  if(!techs||!techs.length||!date)return true;
+  var pool=(typeof active!=="undefined"?active:[]);
+  var arrMin=_minutesOf(arrival);
+  if(arrMin===null)return true; // no time given → nothing to clash on
+  var clashes=[];
+  techs.forEach(function(tn){
+    pool.forEach(function(t){
+      if(!t||t.id===excludeId)return;
+      if((t.date||"")!==date)return;
+      if(t.status==="canceled"||t.fieldReportSubmitted)return;
+      if((t.techs||[]).indexOf(tn)<0)return;
+      var om=_minutesOf(t.arrival);
+      if(om!==null&&Math.abs(om-arrMin)<90){
+        clashes.push({tech:tn,customer:t.customer||"?",arrival:t.arrival});
+      }
+    });
+  });
+  if(!clashes.length)return true;
+  var msg="";
+  clashes.slice(0,6).forEach(function(c){msg+="\u2022 "+c.tech+" already has "+c.customer+" at "+c.arrival+"\n"});
+  msg+="\nThis is within 90 minutes. Assign anyway?";
+  return await confirmDialog(msg,{title:"\u26A0 Possible double-booking",tone:"warn",okLabel:"Assign anyway",cancelLabel:"Go back"});
+}
+
 async function calSaveAssign(docId){
   if(!db)return;
   var techs=[];var prefix="qPill_"+docId+"_";
@@ -7897,6 +8298,8 @@ async function calSaveAssign(docId){
   var date=document.getElementById("qDate_"+docId).value;
   var arrival=(document.getElementById("qTime_"+docId)||{}).value||"";
   if(!techs.length){toast("Select at least one technician","warn");return}
+  // Warn on time overlap with another stop the same day (Feature 7).
+  if(!(await _confirmScheduleConflict(techs,date,arrival,docId)))return;
   try{
     // AUDIT FIX: previously this set status:"complete" the moment you assigned
     // techs from the calendar queue — same semantic bug that slToggleTech had.
