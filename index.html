@@ -1272,11 +1272,11 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
     <div class="w-row"><button class="wb yes" id="warYes" onclick="setWYN(true)">✓ Under warranty</button><button class="wb no" id="warNo" onclick="setWYN(false)">✕ No warranty</button></div>
     <div id="part90Box" style="margin-top:10px;padding:11px 12px;border:1px dashed var(--ln);border-radius:10px;display:none;background:var(--c-ash)">
       <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)">
-        <input type="checkbox" id="part90Chk" onchange="_part90Toggle()" style="width:17px;height:17px;flex-shrink:0">🛠️ Replaced part has 90-day warranty <span style="font-weight:500;color:var(--i3)">(part only)</span>
+        <input type="checkbox" id="part90Chk" onchange="_part90Toggle()" style="width:17px;height:17px;flex-shrink:0">🛠️ Part replaced — <span style="font-weight:500;color:var(--i3)">1-yr part / 90-day labor warranty</span>
       </label>
       <div id="part90Sub" style="display:none;margin-top:9px">
         <input type="text" id="part90Name" placeholder="Which part? (optional — e.g. heater, pump, control)" style="width:100%;padding:9px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);box-sizing:border-box;font-family:inherit;background:var(--cd);color:var(--ink)">
-        <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px">Tub is out of warranty, but this replaced part is covered for <b>90 days</b> from the service date. After 90 days, no warranty.</div>
+        <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px">Tub is out of warranty, but a part was replaced: the <b>part is covered 1 year</b> and the <b>labor 90 days</b> from the service date. Within 90 days both are free; after 90 days the part is still covered but labor is billed; after 1 year nothing is covered.</div>
       </div>
     </div>
     <div class="w-step" id="wS2"><div class="lbl" style="margin-top:4px">Spa Model</div><div class="w-row"><button class="wb w-model" onclick="setMod('es')"><b>ES</b><small>Elite Series</small></button><button class="wb w-model" onclick="setMod('gs')"><b>GS</b><small>Gold Series</small></button><button class="wb w-model" onclick="setMod('vs')"><b>VS</b><small>Value Series</small></button><button class="wb w-model" onclick="setMod('ss')"><b>SS</b><small>Swim Spa</small></button></div></div>
@@ -1382,10 +1382,10 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
           </div>
           <div id="slWResult" style="display:none;padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600"></div>
           <div id="slPart90Box" style="display:none;margin-top:8px;padding:9px 10px;border:1px dashed var(--ln);border-radius:8px;background:var(--c-ash)">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)"><input type="checkbox" id="slPart90Chk" onchange="_slPart90Toggle()" style="width:16px;height:16px;flex-shrink:0"> 🛠️ Replaced part has 90-day warranty <span style="font-weight:500;color:var(--i3)">(part only)</span></label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)"><input type="checkbox" id="slPart90Chk" onchange="_slPart90Toggle()" style="width:16px;height:16px;flex-shrink:0"> 🛠️ Part replaced — <span style="font-weight:500;color:var(--i3)">1-yr part / 90-day labor</span></label>
             <div id="slPart90Sub" style="display:none;margin-top:7px">
               <input type="text" id="slPart90Name" placeholder="Which part? (optional — e.g. heater, pump)" style="width:100%;padding:7px;border:1.5px solid var(--ln);border-radius:7px;font-size:var(--fs-sm);box-sizing:border-box;font-family:inherit;background:var(--cd);color:var(--ink)">
-              <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:5px">Old tub out of warranty, but this part is covered <b>90 days</b> from the service date.</div>
+              <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:5px">Old tub out of warranty, but a part was replaced: <b>part covered 1 year</b>, <b>labor 90 days</b> from service date.</div>
             </div>
           </div>
         </div>
@@ -2302,7 +2302,7 @@ function _part90Toggle(){var c=document.getElementById("part90Chk"),s=document.g
 function _needOtherTechToggle(){var c=document.getElementById("needOtherTech"),s=document.getElementById("needOtherTechSub");if(c&&s)s.style.display=c.checked?"block":"none"}
 function setMod(m){wMod=m;wYr=0;document.querySelectorAll(".w-model").forEach(b=>b.className=b.className.replace(/ on-m/g,""));document.querySelectorAll(".w-model").forEach(b=>{if(b.querySelector("b").textContent.toLowerCase()===m)b.classList.add("on-m")});document.getElementById("wS3").classList.add("show");document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));upWR();rndr()}
 function setYr(y){wYr=y;document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.querySelectorAll(".w-yr").forEach(b=>{const v=b.textContent==="5+"?6:+b.textContent;if(v===y)b.classList.add("on-yr")});upWR();rndr()}
-function upWR(){const e=document.getElementById("wR");if(!wHas&&wHas!==false){e.style.display="none";return}if(!wHas){var _p90c=(document.getElementById("part90Chk")||{}).checked;var _p90n=(document.getElementById("part90Name")||{}).value||"";e.style.display="block";e.className="w-result rda-cov";e.innerHTML="<b>No warranty</b> — Parts at RDA."+(_p90c?'<br>🛠️ <b>Part 90-day warranty</b>'+(_p90n?' ('+_p90n.replace(/</g,"&lt;")+')':'')+' — covered 90 days from service date.':'');return}if(!wMod||!wYr){e.style.display="none";return}const w=gWT(),lw=gLabWT(),m=wMod.toUpperCase(),y=wYr>5?"5+":wYr;
+function upWR(){const e=document.getElementById("wR");if(!wHas&&wHas!==false){e.style.display="none";return}if(!wHas){var _p90c=(document.getElementById("part90Chk")||{}).checked;var _p90n=(document.getElementById("part90Name")||{}).value||"";e.style.display="block";e.className="w-result rda-cov";e.innerHTML="<b>No warranty</b> — Parts at RDA."+(_p90c?'<br>🛠️ <b>Part replaced</b>'+(_p90n?' ('+_p90n.replace(/</g,"&lt;")+')':'')+' — part covered <b>1 year</b>, labor covered <b>90 days</b> from service date.':'');return}if(!wMod||!wYr){e.style.display="none";return}const w=gWT(),lw=gLabWT(),m=wMod.toUpperCase(),y=wYr>5?"5+":wYr;
 // Swim Spa year 4+: 3-year warranty has expired, treat as no warranty
 if(wMod==="ss"&&wYr>=4){e.style.display="block";e.className="w-result rda-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>3-yr warranty expired. <b>No warranty</b> — Parts at RDA, Labor charged in full.`;return}
 if(wYr>5){e.style.display="block";e.className="w-result rda-cov";e.innerHTML=`<b>${m} — Year ${y}</b><br>Warranty expired. <b>RDA price</b>.`;return}
@@ -8946,21 +8946,26 @@ function rndrCalTeam(sel,allTkts){
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
 function _qbHistBadge(t){return t&&t.qbCopied?'<span class="qb-note-status" style="background:var(--c-money-bg);color:var(--c-money-fg)" title="Copied to QuickBooks'+(t.qbCopiedAt?' · '+t.qbCopiedAt:'')+'">📋 IN QB</span>':''}
-// 90-day part warranty badge: shows days left (green) or expired (gray) for old-tub part coverage
+// Replacement warranty badge. On out-of-warranty spas where a part was replaced:
+//   • PART is covered 1 YEAR from install.
+//   • LABOR (the tech's work) is covered 90 DAYS from install.
+// States: within 90d → part+labor free; 90d–1yr → part free, labor billed; >1yr → expired.
 function _part90Badge(t){
   if(!t||!t.partWarranty90||!t.partWarranty90Start)return"";
   var start=new Date(t.partWarranty90Start+"T12:00:00");
   if(isNaN(start))return"";
   var days=Math.floor((Date.now()-start.getTime())/86400000);
-  var left=90-days;
-  var end=new Date(start.getTime()+90*86400000);
-  var endStr=end.toISOString().slice(0,10);
+  var laborLeft=90-days;   // labor: 90 days
+  var partLeft=365-days;   // part: 1 year
   var nm=t.partWarranty90Name?(" — "+t.partWarranty90Name):"";
-  if(left>=0){
-    var col=left<=14?"var(--c-warning-strong)":"var(--c-success-strong)";
-    return '<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700;border:1px solid '+col+'" title="Part-only 90-day warranty'+esc(nm)+' · expires '+endStr+'">🛠️ Part warranty: '+left+'d left</span>';
+  if(laborLeft>=0){
+    var col=laborLeft<=14?"var(--c-warning-strong)":"var(--c-success-strong)";
+    return '<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700;border:1px solid '+col+'" title="Replaced part'+esc(nm)+' — part covered 1 yr, labor covered 90 days from install. Both free for '+laborLeft+' more days.">🛠️ Part+labor warranty: '+laborLeft+'d left</span>';
   }
-  return '<span class="tkt-tag" style="background:var(--c-neutral-bg);color:var(--i3);font-weight:700;text-decoration:line-through" title="Part-only 90-day warranty expired on '+endStr+esc(nm)+'">🛠️ Part warranty expired</span>';
+  if(partLeft>=0){
+    return '<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700" title="Replaced part'+esc(nm)+' still under 1-yr part warranty ('+partLeft+'d left). Labor IS billed — the 90-day labor warranty has expired.">🛠️ Part warranty: '+partLeft+'d left · labor billed</span>';
+  }
+  return '<span class="tkt-tag" style="background:var(--c-neutral-bg);color:var(--i3);font-weight:700;text-decoration:line-through" title="Replacement warranty expired'+esc(nm)+' — part (1 yr) and labor (90 days) both out of warranty">🛠️ Replacement warranty expired</span>';
 }
 function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return "";if(s==="complete")return '<span class="st-badge st-complete">Submitted</span>';if(s==="done")return '<span class="st-badge st-done">'+icon("check",10,{color:"#047857"})+'Done</span>';if(s==="canceled")return '<span class="st-badge st-canceled">Canceled</span>';if(s==="reschedule")return '<span class="st-badge st-reschedule">Reschedule</span>';return ""}
 function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;const _isTechView=currentUser&&currentUser.role==="tech";
@@ -9281,6 +9286,13 @@ function _dtSummaryChips(t){
     return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">'+chips.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--cd);border:1px solid var(--ln);border-radius:999px;font-size:var(--fs-xs);font-weight:700;color:var(--i2)">'+c.ic+' '+esc(c.label)+'</span>'}).join("")+'</div>';
   }catch(_e){return""}
 }
+// Banner shown inside the ticket detail when the office flagged this as a
+// 2-person job — so the tech sees it clearly before heading out.
+function _needs2techBannerHTML(t){
+  if(!t||!t.needsOtherTech)return"";
+  var reason=t.needsOtherTechReason?(" \u2014 "+esc(t.needsOtherTechReason)):"";
+  return '<div style="background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="font-size:20px">\uD83D\uDC65</span><div style="min-width:0"><div style="font-weight:800;color:var(--c-warning-fg);font-size:var(--fs-base)">Needs a 2nd technician</div><div style="font-size:var(--fs-xs);color:var(--c-warning-fg);opacity:.9">This is a 2-person job'+reason+'</div></div></div>';
+}
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -9302,6 +9314,7 @@ function openTktDetail(id){
   // module). Renders as: big check-in button / ongoing visit / completed.
   let h="";
   try{if(typeof _payBeforeServiceBannerHTML==="function")h+=_payBeforeServiceBannerHTML(t)}catch(_e){}
+  try{if(typeof _needs2techBannerHTML==="function")h+=_needs2techBannerHTML(t)}catch(_e){}
   try{if(typeof _paymentAlertBannerHTML==="function")h+=_paymentAlertBannerHTML(t)}catch(_e){}
   try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
   try{if(typeof _dtSummaryChips==="function")h+=_dtSummaryChips(t)}catch(_e){}
@@ -10397,6 +10410,22 @@ function startTicketFrom(id){
         if(w.year&&Number(w.year)>0)_summary+=" Yr"+(Number(w.year)>5?"5+":w.year);
       }
       try{toast("Warranty pre-filled from dispatch: "+_summary)}catch(_e){}
+    }
+    // ─── Carry the replacement-part warranty (1-yr part / 90-day labor) ───
+    // If the office ticked it on the dispatch, auto-tick it on the Field Report
+    // so the tech doesn't have to re-enter it.
+    if(t.partWarranty90){
+      var _p90=document.getElementById("part90Chk");
+      if(_p90){
+        _p90.checked=true;
+        var _p90n=document.getElementById("part90Name");if(_p90n)_p90n.value=t.partWarranty90Name||"";
+        var _p90b=document.getElementById("part90Box");if(_p90b)_p90b.style.display="block";
+        if(typeof _part90Toggle==="function")_part90Toggle();
+      }
+    }
+    // ─── Surface a 2-person-job reminder the office flagged on the dispatch ───
+    if(t.needsOtherTech){
+      try{toast("\uD83D\uDC65 Office flagged this as a 2-person job"+(t.needsOtherTechReason?(" \u2014 "+t.needsOtherTechReason):""),"warn")}catch(_e){}
     }
     let bb=document.getElementById("backToTktBtn");
     if(!bb){bb=document.createElement("button");bb.id="backToTktBtn";bb.style.cssText="margin-bottom:14px;padding:10px 18px;background:none;border:1.5px solid var(--ac);border-radius:10px;font-size:var(--fs-base);font-weight:600;color:var(--ac);width:100%";document.getElementById("ticketMode").prepend(bb)}
