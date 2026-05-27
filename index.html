@@ -1268,7 +1268,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
   <div id="wcSubPanel" class="w-step"><div class="lbl" style="margin-top:4px">Water Change Type</div><div class="w-row"><button class="wb yes" id="wcChemBtn" onclick="setWCType('chem')">🧪 Chemical Maint.</button><button class="wb no" id="wcNoChemBtn" onclick="setWCType('nochem')">✕ No Chemical M</button></div><div class="w-result" id="wcInfo" style="display:none"></div></div></div>
   <div class="card" id="warrantyCard" style="position:relative">
     <div id="warrantyBlocker" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,.75);border-radius:12px;z-index:5;display:none;align-items:center;justify-content:center;padding:20px;text-align:center"><div style="font-size:var(--fs-base);font-weight:600;color:var(--i2);background:#fff;padding:10px 16px;border-radius:10px;border:2px solid var(--ln);box-shadow:0 2px 8px rgba(0,0,0,.08)"><span id="warrantyBlockerMsg">Warranty not applicable</span></div></div>
-    <div class="lbl">Spa Warranty</div>
+    <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;gap:8px">Spa Warranty<button type="button" onclick="_showWarrantyRules()" style="border:1px solid var(--c-info-border);background:var(--c-info-bg);color:var(--c-info-fg);font-size:var(--fs-xs);font-weight:700;padding:3px 9px;border-radius:999px;cursor:pointer">ℹ️ Rules</button></div>
     <div class="w-row"><button class="wb yes" id="warYes" onclick="setWYN(true)">✓ Under warranty</button><button class="wb no" id="warNo" onclick="setWYN(false)">✕ No warranty</button></div>
     <div id="part90Box" style="margin-top:10px;padding:11px 12px;border:1px dashed var(--ln);border-radius:10px;display:none;background:var(--c-ash)">
       <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)">
@@ -1338,7 +1338,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
     <div class="cal-side" style="display:none">
       <div class="cal-call-form">
         <div class="lbl" style="display:flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="phone-call" data-size="13" data-color="var(--br)"></span>New Service Call</div>
-        <div class="field" style="margin-bottom:10px;position:relative"><input type="text" id="slCustName" placeholder="Customer name" autocomplete="off" oninput="slAutoFillCust();showCustSuggest('sl')"><div class="cust-suggest" id="slCustSuggest"></div></div>
+        <div class="field" style="margin-bottom:10px;position:relative"><input type="text" id="slCustName" placeholder="Customer name" autocomplete="off" oninput="slAutoFillCust();_slLoadHistory();showCustSuggest('sl')"><div class="cust-suggest" id="slCustSuggest"></div></div>
         <div class="field" style="margin-bottom:10px"><input type="text" id="slCustPhone" placeholder="Phone number" autocomplete="off"></div>
         <div id="slPhone2Wrap" style="display:none;margin-bottom:10px;position:relative">
           <input type="text" id="slCustPhone2" placeholder="Secondary phone" autocomplete="off" style="width:100%;padding:10px 30px 10px 8px;border:none;border-bottom:2px solid var(--ln);font-size:var(--fs-md);outline:none;background:transparent;border-radius:0;font-family:inherit">
@@ -1381,13 +1381,13 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
             </div>
           </div>
           <div id="slWResult" style="display:none;padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600"></div>
-          <div id="slPart90Box" style="display:none;margin-top:8px;padding:9px 10px;border:1px dashed var(--ln);border-radius:8px;background:var(--c-ash)">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)"><input type="checkbox" id="slPart90Chk" onchange="_slPart90Toggle()" style="width:16px;height:16px;flex-shrink:0"> 🛠️ Part replaced — <span style="font-weight:500;color:var(--i3)">1-yr part / 90-day labor</span></label>
-            <div id="slPart90Sub" style="display:none;margin-top:7px">
-              <input type="text" id="slPart90Name" placeholder="Which part? (optional — e.g. heater, pump)" style="width:100%;padding:7px;border:1.5px solid var(--ln);border-radius:7px;font-size:var(--fs-sm);box-sizing:border-box;font-family:inherit;background:var(--cd);color:var(--ink)">
-              <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:5px">Old tub out of warranty, but a part was replaced: <b>part covered 1 year</b>, <b>labor 90 days</b> from service date.</div>
-            </div>
-          </div>
+        </div>
+        <!-- Simple 90-day service warranty check (replaces the complex part panel) -->
+        <div style="margin-bottom:12px;padding:10px;background:var(--c-info-bg);border-radius:10px;border:1px solid var(--c-info-border)">
+          <div class="lbl" style="margin-bottom:5px;color:var(--c-info-fg);display:flex;align-items:center;gap:6px">🔁 Last service date <span style="font-weight:500;font-size:var(--fs-xs);color:var(--i3)">— checks the 90-day service warranty</span></div>
+          <input type="date" id="slLastSvc" onchange="_slSvcCheck()" oninput="_slSvcCheck()" style="width:100%;padding:9px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);box-sizing:border-box;font-family:inherit;background:var(--cd);color:var(--ink)">
+          <div id="slSvcResult" style="display:none;margin-top:8px;padding:9px 11px;border-radius:9px;font-size:var(--fs-sm);font-weight:700"></div>
+          <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:5px">Fills in by itself if we've serviced this customer before. Otherwise paste the last ticket date from QuickBooks.</div>
         </div>
         <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px 14px">
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--i2);cursor:pointer"><input type="checkbox" id="slCcFile" style="width:18px;height:18px"> CC on File</label>
@@ -1406,8 +1406,10 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
           <textarea id="slSpaDesc" rows="4" placeholder="Spa model, serial, equipment..." style="width:100%;padding:10px;border:2px solid var(--ln);border-radius:10px;font-size:var(--fs-md);resize:vertical;outline:none;font-family:inherit;background:var(--bg)"></textarea>
         </div>
         <div style="margin-bottom:10px">
-          <div class="lbl" style="margin-bottom:4px">Notes</div>
-          <textarea id="slNotes" rows="4" placeholder="Notes, instructions..." style="width:100%;padding:10px;border:2px solid var(--ln);border-radius:10px;font-size:var(--fs-md);resize:vertical;outline:none;font-family:inherit;background:var(--bg)"></textarea>
+          <div class="lbl" style="margin-bottom:4px;display:flex;align-items:center;gap:6px">💬 Comments <span style="font-weight:500;font-size:var(--fs-xs);color:var(--i3)">— saved with today's date to the history</span></div>
+          <div id="slHistBox" style="display:none;margin-bottom:7px;max-height:160px;overflow-y:auto;padding:8px 10px;background:var(--c-ash);border:1px solid var(--ln);border-radius:9px"></div>
+          <textarea id="slNotes" rows="3" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;padding:10px;border:2px solid var(--ln);border-radius:10px;font-size:var(--fs-md);resize:vertical;outline:none;font-family:inherit;background:var(--bg)"></textarea>
+          <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
         </div>
         <!-- Photos / PDFs for technicians -->
         <div style="margin-bottom:10px">
@@ -1473,6 +1475,9 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
   <div id="adminFTF" style="margin-bottom:12px"></div>
   <!-- Repeated reschedules (operational flag — rendered by rndrAdminRepeatResched) -->
   <div id="adminRepeatResched" style="margin-bottom:12px"></div>
+  <div id="adminFollowUps" style="margin-bottom:12px"></div>
+  <!-- Customers currently within their 90-day service warranty (rendered by rndrSvcWarranty) -->
+  <div id="svcWarrantyPanel" style="margin-bottom:12px"></div>
   <!-- Technicians + Users & PINs side by side (2 columns), both collapsible -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px">
     <div class="card" style="margin:0">
@@ -2128,6 +2133,125 @@ function _labTypeFromWarranty(w){
   if(m==="vs")return y===1?"full":"none";
   return"none";
 }
+// PARTS warranty type from a saved warranty object (mirrors gWT()).
+function _partTypeFromWarranty(w){
+  if(!w||w.has!==true)return"rda";
+  var m=(w.model||"").toLowerCase(),y=+w.year||0;
+  if(!m||!y)return"rda";
+  if(m==="ss")return y<=3?"full":"rda";
+  if(y>5)return"rda";
+  if(m==="es")return"full";
+  if(m==="gs")return y<=3?"full":"half";
+  if(m==="vs")return y<=3?"full":"rda";
+  return"rda";
+}
+// _billingFor(t): the single source of truth for "what do I charge?".
+// Combines the tub warranty (series + year) with the replacement-part warranty
+// (1-yr part / 90-day labor on out-of-warranty tubs). Returns clear labels +
+// a one-line bottom line so the office never has to deduce from notes.
+function _billingFor(t){
+  if(!t)return null;
+  var w=t.warranty||{};
+  // ── Out-of-warranty tub ──
+  if(w.has===false){
+    if(t.partWarranty90&&t.partWarranty90Start){
+      var start=new Date(t.partWarranty90Start+"T12:00:00");
+      var days=isNaN(start.getTime())?99999:Math.floor((Date.now()-start.getTime())/86400000);
+      if(days<=90)return{parts:"$0 — covered",partsFree:true,labor:"FREE (within 90 days)",laborFree:true,bottom:"No charge — replaced part + labor under warranty",cls:"full"};
+      if(days<=365)return{parts:"$0 — part under 1-yr warranty",partsFree:true,labor:"CHARGE: TC $150 + $100/hr",laborFree:false,bottom:"Charge LABOR only — part still covered",cls:"half"};
+      return{parts:"RDA (retail)",partsFree:false,labor:"CHARGE: TC $150 + $100/hr",laborFree:false,bottom:"Charge parts (RDA) + labor — warranty expired",cls:"rda"};
+    }
+    if(t.partWarranty90&&!t.partWarranty90Start){
+      // Part was replaced but the replacement date is unknown — we can't compute
+      // the 1-yr/90-day window, so don't assume. Flag for a manual check.
+      return{parts:"Verify — part replaced, date unknown",partsFree:false,labor:"Verify",laborFree:false,bottom:"Part may still be under warranty — confirm the replacement date before charging",cls:"half",verify:true};
+    }
+    return{parts:"RDA (retail)",partsFree:false,labor:"CHARGE: TC $150 + $100/hr",laborFree:false,bottom:"Charge parts (RDA) + labor — no warranty",cls:"rda"};
+  }
+  if(w.has!==true)return null; // warranty unknown → no billing summary yet
+  // Under warranty but series/year not set yet (e.g. fresh dispatch): don't guess
+  // — showing "RDA" here would be misleading. Wait until series + year are known.
+  if(!w.model||!(+w.year))return{parts:"—",partsFree:false,labor:"—",laborFree:false,bottom:"Under warranty — set Series & Year for exact billing",cls:"half",pending:true};
+  // ── Tub under warranty: derive from series + year ──
+  var p=_partTypeFromWarranty(w),l=_labTypeFromWarranty(w);
+  var partsLabel=p==="full"?"$0 — covered":p==="half"?"50% retail":"RDA (retail)";
+  var partsFree=p==="full";
+  var laborLabel=l==="full"?"FREE":l==="tc-only"?"TC only (extra hrs covered)":"CHARGE: TC $150 + $100/hr";
+  var laborFree=l==="full";
+  var bottom,cls;
+  if(p==="full"&&l==="full"){bottom="No charge — full warranty";cls="full";}
+  else if(p==="full"&&l==="tc-only"){bottom="Charge TC only — parts free, extra hours covered";cls="half";}
+  else if(p==="full"&&l==="none"){bottom="Charge LABOR only — parts free";cls="half";}
+  else if(p==="half"){bottom="Charge 50% parts"+(l==="tc-only"?" + TC only":(l==="full"?", labor free":" + labor"));cls="half";}
+  else{bottom="Charge parts (RDA) + labor";cls="rda";}
+  return{parts:partsLabel,partsFree:partsFree,labor:laborLabel,laborFree:laborFree,bottom:bottom,cls:cls};
+}
+// ── COMPONENT-LEVEL WARRANTY (Aspen Spas Warranty Breakdown) ──────────────
+// Some components carry a SHORTER warranty than the tub, regardless of series:
+//   1-YEAR: stereo, speakers, lifts, covers, ozone, salt system, SS band/LED,
+//           pin lights, waterfall, pump seals.
+//   3-MONTH: all pillows.
+// _detectLimitedComponents scans the parts the tech entered and flags likely
+// matches (name + category + description). Detection is a SUGGESTION — the
+// office confirms via the billing card (handles ambiguous names safely).
+function _detectLimitedComponents(t){
+  var parts=(t&&t.parts)||[];var out=[];var seen={};
+  parts.forEach(function(p){
+    if(!p)return;
+    var s=((p.n||"")+" "+(p.d||"")+" "+(p.c||"")).toLowerCase();
+    var kind=null,label="";
+    if(/pillow/.test(s)){kind="3mo";label="Pillow";}
+    else if(/speaker|stereo|aquatic av|\bpqn\b|poly planar|subwoofer|bluetooth audio/.test(s)){kind="1yr";label="Stereo / speakers";}
+    else if(/cover ?lift|covermate|cover valet|boomerang|vacuseal|freemount|hydraulic mount|cover ?mate|cover catch|cover shelf|durastep|modstep/.test(s)){kind="1yr";label="Lift";}
+    else if(/\bcover\b|spa cover|cover cap|swim spa cover/.test(s)){kind="1yr";label="Cover";}
+    else if(/ozone|ozonator|aquasun/.test(s)){kind="1yr";label="Ozone";}
+    else if(/\bsalt\b|electrode|\banode\b|blu fusion|in\.clear/.test(s)){kind="1yr";label="Salt system";}
+    else if(/stainless|ss band|ss logo|\bled\b|pin light|chroma/.test(s)){kind="1yr";label="SS band / LED / pin lights";}
+    else if(/waterfall/.test(s)){kind="1yr";label="Waterfall";}
+    else if(/pump seal/.test(s)){kind="1yr";label="Pump seal";}
+    if(kind){var key=(p.n||label);if(!seen[key]){seen[key]=1;out.push({name:p.n||label,kind:kind,label:label});}}
+  });
+  return out;
+}
+// Persist the office's confirmation for a detected component (charge / covered).
+async function _setCompRuling(id,name,ruling){
+  if(!db||!id)return;
+  var t=[...active,...done].find(function(x){return x.id===id});if(!t)return;
+  var map=Object.assign({},t.compRuling||{});
+  map[name]=ruling; // "charge" | "covered"
+  try{
+    await db.collection("tickets").doc(id).update({compRuling:map});
+    t.compRuling=map;
+    if(_curOpenTktId&&typeof openTktDetail==="function")openTktDetail(_curOpenTktId);
+  }catch(e){if(typeof toast==="function")toast("Error: "+e.message,"err")}
+}
+// ℹ️ Openable reference of the official Aspen Spas warranty breakdown.
+// Single source of truth — if the company changes the rules, edit here.
+function _showWarrantyRules(){
+  var old=document.getElementById("warRulesOverlay");if(old)old.remove();
+  var ov=document.createElement("div");
+  ov.id="warRulesOverlay";
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.onclick=function(e){if(e.target===ov)ov.remove()};
+  var row=function(s,parts,labor){return '<tr><td style="padding:6px 8px;font-weight:800;border-bottom:1px solid var(--ln)">'+s+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--ln);font-size:var(--fs-xs)">'+parts+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--ln);font-size:var(--fs-xs)">'+labor+'</td></tr>';};
+  ov.innerHTML='<div style="background:var(--cd,#fff);color:var(--ink);max-width:540px;width:100%;max-height:88vh;overflow:auto;border-radius:16px;padding:18px 18px 20px;box-shadow:0 12px 40px rgba(0,0,0,.3)">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px"><div style="font-size:var(--fs-lg);font-weight:800">🛡️ Aspen Spas — Warranty Rules</div><button onclick="document.getElementById(\'warRulesOverlay\').remove()" style="border:none;background:var(--c-ash);width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;color:var(--i2)">×</button></div>'+
+    '<div style="font-size:var(--fs-xs);color:var(--i2);margin-bottom:12px;line-height:1.45">Warranty starts at delivery / install. <b>Any spa from 2019 or older is 100% out of warranty.</b></div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:var(--fs-sm)"><thead><tr style="text-align:left;color:var(--i2);font-size:var(--fs-xs)"><th style="padding:6px 8px">Series</th><th style="padding:6px 8px">Parts</th><th style="padding:6px 8px">Labor</th></tr></thead><tbody>'+
+      row("VS","Yr 1–3 no charge","Yr 1 no charge")+
+      row("GS","Yr 1–3 no charge · Yr 4–5 50% MSRP","Yr 1 no charge · Yr 2–5 trip charge")+
+      row("ES","Yr 1–5 — 100% covered","Yr 1–5 — 100% covered")+
+    '</tbody></table>'+
+    '<div style="margin-top:14px;padding:11px 12px;border-radius:10px;background:var(--c-warning-bg);border:1px solid var(--c-warning-border)">'+
+      '<div style="font-weight:800;color:var(--c-warning-fg);font-size:var(--fs-sm);margin-bottom:4px">⏱️ 1-Year warranty only (any series)</div>'+
+      '<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);line-height:1.5">Stereo · speakers · lifts · covers · ozone · salt system · stainless band / LED lights · pin lights · waterfall · pump seals</div>'+
+      '<div style="font-weight:800;color:var(--c-warning-fg);font-size:var(--fs-sm);margin:9px 0 4px">🛌 3-Month warranty</div>'+
+      '<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);line-height:1.5">All pillows</div>'+
+    '</div>'+
+    '<div style="margin-top:12px;font-size:var(--fs-xs);color:var(--i3);line-height:1.45">Labor billing: <b>TC = $150 base + $100/hr</b> additional (two line items). "Trip charge" = TC only (extra hours covered).</div>'+
+  '</div>';
+  document.body.appendChild(ov);
+}
 function gPr(p){if(!p||typeof p!=="object")return 0;if(p.c==="Service")return p.p||0;if(typeof visitNum!=="undefined"&&visitNum===4)return 0;const w=gWT();if(w==="full")return 0;if(w==="half")return+(gRet(p)*.5).toFixed(2);return p.p||0}
 function gPC(){const w=gWT();return w==="full"?"c-free":w==="half"?"c-half":"c-rda"}
 // Labor rules:
@@ -2637,7 +2761,7 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
+  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -3737,6 +3861,119 @@ function rndrAdminRepeatResched(){
     h+='</div>';
   });
   h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px;font-style:italic">Customers who needed rescheduling 2+ times. Worth a call \u2014 often a chronic access issue or an unresolved repair.</div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+// ── FOLLOW-UP REMINDERS (point #5) ─────────────────────────────────────────
+// Mark a ticket "call/follow up on <date>". The office sees a panel of the
+// follow-ups due today or overdue, plus a 🔔 badge on the ticket card.
+async function _setFollowUp(id,dateStr,note){
+  try{
+    var upd={followUpDate:dateStr||null};
+    if(typeof note!=="undefined")upd.followUpNote=note||"";
+    await db.collection("tickets").doc(id).update(upd);
+    var t=[].concat(active||[],done||[]).find(function(x){return x.id===id});
+    if(t){t.followUpDate=dateStr||null;if(typeof note!=="undefined")t.followUpNote=note||""}
+    if(typeof toast==="function")toast(dateStr?"Follow-up set ✓":"Follow-up cleared");
+    if(typeof rndrAdminFollowUps==="function")rndrAdminFollowUps();
+    if(typeof rndrSvcWarranty==="function")rndrSvcWarranty();
+    if(typeof _curOpenTktId!=="undefined"&&_curOpenTktId===id&&typeof openTktDetail==="function")openTktDetail(id);
+  }catch(e){console.warn("[followup]",e);if(typeof toast==="function")toast("Could not save follow-up","err")}
+}
+function _setFollowUpDays(id,days){var d=new Date();d.setDate(d.getDate()+(days||0));_setFollowUp(id,d.toISOString().slice(0,10))}
+function _followUpDueInfo(dateStr){
+  if(!dateStr)return null;
+  var d=new Date(dateStr+"T12:00:00");if(isNaN(d.getTime()))return null;
+  var today=new Date();today.setHours(0,0,0,0);
+  var diff=Math.round((d.getTime()-today.getTime())/86400000);
+  return{diff:diff,due:diff<=0,label:diff<0?(Math.abs(diff)+"d overdue"):diff===0?"today":("in "+diff+"d")};
+}
+function _followUpBadge(t){
+  if(!t||!t.followUpDate)return"";
+  var i=_followUpDueInfo(t.followUpDate);if(!i)return"";
+  var due=i.due;
+  return '<span class="tkt-tag" style="background:'+(due?"var(--c-warning-bg)":"var(--c-info-bg)")+';color:'+(due?"var(--c-warning-fg)":"var(--c-info-fg)")+';font-weight:700" title="Follow-up: '+esc(t.followUpDate)+'">🔔 '+(i.diff<0?"Follow up: overdue":i.diff===0?"Follow up: today":"Follow up: "+esc(t.followUpDate))+'</span>';
+}
+function _followUpHTML(t){
+  if(typeof isAdmin!=="undefined"&&!isAdmin)return"";
+  if(!t)return"";
+  var cur=t.followUpDate||"";
+  var line="";
+  if(cur){var inf=_followUpDueInfo(cur);var col=(inf&&inf.due)?"var(--c-warning-fg)":"var(--c-success-fg)";line='<div style="font-weight:700;color:'+col+';margin-bottom:8px">🔔 '+esc(cur)+(inf?" ("+inf.label+")":"")+(t.followUpNote?' · '+esc(t.followUpNote):'')+'</div>';}
+  var bs="background:#fff;border:1px solid var(--ln);color:var(--i2);padding:7px 12px;border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer";
+  var b='<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    +'<button onclick="_setFollowUpDays(\''+t.id+'\',3)" style="'+bs+'">In 3 days</button>'
+    +'<button onclick="_setFollowUpDays(\''+t.id+'\',7)" style="'+bs+'">In 1 week</button>'
+    +'<button onclick="_setFollowUpDays(\''+t.id+'\',14)" style="'+bs+'">In 2 weeks</button>'
+    +'<button onclick="_setFollowUpDays(\''+t.id+'\',30)" style="'+bs+'">In 1 month</button>'
+    +(cur?'<button onclick="_setFollowUp(\''+t.id+'\',null)" style="background:var(--c-danger-bg);border:1px solid var(--c-danger-border);color:var(--c-danger-fg);padding:7px 12px;border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Clear</button>':"")
+    +'</div>';
+  return '<div class="dt-sec"><div class="dt-sec-t">🔔 Follow-up reminder</div>'+line+b+'</div>';
+}
+var _svcPanelOpen=false;
+function toggleSvcPanel(){_svcPanelOpen=!_svcPanelOpen;if(typeof rndrSvcWarranty==="function")rndrSvcWarranty();}
+// Panel: customers currently within their 90-day SERVICE warranty (out-of-mfr-
+// warranty paid jobs done in the last 90 days). Nela's count & control center.
+function rndrSvcWarranty(){
+  var el=document.getElementById("svcWarrantyPanel");if(!el)return;
+  if(typeof isAdmin!=="undefined"&&!isAdmin){el.innerHTML="";return}
+  try{
+    var all=[].concat(active||[],done||[]);
+    var svc=all.filter(function(t){return(t.status==="complete"||t.status==="done")&&t.date&&!_spaUnderWarranty(t)});
+    var byCust={};
+    svc.forEach(function(t){var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):(t.customer||"");if(!k)return;if(!byCust[k]||((t.date||"")>(byCust[k].date||"")))byCust[k]=t;});
+    var rows=[];Object.keys(byCust).forEach(function(k){var t=byCust[k];var sw=_svcWarranty(t.date);if(sw&&sw.active)rows.push({t:t,sw:sw});});
+    rows.sort(function(a,b){return a.sw.daysLeft-b.sw.daysLeft});
+    if(!rows.length){el.innerHTML="";return}
+    var h='<div class="card" style="margin:0">';
+    h+='<div onclick="toggleSvcPanel()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding-bottom:'+(_svcPanelOpen?'10px':'0')+';border-bottom:'+(_svcPanelOpen?'2px solid #10b981':'none')+';margin-bottom:'+(_svcPanelOpen?'12px':'0')+'">';
+    h+='<span style="font-size:18px">🔁</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Under service warranty</span>';
+    h+='<span style="background:#047857;color:#fff;font-size:var(--fs-sm);font-weight:700;border-radius:999px;padding:2px 9px">'+rows.length+'</span>';
+    h+='<span style="margin-left:auto;color:var(--i3);font-size:var(--fs-sm);font-weight:600">'+(_svcPanelOpen?'▲ hide':'▼ show')+'</span></div>';
+    if(_svcPanelOpen){
+      rows.forEach(function(r){
+        var t=r.t,sw=r.sw,soon=sw.daysLeft<=14,col=soon?"#dc2626":"#10b981";
+        h+='<div style="background:#fff;border:1px solid var(--ln);border-left:3px solid '+col+';border-radius:9px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px">';
+        h+='<div style="flex:1;min-width:0">';
+        h+='<div style="font-weight:700;color:var(--ink);font-size:var(--fs-md);margin-bottom:3px">'+esc(t.customer||"—")+' <span style="background:'+col+';color:#fff;font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">'+sw.daysLeft+'d left</span></div>';
+        h+='<div style="font-size:var(--fs-sm);color:var(--i2)">🔁 Last service '+esc(t.date)+' · covered until '+esc(_svcUntilStr(sw))+'</div>';
+        if(t.phone){var pc=String(t.phone).replace(/[^+0-9]/g,"");h+='<div style="font-size:var(--fs-sm);margin-top:2px"><a href="tel:'+esc(pc)+'" style="color:#1d4ed8;text-decoration:none;font-weight:600">📞 '+esc(t.phone)+'</a></div>';}
+        h+='</div>';
+        h+='<button onclick="openTktDetail(\''+t.id+'\')" style="background:var(--cd);border:1px solid var(--ln);border-radius:8px;padding:6px 12px;font-weight:700;font-size:var(--fs-sm);cursor:pointer;white-space:nowrap">Open</button>';
+        h+='</div>';
+      });
+      h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px">Paid (out-of-warranty) work in the last 90 days. A callback for the same problem is a covered, no-charge return — bill carefully.</div>';
+    }
+    h+='</div>';
+    el.innerHTML=h;
+  }catch(_e){el.innerHTML=""}
+}
+function rndrAdminFollowUps(){
+  var el=document.getElementById("adminFollowUps");if(!el)return;
+  if(!isAdmin){el.innerHTML="";return}
+  var all=[].concat(active||[],done||[]);
+  var due=all.filter(function(t){if(!t.followUpDate)return false;var i=_followUpDueInfo(t.followUpDate);return i&&i.due&&t.status!=="canceled"});
+  due.sort(function(a,b){return(a.followUpDate||"").localeCompare(b.followUpDate||"")});
+  if(!due.length){el.innerHTML="";return}
+  var h='<div class="card" style="margin:0">';
+  h+='<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #f59e0b;margin-bottom:12px">';
+  h+='<span style="font-size:18px">\uD83D\uDD14</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Follow-ups due</span>';
+  h+='<span style="background:#b45309;color:#fff;font-size:var(--fs-sm);font-weight:700;border-radius:999px;padding:2px 9px;margin-left:auto">'+due.length+'</span></div>';
+  due.forEach(function(t){
+    var inf=_followUpDueInfo(t.followUpDate);var od=inf&&inf.diff<0;
+    h+='<div style="background:#fff;border:1px solid #fde68a;border-left:3px solid '+(od?"#dc2626":"#f59e0b")+';border-radius:9px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px">';
+    h+='<div style="flex:1;min-width:0">';
+    h+='<div style="font-weight:700;color:var(--ink);font-size:var(--fs-md);margin-bottom:3px">'+esc(t.customer||"Ticket")+' <span style="background:'+(od?"#dc2626":"#b45309")+';color:#fff;font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">'+esc(inf?inf.label:"")+'</span></div>';
+    h+='<div style="font-size:var(--fs-sm);color:#92400e">\uD83D\uDD14 '+esc(t.followUpDate)+(t.followUpNote?" · "+esc(t.followUpNote):"")+'</div>';
+    if(t.phone){var pc=String(t.phone).replace(/[^+0-9]/g,"");h+='<div style="font-size:var(--fs-sm);margin-top:2px"><a href="tel:'+esc(pc)+'" style="color:#1d4ed8;text-decoration:none;font-weight:600">\uD83D\uDCDE '+esc(t.phone)+'</a></div>';}
+    h+='</div>';
+    h+='<div style="display:flex;flex-direction:column;gap:6px">';
+    h+='<button onclick="openTktDetail(\''+t.id+'\')" style="background:#fff;border:1px solid #d1d5db;color:#374151;padding:7px 13px;border-radius:7px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;white-space:nowrap">Open \u203A</button>';
+    h+='<button onclick="_setFollowUp(\''+t.id+'\',null)" style="background:#fff;border:1px solid #d1d5db;color:#6b7280;padding:7px 13px;border-radius:7px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;white-space:nowrap">Done</button>';
+    h+='</div></div>';
+  });
+  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px;font-style:italic">Set a follow-up from any ticket (🔔 Follow-up reminder). They appear here on the day they\u2019re due.</div>';
   h+='</div>';
   el.innerHTML=h;
 }
@@ -6843,7 +7080,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${_svcWarrantyBadge(t)}${_followUpBadge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})</div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -7111,11 +7348,23 @@ function buildCustomerReport(t,notesOverride){
   if(durLabel)qb+="Time on site: "+durLabel+" ("+(t.arrival||"")+" - "+(t.departure||"")+")\n";
   if(t.spaDesc)qb+="Spa: "+t.spaDesc+"\n";
   if(dateLabel||techList||durLabel||t.spaDesc)qb+="\n";
+  if(t.reportedIssue&&t.reportedIssue.trim())qb+="Customer reported: "+t.reportedIssue.trim()+"\n";
+  if(t.foundIssue&&t.foundIssue.trim())qb+="Issue found: "+t.foundIssue.trim()+"\n";
+  if((t.reportedIssue&&t.reportedIssue.trim())||(t.foundIssue&&t.foundIssue.trim()))qb+="\n";
   if(notesToUse)qb+="Work performed:\n"+notesToUse.trim()+"\n";
   if(parts.length){
     qb+="\nParts used/replaced:\n";
     parts.forEach(p=>{qb+="  - "+(p.qty||1)+"x "+p.n+(p.c?" ("+p.c+")":"")+"\n"});
   }
+  try{
+    var _bill=(typeof _billingFor==="function")?_billingFor(t):null;
+    if(_bill){
+      qb+="\nBilling:\n";
+      qb+="  Parts: "+_bill.parts+"\n";
+      qb+="  Labor: "+_bill.labor+"\n";
+      qb+="  → "+_bill.bottom+"\n";
+    }
+  }catch(_e){}
   if(photoUrls.length){
     qb+="\nPhotos ("+photoUrls.length+"):\n";
     photoUrls.forEach(u=>{qb+="  "+u+"\n"});
@@ -7856,16 +8105,16 @@ function slTogglePhone2(show){
   if(show){wrap.style.display="block";btn.style.display="none"}
   else{wrap.style.display="none";btn.style.display="";var p2=document.getElementById("slCustPhone2");if(p2)p2.value=""}
 }
-function slGWT(){if(!slWHas||!slWMod||!slWYr)return"rda";if(slWYr>5)return"rda";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr<=3?"full":"half";if(slWMod==="vs")return slWYr<=3?"full":"rda";return"rda"}
-function slGLabWT(){if(!slWHas||!slWMod||!slWYr)return"none";if(slWYr>5)return"none";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr===1?"full":"tc-only";if(slWMod==="vs")return slWYr===1?"full":"none";return"none"}
-function slGWL(){if(!slWHas&&slWHas!==false)return"N/W";if(!slWHas)return"N/W";if(!slWMod)return"Warranty";const m=slWMod.toUpperCase(),y=slWYr>5?"5+":slWYr;if(slWYr>5)return`${m} Yr${y} No warranty`;const w=slGWT();return w==="full"?`${m} Yr${y} 100%`:w==="half"?`${m} Yr${y} 50%`:`${m} Yr${y} RDA`}
-function slUpWR(){var r=document.getElementById("slWResult");if(!r)return;if(slWHas===null){r.style.display="none";return}if(!slWHas){r.style.display="block";r.style.cssText+=";background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent="No warranty — Parts at RDA";return}if(!slWMod||!slWYr){r.style.display="none";return}var lbl=slGWL(),w=slGWT(),lw=slGLabWT();if(w==="full"&&lw==="full"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-success-bg);color:var(--c-success-fg)";r.textContent="✓ "+lbl+" — Parts $0, Labor FREE"}
+function slGWT(){if(!slWHas||!slWMod||!slWYr)return"rda";if(slWMod==="ss")return slWYr<=3?"full":"rda";if(slWYr>5)return"rda";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr<=3?"full":"half";if(slWMod==="vs")return slWYr<=3?"full":"rda";return"rda"}
+function slGLabWT(){if(!slWHas||!slWMod||!slWYr)return"none";if(slWMod==="ss")return slWYr<=3?"full":"none";if(slWYr>5)return"none";if(slWMod==="es")return"full";if(slWMod==="gs")return slWYr===1?"full":"tc-only";if(slWMod==="vs")return slWYr===1?"full":"none";return"none"}
+function slGWL(){if(!slWHas&&slWHas!==false)return"N/W";if(!slWHas)return"N/W";if(!slWMod)return"Warranty";const m=slWMod.toUpperCase(),y=slWYr>5?"5+":slWYr;if(slWMod==="ss"&&slWYr>=4)return`SS Yr${y} No warranty`;if(slWYr>5)return`${m} Yr${y} No warranty`;const w=slGWT();return w==="full"?`${m} Yr${y} 100%`:w==="half"?`${m} Yr${y} 50%`:`${m} Yr${y} RDA`}
+function slUpWR(){var r=document.getElementById("slWResult");if(!r)return;if(slWHas===null){r.style.display="none";return}if(!slWHas){r.style.display="block";var _p90=(document.getElementById("slPart90Chk")||{}).checked,_p90d=(document.getElementById("slPart90Date")||{}).value||"";if(_p90&&_p90d&&typeof _billingFor==="function"){var _b=_billingFor({warranty:{has:false},partWarranty90:true,partWarranty90Start:_p90d});if(_b){var _ok=_b.cls==="full";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:"+(_ok?"var(--c-success-bg)":"var(--acl)")+";color:"+(_ok?"var(--c-success-fg)":"var(--acd)")+"";r.textContent="🛠️ "+_b.bottom;return}}if(_p90&&!_p90d){r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--acl);color:var(--acd)";r.textContent="🛠️ Part replaced — date unknown · verify coverage at billing";return}r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent="No warranty — Parts at RDA";return}if(!slWMod||!slWYr){r.style.display="none";return}var lbl=slGWL(),w=slGWT(),lw=slGLabWT();if(w==="full"&&lw==="full"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-success-bg);color:var(--c-success-fg)";r.textContent="✓ "+lbl+" — Parts $0, Labor FREE"}
 else if(w==="full"&&lw==="tc-only"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-success-bg);color:var(--c-success-fg)";r.textContent=lbl+" — Parts $0, Labor TC only"}
 else if(w==="full"&&lw==="none"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts $0, Labor charged in full"}
 else if(w==="half"&&lw==="tc-only"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts 50% Retail, Labor TC only"}
 else if(w==="half"){r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts 50% Retail"}
 else{r.style.display="block";r.style.cssText="padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)";r.textContent=lbl+" — Parts at RDA"}}
-function _slPart90Toggle(){var c=document.getElementById("slPart90Chk"),s=document.getElementById("slPart90Sub");if(c&&s)s.style.display=c.checked?"block":"none"}
+function _slPart90Toggle(){var c=document.getElementById("slPart90Chk"),s=document.getElementById("slPart90Sub");if(c&&s)s.style.display=c.checked?"block":"none";if(typeof slUpWR==="function")slUpWR()}
 function slSetWYN(v){slWHas=v;slWMod="";slWYr=0;
   document.getElementById("slWarYes").style.cssText=v===true?"flex:1;padding:8px;background:var(--ac);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer":"flex:1;padding:8px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer";
   document.getElementById("slWarNo").style.cssText=v===false?"flex:1;padding:8px;background:var(--r);border:1.5px solid var(--r);border-radius:8px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer":"flex:1;padding:8px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer";
@@ -7894,6 +8143,7 @@ function slResetWarranty(){slWHas=null;slWMod="";slWYr=0;
   var r=document.getElementById("slWResult");if(r)r.style.display="none";
   var _p90=document.getElementById("slPart90Chk");if(_p90)_p90.checked=false;
   var _p90n=document.getElementById("slPart90Name");if(_p90n)_p90n.value="";
+  var _p90dt=document.getElementById("slPart90Date");if(_p90dt)_p90dt.value="";
   var _p90s=document.getElementById("slPart90Sub");if(_p90s)_p90s.style.display="none";
   var _p90b=document.getElementById("slPart90Box");if(_p90b)_p90b.style.display="none";
 }
@@ -7927,6 +8177,7 @@ async function slCreateCall(){
       customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:warrantyObj,
       visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
       spaDesc:(document.getElementById("slSpaDesc")||{}).value||"",notes:notes,
+      reportedIssue:((document.getElementById("slReported")||{}).value||"").trim(),
       phone:ph,phone2:ph2.trim(),email:((document.getElementById("slCustEmail")||{}).value||"").trim(),address:addr,city:city,zip:zip,zone:zone,
       ccOnFile:ccFile,ccRequested:ccReq,paid:paid,paidAt:paid?new Date().toLocaleString():null,
       isRepeat:document.getElementById("slRepeat").checked,
@@ -7937,7 +8188,7 @@ async function slCreateCall(){
       paymentBeforeService:(document.getElementById("slPBS")||{}).checked||false,
       needsOtherTech:(document.getElementById("slNeed2")||{}).checked||false,
       partWarranty90:(document.getElementById("slPart90Chk")||{}).checked||false,
-      partWarranty90Start:((document.getElementById("slPart90Chk")||{}).checked)?(dt||new Date().toISOString().slice(0,10)):null,
+      partWarranty90Start:((document.getElementById("slPart90Chk")||{}).checked)?(((document.getElementById("slPart90Date")||{}).value||"")||null):null,
       partWarranty90Name:(((document.getElementById("slPart90Chk")||{}).checked)?((document.getElementById("slPart90Name")||{}).value||""):""),
       media:[],videoLinks:null,source:"dispatch",status:"pending",
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -7972,6 +8223,10 @@ async function slCreateCall(){
     document.getElementById("slCustCity").value="";
     document.getElementById("slCustZip").value="";
     document.getElementById("slNotes").value="";
+    var _slRp=document.getElementById("slReported");if(_slRp)_slRp.value="";
+    var _slHb=document.getElementById("slHistBox");if(_slHb){_slHb.style.display="none";_slHb.innerHTML=""}
+    var _slLs=document.getElementById("slLastSvc");if(_slLs)_slLs.value="";
+    var _slSr=document.getElementById("slSvcResult");if(_slSr)_slSr.style.display="none";
     var _sd1=document.getElementById("slSpaDesc");if(_sd1)_sd1.value="";
     document.getElementById("slZoneBadge").style.display="none";
     document.getElementById("slCcFile").checked=false;
@@ -8967,6 +9222,59 @@ function _part90Badge(t){
   }
   return '<span class="tkt-tag" style="background:var(--c-neutral-bg);color:var(--i3);font-weight:700;text-decoration:line-through" title="Replacement warranty expired'+esc(nm)+' — part (1 yr) and labor (90 days) both out of warranty">🛠️ Replacement warranty expired</span>';
 }
+// ── 90-DAY SERVICE WARRANTY (callback window) ──────────────────────────────
+// EVERY completed service carries its own 90-day service warranty. If the
+// customer calls back for the SAME problem within 90 days, it's a covered
+// callback (no charge) — separate from the spa warranty and the part warranty.
+var SERVICE_WARRANTY_DAYS=90;
+function _svcWarranty(dateStr){
+  if(!dateStr)return null;
+  var d=new Date(dateStr+"T12:00:00");if(isNaN(d.getTime()))return null;
+  var since=Math.floor((Date.now()-d.getTime())/86400000);
+  var until=new Date(d.getTime()+SERVICE_WARRANTY_DAYS*86400000);
+  return{daysLeft:SERVICE_WARRANTY_DAYS-since,active:(SERVICE_WARRANTY_DAYS-since)>=0,until:until,since:since};
+}
+function _svcUntilStr(sw){return(sw&&sw.until)?sw.until.toLocaleDateString("en-US",{month:"short",day:"numeric"}):""}
+// A spa with a manufacturer warranty established by model+year is governed by
+// THAT warranty — the 90-day service warranty does NOT apply. But a spa marked
+// "under warranty" whose coverage has actually run out (e.g. GS/VS year 6+ →
+// type "rda"/none) is effectively OUT of warranty, so the 90-day DOES apply.
+function _spaUnderWarranty(t){
+  if(!t||!t.warranty||t.warranty.has!==true)return false;
+  var ty=((t.warranty.type)||"").toLowerCase();
+  if(ty===""||ty==="rda"||ty==="none")return false;   // coverage expired → not under warranty
+  return true;                                          // full / half / tc → real coverage
+}
+// Badge for a COMPLETED ticket's own service warranty — shows on every done ticket.
+function _svcWarrantyBadge(t){
+  if(!t)return"";var st=t.status||"";if(st!=="complete"&&st!=="done")return"";
+  if(_spaUnderWarranty(t))return"";   // mfr warranty governs — no 90-day badge
+  var sw=_svcWarranty(t.date||"");if(!sw)return"";
+  var until=_svcUntilStr(sw);
+  if(sw.active){
+    var col=sw.daysLeft<=14?"var(--c-warning-strong)":"var(--c-success-strong)";
+    return '<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700;border:1px solid '+col+'" title="90-day service warranty on this visit. A callback for the same problem before '+until+' is a covered, no-charge return.">\uD83D\uDD01 Service warranty: '+sw.daysLeft+'d left</span>';
+  }
+  return '<span class="tkt-tag" style="background:var(--c-neutral-bg);color:var(--i3);font-weight:700" title="90-day service warranty ended '+until+'. A new visit is billable.">\uD83D\uDD01 Service warranty: ended</span>';
+}
+// Admin-only callback alert: shown on a NOT-yet-billed visit when this customer
+// had a completed service within the last 90 days (so it may be a free callback).
+function _callbackBannerHTML(t){
+  if(typeof isAdmin!=="undefined"&&!isAdmin)return"";
+  if(!t)return"";var st=t.status||"";if(st==="complete"||st==="done")return"";
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):(t.customer||"");
+    var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var prior=all.filter(function(x){return x.id!==t.id&&(x.status==="complete"||x.status==="done")&&x.date&&((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
+    if(!prior.length)return"";
+    prior.sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
+    var lastTkt=prior[prior.length-1];
+    if(_spaUnderWarranty(lastTkt))return"";   // mfr warranty governs — not a 90-day callback
+    var lastDate=lastTkt.date;
+    var sw=_svcWarranty(lastDate);if(!sw||!sw.active)return"";
+    return '<div style="background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px"><span style="font-size:20px">\u26A0\uFE0F</span><div style="min-width:0"><div style="font-weight:800;color:var(--c-warning-fg);font-size:var(--fs-base)">Within 90-day service warranty</div><div style="font-size:var(--fs-xs);color:var(--c-warning-fg);opacity:.9">Last service '+esc(lastDate)+' \u00B7 '+sw.daysLeft+'d left. If it\u2019s the SAME problem, this is a covered callback \u2014 decide before charging.</div></div></div>';
+  }catch(_e){return""}
+}
 function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return "";if(s==="complete")return '<span class="st-badge st-complete">Submitted</span>';if(s==="done")return '<span class="st-badge st-done">'+icon("check",10,{color:"#047857"})+'Done</span>';if(s==="canceled")return '<span class="st-badge st-canceled">Canceled</span>';if(s==="reschedule")return '<span class="st-badge st-reschedule">Reschedule</span>';return ""}
 function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;const _isTechView=currentUser&&currentUser.role==="tech";
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
@@ -9277,9 +9585,12 @@ function _dtSummaryChips(t){
     var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):(t.customer||"");
     var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
     var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
-    chips.push({ic:"🧾",label:mine.length+" visit"+(mine.length===1?"":"s")});
+    var doneCt=mine.filter(function(x){return x.status==="complete"||x.status==="done"}).length;
+    chips.push({ic:"🧾",label:mine.length+" visit"+(mine.length===1?"":"s")+(doneCt?" ("+doneCt+" done)":"")});
     var dates=mine.filter(function(x){return x.id!==t.id&&x.date}).map(function(x){return x.date}).sort();
     if(dates.length)chips.push({ic:"📅",label:"Last: "+dates[dates.length-1]});
+    var doneTkts=mine.filter(function(x){return(x.status==="complete"||x.status==="done")&&x.date}).sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
+    if(doneTkts.length){var _lastDone=doneTkts[doneTkts.length-1];if(!_spaUnderWarranty(_lastDone)){var _sw=_svcWarranty(_lastDone.date);if(_sw)chips.push({ic:"🔁",label:_sw.active?("Service warranty: "+_sw.daysLeft+"d left"):"Service warranty: ended"});}}
     var z=(typeof effectiveZone==="function")?effectiveZone(t):(t.zone||"");if(z)chips.push({ic:"📍",label:z});
     var wl=(t.warranty&&t.warranty.label)||"";if(wl&&wl!=="N/W")chips.push({ic:"🛡️",label:wl});
     if(!chips.length)return"";
@@ -9292,6 +9603,52 @@ function _needs2techBannerHTML(t){
   if(!t||!t.needsOtherTech)return"";
   var reason=t.needsOtherTechReason?(" \u2014 "+esc(t.needsOtherTechReason)):"";
   return '<div style="background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="font-size:20px">\uD83D\uDC65</span><div style="min-width:0"><div style="font-weight:800;color:var(--c-warning-fg);font-size:var(--fs-base)">Needs a 2nd technician</div><div style="font-size:var(--fs-xs);color:var(--c-warning-fg);opacity:.9">This is a 2-person job'+reason+'</div></div></div>';
+}
+// Clear "what to charge" card for the people who bill (admin/organizer).
+// Derives entirely from _billingFor so it always matches the warranty in play.
+function _billingSummaryHTML(t){
+  if(!isAdmin)return"";
+  var b=(typeof _billingFor==="function")?_billingFor(t):null;
+  if(!b)return"";
+  var bg=b.cls==="full"?"var(--c-success-bg)":b.cls==="rda"?"var(--c-danger-bg)":"var(--acl)";
+  var fg=b.cls==="full"?"var(--c-success-fg)":b.cls==="rda"?"var(--c-danger-fg)":"var(--acd)";
+  var _comps=(typeof _detectLimitedComponents==="function")?_detectLimitedComponents(t):[];
+  var _coreFree="";
+  if(b.partsFree&&_comps.length){
+    var _rul=t.compRuling||{};
+    _coreFree=_comps.map(function(c){
+      var win=c.kind==="3mo"?"3-month":"1-year";
+      var r=_rul[c.name]||"";
+      var nameJs=String(c.name).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+      var chOn=r==="charge",coOn=r==="covered";
+      return '<div style="margin-top:7px;padding:8px 10px;border-radius:8px;background:var(--c-warning-bg);border:1px solid var(--c-warning-border)">'+
+        '<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);font-weight:700;line-height:1.35;margin-bottom:6px">\u26A0\uFE0F '+esc(c.label)+' \u2014 '+win+' component'+(r?(chOn?' \u00b7 charging part':' \u00b7 marked covered'):'. Confirm:')+'</div>'+
+        '<div style="display:flex;gap:6px">'+
+          '<button onclick="_setCompRuling(\''+t.id+'\',\''+nameJs+'\',\'charge\')" style="flex:1;padding:6px 8px;border-radius:7px;border:1.5px solid var(--c-danger-border);background:'+(chOn?'var(--c-danger-fg)':'var(--c-danger-bg)')+';color:'+(chOn?'#fff':'var(--c-danger-fg)')+';font-weight:800;font-size:var(--fs-xs);cursor:pointer">Charge part</button>'+
+          '<button onclick="_setCompRuling(\''+t.id+'\',\''+nameJs+'\',\'covered\')" style="flex:1;padding:6px 8px;border-radius:7px;border:1.5px solid var(--c-success-border);background:'+(coOn?'var(--c-success-fg)':'var(--c-success-bg)')+';color:'+(coOn?'#fff':'var(--c-success-fg)')+';font-weight:800;font-size:var(--fs-xs);cursor:pointer">Covered</button>'+
+        '</div></div>';
+    }).join("");
+  }else if(b.partsFree){
+    _coreFree='<div style="margin-top:7px;padding:7px 10px;border-radius:8px;background:var(--c-warning-bg);border:1px solid var(--c-warning-border);font-size:var(--fs-xs);color:var(--c-warning-fg);line-height:1.4">\u26A0\uFE0F <b>Even under warranty, these are 1-yr only</b> \u2014 charge if past 1 year: stereo, speakers, lifts, covers, ozone, salt system, SS band/LED, pin lights, waterfall, pump seals. <b>Pillows: 3-mo.</b></div>';
+  }
+  return '<div class="dt-sec"><div class="dt-sec-t">\uD83D\uDCB5 Billing</div>'+
+    '<div style="display:flex;flex-direction:column;gap:7px">'+
+    '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span style="color:var(--i2);font-weight:700;font-size:var(--fs-sm)">\uD83D\uDD27 Parts</span><span style="font-weight:800;font-size:var(--fs-sm);color:'+(b.partsFree?'var(--c-success-fg)':'var(--ink)')+'">'+b.parts+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span style="color:var(--i2);font-weight:700;font-size:var(--fs-sm)">\uD83D\uDCB5 Labor</span><span style="font-weight:800;font-size:var(--fs-sm);color:'+(b.laborFree?'var(--c-success-fg)':'var(--ink)')+'">'+b.labor+'</span></div>'+
+    '<div style="margin-top:3px;padding:9px 11px;border-radius:9px;background:'+bg+';color:'+fg+';font-weight:800;font-size:var(--fs-sm);text-align:center;line-height:1.35">'+esc(b.bottom)+'</div>'+
+    _coreFree+
+    '</div></div>';
+}
+// "Reported vs Found" — separates the customer's complaint from what the tech
+// actually diagnosed, so misleading descriptions don't confuse billing.
+function _reportedFoundHTML(t){
+  if(!t)return"";
+  var rep=(t.reportedIssue||"").trim(),fnd=(t.foundIssue||"").trim();
+  if(!rep&&!fnd)return"";
+  var rows="";
+  if(rep)rows+='<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:var(--fs-xs);font-weight:800;color:var(--c-info-fg);min-width:74px;padding-top:1px">Customer said</span><span style="font-size:var(--fs-sm);color:var(--ink)">'+esc(rep)+'</span></div>';
+  if(fnd)rows+='<div style="display:flex;gap:8px;align-items:flex-start'+(rep?';margin-top:6px':'')+'"><span style="font-size:var(--fs-xs);font-weight:800;color:var(--i2);min-width:74px;padding-top:1px">Tech found</span><span style="font-size:var(--fs-sm);color:var(--ink);font-weight:600">'+esc(fnd)+'</span></div>';
+  return '<div class="dt-sec"><div class="dt-sec-t">\uD83D\uDDE3\uFE0F Customer reported</div>'+rows+'<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px">↳ What the tech did is in the notes below.</div></div>';
 }
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
@@ -9315,9 +9672,13 @@ function openTktDetail(id){
   let h="";
   try{if(typeof _payBeforeServiceBannerHTML==="function")h+=_payBeforeServiceBannerHTML(t)}catch(_e){}
   try{if(typeof _needs2techBannerHTML==="function")h+=_needs2techBannerHTML(t)}catch(_e){}
+  try{if(typeof _callbackBannerHTML==="function")h+=_callbackBannerHTML(t)}catch(_e){}
   try{if(typeof _paymentAlertBannerHTML==="function")h+=_paymentAlertBannerHTML(t)}catch(_e){}
   try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
   try{if(typeof _dtSummaryChips==="function")h+=_dtSummaryChips(t)}catch(_e){}
+  try{if(typeof _reportedFoundHTML==="function")h+=_reportedFoundHTML(t)}catch(_e){}
+  try{if(typeof _billingSummaryHTML==="function")h+=_billingSummaryHTML(t)}catch(_e){}
+  try{if(typeof _followUpHTML==="function")h+=_followUpHTML(t)}catch(_e){}
   h+='<div style="margin-bottom:16px">';
   if(isAdmin){
     h+='<div class="dt-sec"><div class="dt-sec-t">📇 Customer &amp; Address</div>';
@@ -10700,7 +11061,7 @@ function qbCustRenderDetail(customers){
         h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
         h+=pin;
         h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
-        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+(wt?' · <span style="font-weight:500;color:var(--i3)">'+esc(wt)+'</span>':'')+status+_qbHistBadge(t)+_part90Badge(t)+'</div>';
+        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+(wt?' · <span style="font-weight:500;color:var(--i3)">'+esc(wt)+'</span>':'')+status+_qbHistBadge(t)+_part90Badge(t)+_svcWarrantyBadge(t)+'</div>';
         if(noteTxt)h+='<div>'+esc(noteTxt)+'</div>';
         h+='</div>';
         h+='</div>';
@@ -10725,7 +11086,7 @@ function qbCustRenderDetail(customers){
         h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
         h+='<span class="qb-note-pin"></span>';
         h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
-        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+status+_qbHistBadge(t)+_part90Badge(t)+'</div>';
+        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+status+_qbHistBadge(t)+_part90Badge(t)+_svcWarrantyBadge(t)+'</div>';
         if(wt)h+='<div style="color:var(--i3);font-size:11.5px;margin-bottom:3px">'+esc(wt)+'</div>';
         if(t.notes)h+='<div>'+esc(t.notes.substring(0,200))+(t.notes.length>200?"...":"")+'</div>';
         h+='</div>';
@@ -10867,7 +11228,7 @@ async function custCreateTicket(){
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
-function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();slClearMedia();toast("Form cleared")}
+function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();slClearMedia();toast("Form cleared")}
 function calClearForm(){document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;var sd=document.getElementById("calSpaDesc");if(sd)sd.value="";toast("Form cleared")}
 function showCustSuggest(prefix){
   var input=document.getElementById(prefix+"CustName");
@@ -10892,7 +11253,46 @@ function selectCustSuggest(prefix,name){
   var spaEl=document.getElementById(prefix+"SpaDesc");if(spaEl&&c.spaDesc)spaEl.value=c.spaDesc;
   var notesEl=document.getElementById(prefix+"Notes");if(notesEl&&c.notes)notesEl.value=c.notes;
 }
-function slAutoFillCust(){var name=document.getElementById("slCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("slCustPhone").value)document.getElementById("slCustPhone").value=c.phone;if(c.phone2){var _p2=document.getElementById("slCustPhone2");if(_p2&&!_p2.value){_p2.value=c.phone2;slTogglePhone2(true)}}if(c.email){var _em=document.getElementById("slCustEmail");if(_em&&!_em.value)_em.value=c.email}if(c.address&&!document.getElementById("slCustAddr").value)document.getElementById("slCustAddr").value=c.address;if(c.city&&!document.getElementById("slCustCity").value)document.getElementById("slCustCity").value=c.city;if(c.zip&&!document.getElementById("slCustZip").value){document.getElementById("slCustZip").value=c.zip;slAutoZone()}if(c.spaDesc&&document.getElementById("slSpaDesc"))document.getElementById("slSpaDesc").value=c.spaDesc;if(c.notes&&document.getElementById("slNotes")&&!document.getElementById("slNotes").value)document.getElementById("slNotes").value=c.notes}
+function slAutoFillCust(){var name=document.getElementById("slCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("slCustPhone").value)document.getElementById("slCustPhone").value=c.phone;if(c.phone2){var _p2=document.getElementById("slCustPhone2");if(_p2&&!_p2.value){_p2.value=c.phone2;slTogglePhone2(true)}}if(c.email){var _em=document.getElementById("slCustEmail");if(_em&&!_em.value)_em.value=c.email}if(c.address&&!document.getElementById("slCustAddr").value)document.getElementById("slCustAddr").value=c.address;if(c.city&&!document.getElementById("slCustCity").value)document.getElementById("slCustCity").value=c.city;if(c.zip&&!document.getElementById("slCustZip").value){document.getElementById("slCustZip").value=c.zip;slAutoZone()}if(c.spaDesc&&document.getElementById("slSpaDesc"))document.getElementById("slSpaDesc").value=c.spaDesc}
+// Simple 90-day service-warranty check for the scheduling form (Celia-friendly).
+function _slSvcCheck(){
+  var inp=document.getElementById("slLastSvc"),box=document.getElementById("slSvcResult");
+  if(!box)return;
+  var v=(inp&&inp.value)?inp.value:"";
+  if(!v){box.style.display="none";return}
+  var sw=(typeof _svcWarranty==="function")?_svcWarranty(v):null;
+  if(!sw){box.style.display="none";return}
+  box.style.display="block";
+  if(sw.active){
+    box.style.background="var(--c-success-bg)";box.style.color="var(--c-success-fg)";
+    box.textContent="✅ Within 90-day service warranty — "+sw.daysLeft+" days left. Same problem = covered callback (no charge).";
+  }else{
+    box.style.background="var(--c-neutral-bg)";box.style.color="var(--i2)";
+    box.textContent="⏳ Past 90 days ("+sw.since+" days ago) — bill normally.";
+  }
+}
+// Load this customer's running comment history (like QuickBooks notes) into the
+// form, newest first, and auto-fill the last-service date for the 90-day check.
+function _slLoadHistory(){
+  var box=document.getElementById("slHistBox");if(!box)return;
+  var name=((document.getElementById("slCustName")||{}).value||"").trim();
+  if(!name){box.style.display="none";box.innerHTML="";return}
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(name):name;
+    var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
+    var doneTkts=mine.filter(function(x){return(x.status==="complete"||x.status==="done")&&x.date}).sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
+    if(doneTkts.length){var _ld=doneTkts[doneTkts.length-1];if(typeof _spaUnderWarranty!=="function"||!_spaUnderWarranty(_ld)){var li=document.getElementById("slLastSvc");if(li&&!li.value){li.value=_ld.date;_slSvcCheck()}}}
+    var entries=mine.filter(function(x){return(x.notes&&x.notes.trim())||(x.reportedIssue&&x.reportedIssue.trim())}).map(function(x){
+      var rep=(x.reportedIssue&&x.reportedIssue.trim())?x.reportedIssue.trim():"";
+      var nt=(x.notes&&x.notes.trim())?x.notes.trim():"";
+      return{date:x.date||"",txt:(rep?("🗣️ "+rep+(nt?" — ":"")):"")+nt};
+    }).sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).slice(0,12);
+    if(!entries.length){box.style.display="none";box.innerHTML="";return}
+    box.style.display="block";
+    box.innerHTML='<div style="font-weight:800;font-size:var(--fs-xs);color:var(--i3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">🕘 History — '+entries.length+' note'+(entries.length===1?'':'s')+' (newest first)</div>'+entries.map(function(e){return '<div style="padding:5px 0;border-bottom:1px solid var(--ln);font-size:var(--fs-sm);color:var(--i2);line-height:1.35"><span style="font-weight:700;color:var(--ink)">'+esc(e.date||"—")+'</span> · '+esc(e.txt)+'</div>'}).join("");
+  }catch(_e){box.style.display="none"}
+}
 function calAutoFillCust(){var name=document.getElementById("calCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("calCustPhone").value)document.getElementById("calCustPhone").value=c.phone;if(c.address&&!document.getElementById("calCustAddr").value)document.getElementById("calCustAddr").value=c.address;if(c.city&&!document.getElementById("calCustCity").value)document.getElementById("calCustCity").value=c.city;if(c.zip&&!document.getElementById("calCustZip").value){document.getElementById("calCustZip").value=c.zip;calAutoZone()}if(c.spaDesc&&document.getElementById("calSpaDesc"))document.getElementById("calSpaDesc").value=c.spaDesc;if(c.notes&&document.getElementById("calNotes")&&!document.getElementById("calNotes").value)document.getElementById("calNotes").value=c.notes}
 function refreshAll(){
   // AUDIT FIX: wrap each render in try/catch. Previously a single render
