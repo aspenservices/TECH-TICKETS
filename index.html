@@ -210,6 +210,11 @@ input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor
 /* Layout */
 .wrap{max-width:100%;margin:0 auto;padding:14px 16px;padding-bottom:calc(14px + var(--sb));display:none}
 .wrap.show{display:block;animation:wrapIn var(--dur-base) var(--ease-out)}
+/* pg9 (My Apps hub) needs flex-column layout — but only when actually shown.
+   Inline display:flex was overriding the .wrap default `display:none` and
+   leaking the iframe into other pages (Field, Service Log, Calendar). */
+#pg9.wrap{max-width:none;padding:0;height:calc(100vh - 140px);flex-direction:column}
+#pg9.wrap.show{display:flex;animation:wrapIn var(--dur-base) var(--ease-out)}
 @keyframes wrapIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 /* Button tactile feedback — universal scale on press */
 button:not(:disabled):active{transform:scale(.97)}
@@ -1840,7 +1845,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 </div>
 
 <!-- ══ MY APPS HUB (Nela's profile only) — multi-app embedded iframe ══ -->
-<div class="wrap" id="pg9" style="max-width:none;padding:0;height:calc(100vh - 140px);display:flex;flex-direction:column">
+<div class="wrap" id="pg9">
   <div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:10px 16px 0;flex-shrink:0;border-bottom:2px solid #D4772C">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
@@ -1993,13 +1998,17 @@ const ALERTS_AUTO_PAYFIRST_COUNT = 2;
 // ── NELA'S APPS HUB — embedded apps registry ──────────────────────────────
 // Each app loads as an iframe in pg9. Sub-tabs inside pg9 let her switch
 // without leaving TECH-TICKETS. URLs are editable per-app via localStorage.
-// `audience` lists which user names can see each app — Chemicals is visible
-// to all three (Nela, Alberto, Celia); Invoice Tracker & Cover Tracker stay
-// Nela-only.
+// `audience` lists which user names can see each app:
+//   • Invoice Tracker & Cover Tracker  → Nela + Alberto (Alberto is the Service
+//     Manager and needs visibility into Nela's collections + cover-tracking
+//     workflows)
+//   • Chemicals Maintenance            → Nela + Alberto + Celia (the whole
+//     office team coordinates chemical-service routes)
+//   • Techs (Pedro, Jeremy, etc.)      → no apps at all (they don't see the tab)
 const NELA_APPS = [
-  {key:"invoice",  label:"💰 Invoice Tracker",       defaultURL:"https://aspenservices.github.io/invoice-tracker/",     storageKey:"aspInvoiceTrackerURL", audience:["Nela"]},
+  {key:"invoice",  label:"💰 Invoice Tracker",       defaultURL:"https://aspenservices.github.io/invoice-tracker/",     storageKey:"aspInvoiceTrackerURL", audience:["Nela","Alberto"]},
   {key:"chem",     label:"🧪 Chemicals Maintenance", defaultURL:"https://aspenservices.github.io/CHEMICAL-MAINTENCE/",  storageKey:"aspChemicalsURL",      audience:["Nela","Alberto","Celia"]},
-  {key:"cover",    label:"📦 Cover Tracker",         defaultURL:"https://aspenservices.github.io/cover-tracker/",       storageKey:"aspCoverTrackerURL",   audience:["Nela"]}
+  {key:"cover",    label:"📦 Cover Tracker",         defaultURL:"https://aspenservices.github.io/cover-tracker/",       storageKey:"aspCoverTrackerURL",   audience:["Nela","Alberto"]}
 ];
 function getAppsForCurrentUser(){
   if(!currentUser||!currentUser.name)return [];
