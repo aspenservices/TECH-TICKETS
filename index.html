@@ -1953,6 +1953,22 @@ const FIREBASE_CONFIG = {
 const SERVICE_MGR_NAME = "Alberto";
 const SERVICE_MGR_TITLE = "Service Manager";
 const SERVICE_MGR_PHONE = "557-233-7119"; // Alberto's number for customer SMS replies
+const SERVICE_MGR_EMAIL = "alberto@aspenspas.com";
+// Team contacts for weekly pending-payments summary (edit if these change)
+const ALERTS_TEAM_EMAILS = ["nela.berling@gmail.com","alberto@aspenspas.com","celia@aspenspas.com"];
+// Show "Send reminder" on individual alerts older than this many days
+const ALERTS_REMINDER_THRESHOLD_DAYS = 7;
+// Auto-flag a customer as PAY FIRST when they have ≥ this many open invoice alerts
+const ALERTS_AUTO_PAYFIRST_COUNT = 2;
+// Aging buckets, matched to accounts-receivable standards
+const ALERTS_AGING_BUCKETS = [
+  {key:"0-7",   label:"0-7 days",   min:0,  max:7,    color:"#10b981", bg:"#d1fae5"},
+  {key:"8-30",  label:"8-30 days",  min:8,  max:30,   color:"#f59e0b", bg:"#fef3c7"},
+  {key:"31-60", label:"31-60 days", min:31, max:60,   color:"#f97316", bg:"#fed7aa"},
+  {key:"61-90", label:"61-90 days", min:61, max:90,   color:"#dc2626", bg:"#fee2e2"},
+  {key:"91+",   label:"91+ days",   min:91, max:99999,color:"#7f1d1d", bg:"#fecaca"}
+];
+let _alertsAgeFilter="all"; // current bucket filter for the Alerts tab
 </script>
 <script>
 // ═══ FIREBASE INIT ═══
@@ -4777,7 +4793,21 @@ function _isCustPayFirst(name){
     if(!name)return false;
     var k=_custGroupKey(name);if(!k)return false;
     var all=[].concat(Array.isArray(active)?active:[],Array.isArray(done)?done:[]);
-    return all.some(function(t){return t&&t.paymentBeforeService&&_custGroupKey(t.customer)===k});
+    if(all.some(function(t){return t&&t.paymentBeforeService&&_custGroupKey(t.customer)===k}))return true;
+    // AUTO-DETECT: if the customer has ≥ ALERTS_AUTO_PAYFIRST_COUNT open invoice
+    // alerts from the Invoice Tracker, flag them PAY FIRST automatically. This
+    // protects against starting work for someone who's behind on payments.
+    if(Array.isArray(crossAppEvents)&&crossAppEvents.length){
+      var myKeys=(typeof _custKeys==="function")?_custKeys(name):[];
+      if(myKeys.length){
+        var matching=crossAppEvents.filter(function(ev){
+          if(!ev.customerKeys||!ev.customerKeys.length)return false;
+          return ev.customerKeys.some(function(x){return myKeys.indexOf(x)>=0});
+        });
+        if(matching.length>=ALERTS_AUTO_PAYFIRST_COUNT)return true;
+      }
+    }
+    return false;
   }catch(_e){return false}
 }
 function _payBeforeServiceBannerHTML(t){
@@ -5054,14 +5084,151 @@ function _jumpToReschedCustomer(name){
   }catch(e){console.warn("[jump resched]",e)}
 }
 
+// ─── PENDING PAYMENTS — AGING, METRICS, EMAIL HELPERS ────────────────────
+// Days since the alert was created (rounded down, never negative).
+function _alertAgeDays(ev){
+  if(!ev||!ev.createdAt||!ev.createdAt.toDate)return 0;
+  return Math.max(0,Math.floor((Date.now()-ev.createdAt.toDate().getTime())/86400000));
+}
+// Pick the aging-bucket definition for a given day count.
+function _alertAgeBucket(days){
+  for(var i=0;i<ALERTS_AGING_BUCKETS.length;i++){
+    var b=ALERTS_AGING_BUCKETS[i];
+    if(days>=b.min&&days<=b.max)return b;
+  }
+  return ALERTS_AGING_BUCKETS[ALERTS_AGING_BUCKETS.length-1];
+}
+// Numeric amount from payload (defensive parse).
+function _alertAmount(ev){
+  try{var n=parseFloat((ev&&ev.payload&&ev.payload.amount)||0);return isNaN(n)?0:n}catch(_e){return 0}
+}
+// Summary: total count, total $, breakdown by aging bucket.
+function _alertsSummary(events){
+  var sum={total:0,totalAmount:0,oldestDays:0,byBucket:{}};
+  ALERTS_AGING_BUCKETS.forEach(function(b){sum.byBucket[b.key]={count:0,amount:0,bucket:b}});
+  (events||[]).forEach(function(ev){
+    sum.total++;
+    var a=_alertAmount(ev);sum.totalAmount+=a;
+    var d=_alertAgeDays(ev);if(d>sum.oldestDays)sum.oldestDays=d;
+    var b=_alertAgeBucket(d);
+    sum.byBucket[b.key].count++;
+    sum.byBucket[b.key].amount+=a;
+  });
+  return sum;
+}
+// Apply the active aging filter to the event list.
+function _filterAlertsByAge(events){
+  if(!_alertsAgeFilter||_alertsAgeFilter==="all")return events;
+  var bucket=ALERTS_AGING_BUCKETS.find(function(b){return b.key===_alertsAgeFilter});
+  if(!bucket)return events;
+  return (events||[]).filter(function(ev){var d=_alertAgeDays(ev);return d>=bucket.min&&d<=bucket.max});
+}
+function _setAlertsAgeFilter(key){_alertsAgeFilter=key||"all";if(typeof rndrAlerts==="function")rndrAlerts()}
+// Open mailto: with a customer reminder body for ONE specific overdue invoice.
+function _sendAlertReminder(eventId){
+  var ev=(crossAppEvents||[]).find(function(e){return e.id===eventId});
+  if(!ev){toast("Alert not found","err");return}
+  var p=ev.payload||{};
+  var to=(p.customerEmail||"").trim();
+  if(!to){toast("No customer email on this alert","warn");return}
+  var name=ev.customerName||"Valued Customer";
+  var invoice=p.invoiceNumber||p.invoiceNum||"";
+  var amount=_alertAmount(ev);
+  var days=_alertAgeDays(ev);
+  var subject="Friendly reminder — Aspen Spas invoice"+(invoice?(" #"+invoice):"");
+  var body="Good afternoon "+name+",\n\n"
+    +"This is a friendly reminder from Aspen Spas regarding "+(invoice?("invoice #"+invoice):"a recent invoice")
+    +(amount>0?(" for $"+amount.toFixed(2)):"")
+    +" that has been open for "+days+" days.\n\n"
+    +"At your convenience, please reply with payment confirmation, or let us know if you have any questions about the charges. "
+    +"If you've already paid by check, please let us know so we can update our records.\n\n"
+    +"You can reach me directly by text at "+SERVICE_MGR_PHONE+".\n\n"
+    +"Thank you for choosing Aspen Spas,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
+  var href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  window.location.href=href;
+}
+// Build the weekly summary email body (no PII beyond customer name + invoice info).
+function _buildWeeklySummaryBody(events){
+  var sum=_alertsSummary(events);
+  var lines=[];
+  lines.push("Weekly Pending Payments Summary — "+new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}));
+  lines.push("");
+  lines.push("TOTAL: "+sum.total+" open invoices · $"+sum.totalAmount.toFixed(2)+" outstanding");
+  lines.push("Oldest: "+sum.oldestDays+" days");
+  lines.push("");
+  lines.push("BY AGING BUCKET:");
+  ALERTS_AGING_BUCKETS.forEach(function(b){
+    var s=sum.byBucket[b.key];
+    if(s.count>0)lines.push("  "+b.label+":  "+s.count+" invoice"+(s.count===1?"":"s")+" — $"+s.amount.toFixed(2));
+  });
+  lines.push("");
+  // List oldest 10 alerts
+  var sorted=(events||[]).slice().sort(function(a,b){return _alertAgeDays(b)-_alertAgeDays(a)});
+  var top=sorted.slice(0,10);
+  if(top.length){
+    lines.push("TOP "+top.length+" OLDEST:");
+    top.forEach(function(ev){
+      var p=ev.payload||{};
+      var d=_alertAgeDays(ev);
+      var nm=ev.customerName||"Unknown";
+      var inv=p.invoiceNumber||p.invoiceNum||"";
+      var amt=_alertAmount(ev);
+      var reason=(p.reasonLabel||p.reason||"").replace(/_/g," ");
+      lines.push("  "+d+"d · "+nm+(inv?(" · #"+inv):"")+(amt>0?(" · $"+amt.toFixed(2)):"")+(reason?(" · "+reason):""));
+    });
+  }
+  lines.push("");
+  lines.push("— Auto-generated from TECH-TICKETS Alerts Center");
+  return lines.join("\n");
+}
+// Compose mailto: with the weekly summary, addressed to Nela, Alberto, and Celia.
+function _sendWeeklyAlertsSummary(){
+  var events=crossAppEvents||[];
+  if(!events.length){toast("No open alerts to summarize","info");return}
+  var subject="Aspen Spas — Pending Payments ("+events.length+" open · "+new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})+")";
+  var body=_buildWeeklySummaryBody(events);
+  var to=ALERTS_TEAM_EMAILS.join(",");
+  var href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  window.location.href=href;
+}
+
 function rndrAlerts(){
   const body=document.getElementById('alertsTabBody');
   const cntEl=document.getElementById('alertsTabCount');
   if(!body)return;
-  const events=crossAppEvents||[];
-  if(cntEl){if(events.length){cntEl.style.display='inline-flex';cntEl.textContent=events.length}else cntEl.style.display='none'}
-  if(!events.length){
+  const allEvents=crossAppEvents||[];
+  if(cntEl){if(allEvents.length){cntEl.style.display='inline-flex';cntEl.textContent=allEvents.length}else cntEl.style.display='none'}
+  if(!allEvents.length){
     body.innerHTML='<div style="text-align:center;padding:80px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px"><div style="font-size:64px;margin-bottom:14px">🎉</div><h3 style="margin:0 0 6px;color:var(--i1);font-size:18px">All clear!</h3><p style="margin:0;font-size:13px">No active alerts. When other Aspen apps publish payment issues or service flags, they\'ll appear here.</p></div>';
+    return;
+  }
+  // ─── SUMMARY HEADER (#1) + AGING FILTER (#4) + WEEKLY SUMMARY EMAIL (#3) ───
+  const sum=_alertsSummary(allEvents);
+  let summaryHTML='<div style="background:linear-gradient(135deg,#fef3c7,#fed7aa);border:1px solid #fbbf24;border-radius:12px;padding:14px 16px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.05)">';
+  summaryHTML+='<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px">';
+  summaryHTML+='<div><h3 style="margin:0;font-size:15px;font-weight:800;color:#7c2d12">📊 Pending Payments Summary</h3>';
+  summaryHTML+='<div style="display:flex;gap:18px;margin-top:6px;flex-wrap:wrap"><div><span style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Open</span><div style="font-size:22px;font-weight:800;color:#111827;line-height:1.1">'+sum.total+'</div></div>';
+  summaryHTML+='<div><span style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Outstanding</span><div style="font-size:22px;font-weight:800;color:#111827;line-height:1.1">$'+sum.totalAmount.toFixed(2)+'</div></div>';
+  summaryHTML+='<div><span style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Oldest</span><div style="font-size:22px;font-weight:800;color:'+(sum.oldestDays>=31?'#dc2626':sum.oldestDays>=8?'#f97316':'#10b981')+';line-height:1.1">'+sum.oldestDays+'d</div></div>';
+  summaryHTML+='</div></div>';
+  summaryHTML+='<button onclick="_sendWeeklyAlertsSummary()" title="Email summary to Nela, Alberto, and Celia" style="background:#fff;border:1.5px solid #92400e;color:#7c2d12;padding:9px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px">📧 Send Weekly Summary</button>';
+  summaryHTML+='</div>';
+  // Aging filter pills
+  summaryHTML+='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:11px;color:#92400e;font-weight:600;margin-right:4px">FILTER:</span>';
+  var allActive=_alertsAgeFilter==="all";
+  summaryHTML+='<button onclick="_setAlertsAgeFilter(\'all\')" style="padding:5px 11px;border-radius:999px;border:1.5px solid '+(allActive?'#7c2d12':'#fbbf24')+';background:'+(allActive?'#7c2d12':'#fff')+';color:'+(allActive?'#fff':'#7c2d12')+';font-size:11px;font-weight:700;cursor:pointer">All ('+sum.total+')</button>';
+  ALERTS_AGING_BUCKETS.forEach(function(b){
+    var s=sum.byBucket[b.key];
+    if(s.count===0)return;
+    var active=_alertsAgeFilter===b.key;
+    summaryHTML+='<button onclick="_setAlertsAgeFilter(\''+b.key+'\')" style="padding:5px 11px;border-radius:999px;border:1.5px solid '+b.color+';background:'+(active?b.color:b.bg)+';color:'+(active?'#fff':b.color)+';font-size:11px;font-weight:700;cursor:pointer">'+b.label+' ('+s.count+' · $'+s.amount.toFixed(0)+')</button>';
+  });
+  summaryHTML+='</div></div>';
+
+  // Apply the aging filter to events for the grouping below
+  const events=_filterAlertsByAge(allEvents);
+  if(!events.length){
+    body.innerHTML=summaryHTML+'<div style="text-align:center;padding:40px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px;font-size:13px">No alerts in this aging range. Pick another filter or "All".</div>';
     return;
   }
   const groups={};
@@ -5079,7 +5246,7 @@ function rndrAlerts(){
     if(ib===-1)return -1;
     return ia-ib;
   });
-  let html='';
+  let html=summaryHTML;
   sortedKeys.forEach(key=>{
     const g=groups[key];
     const info=g.info;
@@ -5101,11 +5268,18 @@ function rndrAlerts(){
       }
       const sev=ev.severity||'warn';
       const sevDot=sev==='urgent'?'<span style="display:inline-block;width:8px;height:8px;background:#dc2626;border-radius:50%;box-shadow:0 0 0 2px #fee2e2;margin-right:7px;flex-shrink:0"></span>':(sev==='info'?'<span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:50%;margin-right:7px;flex-shrink:0"></span>':'<span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;margin-right:7px;flex-shrink:0"></span>');
+      // Aging info for this alert
+      const _ageDays=_alertAgeDays(ev);
+      const _ageBucket=_alertAgeBucket(_ageDays);
+      const _isOverdue=_ageDays>=ALERTS_REMINDER_THRESHOLD_DAYS;
+      const _hasEmail=!!(p.customerEmail&&String(p.customerEmail).trim());
       html+='<div style="background:white;border:1px solid #e5e7eb;border-radius:9px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,0.03)">';
       html+='<div style="flex:1;min-width:0">';
-      html+='<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">';
+      html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">';
       html+=sevDot;
       html+='<a href="#" onclick="event.preventDefault();goToCustomerFromAlert(\''+ev.id+'\')" style="font-weight:700;color:#111827;font-size:15px;text-decoration:none;cursor:pointer">'+esc(ev.customerName||'Unknown')+' <span style="color:#6b7280">›</span></a>';
+      // Aging pill
+      html+='<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:'+_ageBucket.bg+';color:'+_ageBucket.color+';font-size:10px;font-weight:700;letter-spacing:.3px">'+_ageDays+'d</span>';
       html+='</div>';
       const details=[];
       if(p.invoiceNumber)details.push('Invoice <b>#'+esc(p.invoiceNumber)+'</b>');
@@ -5129,7 +5303,12 @@ function rndrAlerts(){
       const srcLabel=ev.sourceApp==='invoice-tracker'?'Invoice Tracker':(ev.sourceApp||'Unknown app');
       html+='<div style="font-size:10px;color:#9ca3af;margin-top:5px;margin-left:15px">From '+esc(srcLabel)+(ev.createdBy?' · by '+esc(ev.createdBy):'')+'</div>';
       html+='</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">';
+      if(_isOverdue&&_hasEmail){
+        html+='<button onclick="_sendAlertReminder(\''+ev.id+'\')" title="Send a reminder email to the customer" style="background:#dbeafe;border:1px solid #93c5fd;color:#1e40af;padding:7px 11px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📨 Remind</button>';
+      }
       html+='<button onclick="markAlertResolved(\''+ev.id+'\')" title="Mark resolved" style="background:white;border:1px solid #d1d5db;color:#374151;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">✓ Resolve</button>';
+      html+='</div>';
       html+='</div>';
     });
     html+='</div>';
@@ -7170,7 +7349,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${_svcWarrantyBadge(t)}${_followUpBadge(t)}${_recurrentBadge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${_svcWarrantyBadge(t)}${_followUpBadge(t)}${_recurrentBadge(t)}${_paymentPendingBadge(t)}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})</div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -9372,6 +9551,39 @@ function _recurrentBannerHTML(t){
   var info=_recurrentCallerInfo(t.customer);
   if(!info.isRecurrent)return"";
   return '<div style="margin:10px 0;padding:10px 13px;background:var(--c-warning-bg);color:var(--c-warning-fg);border:1.5px solid var(--c-warning-strong);border-radius:9px;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;gap:8px">🔁 <span><b>Repeat caller alert</b> — '+esc(t.customer)+' has <b>'+info.count+' tickets in the last '+info.days+' days</b>. Review for recurring issue, difficult install, or VIP handling.</span></div>';
+}
+// ── PAYMENT PENDING — CUSTOMER HAS OPEN INVOICE ALERTS ────────────────────
+// Surfaces "this customer owes us money" on every ticket card so Nela (and
+// anyone scanning the dashboard) can see at a glance which tickets need
+// collection follow-up — without opening each one. Color escalates with age.
+function _paymentPendingInfo(customerName){
+  try{
+    if(!customerName||!Array.isArray(crossAppEvents)||!crossAppEvents.length)return null;
+    var myKeys=(typeof _custKeys==="function")?_custKeys(customerName):[];
+    if(!myKeys.length)return null;
+    var matching=crossAppEvents.filter(function(ev){
+      if(!ev.customerKeys||!ev.customerKeys.length)return false;
+      return ev.customerKeys.some(function(x){return myKeys.indexOf(x)>=0});
+    });
+    if(!matching.length)return null;
+    var oldest=0,total=0;
+    matching.forEach(function(ev){
+      var d=_alertAgeDays(ev);if(d>oldest)oldest=d;
+      total+=_alertAmount(ev);
+    });
+    return {count:matching.length,oldestDays:oldest,totalAmount:total,events:matching};
+  }catch(_e){return null}
+}
+function _paymentPendingBadge(t){
+  if(!t||!t.customer)return"";
+  var info=_paymentPendingInfo(t.customer);
+  if(!info)return"";
+  var col=info.oldestDays>=31?"#dc2626":info.oldestDays>=8?"#b45309":"#92400e";
+  var bg=info.oldestDays>=31?"#fee2e2":info.oldestDays>=8?"#fed7aa":"#fef3c7";
+  var bd=info.oldestDays>=31?"#dc2626":"#f59e0b";
+  var lbl="💸 "+info.count+" pending"+(info.totalAmount>0?" · $"+info.totalAmount.toFixed(0):"")+(info.oldestDays>0?" · "+info.oldestDays+"d":"");
+  var ttl="Customer has "+info.count+" open payment alert"+(info.count===1?"":"s")+" in the Invoice Tracker. Open the ticket to see details and take action.";
+  return '<span class="tkt-tag" style="background:'+bg+';color:'+col+';font-weight:800;border:1px solid '+bd+'" title="'+ttl+'">'+lbl+'</span>';
 }
 // ── 90-DAY SERVICE WARRANTY (callback window) ──────────────────────────────
 // EVERY completed service carries its own 90-day service warranty. If the
