@@ -218,6 +218,9 @@ input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor
 #pg5 .cal-wrap.slog-mode-log .cal-side{display:none}
 #pg5 .cal-wrap.slog-mode-new .cal-main{display:none}
 #pg5 .cal-wrap.slog-mode-new .cal-side{display:block !important;width:100%;max-width:100%;position:static}
+/* Form-section-card textareas — clean focus state with brand ring */
+.form-section-card textarea:hover{border-color:#a8b1bd !important}
+.form-section-card textarea:focus{border-color:var(--ac) !important;box-shadow:0 0 0 3px rgba(212,119,44,.15) !important}
 .badge{display:inline-block;background:var(--r);color:#fff;font-size:var(--fs-xs);border-radius:var(--r-md);padding:1px 6px;margin-left:3px;font-weight:700;vertical-align:middle}.badge.bg-g{background:var(--ac)}
 
 /* Layout */
@@ -1423,15 +1426,15 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--r);cursor:pointer" title="Customer must pay BEFORE the tech does any work"><input type="checkbox" id="slPBS" style="width:18px;height:18px"> 💳 Payment before service</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-warning-fg);cursor:pointer" title="This job needs an extra technician (2-person job)"><input type="checkbox" id="slNeed2" style="width:18px;height:18px"> 👥 Needs 2nd tech</label>
         </div>
-        <div class="form-section-card" style="margin-bottom:14px;background:var(--c-info-bg);border:1.5px solid var(--c-info-border);border-radius:12px;padding:12px 14px">
-          <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--c-info-fg);font-weight:800;font-size:13px;letter-spacing:.3px">🛁 SPA DESCRIPTION <span style="font-weight:500;font-size:11px;color:var(--i3);text-transform:none;letter-spacing:0">— model, serial number, equipment</span></div>
-          <textarea id="slSpaDesc" rows="4" placeholder="e.g. Aspen ES Elite 2024 · Serial #ASP-12345 · Standard pump · LED lights..." style="width:100%;padding:12px;border:2px solid #cdd6df;border-radius:10px;font-size:14px;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s;box-sizing:border-box"></textarea>
+        <div class="form-section-card" style="margin-bottom:16px;background:var(--c-info-bg);border:1.5px solid var(--c-info-border);border-radius:14px;padding:16px 18px">
+          <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-info-fg);font-weight:800;font-size:14px;letter-spacing:.3px">🛁 SPA DESCRIPTION <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— model, serial number, equipment</span></div>
+          <textarea id="slSpaDesc" rows="7" placeholder="e.g. Aspen ES Elite 2024 · Serial #ASP-12345 · Standard pump · LED lights..." style="width:100%;min-height:160px;padding:14px 16px;border:2px solid #cdd6df;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
         </div>
-        <div class="form-section-card" style="margin-bottom:14px;background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:12px 14px">
-          <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--c-warning-fg);font-weight:800;font-size:13px;letter-spacing:.3px">💬 COMMENTS <span style="font-weight:500;font-size:11px;color:var(--i3);text-transform:none;letter-spacing:0">— saved with today's date to the history</span></div>
-          <div id="slHistBox" style="display:none;margin-bottom:8px;max-height:160px;overflow-y:auto;padding:9px 11px;background:#fff;border:1px solid var(--ln);border-radius:9px"></div>
-          <div style="font-size:11.5px;color:var(--i2);margin-bottom:6px;font-weight:700;letter-spacing:.2px">⚡ QUICK ADD — tap to insert:</div>
-          <div id="slTplRow" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+        <div class="form-section-card" style="margin-bottom:16px;background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:14px;padding:16px 18px">
+          <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-warning-fg);font-weight:800;font-size:14px;letter-spacing:.3px">💬 COMMENTS <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— saved with today's date to the history</span></div>
+          <div id="slHistBox" style="display:none;margin-bottom:10px;max-height:160px;overflow-y:auto;padding:11px 13px;background:#fff;border:1px solid var(--ln);border-radius:10px"></div>
+          <div style="font-size:12px;color:var(--i2);margin-bottom:8px;font-weight:700;letter-spacing:.2px">⚡ QUICK ADD — tap to insert:</div>
+          <div id="slTplRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
             <button type="button" data-tpl="📞 Call before arriving" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--c-info-border);border-radius:999px;background:var(--c-info-bg);color:var(--c-info-fg);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">📞 Call before</button>
             <button type="button" data-tpl="🚪 Gate code: " onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🚪 Gate code</button>
             <button type="button" data-tpl="💧 Leaking" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--c-danger-border);border-radius:999px;background:var(--c-danger-bg);color:var(--c-danger-fg);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">💧 Leaking</button>
@@ -1445,8 +1448,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
             <button type="button" data-tpl="🌇 Prefers PM" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🌇 PM</button>
             <button type="button" onclick="_slClearTpl()" title="Clear comments" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:transparent;color:var(--i3);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">✕ Clear</button>
           </div>
-          <textarea id="slNotes" rows="3" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;padding:12px;border:2px solid #e6d399;border-radius:10px;font-size:14px;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s;box-sizing:border-box"></textarea>
-          <div style="font-size:11px;color:var(--i3);margin-top:5px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
+          <textarea id="slNotes" rows="6" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;min-height:140px;padding:14px 16px;border:2px solid #e6d399;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
+          <div style="font-size:11.5px;color:var(--i3);margin-top:7px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
         </div>
         <!-- Photos / PDFs for technicians -->
         <div style="margin-bottom:10px">
@@ -10580,23 +10583,23 @@ function openTktDetail(id){
       resched:"Hi, this is "+_smsTech+" with Aspen Spas. We need to reschedule your appointment — I'll have the office reach out shortly with new options. Sorry for the inconvenience!"
     };
     function _smsHref(b){return 'sms:'+_phClean+'?&body='+encodeURIComponent(b)}
-    // Call Customer + Text "On The Way" — only for techs (admin doesn't need these in office)
-    if(!isAdmin){
-      h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">';
-      h+='<a href="tel:'+_phClean+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
-      h+='<a href="'+_smsHref(_tpl.onway)+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--c-success-strong);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
-      h+='</div>';
-      // Secondary SMS templates collapsed behind a "More messages" toggle
-      // so the screen stays clean for the actions techs use most often.
-      var _moreId="moreMsg_"+t.id;
-      h+='<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:var(--fs-sm);font-weight:600;color:var(--i3);padding:6px 0;list-style:none;display:inline-flex;align-items:center;gap:4px">'+icon("chevron-down",13,{color:"var(--i3)"})+'More messages</summary>';
-      h+='<div class="sms-tpl-row" style="margin-top:6px">';
-      h+='<a class="sms-tpl late" href="'+_smsHref(_tpl.late)+'" title="Send: Running 15 min late">'+icon("clock",13,{color:"currentColor"})+'Running Late</a>';
-      h+='<a class="sms-tpl noans" href="'+_smsHref(_tpl.noans)+'" title="Send: At your door, no answer">'+icon("door-closed",13,{color:"currentColor"})+'No Answer</a>';
-      h+='<a class="sms-tpl done" href="'+_smsHref(_tpl.done)+'" title="Send: Job complete">'+icon("check-circle",13,{color:"currentColor"})+'Job Done</a>';
-      h+='<a class="sms-tpl resched" href="'+_smsHref(_tpl.resched)+'" title="Send: Need to reschedule">'+icon("calendar-x",13,{color:"currentColor"})+'Reschedule</a>';
-      h+='</div></details>';
-    }
+    // Call Customer + Text "On The Way" — visible to TECHS and to ADMIN/ORGANIZER
+    // (Nela needs these too when coordinating from the office: she may send
+    // "On The Way" on a tech's behalf, or "Reschedule" / "No Answer" etc.)
+    h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">';
+    h+='<a href="tel:'+_phClean+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
+    h+='<a href="'+_smsHref(_tpl.onway)+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--c-success-strong);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
+    h+='</div>';
+    // Secondary SMS templates collapsed behind a "More messages" toggle
+    // so the screen stays clean for the actions used most often.
+    var _moreId="moreMsg_"+t.id;
+    h+='<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:var(--fs-sm);font-weight:600;color:var(--i3);padding:6px 0;list-style:none;display:inline-flex;align-items:center;gap:4px">'+icon("chevron-down",13,{color:"var(--i3)"})+'More messages (Late · No answer · Done · Reschedule)</summary>';
+    h+='<div class="sms-tpl-row" style="margin-top:6px">';
+    h+='<a class="sms-tpl late" href="'+_smsHref(_tpl.late)+'" title="Send: Running 15 min late">'+icon("clock",13,{color:"currentColor"})+'Running Late</a>';
+    h+='<a class="sms-tpl noans" href="'+_smsHref(_tpl.noans)+'" title="Send: At your door, no answer">'+icon("door-closed",13,{color:"currentColor"})+'No Answer</a>';
+    h+='<a class="sms-tpl done" href="'+_smsHref(_tpl.done)+'" title="Send: Job complete">'+icon("check-circle",13,{color:"currentColor"})+'Job Done</a>';
+    h+='<a class="sms-tpl resched" href="'+_smsHref(_tpl.resched)+'" title="Send: Need to reschedule">'+icon("calendar-x",13,{color:"currentColor"})+'Reschedule</a>';
+    h+='</div></details>';
   }
   // Editable fields
   // Tech assignment: show only assigned tech(s); admin gets "Change" to expand the full roster.
@@ -10690,6 +10693,14 @@ function openTktDetail(id){
   // Save Changes — admin only, primary action so it appears first
   if(isAdmin){
     h+='<button onclick="saveDetailEdits(\''+t.id+'\')" style="padding:12px 18px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:var(--fs-base);font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">'+icon("save",15,{color:"#fff"})+'Save Changes</button>';
+    // 📱 Text Customer — always-on button so admin can send the appointment SMS
+    // any time, regardless of whether the assignment changed since open. The
+    // post-save confirm misfires if you reopen an already-scheduled ticket
+    // and don't change anything; this button doesn't depend on that.
+    var _txtPhone=(t.phone||t.phone2||(Array.isArray(t.phones)&&t.phones[0])||"");
+    if(_txtPhone&&t.techs&&t.techs.length&&t.date){
+      h+='<button onclick="_textCustomerFromModal(\''+t.id+'\')" title="Open Messages with the appointment notification pre-filled" style="padding:12px 18px;background:var(--c-success-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-base);font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">📱 Text Customer</button>';
+    }
   }
   // Field Report — for techs, render as GIANT prominent button (their main action).
   // For admins, keep regular size since it's one of many things they do.
@@ -10874,6 +10885,24 @@ function _assignmentChanged(orig,newTechs,newDate,newArrival){
   if((orig.date||"")!==(newDate||""))return true;
   if((orig.arrival||"")!==(newArrival||""))return true;
   return false;
+}
+// ── Manual "Text Customer" trigger from the ticket detail modal ────────
+// Reads the CURRENT modal values (techs pills, date input, arrival input) so
+// admin can text the customer mid-edit without needing to save first. Falls
+// back to saved ticket values when a field hasn't been touched.
+function _textCustomerFromModal(id){
+  try{
+    var t=[...active,...done].find(function(x){return x.id===id});
+    if(!t){toast("Ticket not found","err");return}
+    var techs=[];
+    document.querySelectorAll("#tktDetailBody .pill.on").forEach(function(b){techs.push(b.textContent)});
+    if(!techs.length)techs=(t.techs||[]).slice();
+    var dEl=document.getElementById("dtDate");var date=dEl&&dEl.value?dEl.value:(t.date||"");
+    var aEl=document.getElementById("dtArrival");var arrival=aEl&&aEl.value?aEl.value:(t.arrival||"");
+    if(!techs.length){toast("Select at least one technician first","warn");return}
+    if(!date){toast("Set a date first","warn");return}
+    openAppointmentSMS(t,techs,date,arrival);
+  }catch(e){console.warn("[textCustomerFromModal]",e);toast("Error opening SMS","err")}
 }
 // Open the SMS app with the appointment notification pre-filled
 function openAppointmentSMS(ticket,techs,date,arrival){
