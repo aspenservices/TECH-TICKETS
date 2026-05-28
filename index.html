@@ -203,8 +203,21 @@ input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor
 
 /* Tabs */
 .tabs{display:flex;background:var(--cd);border-bottom:1px solid var(--ln);position:sticky;top:0;z-index:var(--z-sticky);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
-.tab{flex:0 0 auto;padding:12px 14px;text-align:center;font-size:11.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:var(--i3);letter-spacing:.1px;background:var(--cd);user-select:none;white-space:nowrap}
-.tab:active{background:#f9f9f6}.tab.on{color:var(--ac);border-bottom-color:var(--ac)}.tab.hidden{display:none}
+.tab{flex:0 0 auto;padding:13px 16px;text-align:center;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;color:var(--i2);letter-spacing:.3px;background:var(--cd);user-select:none;white-space:nowrap;transition:color .12s,background .12s,border-color .12s}
+.tab:hover{color:var(--i1);background:var(--c-ash)}
+.tab:active{background:#f9f9f6}.tab.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:800}.tab.hidden{display:none}
+/* ── Service Log sub-tabs ── two segmented pills that swap which column
+   takes the full width: "Service Log" (list) vs "New Service Call" (form). */
+.slog-subtabs{display:flex;gap:0;background:var(--cd);padding:8px 12px 0;border-bottom:1px solid var(--ln);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.slog-stab{flex:1 1 auto;min-width:140px;padding:10px 14px;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--i2);background:transparent;border:0;border-bottom:3px solid transparent;cursor:pointer;transition:color .12s,border-color .12s,background .12s;font-family:inherit}
+.slog-stab:hover{color:var(--i1);background:var(--c-ash)}
+.slog-stab.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:800}
+/* When sub-tab "log" is active, show only .cal-main full-width.
+   When "new" is active, show only .cal-side full-width. */
+#pg5 .cal-wrap.slog-mode-log .cal-main{display:block;width:100%;max-width:100%}
+#pg5 .cal-wrap.slog-mode-log .cal-side{display:none}
+#pg5 .cal-wrap.slog-mode-new .cal-main{display:none}
+#pg5 .cal-wrap.slog-mode-new .cal-side{display:block !important;width:100%;max-width:100%;position:static}
 .badge{display:inline-block;background:var(--r);color:#fff;font-size:var(--fs-xs);border-radius:var(--r-md);padding:1px 6px;margin-left:3px;font-weight:700;vertical-align:middle}.badge.bg-g{background:var(--ac)}
 
 /* Layout */
@@ -720,19 +733,19 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .qb-cust-empty-state p{font-size:var(--fs-base);color:var(--i3);max-width:340px;margin:0 auto;line-height:1.5}
 
 /* Detail pane — QB-style "Customer Information" header card */
-.qb-cust-info-hdr{padding:18px 24px 10px;border-bottom:1px solid var(--ln);background:var(--cd)}
-.qb-cust-info-title{font-size:var(--fs-2xl);font-weight:300;color:var(--ink);margin:0;letter-spacing:-.2px}
-.qb-cust-info-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:18px 32px;padding:18px 24px;border-bottom:1px solid var(--ln);background:var(--bg)}
-.qb-cust-info-cell{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start;font-size:12.5px}
-.qb-cust-info-cell label{color:var(--i3);font-weight:600;padding-top:7px;text-align:right}
-.qb-cust-info-cell input,.qb-cust-info-cell textarea{width:100%;padding:6px 8px;border:1px solid transparent;background:transparent;font-size:12.5px;color:var(--ink);border-radius:var(--r-xs);outline:none;resize:none;font-family:inherit;transition:background .1s,border-color .1s}
-.qb-cust-info-cell input:hover,.qb-cust-info-cell textarea:hover{background:#fff;border-color:#e8e2db}
-.qb-cust-info-cell input:focus,.qb-cust-info-cell textarea:focus{background:#fff;border-color:var(--ac);box-shadow:0 0 0 2px rgba(212,119,44,.12)}
-.qb-cust-info-cell .qb-link{color:var(--ac);text-decoration:none;padding-top:7px;font-weight:600}
+.qb-cust-info-hdr{padding:20px 24px 14px;border-bottom:2px solid var(--ln);background:linear-gradient(180deg,var(--cd),var(--bg))}
+.qb-cust-info-title{font-size:24px;font-weight:700;color:var(--ink);margin:0;letter-spacing:-.3px}
+.qb-cust-info-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:18px 32px;padding:20px 24px;border-bottom:1px solid var(--ln);background:var(--bg)}
+.qb-cust-info-cell{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start;font-size:13px}
+.qb-cust-info-cell label{color:var(--i2);font-weight:700;padding-top:8px;text-align:right;letter-spacing:.3px;font-size:11px;text-transform:uppercase}
+.qb-cust-info-cell input,.qb-cust-info-cell textarea{width:100%;padding:8px 10px;border:1.5px solid #d6dae0;background:#fff;font-size:13px;color:var(--ink);border-radius:7px;outline:none;resize:none;font-family:inherit;transition:border-color .15s,box-shadow .15s,background .15s;font-weight:500}
+.qb-cust-info-cell input:hover,.qb-cust-info-cell textarea:hover{border-color:#a8b1bd;background:#fafbfd}
+.qb-cust-info-cell input:focus,.qb-cust-info-cell textarea:focus{background:#fff;border-color:var(--ac);box-shadow:0 0 0 3px rgba(212,119,44,.15)}
+.qb-cust-info-cell .qb-link{color:var(--ac);text-decoration:none;padding-top:7px;font-weight:700;font-size:13px}
 .qb-cust-info-cell .qb-link:hover{text-decoration:underline}
-.qb-cust-action-bar{display:flex;gap:8px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--ln);flex-wrap:wrap}
-.qb-cust-btn{padding:8px 14px;font-size:var(--fs-sm);font-weight:600;border-radius:var(--r-sm);border:1px solid var(--ln);background:#fff;color:var(--i2);cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:5px;position:relative}
-.qb-cust-btn:hover{border-color:var(--ac);color:var(--ac);background:#fff}
+.qb-cust-action-bar{display:flex;gap:8px;padding:12px 24px;background:var(--cd);border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.qb-cust-btn{padding:9px 16px;font-size:13px;font-weight:700;border-radius:8px;border:1.5px solid var(--ln);background:#fff;color:var(--i2);cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:6px;position:relative}
+.qb-cust-btn:hover{border-color:var(--ac);color:var(--ac);background:#fff7ed}
 .qb-cust-btn.primary{background:var(--ac);color:#fff;border-color:var(--ac)}
 .qb-cust-btn.primary:hover{background:var(--acd);color:#fff}
 .qb-cust-btn.brand{background:var(--br);color:#fff;border-color:var(--br)}
@@ -740,9 +753,9 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 /* QB-style tabs in the detail pane */
 .qb-cust-tabs{display:flex;gap:0;padding:0 24px;border-bottom:1px solid var(--ln);background:var(--cd)}
-.qb-cust-tab{padding:11px 16px;font-size:11.5px;font-weight:600;color:var(--i3);text-transform:uppercase;letter-spacing:.6px;cursor:pointer;border-bottom:3px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:color .12s}
-.qb-cust-tab:hover{color:var(--i2)}
-.qb-cust-tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+.qb-cust-tab{padding:13px 18px;font-size:12.5px;font-weight:700;color:var(--i2);text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border-bottom:3px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:color .12s,background .12s}
+.qb-cust-tab:hover{color:var(--i1);background:var(--bg)}
+.qb-cust-tab.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:800}
 .qb-cust-tab-badge{display:inline-block;background:var(--ln);color:var(--i2);font-size:var(--fs-xs);padding:1px 6px;border-radius:var(--r-md);margin-left:5px;font-weight:700}
 .qb-cust-tab.on .qb-cust-tab-badge{background:var(--acl);color:var(--acd)}
 .qb-cust-tab-body{padding:18px 24px}
@@ -1333,7 +1346,11 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 
 <!-- ══ SERVICE LOG ══ -->
 <div class="wrap" id="pg5">
-  <div class="cal-wrap">
+  <div id="slogSubTabs" class="slog-subtabs">
+    <button type="button" class="slog-stab on" data-sub="log" onclick="slogSwitchSub('log')">📋 Service Log</button>
+    <button type="button" class="slog-stab" data-sub="new" onclick="slogSwitchSub('new')">📞 New Service Call</button>
+  </div>
+  <div class="cal-wrap slog-mode-log">
     <div class="cal-main">
       <div class="lbl" style="font-size:var(--fs-md);margin-bottom:4px">📋 Service Log</div>
       <div class="search-wrap"><input class="search-bar" id="searchSlog" placeholder="Search by name, phone, address, ZIP, zone..." oninput="rndrSlog()"></div>
@@ -1406,15 +1423,15 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--r);cursor:pointer" title="Customer must pay BEFORE the tech does any work"><input type="checkbox" id="slPBS" style="width:18px;height:18px"> 💳 Payment before service</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-warning-fg);cursor:pointer" title="This job needs an extra technician (2-person job)"><input type="checkbox" id="slNeed2" style="width:18px;height:18px"> 👥 Needs 2nd tech</label>
         </div>
-        <div style="margin-bottom:10px">
-          <div class="lbl" style="margin-bottom:4px">Spa Description</div>
-          <textarea id="slSpaDesc" rows="4" placeholder="Spa model, serial, equipment..." style="width:100%;padding:10px;border:2px solid var(--ln);border-radius:10px;font-size:var(--fs-md);resize:vertical;outline:none;font-family:inherit;background:var(--bg)"></textarea>
+        <div class="form-section-card" style="margin-bottom:14px;background:var(--c-info-bg);border:1.5px solid var(--c-info-border);border-radius:12px;padding:12px 14px">
+          <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--c-info-fg);font-weight:800;font-size:13px;letter-spacing:.3px">🛁 SPA DESCRIPTION <span style="font-weight:500;font-size:11px;color:var(--i3);text-transform:none;letter-spacing:0">— model, serial number, equipment</span></div>
+          <textarea id="slSpaDesc" rows="4" placeholder="e.g. Aspen ES Elite 2024 · Serial #ASP-12345 · Standard pump · LED lights..." style="width:100%;padding:12px;border:2px solid #cdd6df;border-radius:10px;font-size:14px;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s;box-sizing:border-box"></textarea>
         </div>
-        <div style="margin-bottom:10px">
-          <div class="lbl" style="margin-bottom:4px;display:flex;align-items:center;gap:6px">💬 Comments <span style="font-weight:500;font-size:var(--fs-xs);color:var(--i3)">— saved with today's date to the history</span></div>
-          <div id="slHistBox" style="display:none;margin-bottom:7px;max-height:160px;overflow-y:auto;padding:8px 10px;background:var(--c-ash);border:1px solid var(--ln);border-radius:9px"></div>
-          <div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:4px;font-weight:600">⚡ Quick add — tap to insert:</div>
-          <div id="slTplRow" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px">
+        <div class="form-section-card" style="margin-bottom:14px;background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:12px 14px">
+          <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--c-warning-fg);font-weight:800;font-size:13px;letter-spacing:.3px">💬 COMMENTS <span style="font-weight:500;font-size:11px;color:var(--i3);text-transform:none;letter-spacing:0">— saved with today's date to the history</span></div>
+          <div id="slHistBox" style="display:none;margin-bottom:8px;max-height:160px;overflow-y:auto;padding:9px 11px;background:#fff;border:1px solid var(--ln);border-radius:9px"></div>
+          <div style="font-size:11.5px;color:var(--i2);margin-bottom:6px;font-weight:700;letter-spacing:.2px">⚡ QUICK ADD — tap to insert:</div>
+          <div id="slTplRow" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
             <button type="button" data-tpl="📞 Call before arriving" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--c-info-border);border-radius:999px;background:var(--c-info-bg);color:var(--c-info-fg);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">📞 Call before</button>
             <button type="button" data-tpl="🚪 Gate code: " onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🚪 Gate code</button>
             <button type="button" data-tpl="💧 Leaking" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--c-danger-border);border-radius:999px;background:var(--c-danger-bg);color:var(--c-danger-fg);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">💧 Leaking</button>
@@ -1428,8 +1445,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
             <button type="button" data-tpl="🌇 Prefers PM" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🌇 PM</button>
             <button type="button" onclick="_slClearTpl()" title="Clear comments" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:transparent;color:var(--i3);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">✕ Clear</button>
           </div>
-          <textarea id="slNotes" rows="3" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;padding:10px;border:2px solid var(--ln);border-radius:10px;font-size:var(--fs-md);resize:vertical;outline:none;font-family:inherit;background:var(--bg)"></textarea>
-          <div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
+          <textarea id="slNotes" rows="3" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;padding:12px;border:2px solid #e6d399;border-radius:10px;font-size:14px;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s;box-sizing:border-box"></textarea>
+          <div style="font-size:11px;color:var(--i3);margin-top:5px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
         </div>
         <!-- Photos / PDFs for technicians -->
         <div style="margin-bottom:10px">
@@ -5462,7 +5479,7 @@ function rndrAlerts(){
   summaryHTML+='<div><span style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Outstanding</span><div style="font-size:22px;font-weight:800;color:#111827;line-height:1.1">$'+sum.totalAmount.toFixed(2)+'</div></div>';
   summaryHTML+='<div><span style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Oldest</span><div style="font-size:22px;font-weight:800;color:'+(sum.oldestDays>=31?'#dc2626':sum.oldestDays>=8?'#f97316':'#10b981')+';line-height:1.1">'+sum.oldestDays+'d</div></div>';
   summaryHTML+='</div></div>';
-  summaryHTML+='<button onclick="_sendWeeklyAlertsSummary()" title="Email summary to Nela, Alberto, and Celia" style="background:#fff;border:1.5px solid #92400e;color:#7c2d12;padding:9px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px">📧 Send Weekly Summary</button>';
+  summaryHTML+='<button onclick="_sendWeeklyAlertsSummary()" title="Email summary to Nela, Alberto, and Celia" style="background:#7c2d12;border:2px solid #7c2d12;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 6px rgba(124,45,18,.25);letter-spacing:.2px">📧 Send Weekly Summary</button>';
   summaryHTML+='</div>';
   // Aging filter pills
   summaryHTML+='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:11px;color:#92400e;font-weight:600;margin-right:4px">FILTER:</span>';
@@ -5758,7 +5775,7 @@ if(i===0&&!editingDocId&&currentUser&&currentUser.role==="tech"&&TECHS.indexOf(c
 // Field Report card shows visual selection on first entry — was previously
 // indeterminate until the user tapped one of the buttons).
 if(i===0&&typeof setMode==="function"){setMode(currentMode||"ticket")}
-if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();if(i===8)rndrAlerts();
+if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){if(typeof _restoreSlogSub==="function")_restoreSlogSub();rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();if(i===8)rndrAlerts();
 if(typeof updateTodoVisibility==="function")updateTodoVisibility();
 if(typeof buildBottomNav==="function")buildBottomNav();}
 // ── MY APPS HUB — controls and sub-tab navigation ─────────────────────────
@@ -8382,6 +8399,26 @@ function rndrD(){
 // ═══ SERVICE LOG ═══
 function tktMatchesSearch(t,q){if(!q)return true;const s=q.toLowerCase();const qDigits=q.replace(/\D/g,"");if(qDigits.length>=3){const phD=(t.phone||"").replace(/\D/g,"");const ph2D=(t.phone2||"").replace(/\D/g,"");if((phD&&phD.includes(qDigits))||(ph2D&&ph2D.includes(qDigits)))return true}return(t.customer||"").toLowerCase().includes(s)||(t.phone||"").toLowerCase().includes(s)||(t.address||"").toLowerCase().includes(s)||(effectiveCity(t)||"").toLowerCase().includes(s)||(t.zip||"").includes(s)||(effectiveZone(t)||"").toLowerCase().includes(s)||(t.notes||"").toLowerCase().includes(s)||((t.techs||[]).join(" ")).toLowerCase().includes(s)||((t.workTypes||[]).join(" ")).toLowerCase().includes(s)}
 let slogPreviewId=null;
+// ── Service Log sub-tab switcher ───────────────────────────────────────
+// pg5 now hosts TWO views (list of service calls vs the new-call form),
+// each using the full width. Persist the active sub-tab so returning to
+// the tab feels stable.
+function slogSwitchSub(which){
+  var wrap=document.querySelector("#pg5 .cal-wrap");
+  if(!wrap)return;
+  wrap.classList.toggle("slog-mode-log",which==="log");
+  wrap.classList.toggle("slog-mode-new",which==="new");
+  document.querySelectorAll("#pg5 .slog-stab").forEach(function(b){
+    b.classList.toggle("on",b.dataset.sub===which);
+  });
+  try{sessionStorage.setItem("aspSlogSub",which)}catch(_e){}
+  // Re-rendering the list keeps counts/filters in sync when returning to log
+  if(which==="log"&&typeof rndrSlog==="function")rndrSlog();
+}
+function _restoreSlogSub(){
+  var saved="log";try{saved=sessionStorage.getItem("aspSlogSub")||"log"}catch(_e){}
+  slogSwitchSub(saved);
+}
 function rndrSlog(){
   // Reset date to today on render if it's empty OR if the stored value is in the
   // past. Previously the date was only set to today if empty, so a tab navigation
@@ -8568,7 +8605,8 @@ async function slToggleTech(docId,techName){
   try{
     const doc=await db.collection("tickets").doc(docId).get();
     const d=doc.data();
-    let techs=(d.techs||[]).slice();
+    const origTechs=(d.techs||[]).slice();
+    let techs=origTechs.slice();
     if(techs.includes(techName))techs=techs.filter(x=>x!==techName);
     else techs.push(techName);
     // AUDIT FIX: previously this set status="complete" the moment any tech was
@@ -8579,8 +8617,13 @@ async function slToggleTech(docId,techName){
     var nextStatus;
     if(d.status==="done"||d.status==="canceled"||d.status==="reschedule")nextStatus=d.status;
     else nextStatus="pending";
-    await db.collection("tickets").doc(docId).update({techs,status:nextStatus});
+    var upd={techs:techs,status:nextStatus};
+    await db.collection("tickets").doc(docId).update(upd);
     toast(techs.length?techName+" updated":"Unassigned");
+    // Offer to text the customer with the appointment details — only when a
+    // tech was just ADDED (not removed) and there's a date set on the ticket.
+    var techAdded=techs.length>origTechs.length;
+    if(techAdded){_maybeOfferAppointmentSMS(d,upd)}
     setTimeout(refreshAll,500);
   }catch(e){toast("Error","err")}
 }
@@ -10293,7 +10336,10 @@ async function calSaveAssign(docId){
     var upd={techs:techs,status:nextStatus};
     if(date)upd.date=date;if(arrival)upd.arrival=arrival;
     await db.collection("tickets").doc(docId).update(upd);
-    calPreviewId=null;toast(techs.join(", ")+" assigned ✓");setTimeout(refreshAll,500);
+    calPreviewId=null;toast(techs.join(", ")+" assigned ✓");
+    // Offer the appointment-notification SMS now that a tech is on the books
+    _maybeOfferAppointmentSMS(curData,upd);
+    setTimeout(refreshAll,500);
   }catch(e){toast("Error","err")}
 }
 function calDragStart(e,id){dragTktId=id;e.dataTransfer.effectAllowed="move";e.target.classList.add("dragging");try{if(navigator.vibrate)navigator.vibrate(10)}catch(_){}setTimeout(()=>{if(e.target)e.target.classList.remove("dragging")},200)}
@@ -10304,8 +10350,18 @@ async function calDropOnDay(e,ds){
   // in depth in case the DOM is manipulated.)
   if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can move tickets","err");return}
   if(!dragTktId||!db)return;
-  try{await db.collection("tickets").doc(dragTktId).update({date:ds});toast("Moved to "+ds);dragTktId=null;setTimeout(refreshAll,500)}
-  catch(er){toast("Error: "+er.message,"err")}
+  try{
+    // Read original ticket so we can offer the appointment SMS afterwards
+    var _origDoc=await db.collection("tickets").doc(dragTktId).get();
+    var _orig=_origDoc.exists?_origDoc.data():{};
+    var upd={date:ds};
+    await db.collection("tickets").doc(dragTktId).update(upd);
+    toast("Moved to "+ds);
+    // Only offer SMS when the ticket already has techs assigned (otherwise
+    // there's no one to notify the customer about yet).
+    if(_orig.techs&&_orig.techs.length)_maybeOfferAppointmentSMS(_orig,upd);
+    dragTktId=null;setTimeout(refreshAll,500);
+  }catch(er){toast("Error: "+er.message,"err")}
 }
 // Drop on a tech column in Team view: change assigned tech (and date if needed)
 async function calDropOnTech(e,techName,ds){
@@ -10313,6 +10369,9 @@ async function calDropOnTech(e,techName,ds){
   e.currentTarget.classList.remove("drop-over-col");
   if(!dragTktId||!db)return;
   try{
+    // Read original ticket BEFORE update so we can compare and offer SMS
+    var _origDoc=await db.collection("tickets").doc(dragTktId).get();
+    var _orig=_origDoc.exists?_origDoc.data():{};
     var update={};
     // If a tech name is provided, set techs to just that tech; if empty string, clear assignment
     if(techName)update.techs=[techName];
@@ -10320,6 +10379,10 @@ async function calDropOnTech(e,techName,ds){
     if(ds)update.date=ds;
     await db.collection("tickets").doc(dragTktId).update(update);
     toast(techName?"Reassigned to "+techName+" ✓":"Set to Unassigned ✓");
+    // Offer the appointment SMS — only when we just ASSIGNED a tech (not when
+    // we dropped it on the unassigned bin). _maybeOfferAppointmentSMS already
+    // guards on phone presence and assignment change.
+    if(techName)_maybeOfferAppointmentSMS(_orig,update);
     dragTktId=null;
     setTimeout(refreshAll,400);
   }catch(er){toast("Error: "+er.message,"err")}
@@ -10824,6 +10887,30 @@ function openAppointmentSMS(ticket,techs,date,arrival){
   var body=buildAppointmentSMS(ticket,techs,date,arrival);
   var href="sms:"+phClean+"?&body="+encodeURIComponent(body);
   window.location.href=href;
+}
+// ── Shared offer-SMS-after-assignment helper ──────────────────────────
+// Re-used by Service Log (slToggleTech), Calendar queue (calSaveAssign),
+// and drag-and-drop (calDropOnDay / calDropOnTech). It enforces the same
+// guards every save path needs: admin-only, the change must be additive
+// (added tech / changed date or arrival), there must be a phone on file,
+// and we always CONFIRM before opening the SMS app — never silent send.
+// Returns a Promise so callers can await but don't have to block on it.
+async function _maybeOfferAppointmentSMS(orig,upd){
+  try{
+    if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer"))return;
+    var newTechs=upd.techs!==undefined?upd.techs:(orig.techs||[]);
+    var newDate=upd.date!==undefined?upd.date:(orig.date||"");
+    var newArrival=upd.arrival!==undefined?upd.arrival:(orig.arrival||"");
+    if(!newTechs||!newTechs.length||!newDate)return;
+    // Skip if assignment didn't actually change (saving the same state again).
+    if(!_assignmentChanged(orig,newTechs,newDate,newArrival))return;
+    var fresh=Object.assign({},orig,upd);
+    var hasPhone=fresh.phone||fresh.phone2||(Array.isArray(fresh.phones)&&fresh.phones.length);
+    if(!hasPhone)return;
+    if(await confirmDialog("Assignment saved. Send appointment notification SMS to the customer?")){
+      openAppointmentSMS(fresh,newTechs,newDate,newArrival);
+    }
+  }catch(_e){console.warn("[offerApptSMS]",_e)}
 }
 function dtToggleTechList(btn){
   var row=document.getElementById("dtTechRow");if(!row)return;
@@ -11757,6 +11844,22 @@ function qbCustRenderDetail(customers){
 
   // ── HEADER: "Customer Information" (mimics QB)
   h+='<div class="qb-cust-info-hdr" style="display:flex;align-items:center;gap:12px">'+_avatarHTML(c.name,44)+'<h2 class="qb-cust-info-title" style="margin:0">'+esc(c.name)+'</h2></div>';
+
+  // ── PENDING PAYMENT BANNER — if this customer has open invoice alerts,
+  // surface them right at the top of the profile so Nela never misses them
+  // when reviewing the customer (same control loop as the Alerts Center).
+  try{
+    var _custPP=(typeof _paymentPendingInfo==="function")?_paymentPendingInfo(c.name):null;
+    if(_custPP&&_custPP.count>0){
+      var _col=_custPP.oldestDays>=31?"#dc2626":_custPP.oldestDays>=8?"#b45309":"#92400e";
+      var _bg=_custPP.oldestDays>=31?"#fee2e2":_custPP.oldestDays>=8?"#fed7aa":"#fef3c7";
+      var _bd=_custPP.oldestDays>=31?"#dc2626":"#f59e0b";
+      h+='<div style="margin:0 24px 0;background:'+_bg+';border:2px solid '+_bd+';border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px">'
+        +'<div style="display:flex;align-items:center;gap:10px;color:'+_col+';font-weight:700;font-size:13.5px">💸 <span><b>'+_custPP.count+' pending payment'+(_custPP.count===1?"":"s")+'</b>'+(_custPP.totalAmount>0?(" — <b>$"+_custPP.totalAmount.toFixed(2)+"</b>"):"")+' open · oldest <b>'+_custPP.oldestDays+'d</b></span></div>'
+        +'<button onclick="showTab(8)" style="background:'+_col+';color:#fff;border:0;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">Go to Alerts →</button>'
+        +'</div>';
+    }
+  }catch(_pE){console.warn("[cust pending banner]",_pE)}
 
   // ── INFO GRID (two columns, label-on-left like QB)
   h+='<div class="qb-cust-info-grid">';
