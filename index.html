@@ -1280,7 +1280,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
   <div id="ticketMode" style="display:none">
   <div id="editBanner" style="display:none;padding:12px 16px;background:var(--acl);border:2px solid var(--ac);border-radius:12px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:var(--fs-md);font-weight:700;color:var(--acd);display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="pencil" data-size="14" data-color="var(--acd)"></span>Editing Ticket</span><span id="editCustName" style="font-size:var(--fs-base);color:var(--i2)"></span></div><button onclick="resetForm();setMode('ticket');toast('Edit cancelled')" style="padding:6px 14px;background:none;border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--ac);cursor:pointer">Cancel</button></div><div style="font-size:var(--fs-sm);color:var(--acd);margin-top:8px;line-height:1.4;opacity:.85"><b>Note:</b> If you change arrival/departure times, labor will recalculate automatically.</div></div>
   <div class="progress" id="uploadProg"><div class="progress-bar" id="uploadBar"></div></div>
-  <div class="card" id="cardCust"><div class="card-summary"></div><div class="g2"><div class="field"><div class="lbl">Customer<span class="req">*</span></div><input type="text" id="fCust" placeholder="Customer name" autocomplete="off"></div><div class="field"><div class="lbl">Date</div><input type="date" id="fDate"></div></div></div>
+  <div class="card" id="cardCust"><div class="card-summary"></div><div class="g2"><div class="field"><div class="lbl">Customer<span class="req">*</span></div><input type="text" id="fCust" placeholder="Customer name" autocomplete="off" onblur="frAutoFillCustWarranty()"></div><div class="field"><div class="lbl">Date</div><input type="date" id="fDate"></div></div></div>
   <div class="card" id="cardTech"><div class="card-summary"></div><div class="lbl">Technician<span class="req">*</span> <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="pill-row" id="techRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddTech()" title="Add a new technician"><span class="qadd-plus">+</span><span>Add tech</span></button></div><div class="g2" style="margin-top:14px"><div class="field"><div class="lbl">Arrival<span class="req">*</span></div><input type="time" id="fArr"></div><div class="field"><div class="lbl">Departure<span class="req">*</span></div><input type="time" id="fDep"></div></div></div>
   <div id="gateHint" style="text-align:center;padding:20px;color:var(--i3);font-size:var(--fs-base);font-weight:500">⏱ Enter <b>Arrival</b> time to continue</div>
   <div id="formGate" style="display:none">
@@ -1291,6 +1291,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
     <div id="warrantyBlocker" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,.75);border-radius:12px;z-index:5;display:none;align-items:center;justify-content:center;padding:20px;text-align:center"><div style="font-size:var(--fs-base);font-weight:600;color:var(--i2);background:#fff;padding:10px 16px;border-radius:10px;border:2px solid var(--ln);box-shadow:0 2px 8px rgba(0,0,0,.08)"><span id="warrantyBlockerMsg">Warranty not applicable</span></div></div>
     <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;gap:8px">Spa Warranty<button type="button" onclick="_showWarrantyRules()" style="border:1px solid var(--c-info-border);background:var(--c-info-bg);color:var(--c-info-fg);font-size:var(--fs-xs);font-weight:700;padding:3px 9px;border-radius:999px;cursor:pointer">ℹ️ Rules</button></div>
     <div class="w-row"><button class="wb yes" id="warYes" onclick="setWYN(true)">✓ Under warranty</button><button class="wb no" id="warNo" onclick="setWYN(false)">✕ No warranty</button></div>
+    <!-- Auto-warranty hint — populated by frAutoFillCustWarranty() when a customer with a saved spa description is selected. -->
+    <div id="frAutoWarHint" style="display:none"></div>
     <div id="part90Box" style="margin-top:10px;padding:11px 12px;border:1px dashed var(--ln);border-radius:10px;display:none;background:var(--c-ash)">
       <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;color:var(--ink)">
         <input type="checkbox" id="part90Chk" onchange="_part90Toggle()" style="width:17px;height:17px;flex-shrink:0">🛠️ Part replaced — <span style="font-weight:500;color:var(--i3)">1-yr part / 90-day labor warranty</span>
@@ -1385,6 +1387,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
             <button type="button" id="slWarYes" onclick="slSetWYN(true)" style="flex:1;padding:8px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">✓ Under warranty</button>
             <button type="button" id="slWarNo" onclick="slSetWYN(false)" style="flex:1;padding:8px;background:#fff;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">✕ No warranty</button>
           </div>
+          <!-- Auto-warranty hint — populated by slAutoFillCust() when a customer with a saved spa description is selected. -->
+          <div id="slAutoWarHint" style="display:none"></div>
           <div id="slWModelRow" style="display:none;margin-bottom:6px">
             <div class="lbl" style="font-size:var(--fs-xs);margin-bottom:4px">Model</div>
             <div style="display:flex;gap:6px">
@@ -1428,7 +1432,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
         </div>
         <div class="form-section-card" style="margin-bottom:16px;background:var(--c-info-bg);border:1.5px solid var(--c-info-border);border-radius:14px;padding:16px 18px">
           <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-info-fg);font-weight:800;font-size:14px;letter-spacing:.3px">🛁 SPA DESCRIPTION <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— model, serial number, equipment</span></div>
-          <textarea id="slSpaDesc" rows="7" placeholder="e.g. Aspen ES Elite 2024 · Serial #ASP-12345 · Standard pump · LED lights..." style="width:100%;min-height:160px;padding:14px 16px;border:2px solid #cdd6df;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
+          <textarea id="slSpaDesc" rows="7" placeholder="e.g. Aspen ES Elite 2024 · Serial #ASP-12345 · Standard pump · LED lights..." oninput="slSpaDescChanged()" style="width:100%;min-height:160px;padding:14px 16px;border:2px solid #cdd6df;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
         </div>
         <div class="form-section-card" style="margin-bottom:16px;background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:14px;padding:16px 18px">
           <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-warning-fg);font-weight:800;font-size:14px;letter-spacing:.3px">💬 COMMENTS <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— saved with today's date to the history</span></div>
@@ -2432,6 +2436,108 @@ function _buildAutoWarrantyPanelHTML(spaDesc){
     warrantyBlock+
     '</div>';
 }
+
+// Apply auto-warranty to a ticket-creation form. prefix:
+//   ""   → Field Report   (setWYN / setMod / setYr  + wHas global)
+//   "sl" → Service Log    (slSetWYN / slSetMod / slSetYr + slWHas global)
+// Does NOT overwrite user-set warranty: returns early when the relevant
+// has-flag is already true/false (only fills when it's still null).
+//
+// Return shape (lets the hint renderer cover all states):
+//   null                                 → desc empty or unparseable (hide hint)
+//   {parsed, auto:null,  applied:false}  → parsed model/series but no delivery date
+//   {parsed, auto:obj,   applied:bool}   → fully computed; applied=false means
+//                                          user already manually chose, we left it alone
+function _autoFillWarrantyFromDesc(prefix,spaDescText){
+  if(!spaDescText)return null;
+  var parsed=_parseSpaDescription(spaDescText);
+  if(!parsed)return null;
+  var auto=_autoWarrantyFromSpec(parsed);
+  // Parsed but couldn't compute warranty (missing delivery date or series).
+  // Still return parsed so the caller can show "add a delivery date" hint.
+  if(!auto)return{parsed:parsed,auto:null,applied:false};
+
+  var currentHas;
+  if(prefix==="sl")currentHas=(typeof slWHas!=="undefined")?slWHas:null;
+  else currentHas=(typeof wHas!=="undefined")?wHas:null;
+  if(currentHas!==null&&currentHas!==undefined)return{parsed:parsed,auto:auto,applied:false};
+
+  var modelLower=(auto.warrantyObj.model||"").toLowerCase();
+  var yearN=auto.yearN>5?6:auto.yearN;
+  try{
+    if(prefix==="sl"){
+      slSetWYN(auto.hasAny);
+      if(auto.hasAny&&modelLower){slSetMod(modelLower);slSetYr(yearN)}
+    } else {
+      setWYN(auto.hasAny);
+      if(auto.hasAny&&modelLower){setMod(modelLower);setYr(yearN)}
+    }
+    return{parsed:parsed,auto:auto,applied:true};
+  }catch(e){console.warn("[AutoWarranty] apply failed",e);return null}
+}
+
+// Update the "🤖 Auto-detected" hint banner under the warranty buttons.
+// Accepts the result of _autoFillWarrantyFromDesc. Three visual states:
+//   • Green  — warranty applied (or already manually set), spa is covered
+//   • Amber  — spa parsed but out of manufacturer coverage window
+//   • Blue   — parsed model/series but no delivery date yet (ask user)
+function _renderAutoWarrantyHint(prefix,result){
+  var hintId=prefix==="sl"?"slAutoWarHint":"frAutoWarHint";
+  var el=document.getElementById(hintId);
+  if(!el)return;
+  if(!result){el.style.display="none";el.innerHTML="";return}
+  var p=result.parsed, a=result.auto;
+  var bg,fg,border,iconEmoji,label,statusNote;
+
+  if(!a){
+    // Parsed model/series but no delivery date — can't compute warranty.
+    bg="#eff6ff";fg="#1e40af";border="#93c5fd";iconEmoji="🔎";
+    var bits=[];
+    if(p.model)bits.push(esc(p.model));
+    if(p.series)bits.push("<b>"+esc(p.series)+"</b>");
+    if(p.year)bits.push(esc(String(p.year)));
+    label="Detected: "+(bits.join(" ")||"spa info")+" · <b>Add a delivery date</b> to auto-compute warranty (e.g. <i>Delivered: 11/28/2022</i>)";
+    statusNote="";
+  } else if(a.hasAny){
+    bg="#ecfdf5";fg="#065f46";border="#6ee7b7";iconEmoji="🤖";
+    label="Auto-detected: <b>"+esc(p.model||"?")+" "+esc(p.series||"?")+"</b> · Yr "+a.yearN;
+    statusNote=result.applied
+      ?'<span style="opacity:.75;font-weight:500">· Pre-filled</span>'
+      :'<span style="opacity:.75;font-weight:500">· Manual override active</span>';
+  } else {
+    bg="#fef3c7";fg="#92400e";border="#fbbf24";iconEmoji="⏰";
+    label="Out of warranty: "+esc(p.series||"?")+" delivered "+Math.floor(a.daysSinceDelivery/365)+"yr ago";
+    statusNote=result.applied
+      ?'<span style="opacity:.75;font-weight:500">· Marked N/W</span>'
+      :'<span style="opacity:.75;font-weight:500">· Manual override active</span>';
+  }
+  el.style.cssText="margin-top:8px;padding:7px 10px;background:"+bg+";color:"+fg+";border:1px solid "+border+";border-radius:8px;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.45";
+  el.innerHTML='<span style="font-size:14px;flex-shrink:0">'+iconEmoji+'</span><span style="min-width:0">'+label+'</span> '+statusNote;
+}
+
+// Service Log spaDesc textarea oninput handler (debounced). Lets a NEW customer
+// (no prior tickets to look up) get the same auto-warranty as an existing one
+// the moment they paste in the spa info.
+var _slSpaDescDebounceTimer=null;
+function slSpaDescChanged(){
+  clearTimeout(_slSpaDescDebounceTimer);
+  _slSpaDescDebounceTimer=setTimeout(function(){
+    var desc=((document.getElementById("slSpaDesc")||{}).value||"");
+    var r=_autoFillWarrantyFromDesc("sl",desc);
+    _renderAutoWarrantyHint("sl",r);
+  },350);
+}
+
+// Field Report fCust onblur — look up saved spa desc, apply auto-warranty.
+function frAutoFillCustWarranty(){
+  var name=((document.getElementById("fCust")||{}).value||"").trim();
+  if(!name)return;
+  var c=(typeof getCustData==="function")?getCustData(name):null;
+  if(!c||!c.spaDesc)return;
+  var r=_autoFillWarrantyFromDesc("",c.spaDesc);
+  _renderAutoWarrantyHint("",r);
+}
+
 
 
 //   ES: yrs 1-5 full, >5 rda
@@ -12602,7 +12708,11 @@ function selectCustSuggest(prefix,name){
   var spaEl=document.getElementById(prefix+"SpaDesc");if(spaEl&&c.spaDesc)spaEl.value=c.spaDesc;
   var notesEl=document.getElementById(prefix+"Notes");if(notesEl&&c.notes)notesEl.value=c.notes;
 }
-function slAutoFillCust(){var name=document.getElementById("slCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("slCustPhone").value)document.getElementById("slCustPhone").value=c.phone;if(c.phone2){var _p2=document.getElementById("slCustPhone2");if(_p2&&!_p2.value){_p2.value=c.phone2;slTogglePhone2(true)}}if(c.email){var _em=document.getElementById("slCustEmail");if(_em&&!_em.value)_em.value=c.email}if(c.address&&!document.getElementById("slCustAddr").value)document.getElementById("slCustAddr").value=c.address;if(c.city&&!document.getElementById("slCustCity").value)document.getElementById("slCustCity").value=c.city;if(c.zip&&!document.getElementById("slCustZip").value){document.getElementById("slCustZip").value=c.zip;slAutoZone()}if(c.spaDesc&&document.getElementById("slSpaDesc"))document.getElementById("slSpaDesc").value=c.spaDesc}
+function slAutoFillCust(){var name=document.getElementById("slCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("slCustPhone").value)document.getElementById("slCustPhone").value=c.phone;if(c.phone2){var _p2=document.getElementById("slCustPhone2");if(_p2&&!_p2.value){_p2.value=c.phone2;slTogglePhone2(true)}}if(c.email){var _em=document.getElementById("slCustEmail");if(_em&&!_em.value)_em.value=c.email}if(c.address&&!document.getElementById("slCustAddr").value)document.getElementById("slCustAddr").value=c.address;if(c.city&&!document.getElementById("slCustCity").value)document.getElementById("slCustCity").value=c.city;if(c.zip&&!document.getElementById("slCustZip").value){document.getElementById("slCustZip").value=c.zip;slAutoZone()}if(c.spaDesc&&document.getElementById("slSpaDesc"))document.getElementById("slSpaDesc").value=c.spaDesc;
+// AUTO-WARRANTY: if the customer has a saved spa description, parse it and
+// pre-fill the warranty buttons. Skips when the user has already manually
+// chosen a state (slWHas !== null) so we never overwrite real input.
+if(c.spaDesc&&typeof _autoFillWarrantyFromDesc==="function"){var _r=_autoFillWarrantyFromDesc("sl",c.spaDesc);if(typeof _renderAutoWarrantyHint==="function")_renderAutoWarrantyHint("sl",_r)}}
 // Simple 90-day service-warranty check for the scheduling form (Celia-friendly).
 // Defensive: pull a readable parts list off a ticket regardless of shape.
 function _partsLabel(t){
