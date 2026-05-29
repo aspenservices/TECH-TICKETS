@@ -2237,7 +2237,203 @@ let wHas=null,wMod="",wYr=0,visitNum=1,noLabor=false,wcType="";
 const CS=[...new Set(P.map(p=>p.c))].sort();
 
 // ═══ WARRANTY ═══
-// PARTS warranty (unchanged):
+// ════════════════════════════════════════════════════════════════════════════
+// AUTO-WARRANTY: parse spa description text → compute warranty status
+// ════════════════════════════════════════════════════════════════════════════
+// Reads the free-text Spa Description (e.g. "Delivered: 11/28/2022 / 2022
+// Monarch ES / SERIAL # 19210 / ...") and derives the warranty object that
+// _partTypeFromWarranty() / _labTypeFromWarranty() can consume. Prevents
+// human error like leaving a ticket marked N/W when QB notes clearly show
+// the spa is still inside the manufacturer warranty window.
+//
+// Supported delivery date formats: MM/DD/YYYY, MM-DD-YYYY, MM/DD/YY, and
+// "Month DD YYYY" (Date.parse fallback). Supported series: ES, GS, VS, SS,
+// Core, Holiday. Supported models: every Aspen line we ship.
+
+var SPA_MODELS_KNOWN = [
+  "monarch","eldorado","pioneer","quattro","colorado","northstar",
+  "alpine","arcadia","pinnacle","cassian","avalanche","sopris","canyon",
+  "swim","party"
+];
+var SPA_SERIES_KNOWN = ["ES","GS","VS","SS","Core","Holiday"];
+
+// Parse "11/28/2022", "11-28-22", or "Nov 28 2022" into a Date. Returns null on failure.
+function _parseFlexDate(str){
+  if(!str)return null;
+  str=String(str).trim();
+  // Numeric MM/DD/YYYY or MM/DD/YY (also -, .)
+  var m=str.match(/^([01]?\d)[\/\-\.]([0-3]?\d)[\/\-\.]((?:19|20)?\d{2})$/);
+  if(m){
+    var month=parseInt(m[1],10)-1, day=parseInt(m[2],10), year=parseInt(m[3],10);
+    if(year<100) year+=2000;
+    var d=new Date(year,month,day);
+    if(d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day) return d;
+  }
+  // Date.parse fallback for "Nov 28 2022" etc.
+  var d2=new Date(str);
+  return isNaN(d2.getTime())?null:d2;
+}
+
+// Parse a free-text Spa Description into structured fields.
+// Returns null when nothing useful was extracted (confidence < 20).
+function _parseSpaDescription(desc){
+  if(!desc||typeof desc!=="string")return null;
+  var result={delivered:null,deliveredStr:"",year:null,model:"",series:"",serial:"",confidence:0};
+
+  // 1) Delivery date — accept "Delivered: 11/28/2022", "Delivered : 11-28-22",
+  //    "Delivery date: Nov 28 2022", "delivered 11/28/22".
+  var dateMatch=desc.match(/deliver(?:ed|y)?\s*(?:date)?\s*[:\-]?\s*((?:[01]?\d[\/\-\.][0-3]?\d[\/\-\.](?:19|20)?\d{2,4})|(?:[a-z]+\s+[0-3]?\d,?\s+(?:19|20)?\d{2,4}))/i);
+  if(dateMatch){
+    result.deliveredStr=dateMatch[1];
+    var d=_parseFlexDate(dateMatch[1]);
+    if(d)result.delivered=d;
+  }
+
+  // 2) Model — first known model that appears in the text.
+  for(var i=0;i<SPA_MODELS_KNOWN.length;i++){
+    var mk=SPA_MODELS_KNOWN[i];
+    if(new RegExp("\\b"+mk+"\\b","i").test(desc)){
+      result.model=mk.charAt(0).toUpperCase()+mk.slice(1);
+      break;
+    }
+  }
+
+  // 3) Model year — first 4-digit year between 2000-2030.
+  var yearMatch=desc.match(/\b(20[0-3]\d)\b/);
+  if(yearMatch)result.year=parseInt(yearMatch[1],10);
+
+  // 4) Series — look for ES/GS/VS/SS/Core/Holiday near or after the model name.
+  //    Try "Model ES" first, then any standalone series token.
+  if(result.model){
+    var seriesRe=new RegExp("\\b"+result.model+"\\s+(ES|GS|VS|SS|Core|Holiday)\\b","i");
+    var sm=desc.match(seriesRe);
+    if(sm)result.series=sm[1].toUpperCase();
+  }
+  if(!result.series){
+    var sm2=desc.match(/\b(ES|GS|VS|SS|Core|Holiday)\b/);
+    if(sm2)result.series=sm2[1].toUpperCase();
+  }
+
+  // 5) Serial # — "SERIAL # 19210", "Serial: 19210", "S/N: 19210"
+  var serialMatch=desc.match(/serial\s*(?:#|number|no\.?)?\s*[:#]?\s*([a-z0-9\-]{3,})/i);
+  if(serialMatch)result.serial=serialMatch[1];
+
+  // Confidence score — return null below threshold so the panel hides for noise.
+  var conf=0;
+  if(result.delivered)conf+=40;
+  if(result.model)conf+=25;
+  if(result.series)conf+=20;
+  if(result.year)conf+=10;
+  if(result.serial)conf+=5;
+  result.confidence=conf;
+  return conf<20?null:result;
+}
+
+// Given a parsed spa spec, compute today's warranty object using the same
+// rules baked into _partTypeFromWarranty / _labTypeFromWarranty.
+// Returns null when we can't determine warranty (need both delivered + series).
+function _autoWarrantyFromSpec(parsed,todayDate){
+  if(!parsed||!parsed.delivered||!parsed.series)return null;
+  var seriesLower=parsed.series.toLowerCase();
+  // Map Core/Holiday to VS rules (entry-level series share VS warranty structure).
+  // Adjust here if Aspen ever publishes separate Core/Holiday terms.
+  var ruleSeries=seriesLower;
+  if(ruleSeries==="core"||ruleSeries==="holiday")ruleSeries="vs";
+  if(["es","gs","vs","ss"].indexOf(ruleSeries)<0)return null;
+
+  var today=todayDate||new Date();
+  // "Year of warranty" = anniversary-based. Yr 1 = first 365.25 days, Yr 2 = days 366-730, etc.
+  var daysSince=Math.floor((today-parsed.delivered)/86400000);
+  var yearN=Math.floor(daysSince/365.25)+1; // 1-based: day 0 → Yr 1
+  if(daysSince<0)yearN=1; // future delivery — treat as Yr 1
+
+  // Synthetic warranty object compatible with _partTypeFromWarranty / _labTypeFromWarranty
+  var synth={has:true,model:ruleSeries,year:Math.min(yearN,6)}; // cap at 6 so >5 falls into "none"
+  var partType=_partTypeFromWarranty(synth);
+  var labType=_labTypeFromWarranty(synth);
+
+  // If both are expired, the spa is OUT of warranty.
+  var hasAny=(partType!=="rda")||(labType!=="none");
+
+  return {
+    parsed:parsed,
+    yearN:yearN,
+    daysSinceDelivery:daysSince,
+    partType:partType,   // "full" | "half" | "rda"
+    labType:labType,     // "full" | "tc-only" | "none"
+    hasAny:hasAny,
+    // Object shape compatible with existing t.warranty schema so we can drop it
+    // straight onto a ticket without translation.
+    warrantyObj:{
+      has:hasAny,
+      model:ruleSeries,
+      year:Math.min(yearN,6),
+      type:partType,
+      label:hasAny?(parsed.series+" Yr"+yearN):"N/W"
+    }
+  };
+}
+
+
+// LABOR warranty (separate from parts):
+//   "full"    → Labor FREE
+// Render a green/gray/amber panel that summarises what was detected and the
+// resulting warranty status. Returns "" when nothing useful was extracted so
+// callers can drop it in without conditionals. Pure HTML, no listeners.
+function _buildAutoWarrantyPanelHTML(spaDesc){
+  var parsed=_parseSpaDescription(spaDesc);
+  if(!parsed)return"";
+  var auto=_autoWarrantyFromSpec(parsed);
+  var rows="";
+  var fmt=function(d){return d.toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})};
+  // Helper: humanise time elapsed since delivery in years + months
+  var elapsedStr=function(daysSince){
+    var yr=Math.floor(daysSince/365.25);
+    var rem=Math.floor((daysSince-yr*365.25)/30.44);
+    var p=[];if(yr)p.push(yr+" yr"+(yr!==1?"s":""));if(rem)p.push(rem+" mo");return p.join(", ")||"<1 mo"
+  };
+
+  if(parsed.delivered)rows+='<span style="color:#065f46;font-weight:700">Delivered:</span><span>'+fmt(parsed.delivered)+(auto?' <span style="color:#475569;opacity:.85">('+elapsedStr(auto.daysSinceDelivery)+' ago)</span>':'')+'</span>';
+  if(parsed.model||parsed.series)rows+='<span style="color:#065f46;font-weight:700">Model:</span><span>'+(parsed.model||"?")+(parsed.series?' <b>'+parsed.series+'</b>':'')+'</span>';
+  if(parsed.year)rows+='<span style="color:#065f46;font-weight:700">Year:</span><span>'+parsed.year+'</span>';
+  if(parsed.serial)rows+='<span style="color:#065f46;font-weight:700">Serial #:</span><span>'+esc(parsed.serial)+'</span>';
+
+  var warrantyBlock="";
+  if(auto&&auto.hasAny){
+    var partLbl=auto.partType==="full"?'<span style="color:#047857;font-weight:700">FREE (100%)</span>':auto.partType==="half"?'<span style="color:#b45309;font-weight:700">50% MSRP</span>':'<span style="color:#92400e;font-weight:700">RDA</span>';
+    var labLbl=auto.labType==="full"?'<span style="color:#047857;font-weight:700">FREE</span>':auto.labType==="tc-only"?'<span style="color:#b45309;font-weight:700">TC only (extra hrs free)</span>':'<span style="color:#92400e;font-weight:700">Not covered</span>';
+    warrantyBlock='<div style="padding:9px 11px;background:#fff;border-radius:8px;border:1px solid #6ee7b7">'+
+      '<div style="font-weight:800;color:#065f46;font-size:12px;margin-bottom:4px">🛡 Warranty status: '+esc(parsed.series)+' · Year '+auto.yearN+'</div>'+
+      '<div style="font-size:12px;color:#0f172a">'+
+      '<span style="color:#065f46;font-weight:700">Parts:</span> '+partLbl+' &nbsp;·&nbsp; '+
+      '<span style="color:#065f46;font-weight:700">Labor:</span> '+labLbl+
+      '</div></div>';
+  } else if(auto){
+    warrantyBlock='<div style="padding:9px 11px;background:#fef3c7;border-radius:8px;border:1px solid #fbbf24">'+
+      '<div style="font-weight:800;color:#92400e;font-size:12px;margin-bottom:2px">⏰ Out of manufacturer warranty</div>'+
+      '<div style="font-size:11px;color:#7c2d12">Spa is '+elapsedStr(auto.daysSinceDelivery)+' old · beyond '+esc(parsed.series)+' coverage window. Parts at RDA, no labor warranty.</div></div>';
+  } else {
+    warrantyBlock='<div style="padding:9px 11px;background:#f1f5f9;border-radius:8px;border:1px solid #cbd5e1"><div style="font-size:11px;color:#475569"><b>Need both delivery date and series</b> to compute warranty automatically. Add them to the description above.</div></div>';
+  }
+
+  // Color the outer panel green when under warranty, amber when expired,
+  // neutral when incomplete data.
+  var outerStyle;
+  if(auto&&auto.hasAny)outerStyle="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7";
+  else if(auto)outerStyle="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fbbf24";
+  else outerStyle="background:#f8fafc;border:1.5px solid #cbd5e1";
+
+  return '<div style="margin-top:16px;padding:13px;border-radius:12px;'+outerStyle+'">'+
+    '<div style="font-weight:800;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px;color:#0f172a">'+
+    '🤖 Auto-detected from description'+
+    '<span style="background:#0f172a;color:#fff;font-size:10px;padding:1px 7px;border-radius:999px;font-weight:700">'+parsed.confidence+'% match</span>'+
+    '</div>'+
+    (rows?'<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin-bottom:10px;color:#0f172a">'+rows+'</div>':'')+
+    warrantyBlock+
+    '</div>';
+}
+
+
 //   ES: yrs 1-5 full, >5 rda
 //   GS: yrs 1-3 full, yrs 4-5 half (50%), >5 rda
 //   VS: yrs 1-3 full, yrs 4-5 rda, >5 rda
@@ -12220,6 +12416,10 @@ function qbCustRenderDetail(customers){
     h+='<div style="margin-bottom:8px;font-size:var(--fs-sm);color:var(--i3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">🛁 Spa / Equipment Description</div>';
     h+='<textarea id="custSpaDescEdit" class="qb-spa-desc-box" placeholder="Spa model, serial number, jets, equipment details, install date, color...">'+esc(spaDesc||"")+'</textarea>';
     h+='<div style="margin-top:10px"><button class="qb-cust-btn primary" onclick="custSaveSpaDesc()">💾 Save Spa Description</button><span class="qb-saved-flash" id="qbSpaSavedFlash">✓ Saved on all tickets</span></div>';
+    // AUTO-WARRANTY panel: parse the description, compute warranty status using
+    // the same rules as the ticket form (gWT/gLabWT). Catches human error like
+    // tickets marked N/W when the spa is clearly still under coverage.
+    h+=_buildAutoWarrantyPanelHTML(spaDesc);
   }else if(qbCustTab==="history"){
     if(!sorted.length){
       h+='<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:var(--fs-base)">No service history yet.</div>';
