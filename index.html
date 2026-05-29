@@ -1432,6 +1432,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
         </div>
         <div class="form-section-card" style="margin-bottom:16px;background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:14px;padding:16px 18px">
           <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-warning-fg);font-weight:800;font-size:14px;letter-spacing:.3px">💬 COMMENTS <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— saved with today's date to the history</span></div>
+          <!-- Active part warranties for this customer — parsed from past tickets' comment history. Hidden when empty. -->
+          <div id="slWarrantyPanel" style="display:none;margin-bottom:10px"></div>
           <div id="slHistBox" style="display:none;margin-bottom:10px;max-height:160px;overflow-y:auto;padding:11px 13px;background:#fff;border:1px solid var(--ln);border-radius:10px"></div>
           <div style="font-size:12px;color:var(--i2);margin-bottom:8px;font-weight:700;letter-spacing:.2px">⚡ QUICK ADD — tap to insert:</div>
           <div id="slTplRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
@@ -1446,6 +1448,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
             <button type="button" data-tpl="🐕 Dog on property" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🐕 Dog</button>
             <button type="button" data-tpl="🌅 Prefers AM" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🌅 AM</button>
             <button type="button" data-tpl="🌇 Prefers PM" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🌇 PM</button>
+            <button type="button" onclick="_slShowWarrantyModal()" title="Add a part with warranty tracking — appears in customer history as parseable line" style="padding:5px 10px;border:1.5px solid #10b981;border-radius:999px;background:#d1fae5;color:#065f46;font-size:var(--fs-xs);font-weight:700;cursor:pointer;font-family:inherit">🛡 Warranty Part</button>
             <button type="button" onclick="_slClearTpl()" title="Clear comments" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:transparent;color:var(--i3);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">✕ Clear</button>
           </div>
           <textarea id="slNotes" rows="6" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;min-height:140px;padding:14px 16px;border:2px solid #e6d399;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
@@ -5002,7 +5005,9 @@ function _updateCrossAppTabBadge(){
   const tab=document.getElementById('tab8');
   if(!tab)return;
   let badge=tab.querySelector('.crossapp-tab-badge');
-  const count=crossAppEvents.length;
+  // Exclude system sentinel events (e.g. qb_backlog_snapshot) from the Alerts tab count —
+  // they aren't per-customer alerts and would inflate the badge incorrectly.
+  const count=crossAppEvents.filter(function(ev){return ev&&ev.eventType!=="qb_backlog_snapshot"}).length;
   if(count===0){if(badge)badge.remove();return}
   if(!badge){
     badge=document.createElement('span');
@@ -5424,6 +5429,33 @@ function _buildWeeklySummaryBody(events){
   var lines=[];
   lines.push("Weekly Pending Payments Summary — "+new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}));
   lines.push("");
+  // ─── QB BACKLOG SECTION (pulled from Invoice Tracker via cross_app_events) ───
+  // Invoice Tracker publishes a 'qb_backlog_snapshot' event when its QB Pending count
+  // changes; we surface the LATEST snapshot here so the email captures payments that
+  // arrived but haven't been recorded in QuickBooks Desktop yet.
+  var qbSnap=_latestQbBacklogSnapshot();
+  if(qbSnap){
+    var p=qbSnap.payload||{};
+    var qbCount=p.count||0;
+    var qbTotal=Number(p.total||0);
+    var qbStale=p.staleCount||0;
+    if(qbCount>0){
+      lines.push("📒 QB BACKLOG (paid · not yet in QuickBooks Desktop):");
+      lines.push("  "+qbCount+" invoice"+(qbCount!==1?"s":"")+" · $"+qbTotal.toFixed(2)+(qbStale>0?(" · ⚠ "+qbStale+" over 3 days old"):""));
+      // Top 5 oldest unsynced items, if available
+      var items=Array.isArray(p.items)?p.items.slice():[];
+      items.sort(function(a,b){return (a.paidAt||0)-(b.paidAt||0)}); // oldest first
+      var top=items.slice(0,5);
+      top.forEach(function(it){
+        var ageDays=it.paidAt?Math.floor((Date.now()-it.paidAt)/86400000):null;
+        var line="  · "+(it.customer||"?")+(it.invoiceNumber?(" · #"+it.invoiceNumber):"")+" · $"+Number(it.amount||0).toFixed(2);
+        if(ageDays!==null)line+=" · "+ageDays+"d ago";
+        if(it.method)line+=" · "+it.method;
+        lines.push(line);
+      });
+      lines.push("");
+    }
+  }
   lines.push("TOTAL: "+sum.total+" open invoices · $"+sum.totalAmount.toFixed(2)+" outstanding");
   lines.push("Oldest: "+sum.oldestDays+" days");
   lines.push("");
@@ -5452,22 +5484,217 @@ function _buildWeeklySummaryBody(events){
   lines.push("— Auto-generated from TECH-TICKETS Alerts Center");
   return lines.join("\n");
 }
-// Compose mailto: with the weekly summary, addressed to Nela, Alberto, and Celia.
+
+// Pull the latest QB backlog snapshot from the cross_app_events firehose.
+// Invoice Tracker keeps at most one open snapshot at a time (it resolves the
+// previous before publishing a new one), so .find() is enough — but we sort
+// by publishedAt defensively in case more than one slipped through.
+function _latestQbBacklogSnapshot(){
+  if(!Array.isArray(crossAppEvents)||!crossAppEvents.length)return null;
+  var snaps=crossAppEvents.filter(function(ev){return ev&&ev.eventType==="qb_backlog_snapshot"});
+  if(!snaps.length)return null;
+  snaps.sort(function(a,b){
+    var ta=(a.payload&&a.payload.publishedAt)||0;
+    var tb=(b.payload&&b.payload.publishedAt)||0;
+    return tb-ta;
+  });
+  return snaps[0];
+}
+// ─── WEEKLY SUMMARY MODAL — Copy text + Download .eml ────────────────────
+// Replaces the simple mailto:href approach (which dropped formatting and didn't
+// guarantee the user actually sent the message). The modal shows the rendered
+// summary, plus two buttons:
+//   • 📋 Copy text  — copies plain-text version to clipboard (paste into anywhere)
+//   • 📩 Download .eml — downloads an Outlook-compatible unsent draft (X-Unsent:1)
+//     pre-addressed to Nela/Alberto/Celia with HTML body. User opens it in Outlook
+//     to review and Send.
+// Both consume _weeklySummaryCache populated by _sendWeeklyAlertsSummary.
+var _weeklySummaryCache=null;
+
+// Build a fully-styled HTML version of the summary. Used for both the modal
+// preview and the .eml body. Keep inline styles only — Outlook's HTML engine
+// strips classes and external stylesheets.
+function _buildWeeklySummaryHTML(events){
+  var sum=_alertsSummary(events);
+  var qbSnap=_latestQbBacklogSnapshot();
+  var dateStr=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  var h="";
+  h+='<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;padding:24px;background:#fff;color:#0f172a;line-height:1.5">';
+  h+='<h2 style="margin:0 0 4px;font-size:20px;color:#7c2d12;border-bottom:2px solid #fbbf24;padding-bottom:8px">Aspen Spas — Pending Payments Summary</h2>';
+  h+='<p style="margin:0 0 18px;color:#475569;font-size:13px">'+esc(dateStr)+'</p>';
+  // ─── QB BACKLOG SECTION (top — most actionable) ───
+  if(qbSnap&&qbSnap.payload&&(qbSnap.payload.count||0)>0){
+    var p=qbSnap.payload;
+    var stale=p.staleCount||0;
+    h+='<div style="background:'+(stale>0?'#fee2e2':'#dbeafe')+';border:1px solid '+(stale>0?'#fca5a5':'#93c5fd')+';border-radius:8px;padding:12px 14px;margin-bottom:18px">';
+    h+='<div style="font-weight:800;font-size:13px;color:'+(stale>0?'#7f1d1d':'#1e40af')+';margin-bottom:6px">📒 QB BACKLOG — paid, not yet in QuickBooks Desktop</div>';
+    h+='<div style="font-size:14px;color:#0f172a"><b>'+p.count+'</b> invoice'+(p.count!==1?'s':'')+' · <b>$'+Number(p.total||0).toFixed(2)+'</b>'+(stale>0?(' · <span style="color:#dc2626;font-weight:700">⚠ '+stale+' over 3 days old</span>'):'')+'</div>';
+    var items=(Array.isArray(p.items)?p.items:[]).slice().sort(function(a,b){return (a.paidAt||0)-(b.paidAt||0)}).slice(0,5);
+    if(items.length){
+      h+='<table style="width:100%;margin-top:8px;border-collapse:collapse;font-size:12px"><tbody>';
+      items.forEach(function(it){
+        var ageDays=it.paidAt?Math.floor((Date.now()-it.paidAt)/86400000):null;
+        h+='<tr><td style="padding:3px 8px 3px 0;color:#475569">·</td><td style="padding:3px 8px 3px 0"><b>'+esc(it.customer||'?')+'</b>'+(it.invoiceNumber?' #'+esc(String(it.invoiceNumber)):'')+'</td><td style="padding:3px 0;color:#475569;text-align:right">$'+Number(it.amount||0).toFixed(2)+(ageDays!==null?(' · '+ageDays+'d'):'')+'</td></tr>';
+      });
+      h+='</tbody></table>';
+    }
+    h+='</div>';
+  }
+  // ─── OPEN PAYMENT ALERTS ───
+  if(events&&events.length){
+    h+='<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:12px 14px;margin-bottom:14px">';
+    h+='<div style="font-weight:800;font-size:13px;color:#7c2d12;margin-bottom:6px">⚠ Open payment alerts</div>';
+    h+='<div style="font-size:14px;color:#0f172a"><b>'+sum.total+'</b> invoice'+(sum.total!==1?'s':'')+' · <b>$'+sum.totalAmount.toFixed(2)+'</b> outstanding · Oldest: <b>'+sum.oldestDays+'d</b></div>';
+    h+='</div>';
+    // Aging buckets table
+    h+='<table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px"><thead><tr><th style="text-align:left;padding:6px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700">Aging bucket</th><th style="text-align:right;padding:6px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700">Count</th><th style="text-align:right;padding:6px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700">Amount</th></tr></thead><tbody>';
+    ALERTS_AGING_BUCKETS.forEach(function(b){
+      var s=sum.byBucket[b.key];
+      if(s.count===0)return;
+      h+='<tr><td style="padding:5px 10px;border-bottom:1px solid #f1f5f9"><span style="display:inline-block;width:8px;height:8px;background:'+b.color+';border-radius:50%;margin-right:6px;vertical-align:middle"></span>'+esc(b.label)+'</td><td style="padding:5px 10px;border-bottom:1px solid #f1f5f9;text-align:right">'+s.count+'</td><td style="padding:5px 10px;border-bottom:1px solid #f1f5f9;text-align:right">$'+s.amount.toFixed(2)+'</td></tr>';
+    });
+    h+='</tbody></table>';
+    // Top 10 oldest
+    var sorted=events.slice().sort(function(a,b){return _alertAgeDays(b)-_alertAgeDays(a)});
+    var top=sorted.slice(0,10);
+    if(top.length){
+      h+='<div style="font-weight:700;font-size:13px;color:#0f172a;margin:14px 0 6px">Top '+top.length+' oldest</div>';
+      h+='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><tbody>';
+      top.forEach(function(ev){
+        var p=ev.payload||{};
+        var d=_alertAgeDays(ev);
+        var nm=ev.customerName||"Unknown";
+        var inv=p.invoiceNumber||p.invoiceNum||"";
+        var amt=_alertAmount(ev);
+        var reason=(p.reasonLabel||p.reason||"").replace(/_/g," ");
+        var dColor=d>=31?'#dc2626':d>=8?'#f59e0b':'#10b981';
+        h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #f1f5f9;color:'+dColor+';font-weight:700;white-space:nowrap">'+d+'d</td><td style="padding:4px 8px;border-bottom:1px solid #f1f5f9"><b>'+esc(nm)+'</b>'+(inv?' <span style="color:#64748b">#'+esc(String(inv))+'</span>':'')+(reason?(' · <span style="color:#7c2d12">'+esc(reason)+'</span>'):'')+'</td><td style="padding:4px 8px;border-bottom:1px solid #f1f5f9;text-align:right">'+(amt>0?('$'+amt.toFixed(2)):'')+'</td></tr>';
+      });
+      h+='</tbody></table>';
+    }
+  }
+  h+='<p style="margin:18px 0 0;color:#94a3b8;font-size:11px;font-style:italic;border-top:1px solid #e2e8f0;padding-top:10px">— Auto-generated from TECH-TICKETS Alerts Center · '+esc(dateStr)+'</p>';
+  h+='</div>';
+  return h;
+}
+
+// Replace mailto: with: prepare cache → show modal with Copy + .eml buttons.
+// Email recipients: Nela, Alberto, Celia (from ALERTS_TEAM_EMAILS).
 function _sendWeeklyAlertsSummary(){
   var events=crossAppEvents||[];
-  if(!events.length){toast("No open alerts to summarize","info");return}
-  var subject="Aspen Spas — Pending Payments ("+events.length+" open · "+new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})+")";
-  var body=_buildWeeklySummaryBody(events);
-  var to=ALERTS_TEAM_EMAILS.join(",");
-  var href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-  window.location.href=href;
+  var alertEvents=events.filter(function(ev){return ev&&ev.eventType!=="qb_backlog_snapshot"});
+  var qbSnap=_latestQbBacklogSnapshot();
+  var hasQbBacklog=qbSnap&&qbSnap.payload&&(qbSnap.payload.count||0)>0;
+  if(!alertEvents.length&&!hasQbBacklog){toast("No open alerts or QB backlog to summarize","info");return}
+  var subject="Aspen Spas — Pending Payments ("+alertEvents.length+" open"+(hasQbBacklog?(" · "+qbSnap.payload.count+" QB pending"):"")+" · "+new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})+")";
+  _weeklySummaryCache={
+    subject:subject,
+    text:_buildWeeklySummaryBody(alertEvents),
+    html:_buildWeeklySummaryHTML(alertEvents),
+    recipients:ALERTS_TEAM_EMAILS.slice()
+  };
+  _showWeeklySummaryModal();
+}
+
+// Build (or rebuild) the modal element and inject preview + buttons.
+function _showWeeklySummaryModal(){
+  if(!_weeklySummaryCache)return;
+  // Remove any prior instance so a re-open starts fresh
+  var existing=document.getElementById("weeklySummaryModalBackdrop");
+  if(existing)existing.remove();
+  var c=_weeklySummaryCache;
+  var bd=document.createElement("div");
+  bd.id="weeklySummaryModalBackdrop";
+  bd.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px";
+  bd.onclick=function(e){if(e.target===bd)bd.remove()};
+  var modal=document.createElement("div");
+  modal.style.cssText="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35)";
+  // Header
+  var hdr=document.createElement("div");
+  hdr.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fef3c7";
+  hdr.innerHTML='<div><div style="font-size:11px;color:#7c2d12;font-weight:700;text-transform:uppercase;letter-spacing:.5px">📧 Weekly Summary Preview</div><div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:2px">'+esc(c.subject)+'</div></div><button onclick="document.getElementById(\'weeklySummaryModalBackdrop\').remove()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:0 6px">×</button>';
+  modal.appendChild(hdr);
+  // Recipients strip
+  var rec=document.createElement("div");
+  rec.style.cssText="padding:8px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569";
+  rec.innerHTML='<b>To:</b> '+c.recipients.map(esc).join(", ");
+  modal.appendChild(rec);
+  // Preview body (HTML rendered)
+  var preview=document.createElement("div");
+  preview.style.cssText="flex:1;overflow-y:auto;background:#f1f5f9;padding:14px";
+  var inner=document.createElement("div");
+  inner.style.cssText="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06)";
+  inner.innerHTML=c.html;
+  preview.appendChild(inner);
+  modal.appendChild(preview);
+  // Footer with action buttons
+  var ftr=document.createElement("div");
+  ftr.style.cssText="display:flex;gap:8px;padding:12px 18px;border-top:1px solid #e2e8f0;background:#fff;flex-wrap:wrap;align-items:center";
+  ftr.innerHTML=
+    '<button onclick="_weeklyCopyText()" style="padding:9px 16px;background:#fff;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:700;color:#0f172a;cursor:pointer">📋 Copy text</button>'+
+    '<button onclick="_weeklyDownloadEml()" style="padding:9px 16px;background:#7c2d12;border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">📩 Download .eml (Outlook)</button>'+
+    '<div style="flex:1"></div>'+
+    '<button onclick="document.getElementById(\'weeklySummaryModalBackdrop\').remove()" style="padding:9px 16px;background:#fff;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">Close</button>';
+  modal.appendChild(ftr);
+  bd.appendChild(modal);
+  document.body.appendChild(bd);
+}
+
+// Copy the plain-text version of the summary to the clipboard.
+async function _weeklyCopyText(){
+  if(!_weeklySummaryCache)return;
+  try{
+    await navigator.clipboard.writeText(_weeklySummaryCache.text);
+    toast("Text copied to clipboard","success");
+  }catch(_e){
+    // Fallback for older browsers / non-secure contexts
+    var ta=document.createElement("textarea");
+    ta.value=_weeklySummaryCache.text;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand("copy");toast("Text copied to clipboard","success")}
+    catch(__e){toast("Copy failed — select and copy manually from the preview","error")}
+    document.body.removeChild(ta);
+  }
+}
+
+// Build an Outlook-compatible unsent .eml draft (X-Unsent:1) and trigger download.
+// Opening it in Outlook on macOS/Windows opens the draft pre-addressed with HTML body.
+function _weeklyDownloadEml(){
+  if(!_weeklySummaryCache)return;
+  var c=_weeklySummaryCache;
+  // Encode subject in MIME quoted-printable-ish way (UTF-8 base64 for safety with em-dash)
+  var encSubject="=?UTF-8?B?"+btoa(unescape(encodeURIComponent(c.subject)))+"?=";
+  var crlf="\r\n";
+  var headers=[
+    "X-Unsent: 1",
+    "To: "+c.recipients.join(", "),
+    "Subject: "+encSubject,
+    "MIME-Version: 1.0",
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: base64"
+  ].join(crlf);
+  // Wrap full HTML doc for email clients
+  var fullHtml='<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+c.html+'</body></html>';
+  var bodyB64=btoa(unescape(encodeURIComponent(fullHtml)));
+  // Split base64 into 76-char lines per RFC 2045
+  var bodyLines=(bodyB64.match(/.{1,76}/g)||[]).join(crlf);
+  var eml=headers+crlf+crlf+bodyLines+crlf;
+  var blob=new Blob([eml],{type:"message/rfc822"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;a.download="aspen-weekly-summary-"+new Date().toISOString().slice(0,10)+".eml";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url)},2000);
+  toast("📩 .eml downloaded — open it in Outlook to send","success");
 }
 
 function rndrAlerts(){
   const body=document.getElementById('alertsTabBody');
   const cntEl=document.getElementById('alertsTabCount');
   if(!body)return;
-  const allEvents=crossAppEvents||[];
+  // Exclude system sentinel events from the Alerts tab — they're surfaced elsewhere
+  // (the QB Backlog snapshot is included in the weekly summary email, not as a row here).
+  const allEvents=(crossAppEvents||[]).filter(function(ev){return ev&&ev.eventType!=="qb_backlog_snapshot"});
   if(cntEl){if(allEvents.length){cntEl.style.display='inline-flex';cntEl.textContent=allEvents.length}else cntEl.style.display='none'}
   if(!allEvents.length){
     body.innerHTML='<div style="text-align:center;padding:80px 20px;color:var(--i3);background:#f9fafb;border:1px dashed #e5e7eb;border-radius:12px"><div style="font-size:64px;margin-bottom:14px">🎉</div><h3 style="margin:0 0 6px;color:var(--i1);font-size:18px">All clear!</h3><p style="margin:0;font-size:13px">No active alerts. When other Aspen apps publish payment issues or service flags, they\'ll appear here.</p></div>';
@@ -6062,11 +6289,16 @@ function _renderWelcomeKPIs(){
   // Skip re-render/re-animation if nothing changed (e.g. user is typing in search)
   var nelaCobranzaSig="";
   if(currentUser&&currentUser.name==="Nela"){
-    var _evs=crossAppEvents||[];
+    // Filter snapshots out of the payment-alerts math — they're system sentinels, not customer alerts
+    var _evs=(crossAppEvents||[]).filter(function(e){return e&&e.eventType!=="qb_backlog_snapshot"});
     var _tot=_evs.reduce(function(s,e){return s+_alertAmount(e)},0);
     var _od=_evs.filter(function(e){return _alertAgeDays(e)>=30}).length;
     var _fu=_evs.filter(function(e){return _alertAgeDays(e)>=ALERTS_REMINDER_THRESHOLD_DAYS}).length;
-    nelaCobranzaSig="|nela|"+_evs.length+"|"+_tot.toFixed(0)+"|"+_od+"|"+_fu;
+    // Pull QB backlog snapshot (latest) — included in the widget signature so it triggers re-render
+    var _qbSnap=_latestQbBacklogSnapshot();
+    var _qbCount=_qbSnap&&_qbSnap.payload?(_qbSnap.payload.count||0):0;
+    var _qbStale=_qbSnap&&_qbSnap.payload?(_qbSnap.payload.staleCount||0):0;
+    nelaCobranzaSig="|nela|"+_evs.length+"|"+_tot.toFixed(0)+"|"+_od+"|"+_fu+"|qb"+_qbCount+"|qs"+_qbStale;
   }
   var sig=[scheduledToday,doneToday,resched,ftf,who,greet].join("|")+nelaCobranzaSig;
   if(box.dataset.sig===sig)return;
@@ -6074,11 +6306,16 @@ function _renderWelcomeKPIs(){
   // IDEA 1 — Personal Cobranza widget for Nela, shown above the standard KPI cards
   var cobranzaHTML="";
   if(currentUser&&currentUser.name==="Nela"){
-    var evs=crossAppEvents||[];
+    var evs=(crossAppEvents||[]).filter(function(e){return e&&e.eventType!=="qb_backlog_snapshot"});
     var totalAmount=evs.reduce(function(s,e){return s+_alertAmount(e)},0);
     var overdue=evs.filter(function(e){return _alertAgeDays(e)>=30}).length;
     var needRem=evs.filter(function(e){return _alertAgeDays(e)>=ALERTS_REMINDER_THRESHOLD_DAYS}).length;
     var totalCount=evs.length;
+    // QB backlog from Invoice Tracker — shows here so Nela's Daily view is the single source of truth
+    var qbSnap=_latestQbBacklogSnapshot();
+    var qbCount=qbSnap&&qbSnap.payload?(qbSnap.payload.count||0):0;
+    var qbTotal=qbSnap&&qbSnap.payload?Number(qbSnap.payload.total||0):0;
+    var qbStale=qbSnap&&qbSnap.payload?(qbSnap.payload.staleCount||0):0;
     cobranzaHTML='<div onclick="showTab(8)" style="background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px;cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.18);transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 22px rgba(15,23,42,.28)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'0 4px 14px rgba(15,23,42,.18)\'">';
     cobranzaHTML+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
     cobranzaHTML+='<div><h3 style="margin:0;font-size:15px;font-weight:800;letter-spacing:.2px">💰 Today\'s Collections</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Click for full Alerts Center →</p></div>';
@@ -6089,6 +6326,12 @@ function _renderWelcomeKPIs(){
     cobranzaHTML+='<div><div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Open invoices</div><div style="font-size:24px;font-weight:800;line-height:1">'+totalCount+'</div></div>';
     cobranzaHTML+='<div><div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Overdue 30+d</div><div style="font-size:24px;font-weight:800;line-height:1;color:'+(overdue>0?"#fca5a5":"#fff")+'">'+overdue+'</div></div>';
     cobranzaHTML+='<div><div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Need reminder</div><div style="font-size:24px;font-weight:800;line-height:1;color:'+(needRem>0?"#fde047":"#fff")+'">'+needRem+'</div></div>';
+    // QB Backlog mini-stat (Invoice Tracker → QB Pending). Click navigates to Invoice Tracker.
+    // Color: yellow if any stale (>3 days), white otherwise. Only shown when count > 0.
+    if(qbCount>0){
+      var qbColor=qbStale>0?"#fca5a5":"#93c5fd";
+      cobranzaHTML+='<div onclick="event.stopPropagation();showTab(9)" title="Open Invoice Tracker → QB Pending tab" style="cursor:pointer;border-left:1px solid rgba(255,255,255,.12);padding-left:12px"><div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">📒 QB Pending</div><div style="font-size:24px;font-weight:800;line-height:1;color:'+qbColor+'">'+qbCount+'</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">$'+qbTotal.toFixed(0)+(qbStale>0?(" · "+qbStale+" >3d"):"")+'</div></div>';
+    }
     cobranzaHTML+='</div></div>';
   }
   box.innerHTML=cobranzaHTML
@@ -12207,7 +12450,7 @@ function _slSvcCheck(){
 function _slLoadHistory(){
   var box=document.getElementById("slHistBox");if(!box)return;
   var name=((document.getElementById("slCustName")||{}).value||"").trim();
-  if(!name){box.style.display="none";box.innerHTML="";_slLastSvcDate="";_slLastParts="";return}
+  if(!name){box.style.display="none";box.innerHTML="";_slLastSvcDate="";_slLastParts="";_slLoadWarranties();return}
   try{
     var k=(typeof _custGroupKey==="function")?_custGroupKey(name):name;
     var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
@@ -12220,10 +12463,469 @@ function _slLoadHistory(){
       var pl=_partsLabel(x);
       return{date:x.date||"",txt:(rep?("🗣️ "+rep+(nt?" — ":"")):"")+nt+(pl?((rep||nt?" · ":"")+"🔧 "+pl):"")};
     }).sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).slice(0,12);
-    if(!entries.length){box.style.display="none";box.innerHTML="";return}
-    box.style.display="block";
-    box.innerHTML='<div style="font-weight:800;font-size:var(--fs-xs);color:var(--i3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">🕘 History — '+entries.length+' note'+(entries.length===1?'':'s')+' (newest first)</div>'+entries.map(function(e){return '<div style="padding:5px 0;border-bottom:1px solid var(--ln);font-size:var(--fs-sm);color:var(--i2);line-height:1.35"><span style="font-weight:700;color:var(--ink)">'+esc(e.date||"—")+'</span> · '+esc(e.txt)+'</div>'}).join("");
+    if(!entries.length){box.style.display="none";box.innerHTML=""}
+    else{
+      box.style.display="block";
+      box.innerHTML='<div style="font-weight:800;font-size:var(--fs-xs);color:var(--i3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">🕘 History — '+entries.length+' note'+(entries.length===1?'':'s')+' (newest first)</div>'+entries.map(function(e){
+        // Highlight warranty lines (🛡 prefix) with a green tint so they stand out from the rest of the chatter
+        var t=esc(e.txt);
+        var htmlTxt=t.replace(/🛡[^\n]*?(?=\s·\s|$)/g,function(m){return '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:4px;font-weight:600">'+m+'</span>'});
+        return '<div style="padding:5px 0;border-bottom:1px solid var(--ln);font-size:var(--fs-sm);color:var(--i2);line-height:1.35"><span style="font-weight:700;color:var(--ink)">'+esc(e.date||"—")+'</span> · '+htmlTxt+'</div>';
+      }).join("");
+    }
+    _slLoadWarranties(mine);
   }catch(_e){box.style.display="none"}
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PART WARRANTY TRACKING — Phase 1 (per-part, lives inside comments as structured lines)
+// ════════════════════════════════════════════════════════════════════════════
+// Spa shells have factory warranty (Value/Gold/Elite/SS) tracked elsewhere. This
+// system tracks INDIVIDUAL PARTS we install during service: a pump installed today
+// gets its own 1-yr warranty regardless of the spa's overall warranty status.
+// Storage: a tagged line inside the ticket's notes field, format:
+//   🛡 5/28/2026 — Jeremy installed: 12-amp pump · 1-year warranty until 5/28/2027
+// Why notes (not a new field): zero schema migration, survives in the existing
+// QuickBooks-style history list, easy to spot visually, and we can parse it back.
+
+// Open the modal — pre-fill date=today, tech=currentUser
+function _slShowWarrantyModal(){
+  var mo=document.getElementById("slWarrModal");if(!mo)return;
+  var today=new Date();
+  var iso=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  var dEl=document.getElementById("slWarrDate");if(dEl)dEl.value=iso;
+  var tEl=document.getElementById("slWarrTech");if(tEl&&!tEl.value)tEl.value=(currentUser&&currentUser.name)||"";
+  var pEl=document.getElementById("slWarrPart");if(pEl)pEl.value="";
+  var perEl=document.getElementById("slWarrPeriod");if(perEl)perEl.value="1yr";
+  _slUpdateWarrantyPreview();
+  // Wire live preview — re-bind every open to be safe across re-creations
+  ["slWarrPart","slWarrPeriod","slWarrDate","slWarrTech"].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    el.oninput=_slUpdateWarrantyPreview;el.onchange=_slUpdateWarrantyPreview;
+  });
+  mo.style.display="flex";
+  setTimeout(function(){var f=document.getElementById("slWarrPart");if(f)f.focus()},50);
+}
+function _slCloseWarrantyModal(){var mo=document.getElementById("slWarrModal");if(mo)mo.style.display="none"}
+
+// Convert period code → human label + expiry date (or null for "none")
+function _slPeriodMath(periodCode,installIso){
+  var d=new Date(installIso+"T12:00:00");if(isNaN(d.getTime()))return null;
+  var label="",exp=null;
+  switch(periodCode){
+    case "90d":  label="90-day";   exp=new Date(d);exp.setDate(exp.getDate()+90);break;
+    case "6mo":  label="6-month";  exp=new Date(d);exp.setMonth(exp.getMonth()+6);break;
+    case "1yr":  label="1-year";   exp=new Date(d);exp.setFullYear(exp.getFullYear()+1);break;
+    case "2yr":  label="2-year";   exp=new Date(d);exp.setFullYear(exp.getFullYear()+2);break;
+    case "3yr":  label="3-year";   exp=new Date(d);exp.setFullYear(exp.getFullYear()+3);break;
+    case "none": label="no";       exp=null;break;
+    default:return null;
+  }
+  return {label:label,expiry:exp,install:d};
+}
+
+// Build the structured warranty line — format MUST stay stable so the parser keeps working
+function _slFormatWarrantyLine(part,tech,periodCode,installIso){
+  var m=_slPeriodMath(periodCode,installIso);if(!m)return"";
+  var fmt=function(d){return(d.getMonth()+1)+"/"+d.getDate()+"/"+d.getFullYear()};
+  if(periodCode==="none"){
+    return "🛡 "+fmt(m.install)+" — "+tech+" installed: "+part+" · no warranty";
+  }
+  return "🛡 "+fmt(m.install)+" — "+tech+" installed: "+part+" · "+m.label+" warranty until "+fmt(m.expiry);
+}
+
+function _slUpdateWarrantyPreview(){
+  var prev=document.getElementById("slWarrPreview");if(!prev)return;
+  var part=(document.getElementById("slWarrPart")||{}).value||"";
+  var tech=(document.getElementById("slWarrTech")||{}).value||"";
+  var period=(document.getElementById("slWarrPeriod")||{}).value||"1yr";
+  var iso=(document.getElementById("slWarrDate")||{}).value||"";
+  if(!part.trim()||!tech.trim()||!iso){prev.textContent="🛡 — fill in fields above to see the line";prev.style.color="#94a3b8";return}
+  var line=_slFormatWarrantyLine(part.trim(),tech.trim(),period,iso);
+  prev.textContent=line||"🛡 — invalid date";
+  prev.style.color="#065f46";
+}
+
+function _slInsertWarranty(){
+  var part=((document.getElementById("slWarrPart")||{}).value||"").trim();
+  var tech=((document.getElementById("slWarrTech")||{}).value||"").trim();
+  var period=(document.getElementById("slWarrPeriod")||{}).value||"1yr";
+  var iso=(document.getElementById("slWarrDate")||{}).value||"";
+  if(!part){toast("Part name is required","error");return}
+  if(!tech){toast("Installer name is required","error");return}
+  if(!iso){toast("Install date is required","error");return}
+  var line=_slFormatWarrantyLine(part,tech,period,iso);
+  if(!line){toast("Could not format warranty line","error");return}
+  var ta=document.getElementById("slNotes");if(!ta){toast("Comments box not found","error");return}
+  var cur=(ta.value||"").replace(/\s+$/,"");
+  ta.value=cur?(cur+"\n"+line):line;
+  ta.focus();
+  try{ta.setSelectionRange(ta.value.length,ta.value.length)}catch(_e){}
+  _slCloseWarrantyModal();
+  toast("✓ Warranty line added to comments","success");
+}
+
+// Regex tuned to the exact format we produce, but tolerant of casing on the period label.
+// Captures: install date (MM/DD/YYYY) · installer · part name · period label · expiry date.
+var _SL_WARRANTY_RE=/🛡\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*[—–-]\s*([^:]+?)\s+installed:\s+(.+?)\s+·\s+([\w-]+?)\s+warranty(?:\s+until\s+(\d{1,2}\/\d{1,2}\/\d{4}))?/gi;
+
+// ── AUTO-DETECT PART REPLACEMENTS FROM FREE-FORM NOTES ─────────────────────
+// Goal: techs write naturally ("replaced the pump", "instaló una nueva bomba"),
+// the system extracts parts WITHOUT requiring them to use the structured modal.
+// Scope: ONLY runs on tickets where the spa is OUT of warranty
+// (in-warranty spas are covered by the manufacturer; per-part tracking is moot).
+
+// Replacement verbs that signal "a part was actually installed/swapped in this visit".
+// We require one of these in the SAME SENTENCE as a known part name — that filter
+// kills 95% of false positives like "the pump was leaking" or "tested the heater".
+// Note: JS \b doesn't work after accented chars, so we use (?![a-záéíóúñ]) for the
+// trailing boundary so Spanish forms like "cambié" / "instaló" actually match.
+var _REPL_VERBS_RE=/\b(replaced?|replacing|installed?|installing|swapped?|changed(?:\s+out)?|put\s+in|fitted|reemplaz(?:o|ó|aron|amos|é|aste)|cambi(?:o|ó|aron|amos|é|aste|aba)|instal(?:o|ó|aron|amos|é|aste|aba)|pusieron|puso|puse|pusimos|pusiste|coloc(?:o|ó|aron|amos|é|aste))(?![a-záéíóúñ])/i;
+
+// Known parts dictionary — regex → normalized label. Order matters: more specific
+// patterns must come FIRST so generic "pump" doesn't shadow "12-amp pump".
+var _KNOWN_PARTS=[
+  // Pumps — most specific first. Handle both "12-amp pump" and "pump 12amp" (Alberto's old style)
+  {re:/\b(\d+)[\s-]?amp\s+pump\b/i,                lbl:function(m){return m[1]+"-amp pump"}},
+  {re:/\bpump\s+(\d+)[\s-]?amp\b/i,                 lbl:function(m){return m[1]+"-amp pump"}},
+  {re:/\b(?:circulation|circ)\s+pump\b/i,           lbl:function(){return"circulation pump"}},
+  {re:/\b(1|2)[\s-]?speed\s+pump\b/i,               lbl:function(m){return m[1]+"-speed pump"}},
+  {re:/\b(?:new|old|broken|faulty|main|spa)\s+pump\b/i, lbl:function(){return"pump"}},
+  {re:/\bpump\b/i,                                   lbl:function(){return"pump"}},
+  // Heaters
+  {re:/\bheater\s+(?:element|assembly|core)\b/i,    lbl:function(m){return m[0].toLowerCase()}},
+  {re:/\bheater\b/i,                                 lbl:function(){return"heater"}},
+  // Boards / panels
+  {re:/\b(?:circuit\s+board|pcb|main\s+board|control\s+board)\b/i, lbl:function(){return"circuit board"}},
+  {re:/\b(?:topside|top\s*side|control\s+panel|topside\s+panel)\b/i, lbl:function(){return"topside panel"}},
+  // Other components
+  {re:/\bozonator\b/i,                               lbl:function(){return"ozonator"}},
+  {re:/\bled\s+light\b/i,                            lbl:function(){return"LED light"}},
+  {re:/\blight\s+bulb\b/i,                           lbl:function(){return"light bulb"}},
+  {re:/\bspa\s+light\b/i,                            lbl:function(){return"spa light"}},
+  {re:/\bcover\s+lift\b/i,                           lbl:function(){return"cover lift"}},
+  {re:/\bspa\s+cover\b/i,                            lbl:function(){return"spa cover"}},
+  {re:/\bpillow\b/i,                                 lbl:function(){return"pillow"}},
+  {re:/\bjet(?:\s+insert)?\b/i,                      lbl:function(){return"jet insert"}},
+  {re:/\bgasket\b/i,                                 lbl:function(){return"gasket"}},
+  {re:/\bo-?ring\b/i,                                lbl:function(){return"o-ring"}},
+  {re:/\bpressure\s+switch\b/i,                      lbl:function(){return"pressure switch"}},
+  {re:/\bflow\s+switch\b/i,                          lbl:function(){return"flow switch"}},
+  {re:/\b(?:temperature\s+sensor|thermistor|temp\s+sensor)\b/i, lbl:function(){return"temperature sensor"}},
+  // Spanish equivalents — both word orders
+  {re:/\b(\d+)[\s-]?amp\s+bomba\b/i,                lbl:function(m){return m[1]+"-amp bomba"}},
+  {re:/\bbomba\s+(?:nueva\s+)?(?:de\s+)?(\d+)[\s-]?amp\b/i, lbl:function(m){return m[1]+"-amp bomba"}},
+  {re:/\bbomba\s+de\s+circulaci[oó]n\b/i,           lbl:function(){return"circulation pump (bomba de circulación)"}},
+  {re:/\bbomba\b/i,                                  lbl:function(){return"bomba (pump)"}},
+  {re:/\bcalentador\b/i,                             lbl:function(){return"calentador (heater)"}},
+  {re:/\btarjeta\s+de\s+control\b/i,                lbl:function(){return"circuit board (tarjeta)"}},
+];
+
+// Pull tech name from the ticket (techs array). Fallback to assignedTech, then "Unknown".
+function _slTicketTech(t){
+  if(!t)return"Unknown";
+  if(Array.isArray(t.techs)&&t.techs.length){
+    var names=t.techs.filter(function(x){return x&&x!==CAL_UNASSIGNED});
+    if(names.length)return names.join("/");
+  }
+  return t.assignedTech||t.tech||"Unknown";
+}
+
+// Walk a ticket's notes, sentence by sentence, look for replacement-verb + known-part
+// combos. Return one warranty record per unique part. Default warranty 1yr from
+// ticket.date. Marked auto:true so the panel can badge them differently.
+function _slAutoDetectParts(notes,ticketDate,ticketTech){
+  if(!notes||!notes.trim()||!ticketDate)return[];
+  // Parse ticket.date (YYYY-MM-DD) into a Date
+  var dp=String(ticketDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!dp)return[];
+  var install=new Date(parseInt(dp[1],10),parseInt(dp[2],10)-1,parseInt(dp[3],10),12,0,0);
+  if(isNaN(install.getTime()))return[];
+  var expiry=new Date(install);expiry.setFullYear(expiry.getFullYear()+1);
+  // Split into sentence-ish chunks. Period, exclamation, line break.
+  var sentences=String(notes).split(/[.!\n]+/).map(function(s){return s.trim()}).filter(Boolean);
+  var out=[];var seen={};
+  sentences.forEach(function(sentence){
+    if(sentence.indexOf("🛡")>=0)return; // explicit warranty line — skip
+    if(!_REPL_VERBS_RE.test(sentence))return;
+    for(var i=0;i<_KNOWN_PARTS.length;i++){
+      var p=_KNOWN_PARTS[i];
+      var m=p.re.exec(sentence);
+      if(!m)continue;
+      var label=(typeof p.lbl==="function")?p.lbl(m):p.lbl;
+      var key=label.toLowerCase();
+      if(seen[key])continue;
+      seen[key]=1;
+      out.push({
+        install:install,expiry:expiry,tech:ticketTech||"Unknown",part:label,
+        periodLabel:"1-year",noWarranty:false,auto:true,
+        ticketDate:ticketDate,sourceSentence:sentence.length>140?sentence.slice(0,137)+"…":sentence
+      });
+      break; // one part per sentence is usually enough; rest likely refers to same install
+    }
+  });
+  return out;
+}
+
+// ── AI EXTRACTION (Claude API) — fallback when regex misses subtle patterns ──
+// Uses the same Anthropic key the user configured for "AI Improve". Caches
+// results in localStorage by ticket ID + notes hash so we don't pay twice.
+
+var _AI_PARTS_SYSPROMPT=
+  "You extract REPLACED PARTS from a hot tub technician's service note. "+
+  "Return ONLY a valid JSON array, no markdown, no explanation. "+
+  "Each element: {\"part\":\"<normalized name>\",\"warranty\":\"<code>\"}. "+
+  "Codes: 90d / 6mo / 1yr / 2yr / 3yr / none. Default 1yr. "+
+  "Normalized names examples: \"12-amp pump\", \"circulation pump\", \"heater element\", "+
+  "\"circuit board\", \"topside panel\", \"ozonator\", \"LED light\", \"cover lift\", \"spa cover\", "+
+  "\"pillow\", \"jet insert\", \"gasket\", \"o-ring\", \"pressure switch\", \"flow switch\", "+
+  "\"temperature sensor\". "+
+  "Rules: (a) ONLY list parts that were actually REPLACED or INSTALLED in this visit. "+
+  "Exclude parts that were merely tested, diagnosed, inspected, or referenced. "+
+  "(b) If the note says 'we were going to replace X but didn't', exclude X. "+
+  "(c) If nothing was replaced, return []. "+
+  "(d) Handle English and Spanish. Translate Spanish part names to English in the JSON output.";
+
+// Lightweight hash for cache key (djb2). Same notes → same hash.
+function _slHashNotes(s){
+  var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);
+  return(h>>>0).toString(36);
+}
+function _slGetAICache(ticketId){
+  try{var raw=localStorage.getItem("aspAIPartsCache_"+ticketId);return raw?JSON.parse(raw):null}catch(_e){return null}
+}
+function _slSetAICache(ticketId,notesHash,parts){
+  try{localStorage.setItem("aspAIPartsCache_"+ticketId,JSON.stringify({notesHash:notesHash,parts:parts,ts:Date.now()}))}catch(_e){}
+}
+
+// Extract parts from ONE ticket's notes via Claude. Returns array of {part, warranty}.
+async function _slExtractPartsAI(notes,ticketId){
+  if(!notes||!notes.trim())return[];
+  var notesHash=_slHashNotes(notes);
+  // Check cache first — same notes, same answer
+  var cached=_slGetAICache(ticketId);
+  if(cached&&cached.notesHash===notesHash&&Array.isArray(cached.parts))return cached.parts;
+  var apiKey=(typeof getAIKey==="function")?getAIKey():"";
+  if(!apiKey)throw new Error("Anthropic API key not configured. Set it in Admin → AI Settings.");
+  var res=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json","x-api-key":apiKey,
+      "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"
+    },
+    body:JSON.stringify({
+      model:"claude-sonnet-4-20250514",max_tokens:500,
+      system:_AI_PARTS_SYSPROMPT,
+      messages:[{role:"user",content:notes}]
+    })
+  });
+  if(!res.ok){var t="";try{t=await res.text()}catch(_e){}throw new Error("AI request failed ("+res.status+"): "+t.slice(0,160))}
+  var data=await res.json();
+  var raw=(data.content||[]).filter(function(b){return b.type==="text"}).map(function(b){return b.text}).join("").trim();
+  // Strip code fences if model added them despite our instruction
+  raw=raw.replace(/^```(?:json)?\s*/i,"").replace(/\s*```\s*$/,"").trim();
+  var parts=[];
+  try{var parsed=JSON.parse(raw);if(Array.isArray(parsed))parts=parsed.filter(function(p){return p&&typeof p.part==="string"})}
+  catch(e){console.warn("[AI Parts] JSON parse failed:",raw.slice(0,200));parts=[]}
+  _slSetAICache(ticketId,notesHash,parts);
+  return parts;
+}
+
+// Convert AI extraction result → warranty record (same shape as regex/explicit).
+function _slAIPartToWarranty(aiPart,ticketDate,ticketTech){
+  var dp=String(ticketDate||"").match(/^(\d{4})-(\d{2})-(\d{2})/);if(!dp)return null;
+  var install=new Date(parseInt(dp[1],10),parseInt(dp[2],10)-1,parseInt(dp[3],10),12,0,0);
+  if(isNaN(install.getTime()))return null;
+  var code=(aiPart.warranty||"1yr").toLowerCase();
+  var expiry=null,periodLabel="1-year",noWarranty=false;
+  switch(code){
+    case"90d":  expiry=new Date(install);expiry.setDate(expiry.getDate()+90);periodLabel="90-day";break;
+    case"6mo":  expiry=new Date(install);expiry.setMonth(expiry.getMonth()+6);periodLabel="6-month";break;
+    case"1yr":  expiry=new Date(install);expiry.setFullYear(expiry.getFullYear()+1);periodLabel="1-year";break;
+    case"2yr":  expiry=new Date(install);expiry.setFullYear(expiry.getFullYear()+2);periodLabel="2-year";break;
+    case"3yr":  expiry=new Date(install);expiry.setFullYear(expiry.getFullYear()+3);periodLabel="3-year";break;
+    case"none": noWarranty=true;break;
+    default:    expiry=new Date(install);expiry.setFullYear(expiry.getFullYear()+1);
+  }
+  return{install:install,expiry:expiry,tech:ticketTech||"Unknown",part:aiPart.part,
+    periodLabel:periodLabel,noWarranty:noWarranty,auto:true,ai:true,ticketDate:ticketDate};
+}
+
+// User-triggered AI scan — iterates the current customer's no-warranty tickets,
+// calls Claude on each ticket's notes, merges results into the panel.
+// Rate-limited (one in flight at a time) so we don't burst the API.
+var _slAIScanInFlight=false;
+async function _slRunAIScan(){
+  if(_slAIScanInFlight){toast("AI scan already running","info");return}
+  var btn=document.getElementById("slAIScanBtn");
+  var name=((document.getElementById("slCustName")||{}).value||"").trim();
+  if(!name){toast("Pick a customer first","warn");return}
+  if(!getAIKey()){toast("Set your Anthropic API key in Admin → AI Settings","warn");return}
+  _slAIScanInFlight=true;
+  if(btn){btn.disabled=true;btn.dataset._lbl=btn.textContent;btn.textContent="🤖 Scanning…"}
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(name):name;
+    var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
+    // Only scan tickets where the spa is OUT of warranty AND has substantive notes
+    // AND doesn't already have explicit 🛡 lines (regex handles those for free)
+    var targets=mine.filter(function(t){
+      if(typeof _spaUnderWarranty==="function"&&_spaUnderWarranty(t))return false;
+      if(!t.notes||t.notes.trim().length<20)return false;
+      if(t.notes.indexOf("🛡")>=0)return false;
+      return true;
+    });
+    if(!targets.length){toast("No tickets to scan (all in-warranty or already marked)","info");return}
+    var totalFound=0;var i=0;
+    for(i=0;i<targets.length;i++){
+      if(btn)btn.textContent="🤖 Scanning "+(i+1)+"/"+targets.length+"…";
+      var t=targets[i];
+      try{
+        var parts=await _slExtractPartsAI(t.notes,t.id||t.docId||("noid_"+i));
+        totalFound+=parts.length;
+      }catch(e){console.warn("[AI Scan] ticket",t.id,"failed:",e.message);toast("AI scan: "+e.message,"error");break}
+    }
+    _slLoadWarranties(mine); // re-render panel with cached AI results merged in
+    toast("AI scan complete — "+totalFound+" part"+(totalFound!==1?"s":"")+" detected across "+i+" ticket"+(i!==1?"s":""),totalFound>0?"success":"info");
+  }finally{
+    _slAIScanInFlight=false;
+    if(btn){btn.disabled=false;btn.textContent=btn.dataset._lbl||"🤖 AI scan"}
+  }
+}
+
+// Walk through every ticket's notes for this customer, pull all warranty lines, and
+// build a deduped list keyed on (part + install date). Latest entry wins on dup.
+function _slParseWarranties(tickets){
+  var out=[];
+  (tickets||[]).forEach(function(t){
+    var notes=(t&&t.notes)||"";if(!notes)return;
+    _SL_WARRANTY_RE.lastIndex=0; // global regex — reset between strings
+    var m;
+    while((m=_SL_WARRANTY_RE.exec(notes))!==null){
+      var installStr=m[1],tech=(m[2]||"").trim(),part=(m[3]||"").trim(),periodLbl=(m[4]||"").trim().toLowerCase(),expStr=m[5]||"";
+      var install=_parseUsDate(installStr);if(!install)continue;
+      var expiry=expStr?_parseUsDate(expStr):null;
+      var noWarranty=/^no$/i.test(periodLbl);
+      out.push({install:install,expiry:expiry,tech:tech,part:part,periodLabel:periodLbl,noWarranty:noWarranty,ticketDate:t.date||"",ticketId:t.id||""});
+    }
+  });
+  // Dedupe — same part installed on same date is the same record. Keep newest ticketDate.
+  var seen={};
+  out.sort(function(a,b){return (b.ticketDate||"").localeCompare(a.ticketDate||"")});
+  return out.filter(function(w){
+    var key=(w.part.toLowerCase())+"|"+w.install.getTime();
+    if(seen[key])return false;seen[key]=1;return true;
+  });
+}
+
+function _parseUsDate(s){
+  var p=String(s||"").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!p)return null;
+  var d=new Date(parseInt(p[3],10),parseInt(p[1],10)-1,parseInt(p[2],10),12,0,0);
+  return isNaN(d.getTime())?null:d;
+}
+
+// Build and inject the Active Warranties panel above the history box. Hidden when empty.
+function _slLoadWarranties(tickets){
+  var panel=document.getElementById("slWarrantyPanel");if(!panel)return;
+  if(!tickets){
+    var name=((document.getElementById("slCustName")||{}).value||"").trim();
+    if(!name){panel.style.display="none";panel.innerHTML="";return}
+    try{
+      var k=(typeof _custGroupKey==="function")?_custGroupKey(name):name;
+      var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+      tickets=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
+    }catch(_e){panel.style.display="none";return}
+  }
+  // 1. Explicit 🛡 lines (always parsed, all tickets)
+  var warr=_slParseWarranties(tickets);
+  // 2. Auto-detect from free-form notes — ONLY for tickets where spa is OUT of warranty
+  //    AND the ticket doesn't already have an explicit 🛡 line (avoid double-counting).
+  var aiCachedTickets=0,hasReplKwButNoDetect=0;
+  (tickets||[]).forEach(function(t){
+    if(!t||!t.notes)return;
+    if(typeof _spaUnderWarranty==="function"&&_spaUnderWarranty(t))return; // mfr covers
+    if(t.notes.indexOf("🛡")>=0)return; // explicit already handled
+    var tech=_slTicketTech(t);
+    // Regex pass
+    var auto=_slAutoDetectParts(t.notes,t.date,tech);
+    auto.forEach(function(a){warr.push(a)});
+    // Merge any CACHED AI results (no new API calls here — just read what was already paid for)
+    var cached=_slGetAICache(t.id||t.docId||"");
+    if(cached&&Array.isArray(cached.parts)&&cached.parts.length){
+      aiCachedTickets++;
+      cached.parts.forEach(function(p){
+        var w=_slAIPartToWarranty(p,t.date,tech);
+        if(!w)return;
+        // Don't add an AI part if regex already detected it for the same ticket
+        var dupe=auto.some(function(a){return a.part.toLowerCase()===w.part.toLowerCase()});
+        if(!dupe)warr.push(w);
+      });
+    }else if(auto.length===0&&_REPL_VERBS_RE.test(t.notes)){
+      // Has replacement-verb-language but regex found nothing AND no AI cache —
+      // candidate for AI scan. Count for the badge.
+      hasReplKwButNoDetect++;
+    }
+  });
+  // Dedupe globally (same part + same install day = same install event)
+  var dedupeSeen={};
+  warr=warr.filter(function(w){
+    if(!w.install)return false;
+    var key=w.part.toLowerCase()+"|"+w.install.getTime();
+    if(dedupeSeen[key])return false;dedupeSeen[key]=1;return true;
+  });
+  // Show button only when there's something to scan AND a key is configured
+  var canShowAIBtn=hasReplKwButNoDetect>0&&(typeof getAIKey==="function")&&getAIKey();
+  if(!warr.length&&!canShowAIBtn){panel.style.display="none";panel.innerHTML="";return}
+  // Split into active/expired
+  var now=new Date();var today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  var active=warr.filter(function(w){return w.expiry&&w.expiry>=today&&!w.noWarranty});
+  var expired=warr.filter(function(w){return !w.expiry||w.expiry<today||w.noWarranty});
+  active.sort(function(a,b){return a.expiry-b.expiry});
+  var fmtDate=function(d){return d?(d.getMonth()+1)+"/"+d.getDate()+"/"+d.getFullYear():"—"};
+  var daysLeft=function(d){return Math.ceil((d-today)/86400000)};
+  // Small badge factory for source-of-truth indicators
+  var sourceBadge=function(w){
+    if(w.ai)   return '<span title="Detected by Claude AI from free-form notes" style="background:#ede9fe;color:#6d28d9;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.3px;margin-right:4px">🤖 AI</span>';
+    if(w.auto) return '<span title="'+esc(w.sourceSentence||"")+'" style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.3px;margin-right:4px">🔍 auto</span>';
+    return ''; // explicit 🛡 entries get no badge — they're the "default" source
+  };
+  var html='<div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 12px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:'+(active.length||expired.length||canShowAIBtn?'8px':'0')+'">';
+  html+='<div style="font-weight:800;font-size:12px;color:#065f46;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px">🛡 Active Part Warranties</div>';
+  html+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:11px;color:#047857;font-weight:600">'+active.length+' active'+(expired.length?(" · "+expired.length+" expired"):"")+(aiCachedTickets>0?(" · "+aiCachedTickets+" AI-scanned"):"")+'</div>';
+  if(canShowAIBtn){
+    html+='<button id="slAIScanBtn" onclick="_slRunAIScan()" title="Run Claude AI on notes the regex parser didn\'t recognize. Uses your Anthropic API key. ~$0.005 per ticket." style="padding:4px 9px;background:#8b5cf6;border:none;border-radius:6px;color:#fff;font-size:10.5px;font-weight:700;cursor:pointer;letter-spacing:.3px">🤖 AI scan ('+hasReplKwButNoDetect+')</button>';
+  }
+  html+='</div></div>';
+  if(active.length){
+    html+='<div style="display:grid;gap:5px">';
+    active.forEach(function(w){
+      var dl=daysLeft(w.expiry);
+      var urgentColor=dl<=30?"#dc2626":dl<=90?"#d97706":"#065f46";
+      var urgentBg=dl<=30?"#fee2e2":dl<=90?"#fef3c7":"#fff";
+      html+='<div style="background:'+urgentBg+';border:1px solid '+(dl<=30?"#fca5a5":dl<=90?"#fde68a":"#a7f3d0")+';border-radius:6px;padding:6px 9px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">';
+      html+='<div style="min-width:0;flex:1"><div style="font-weight:700;font-size:13px;color:#0f172a">'+sourceBadge(w)+esc(w.part)+'</div>';
+      html+='<div style="font-size:11px;color:#475569;margin-top:1px">Installed '+fmtDate(w.install)+' by '+esc(w.tech)+' · '+w.periodLabel+' warranty</div></div>';
+      html+='<div style="text-align:right;flex-shrink:0"><div style="font-weight:800;font-size:13px;color:'+urgentColor+'">'+dl+'d left</div><div style="font-size:10px;color:#64748b">until '+fmtDate(w.expiry)+'</div></div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  if(expired.length){
+    html+='<details style="margin-top:'+(active.length?'8px':'0')+'"><summary style="cursor:pointer;font-size:11px;color:#475569;font-weight:600;list-style:none;display:flex;align-items:center;gap:5px">▸ '+expired.length+' expired / no-warranty entr'+(expired.length===1?"y":"ies")+'</summary>';
+    html+='<div style="display:grid;gap:4px;margin-top:6px">';
+    expired.slice(0,8).forEach(function(w){
+      html+='<div style="font-size:11.5px;color:#64748b;padding:3px 8px;background:#f8fafc;border-radius:4px;text-decoration:'+(w.noWarranty?"none":"line-through")+'">'+sourceBadge(w)+'<b>'+esc(w.part)+'</b> · '+esc(w.tech)+' · '+fmtDate(w.install)+(w.noWarranty?' · no warranty':' · expired '+fmtDate(w.expiry))+'</div>';
+    });
+    html+='</div></details>';
+  }
+  // If no warranties found yet but AI button is available, give a helpful hint
+  if(!warr.length&&canShowAIBtn){
+    html+='<div style="font-size:11.5px;color:#475569;background:#fef3c7;border:1px dashed #fbbf24;border-radius:6px;padding:7px 10px;line-height:1.4">📝 Found '+hasReplKwButNoDetect+' ticket'+(hasReplKwButNoDetect!==1?"s":"")+' with replacement language but no parts auto-detected. Click <b>🤖 AI scan</b> above to let Claude parse the free-form notes.</div>';
+  }
+  html+='</div>';
+  panel.innerHTML=html;
+  panel.style.display="block";
 }
 function calAutoFillCust(){var name=document.getElementById("calCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("calCustPhone").value)document.getElementById("calCustPhone").value=c.phone;if(c.address&&!document.getElementById("calCustAddr").value)document.getElementById("calCustAddr").value=c.address;if(c.city&&!document.getElementById("calCustCity").value)document.getElementById("calCustCity").value=c.city;if(c.zip&&!document.getElementById("calCustZip").value){document.getElementById("calCustZip").value=c.zip;calAutoZone()}if(c.spaDesc&&document.getElementById("calSpaDesc"))document.getElementById("calSpaDesc").value=c.spaDesc;if(c.notes&&document.getElementById("calNotes")&&!document.getElementById("calNotes").value)document.getElementById("calNotes").value=c.notes}
 function refreshAll(){
@@ -14060,5 +14762,75 @@ function _exportCheckinVerify(){
 let _summaryData=[];
 
 init();</script>
+
+<!-- ══ PART WARRANTY MODAL — opened from Service Log "🛡 Warranty Part" quick-add button ══ -->
+<!-- Captures install date, part name, warranty period, and installer, then inserts a
+     structured line (🛡 ... · ... warranty until ...) into the comments. That line is
+     parseable by _slLoadWarranties() so the panel above history can show what's active. -->
+<div id="slWarrModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:999;align-items:center;justify-content:center;padding:14px" onclick="if(event.target===this)_slCloseWarrantyModal()">
+  <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:17px;font-weight:800;color:#065f46;display:flex;align-items:center;gap:8px">🛡 Add Warranty Part</h3>
+      <button onclick="_slCloseWarrantyModal()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:0 6px">×</button>
+    </div>
+    <div style="font-size:12px;color:#475569;margin-bottom:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 10px;line-height:1.4">
+      Even if the spa shell is out of warranty, a replaced part has its own warranty from install date. This adds a structured line to the comments — the panel above the history will track expiration.
+    </div>
+    <div style="display:grid;gap:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Part installed</label>
+        <input type="text" id="slWarrPart" list="slWarrPartList" placeholder="e.g. 12-amp pump, heater element, circuit board" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        <datalist id="slWarrPartList">
+          <option value="Pump (1-speed)"></option>
+          <option value="Pump (2-speed)"></option>
+          <option value="12-amp pump"></option>
+          <option value="Circulation pump"></option>
+          <option value="Heater element"></option>
+          <option value="Heater assembly"></option>
+          <option value="Circuit board"></option>
+          <option value="Topside control panel"></option>
+          <option value="Ozonator"></option>
+          <option value="Light (LED)"></option>
+          <option value="Light bulb"></option>
+          <option value="Cover lift"></option>
+          <option value="Spa cover"></option>
+          <option value="Pillow"></option>
+          <option value="Jet (insert)"></option>
+          <option value="Gasket"></option>
+          <option value="Pressure switch"></option>
+          <option value="Flow switch"></option>
+          <option value="Temperature sensor"></option>
+        </datalist>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Warranty period</label>
+          <select id="slWarrPeriod" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box">
+            <option value="90d">90 days</option>
+            <option value="6mo">6 months</option>
+            <option value="1yr" selected>1 year (standard)</option>
+            <option value="2yr">2 years</option>
+            <option value="3yr">3 years</option>
+            <option value="none">No warranty</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Install date</label>
+          <input type="date" id="slWarrDate" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        </div>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Installed by</label>
+        <input type="text" id="slWarrTech" placeholder="Tech name" style="width:100%;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div id="slWarrPreview" style="font-size:12.5px;color:#065f46;background:#f0fdf4;border:1px dashed #86efac;border-radius:8px;padding:9px 11px;line-height:1.5;font-family:ui-monospace,Menlo,monospace">🛡 — preview will show here</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+      <button onclick="_slCloseWarrantyModal()" style="padding:9px 16px;background:#fff;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;color:#475569;cursor:pointer">Cancel</button>
+      <button onclick="_slInsertWarranty()" style="padding:9px 18px;background:#10b981;border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">Insert into comments</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
