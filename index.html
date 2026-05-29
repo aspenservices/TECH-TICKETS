@@ -3696,8 +3696,20 @@ function _custGroupKey(s){
   var lower=String(s).toLowerCase();
   var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
   if(clean.indexOf(",")>=0){
-    var fam=clean.split(",")[0].trim().replace(/\s+/g,"");
-    if(fam.length>=3)return "fam:"+fam;
+    var parts=clean.split(",");
+    var fam=parts[0].trim().replace(/\s+/g,"");
+    if(fam.length>=3){
+      // BUG FIX (May 2026 — Cox collision): bare surname is too aggressive.
+      // "Cox, Sara" and "Cox, Jim & Martha" are unrelated households but both
+      // mapped to fam:cox, so Sara's tickets disappeared into Jim & Martha's
+      // card. Disambiguate by appending the PRIMARY first name (the one BEFORE
+      // any "&" / "and" — so "Ruck, Linda & Jim" still collapses with
+      // "Ruck, Linda" because both produce "linda").
+      var afterComma=(parts[1]||"").trim();
+      var primaryFirst=afterComma.split(/\s*(?:&|\band\b)\s*/i)[0].trim().split(/\s+/)[0];
+      if(primaryFirst&&primaryFirst.length>=2)return "fam:"+fam+"|"+primaryFirst;
+      return "fam:"+fam;
+    }
   }
   // No comma — pick the longest word (≥3 chars) as the family-name proxy.
   // Family names tend to be longer than first names, so this is more reliable
@@ -5823,10 +5835,15 @@ function goToCustomerFromAlert(eventId){
   const ev=crossAppEvents.find(e=>e.id===eventId);
   if(!ev){toast('Alert not found','err');return}
   const all=active.concat(done);
+  // BUG FIX (May 2026): use the SAME key generator as rndrCust (_custGroupKey,
+  // family-name grouping) so the key we hand to qbCustSelect actually matches
+  // a row in the sidebar. Previously this used trim().toLowerCase() which is a
+  // different key space, so the detail pane stayed empty even after navigating.
   const custMap={};
   all.forEach(t=>{
-    if(!t.customer)return;
-    const k=(t.customer||"").trim().toLowerCase();
+    if(!t.customer||!t.customer.trim())return;
+    const k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+    if(!k)return;
     if(!custMap[k])custMap[k]={key:k,name:t.customer,tickets:[]};
     custMap[k].tickets.push(t);
   });
@@ -5840,7 +5857,9 @@ function goToCustomerFromAlert(eventId){
   });
   if(!matchedKey){toast('Customer "'+(ev.customerName||'?')+'" not found in TECH-TICKETS','err');return}
   if(typeof showTab==='function')showTab(6);
-  if(typeof qbCustSelect==='function')qbCustSelect(matchedKey);
+  // Small defer so showTab's rndrCust() completes before we mutate selectedCustKey
+  // and trigger another render — otherwise the first render wipes our selection.
+  setTimeout(function(){if(typeof qbCustSelect==='function')qbCustSelect(matchedKey)},20);
 }
 
 // ═══ TO-DO LIST ═══
