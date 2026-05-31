@@ -7739,6 +7739,15 @@ async function submitTkt(st){
     if(typeof clearDraft==="function")clearDraft();
     if(st==="complete"&&typeof celebrate==="function")celebrate({count:110});
     resetForm();
+    // SURGICAL FIX (May 2026 — Nela): after a Reschedule submission the auto-
+    // created/resurfaced dispatch lands in Service Log, but the user was left
+    // on the Field Report screen and had to navigate there manually to
+    // verify/re-book. Auto-route admins & organizers to Service Log so the
+    // ticket is visibly waiting for a new date. Techs are skipped (Service
+    // Log is hidden for tech role — tab5 has .hidden applied at sign-in).
+    if(st==="reschedule"&&typeof showTab==="function"&&(isAdmin||(currentUser&&currentUser.role==="organizer"))){
+      setTimeout(function(){try{showTab(5)}catch(_e){}},250);
+    }
   }catch(e){console.error(e);toast("Error: "+e.message,"err")}
   btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";
 }
