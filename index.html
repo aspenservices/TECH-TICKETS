@@ -9086,7 +9086,16 @@ function rndrSlog(){
     h+='</div></div>';
   }
   // ── Rescheduled section (amber — auto-created when a tech marks reschedule) ──
-  var rescheds=filtered.filter(function(t){return t.autoFromResched&&!t.date}).sort(function(a,b){return (a.reschedAtMs||9e15)-(b.reschedAtMs||9e15)});
+  // Source reschedules straight from the ticket pool (NOT the unassigned-only
+  // `all`), so a reschedule stays visible in the Service Log through its whole
+  // lifecycle — even after it gets a tech/date via Program now (which would
+  // otherwise drop it out of `all`'s no-techs filter and make it "disappear").
+  var _reschedSrc=[...active,...done].filter(function(t){
+    return t.autoFromResched&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"&&!t.fieldReportSubmitted&&!_slServed(t);
+  });
+  if(slogZone!=="all")_reschedSrc=_reschedSrc.filter(function(t){return (effectiveZone(t)||"No Zone")===slogZone});
+  if(q)_reschedSrc=_reschedSrc.filter(function(t){return tktMatchesSearch(t,q)});
+  var rescheds=_reschedSrc.filter(function(t){return !t.date}).sort(function(a,b){return (a.reschedAtMs||9e15)-(b.reschedAtMs||9e15)});
   if(rescheds.length){
     h+='<div style="margin-bottom:18px">';
     h+='<div class="lbl" style="color:var(--c-warning-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("rotate-ccw",16,{color:"var(--c-warning-fg)"})+'Rescheduled \u2014 needs new date <span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+rescheds.length+'</span></div>';
@@ -9110,6 +9119,27 @@ function rndrSlog(){
         (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
         ((currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" style="margin-top:10px;width:100%;padding:9px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar-days",14,{color:"#fff"})+'Program now</button>':'')+
+      '</div>';
+    });
+    h+='</div></div>';
+  }
+  // ── Rescheduled BUT now booked (green ✓) — a reschedule that got a new date
+  //    via Program now. Kept visible here so it doesn't appear to "vanish" once
+  //    it has a date/tech (which removes it from the unassigned `all` pool). ──
+  var reschedBooked=_reschedSrc.filter(function(t){return !!t.date}).sort(function(a,b){return (a.date||"").localeCompare(b.date||"")});
+  if(reschedBooked.length){
+    h+='<div style="margin-bottom:18px">';
+    h+='<div class="lbl" style="color:var(--c-success-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("check-circle",16,{color:"var(--c-success-fg)"})+'Rescheduled \u2014 booked <span style="background:var(--c-success-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+reschedBooked.length+'</span></div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">';
+    reschedBooked.forEach(function(t){
+      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var techLine=(t.techs&&t.techs.length)?t.techs.join(", "):"";
+      h+='<div style="background:#fff;border:1px solid var(--c-success-bg);border-left:3px solid var(--c-success-fg);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span><span style="font-size:var(--fs-xs);font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;background:var(--c-success-bg);color:var(--c-success-fg)">\u2713 booked</span></div>'+
+        '<div style="font-size:var(--fs-sm);color:var(--c-success-fg);font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar-days",11,{color:"var(--c-success-fg)"})+t.date+(t.arrival?' \u00B7 '+t.arrival:'')+'</div>'+
+        (techLine?'<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:4px">\uD83D\uDC64 '+esc(techLine)+'</div>':'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);font-weight:700;margin-bottom:4px">\u26A0 No tech assigned yet</div>')+
+        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+        (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
       '</div>';
     });
     h+='</div></div>';
