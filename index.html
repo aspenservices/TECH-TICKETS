@@ -1373,6 +1373,11 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
     <summary style="cursor:pointer;font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:8px">💵 Billing — Rounding Rule <span style="font-size:var(--fs-xs);font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">(tap to expand)</span></summary>
     <div id="billingRoundBodyOrg" style="margin-top:12px"></div>
   </details>
+  <!-- Warranty Override Log (Batch 3 #1) — office audit of manual warranty changes -->
+  <details class="card" style="margin:0 0 12px;border-left:4px solid var(--ac)">
+    <summary style="cursor:pointer;font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:8px">🔐 Warranty Override Log <span style="font-size:var(--fs-xs);font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">(tap to expand)</span></summary>
+    <div id="warLogBodyOrg" style="margin-top:12px"></div>
+  </details>
   <div class="cal-wrap slog-mode-log">
     <div class="cal-main">
       <div class="lbl" style="font-size:var(--fs-md);margin-bottom:4px">📋 Service Log</div>
@@ -1539,6 +1544,14 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
       <span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Billing — Rounding Rule</span>
     </div>
     <div id="billingRoundBody"></div>
+  </div>
+  <!-- Warranty Override Log (Batch 3 #1) -->
+  <div class="card" style="margin-bottom:12px;border-left:4px solid var(--ac)">
+    <div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ln);margin-bottom:12px">
+      <span style="font-size:18px">🔐</span>
+      <span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Warranty Override Log</span>
+    </div>
+    <div id="warLogBody"></div>
   </div>
   <!-- Spa Data Worklist (#1) — customers whose warranty can't auto-anchor (rendered by rndrSpaDataWorklist) -->
   <div id="adminSpaWorklist" style="margin-bottom:12px"></div>
@@ -2601,6 +2614,8 @@ var _frWarLocked=false;
 function frAnchorWarranty(spaDescText){
   var parsed=spaDescText?_parseSpaDescription(spaDescText):null;
   var auto=parsed?_autoWarrantyFromSpec(parsed):null;
+  _frOverridePending=null; // re-anchoring = fresh context
+  _frAutoSnapshot=auto?{has:auto.hasAny,model:(auto.warrantyObj.model||""),year:auto.yearN,label:(auto.warrantyObj.label||"N/W")}:null;
   if(auto){
     // Force the computed warranty regardless of what was previously set.
     var modelLower=(auto.warrantyObj.model||"").toLowerCase();
@@ -2637,6 +2652,16 @@ function frSetWarrantyLocked(locked){
 function frOverrideWarranty(){
   if(!(typeof isAdmin!=="undefined"&&isAdmin)){if(typeof toast==="function")toast("Only office staff can override warranty","warn");return}
   frSetWarrantyLocked(false);
+  // Capture override context for the Warranty Override Log (Batch 3 #1).
+  try{
+    _frOverridePending={
+      when:new Date().toISOString(),
+      who:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)?currentUser.name:"",
+      role:(typeof currentUser!=="undefined"&&currentUser&&currentUser.role)?currentUser.role:"",
+      customer:(document.getElementById("fCust")||{}).value||"",
+      auto:_frAutoSnapshot
+    };
+  }catch(_e){}
   var bar=document.getElementById("frWarLockBar");
   if(bar){bar.style.display="flex";bar.innerHTML='<span style="display:flex;align-items:center;gap:6px;font-weight:700;color:var(--c-warning-fg)">✏️ Manual override active — set the warranty carefully</span>'}
   if(typeof toast==="function")toast("Warranty unlocked — override carefully","warn");
@@ -2846,12 +2871,88 @@ function rndrBillingCard(){
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=inner});
 }
 
+// ─── WARRANTY OVERRIDE LOG (Batch 3 #1) ────────────────────────────────────
+// Audit trail of MANUAL warranty overrides: who changed a customer's
+// auto-computed warranty, when, and from what → to what. Persisted team-wide
+// in Firestore config/warrantyLog. Visible to office (Admin + Service Log).
+var WAR_LOG=[];
+var _frAutoSnapshot=null;     // auto-computed warranty captured at anchor time (the "before")
+var _frOverridePending=null;  // set when office presses Override; cleared on submit / re-anchor
+async function loadWarrantyLog(){
+  if(!db)return;
+  try{
+    const doc=await db.collection("config").doc("warrantyLog").get();
+    if(doc.exists&&doc.data()&&Array.isArray(doc.data().entries)){
+      WAR_LOG=doc.data().entries;
+      try{rndrWarrantyLog()}catch(_e){}
+    }
+  }catch(e){}
+}
+async function saveWarrantyLog(){
+  if(!db)return;
+  try{await db.collection("config").doc("warrantyLog").set({entries:WAR_LOG.slice(0,300)})}
+  catch(e){console.warn("[saveWarrantyLog]",e)}
+}
+// Called at Field Report submit. Logs ONLY when Override was used AND the
+// submitted warranty actually differs from the auto-computed one.
+function _frMaybeLogOverride(customer,finalLabel,finalHas){
+  if(!_frOverridePending)return;
+  var a=_frOverridePending.auto||null;
+  var autoLabel=a?(a.label||"N/W"):"(no auto)";
+  var autoHas=a?!!a.has:null;
+  var changed=(autoLabel!==(finalLabel||"N/W"))||(autoHas!==(!!finalHas));
+  if(changed){
+    WAR_LOG.unshift({
+      when:new Date().toISOString(),
+      who:_frOverridePending.who||"",
+      role:_frOverridePending.role||"",
+      customer:_frOverridePending.customer||customer||"",
+      fromLabel:autoLabel,
+      toLabel:finalLabel||"N/W"
+    });
+    if(WAR_LOG.length>300)WAR_LOG.length=300;
+    saveWarrantyLog();
+    try{rndrWarrantyLog()}catch(_e){}
+  }
+  _frOverridePending=null;
+}
+function rndrWarrantyLog(){
+  var ids=["warLogBody","warLogBodyOrg"];
+  var inner;
+  if(!WAR_LOG.length){
+    inner='<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.5">No manual warranty overrides recorded yet. When office staff press <strong>Override</strong> on a Field Report and change the auto-set warranty, it\u2019s logged here \u2014 who, when, and the change.</div>';
+  }else{
+    var rows=WAR_LOG.slice(0,40).map(function(e){
+      var d=new Date(e.when);
+      var ds=isNaN(d.getTime())?(e.when||""):(d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
+      var who=esc(e.who||"?")+(e.role?(" \u00b7 "+esc(e.role)):"");
+      return '<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;padding:9px 0;border-bottom:1px solid var(--ln)">'+
+        '<span style="font-weight:800;color:var(--ink)">'+esc(e.customer||"?")+'</span>'+
+        '<span style="font-size:var(--fs-xs);color:var(--i3)">'+ds+" \u00b7 "+who+'</span>'+
+        '<span style="margin-left:auto;font-size:var(--fs-sm);font-weight:700">'+
+          '<span style="color:var(--i3)">'+esc(e.fromLabel||"?")+'</span>'+
+          ' <span style="color:var(--ac)">\u2192</span> '+
+          '<span style="color:var(--c-warning-fg,#92400e)">'+esc(e.toLabel||"?")+'</span>'+
+        '</span></div>';
+    }).join("");
+    inner='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:8px;line-height:1.4">Manual changes to the auto-set warranty \u2014 newest first.</div>'+rows;
+  }
+  ids.forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=inner});
+}
+
 // Jump to the Customers tab and filter to one customer.
 function openCustomerByName(name){
   try{
     if(typeof showTab==="function")showTab(6);
-    var s=document.getElementById("searchCust");if(s)s.value=name;
-    if(typeof rndrCust==="function")rndrCust();
+    // Clear any stale search filter so the customer is visible in the list…
+    var s=document.getElementById("searchCust");if(s)s.value="";
+    // …then resolve the customer key the SAME way custMap is keyed and OPEN the detail.
+    var key=(typeof _custGroupKey==="function"?_custGroupKey(name):"")||(name||"").trim().toLowerCase();
+    if(typeof qbCustSelect==="function"){
+      qbCustSelect(key);            // sets selectedCustKey, opens info tab, re-renders, mobile full-screen
+    }else if(typeof rndrCust==="function"){
+      selectedCustKey=key;qbCustTab="info";rndrCust();
+    }
   }catch(e){console.warn("[openCustomerByName]",e)}
 }
 
@@ -3576,7 +3677,7 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();rndrSpaDataWorklist();_applyAdminCollapse();
+  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();rndrWarrantyLog();rndrSpaDataWorklist();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -7118,7 +7219,7 @@ async function init(){
   await loadTechs();
   buildTechPills();
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
-  mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();updateOnlineStatus();
+  mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();updateOnlineStatus();
   // Load persisted Maps distance cache early so Admin's "Drive" badge appears immediately
   // (without requiring user to open Maps tab first). Firestore sync still happens lazily on Maps load.
   if(typeof _mapsLoadLocalCache==="function")_mapsLoadLocalCache();
@@ -7879,6 +7980,9 @@ async function submitTkt(st){
     const totR=validParts.reduce((s,p)=>s+(p.p||0)*(p.qty||1),0);
     const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value);
     const grand=(ptot||0)+(lb?lb.amount||0:0);
+
+    // Warranty Override Log (Batch 3 #1): record if office overrode & actually changed the warranty.
+    try{_frMaybeLogOverride(cu,gWL()||"N/W",wHas===true)}catch(_e){}
 
     const tktData={
       customer:cu||"",date:document.getElementById("fDate").value||"",
@@ -9324,6 +9428,7 @@ function _restoreSlogSub(){
 }
 function rndrSlog(){
   try{rndrBillingCard()}catch(_e){}
+  try{rndrWarrantyLog()}catch(_e){}
   // Reset date to today on render if it's empty OR if the stored value is in the
   // past. Previously the date was only set to today if empty, so a tab navigation
   // could leave the form with yesterday's date and the next ticket created would
