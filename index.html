@@ -1127,6 +1127,15 @@ body.dark-mode .tkt:hover{box-shadow:0 8px 24px rgba(0,0,0,.45)}
 .kpi-live{width:7px;height:7px;border-radius:50%;background:var(--c-success-strong);box-shadow:0 0 0 0 color-mix(in srgb,var(--c-success-strong) 60%,transparent);animation:kpiPulse 2s infinite}
 @keyframes kpiPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c-success-strong) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.kpi-live{animation:none}.kpi-card:hover{transform:none}}
+/* ── Batch 2 visual: KPI glass sheen (one-time shimmer sweep) + subtle gradient + sparkline ── */
+.kpi-card{background:linear-gradient(180deg,rgba(255,255,255,.06),transparent 42%),var(--cd)}
+body.dark-mode .kpi-card{background:linear-gradient(180deg,rgba(255,255,255,.05),transparent 42%),var(--cd)}
+.kpi-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.42) 50%,transparent 65%);transform:translateX(-130%);animation:kpiSheen 1.15s var(--ease-out,ease) .1s 1}
+@keyframes kpiSheen{to{transform:translateX(130%)}}
+.kpi-spark{display:block;width:100%;height:22px;margin-top:10px;overflow:visible}
+.kpi-spark-wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:10px}
+.kpi-spark-delta{font-size:10px;font-weight:800;white-space:nowrap;padding:1px 6px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){.kpi-card::after{display:none}}
 /* ── #10 REAL-TIME PRESENCE ── */
 .pres-strip{display:flex;align-items:center;gap:10px;margin:2px 0 14px;flex-wrap:wrap;animation:fu .4s var(--ease-out,ease)}
 .pres-strip--global{margin:0;padding:11px 16px 0;background:var(--bg)}
@@ -1531,6 +1540,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
     </div>
     <div id="billingRoundBody"></div>
   </div>
+  <!-- Spa Data Worklist (#1) — customers whose warranty can't auto-anchor (rendered by rndrSpaDataWorklist) -->
+  <div id="adminSpaWorklist" style="margin-bottom:12px"></div>
   <!-- Today's Capacity panel (rendered by rndrAdminCapacity) -->
   <div id="adminCapacity" style="margin-bottom:12px"></div>
   <!-- Orphan Tickets panel (dispatches marked fieldReportSubmitted=true with
@@ -2354,7 +2365,7 @@ function _parseSpaDescription(desc){
 // rules baked into _partTypeFromWarranty / _labTypeFromWarranty.
 // Returns null when we can't determine warranty (need both delivered + series).
 function _autoWarrantyFromSpec(parsed,todayDate){
-  if(!parsed||!parsed.delivered||!parsed.series)return null;
+  if(!parsed||!parsed.series)return null;
   var seriesLower=parsed.series.toLowerCase();
   // Map Core/Holiday to VS rules (entry-level series share VS warranty structure).
   // Adjust here if Aspen ever publishes separate Core/Holiday terms.
@@ -2363,6 +2374,28 @@ function _autoWarrantyFromSpec(parsed,todayDate){
   if(["es","gs","vs","ss"].indexOf(ruleSeries)<0)return null;
 
   var today=todayDate||new Date();
+
+  // ── OLD-TUB FALLBACK (no delivery date) ────────────────────────────────
+  // Some legacy tubs have no delivery date on record. The longest Aspen
+  // coverage is 5 years (ES/GS/VS parts). So if the MODEL YEAR is old enough
+  // that even a late delivery + the full 5-yr window has clearly lapsed, the
+  // spa is DEFINITELY out of warranty — we can anchor it as N/W without a date.
+  // We only ever conclude the SAFE direction here (never "in warranty" without
+  // a real delivery date, which could under-bill the customer).
+  if(!parsed.delivered){
+    if(parsed.year){
+      var yearsOld=today.getFullYear()-parsed.year;
+      if(yearsOld>6){
+        return {
+          parsed:parsed,yearN:yearsOld+1,daysSinceDelivery:null,estimatedFromYear:true,
+          partType:"rda",labType:"none",hasAny:false,
+          warrantyObj:{has:false,model:ruleSeries,year:Math.min(yearsOld+1,6),type:"rda",label:"N/W"}
+        };
+      }
+    }
+    return null; // no date and not clearly old → can't anchor; goes to office worklist
+  }
+
   // "Year of warranty" = anniversary-based. Yr 1 = first 365.25 days, Yr 2 = days 366-730, etc.
   var daysSince=Math.floor((today-parsed.delivered)/86400000);
   var yearN=Math.floor(daysSince/365.25)+1; // 1-based: day 0 → Yr 1
@@ -2808,6 +2841,121 @@ function rndrBillingCard(){
     '</div>';
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=inner});
 }
+
+// Jump to the Customers tab and filter to one customer.
+function openCustomerByName(name){
+  try{
+    if(typeof showTab==="function")showTab(6);
+    var s=document.getElementById("searchCust");if(s)s.value=name;
+    if(typeof rndrCust==="function")rndrCust();
+  }catch(e){console.warn("[openCustomerByName]",e)}
+}
+
+// ─── SPA DATA WORKLIST (#1) ────────────────────────────────────────────────
+// Lists customers whose warranty can't be auto-anchored because their spa record
+// is missing info: "Needs install date" (series known, no date, not clearly old)
+// or "Needs series". Old tubs auto-resolved as out-of-warranty from model year are
+// shown as a resolved count, not a task. Office-only.
+function rndrSpaDataWorklist(){
+  var el=document.getElementById("adminSpaWorklist");if(!el)return;
+  if(typeof isAdmin!=="undefined"&&!isAdmin){el.innerHTML="";return}
+  var byCust={};
+  [...active,...done].forEach(function(t){
+    if(!t.customer)return;var k=t.customer.trim().toLowerCase();if(!k)return;
+    if(!byCust[k])byCust[k]={name:t.customer.trim(),spaDesc:""};
+    if(t.spaDesc&&t.spaDesc.length>byCust[k].spaDesc.length){byCust[k].spaDesc=t.spaDesc;byCust[k].name=t.customer.trim()}
+  });
+  var needDate=[],needSeries=[],legacyOOW=0;
+  Object.keys(byCust).forEach(function(k){
+    var c=byCust[k];if(!c.spaDesc)return;
+    var parsed=_parseSpaDescription(c.spaDesc);if(!parsed)return;
+    var auto=_autoWarrantyFromSpec(parsed);
+    if(auto){if(auto.estimatedFromYear)legacyOOW++;return}
+    if(!parsed.series)needSeries.push({name:c.name,parsed:parsed});
+    else needDate.push({name:c.name,parsed:parsed});
+  });
+  var total=needDate.length+needSeries.length;
+  if(total===0){
+    el.innerHTML='<div class="card" style="margin:0;border-left:4px solid var(--c-success-fg)"><div style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--c-success-fg)">'+icon("check-circle",16,{color:"var(--c-success-fg)"})+'Spa data complete</div><div style="font-size:var(--fs-sm);color:var(--i2);margin-top:6px">Every customer with spa info can be auto-anchored'+(legacyOOW?' \u00B7 '+legacyOOW+' auto-marked out of warranty from model year':'')+'.</div></div>';
+    return;
+  }
+  function row(item,tag,bg,fg){
+    var p=item.parsed||{},detail=[];
+    if(p.model)detail.push(esc(p.model));if(p.series)detail.push("<b>"+esc(p.series)+"</b>");if(p.year)detail.push(esc(String(p.year)));
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--ln)">'+
+      '<div style="min-width:0"><div style="font-weight:700;color:var(--ink);font-size:var(--fs-base)">'+esc(item.name)+'</div>'+(detail.length?'<div style="font-size:var(--fs-xs);color:var(--i3)">'+detail.join(" \u00B7 ")+'</div>':'')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span style="font-size:var(--fs-xs);font-weight:800;padding:2px 8px;border-radius:6px;background:'+bg+';color:'+fg+'">'+tag+'</span>'+
+      '<button onclick="openCustomerByName(decodeURIComponent(\''+encodeURIComponent(item.name)+'\'))" style="padding:5px 10px;border:1.5px solid var(--ac);background:#fff;color:var(--ac);border-radius:7px;font-size:var(--fs-xs);font-weight:800;cursor:pointer;white-space:nowrap">Open</button></div></div>';
+  }
+  var h='<div class="card" style="margin:0;border-left:4px solid var(--c-warning-fg)">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ln);margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">🗂️</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Spa Data Worklist</span></div><span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 9px;border-radius:10px;font-weight:800">'+total+'</span></div>';
+  h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:12px;line-height:1.5">These customers can\'t auto-anchor warranty yet. Add the missing info to their spa description so techs never set warranty by hand'+(legacyOOW?'. <b>'+legacyOOW+'</b> old tub'+(legacyOOW>1?'s were':' was')+' auto-marked out of warranty from model year':'')+'.</div>';
+  if(needDate.length){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--c-warning-fg);margin:4px 0 2px">Needs install date ('+needDate.length+')</div>';
+    needDate.slice(0,40).forEach(function(it){h+=row(it,"No date","var(--c-warning-bg)","var(--c-warning-fg)")});
+    if(needDate.length>40)h+='<div style="font-size:var(--fs-xs);color:var(--i3);padding:6px 0">+'+(needDate.length-40)+' more…</div>';
+  }
+  if(needSeries.length){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--i2);margin:10px 0 2px">Needs series ('+needSeries.length+')</div>';
+    needSeries.slice(0,40).forEach(function(it){h+=row(it,"No series","var(--c-ash)","var(--i2)")});
+    if(needSeries.length>40)h+='<div style="font-size:var(--fs-xs);color:var(--i3);padding:6px 0">+'+(needSeries.length-40)+' more…</div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+// ─── COMMAND PALETTE (⌘/Ctrl+K) ────────────────────────────────────────────
+// Spotlight-style quick jump to any page or customer. Self-contained overlay
+// built lazily in the DOM; global hotkey + a floating launcher for discovery.
+var _cmdPalItems=[],_cmdPalSel=0,_cmdPalOpen=false;
+function _cmdPalEnsure(){
+  if(document.getElementById("cmdPalOverlay"))return;
+  var ov=document.createElement("div");ov.id="cmdPalOverlay";
+  ov.style.cssText="position:fixed;inset:0;z-index:10000;display:none;align-items:flex-start;justify-content:center;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding-top:12vh";
+  ov.onclick=function(e){if(e.target===ov)_cmdPalClose()};
+  ov.innerHTML='<div style="width:min(620px,92vw);background:var(--cd,#fff);border:1px solid var(--ln);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden">'+
+    '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ln)"><span style="font-size:18px">🔎</span>'+
+    '<input id="cmdPalInput" placeholder="Search customers, pages…" autocomplete="off" style="flex:1;border:none;outline:none;background:transparent;font-size:16px;color:var(--ink);font-family:inherit">'+
+    '<span style="font-size:11px;font-weight:700;color:var(--i3);border:1px solid var(--ln);border-radius:6px;padding:2px 6px">ESC</span></div>'+
+    '<div id="cmdPalResults" style="max-height:52vh;overflow-y:auto;padding:6px"></div></div>';
+  document.body.appendChild(ov);
+  var inp=document.getElementById("cmdPalInput");
+  inp.addEventListener("input",_cmdPalRender);
+  inp.addEventListener("keydown",_cmdPalKey);
+}
+function _cmdPalOpenFn(){_cmdPalEnsure();_cmdPalOpen=true;var ov=document.getElementById("cmdPalOverlay");ov.style.display="flex";var inp=document.getElementById("cmdPalInput");inp.value="";_cmdPalSel=0;_cmdPalRender();setTimeout(function(){inp.focus()},30)}
+function _cmdPalClose(){_cmdPalOpen=false;var ov=document.getElementById("cmdPalOverlay");if(ov)ov.style.display="none"}
+function _cmdPalBuild(q){
+  q=(q||"").trim().toLowerCase();var items=[];
+  var pages=[{n:"Field Report",i:0},{n:"Calendar",i:4},{n:"Service Log",i:5},{n:"Daily",i:1},{n:"Customers",i:6},{n:"Alerts",i:8},{n:"My Apps",i:9},{n:"Completed",i:2},{n:"Admin",i:3},{n:"Maps",i:7}];
+  pages.forEach(function(p){var tab=document.getElementById("tab"+p.i);if(tab&&tab.classList.contains("hidden"))return;if(!q||p.n.toLowerCase().indexOf(q)>=0)items.push({label:p.n,icon:"📂",sub:"Page",act:function(){showTab(p.i)}})});
+  if(q){var seen={},custs=[];[...active,...done].forEach(function(t){if(!t.customer)return;var k=t.customer.trim().toLowerCase();if(seen[k])return;if(k.indexOf(q)>=0){seen[k]=1;custs.push(t.customer.trim())}});custs.slice(0,8).forEach(function(name){items.push({label:name,icon:"👤",sub:"Customer",act:function(){openCustomerByName(name)}})})}
+  return items;
+}
+function _cmdPalRender(){
+  var q=document.getElementById("cmdPalInput").value;_cmdPalItems=_cmdPalBuild(q);
+  if(_cmdPalSel>=_cmdPalItems.length)_cmdPalSel=Math.max(0,_cmdPalItems.length-1);
+  var box=document.getElementById("cmdPalResults");
+  if(!_cmdPalItems.length){box.innerHTML='<div style="padding:18px;text-align:center;color:var(--i3);font-size:14px">No matches</div>';return}
+  box.innerHTML=_cmdPalItems.map(function(it,idx){return '<div onclick="_cmdPalPick('+idx+')" onmouseover="_cmdPalSel='+idx+';_cmdPalHi()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;'+(idx===_cmdPalSel?'background:var(--acl,#eef2ff)':'')+'"><span style="font-size:16px;width:22px;text-align:center">'+it.icon+'</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.label)+'</span><span style="font-size:11px;color:var(--i3);font-weight:600">'+esc(it.sub)+'</span></div>'}).join("");
+}
+function _cmdPalHi(){var box=document.getElementById("cmdPalResults");if(!box)return;Array.prototype.forEach.call(box.children,function(ch,idx){ch.style.background=(idx===_cmdPalSel)?'var(--acl,#eef2ff)':''})}
+function _cmdPalPick(idx){var it=_cmdPalItems[idx];if(!it)return;_cmdPalClose();try{it.act()}catch(e){console.warn(e)}}
+function _cmdPalKey(e){
+  if(e.key==="ArrowDown"){e.preventDefault();_cmdPalSel=Math.min(_cmdPalItems.length-1,_cmdPalSel+1);_cmdPalHi()}
+  else if(e.key==="ArrowUp"){e.preventDefault();_cmdPalSel=Math.max(0,_cmdPalSel-1);_cmdPalHi()}
+  else if(e.key==="Enter"){e.preventDefault();_cmdPalPick(_cmdPalSel)}
+  else if(e.key==="Escape"){e.preventDefault();_cmdPalClose()}
+}
+function _cmdPalInitLauncher(){
+  if(document.getElementById("cmdPalLauncher"))return;
+  var b=document.createElement("button");b.id="cmdPalLauncher";b.type="button";b.title="Quick search (⌘K / Ctrl+K)";b.onclick=_cmdPalOpenFn;
+  b.innerHTML='<span style="font-size:14px">🔎</span><span style="font-size:12px;font-weight:800;letter-spacing:.3px">⌘K</span>';
+  b.style.cssText="position:fixed;bottom:18px;right:18px;z-index:9998;display:flex;align-items:center;gap:6px;padding:9px 13px;border:none;border-radius:999px;background:linear-gradient(135deg,var(--ac,#c0552b),var(--br,#6b3410));color:#fff;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)";
+  document.body.appendChild(b);
+}
+document.addEventListener("keydown",function(e){if((e.metaKey||e.ctrlKey)&&(e.key==="k"||e.key==="K")){e.preventDefault();_cmdPalOpen?_cmdPalClose():_cmdPalOpenFn()}});
+if(document.readyState!=="loading")_cmdPalInitLauncher();else window.addEventListener("DOMContentLoaded",_cmdPalInitLauncher);
 
 function calcLabor(arr,dep,optVisit,optWarType,optNoLabor){
 const skipLabor=typeof optNoLabor!=="undefined"?optNoLabor:noLabor;
@@ -3421,7 +3569,7 @@ function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();_applyAdminCollapse();
+  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();rndrSpaDataWorklist();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -6718,6 +6866,11 @@ function _renderWelcomeKPIs(){
   // First-time fix rate (completed vs reschedules)
   var totalForFtf=d.length+resched;
   var ftf=totalForFtf?Math.round(d.length/totalForFtf*100):100;
+  // 7-day sparkline series for the KPI cards (oldest → newest).
+  var _kpiDays=_last7Keys();
+  var _kpiSchedSeries=_kpiDays.map(function(dk){return a.filter(function(t){return t.date===dk}).length+d.filter(function(t){return t.date===dk}).length});
+  var _kpiDoneSeries=_kpiDays.map(function(dk){return d.filter(function(t){var c=(t.completedAt&&_dateOnly(t.completedAt))||t.date;return c===dk}).length});
+  var _kpiReschedSeries=_kpiDays.map(function(dk){return a.filter(function(t){if(t.status!=="reschedule")return false;var rk=t.reschedAtMs?new Date(t.reschedAtMs).toISOString().slice(0,10):t.date;return rk===dk}).length});
   box.style.display="block";
   // Skip re-render/re-animation if nothing changed (e.g. user is typing in search)
   var nelaCobranzaSig="";
@@ -6771,9 +6924,9 @@ function _renderWelcomeKPIs(){
     +'<div class="kpi-hello">'+icon("sparkles",18,{color:"var(--ac)"})+greet+(who?", "+esc(who):"")+' <span class="kpi-live" title="Live data"></span></div>'
     +'<div class="kpi-sub">Here\'s today\'s service snapshot — tap a card to open it.</div>'
     +'<div class="kpi-grid">'
-      +_kpiCard("scheduledToday",scheduledToday,"Scheduled today","var(--c-info-strong)","calendar","showTab(4)","Open calendar")
-      +_kpiCard("doneToday",doneToday,"Completed today","var(--c-success-strong)","check-circle","showTab(2)","View completed")
-      +_kpiCard("reschedK",resched,"Reschedules — need date","var(--c-warning-strong)","rotate-ccw","showTab(5)","Open service log")
+      +_kpiCard("scheduledToday",scheduledToday,"Scheduled today","var(--c-info-strong)","calendar","showTab(4)","Open calendar",false,_sparklineSVG(_kpiSchedSeries,"var(--c-info-strong)"))
+      +_kpiCard("doneToday",doneToday,"Completed today","var(--c-success-strong)","check-circle","showTab(2)","View completed",false,_sparklineSVG(_kpiDoneSeries,"var(--c-success-strong)"))
+      +_kpiCard("reschedK",resched,"Reschedules — need date","var(--c-warning-strong)","rotate-ccw","showTab(5)","Open service log",false,_sparklineSVG(_kpiReschedSeries,"var(--c-warning-strong)"))
       +_kpiCard("ftfK",ftf,"First-time fix","var(--ac)","target","showTab(2)","See details",true)
     +'</div>';
   mountLucideIcons(box);
@@ -6782,13 +6935,36 @@ function _renderWelcomeKPIs(){
   _countUp(document.getElementById("kpi_reschedK"),resched);
   _countUp(document.getElementById("kpi_ftfK"),ftf);
 }
-function _kpiCard(id,val,label,color,ico,onclickJs,goText,isPct){
+function _kpiCard(id,val,label,color,ico,onclickJs,goText,isPct,sparkSVG){
   return '<div class="kpi-card" style="--kpi-ac:'+color+'" onclick="'+onclickJs+'" role="button" tabindex="0">'
     +'<span class="kpi-ico">'+icon(ico,30,{color:color})+'</span>'
     +'<div class="kpi-val"><span id="kpi_'+id+'">0</span>'+(isPct?'<small>%</small>':'')+'</div>'
     +'<div class="kpi-lbl">'+label+'</div>'
+    +(sparkSVG?'<div class="kpi-spark-wrap">'+sparkSVG+'<span class="kpi-spark-delta" style="color:var(--i3)">7d</span></div>':'')
     +'<div class="kpi-go">'+esc(goText||"")+' →</div>'
     +'</div>';
+}
+// Last 7 calendar-day keys (oldest → newest), YYYY-MM-DD.
+function _last7Keys(){
+  var out=[],now=new Date();
+  for(var i=6;i>=0;i--){var dt=new Date(now);dt.setDate(now.getDate()-i);out.push(dt.toISOString().slice(0,10))}
+  return out;
+}
+// Tiny inline sparkline (area + line + end dot). Returns "" when the series is flat-zero.
+function _sparklineSVG(series,color){
+  if(!series||series.length<2)return "";
+  if(!series.some(function(v){return v>0}))return "";
+  var w=80,h=22,pad=2,n=series.length;
+  var max=Math.max.apply(null,series),min=Math.min.apply(null,series),range=(max-min)||1;
+  var pts=series.map(function(v,i){var x=pad+i*(w-2*pad)/(n-1);var y=h-pad-((v-min)/range)*(h-2*pad);return x.toFixed(1)+","+y.toFixed(1)});
+  var lastXY=pts[pts.length-1].split(",");
+  var area=pts.join(" ")+" "+(w-pad).toFixed(1)+","+(h-pad)+" "+pad+","+(h-pad);
+  var gid="spk"+Math.random().toString(36).slice(2,7);
+  return '<svg class="kpi-spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true">'+
+    '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.28"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<polygon points="'+area+'" fill="url(#'+gid+')"/>'+
+    '<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<circle cx="'+lastXY[0]+'" cy="'+lastXY[1]+'" r="2.2" fill="'+color+'"/></svg>';
 }
 // Helper: extract YYYY-MM-DD from a localized timestamp string if possible
 function _dateOnly(s){
