@@ -1846,6 +1846,10 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 
 <!-- ══ CUSTOMERS — QB-style two-pane layout ══ -->
 <div class="wrap" id="pg6" style="padding:0">
+  <details style="margin:0;border-bottom:1px solid var(--ln);background:var(--bg)">
+    <summary style="cursor:pointer;padding:12px 16px;font-size:var(--fs-sm);font-weight:800;color:var(--br);letter-spacing:.3px;list-style:none;display:flex;align-items:center;gap:8px">🗂️ Spa Data Worklist <span style="font-size:var(--fs-xs);font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">— add install dates so warranty auto-locks (tap to open)</span></summary>
+    <div id="custSpaWorklist" style="padding:0 16px 14px"></div>
+  </details>
   <div class="qb-cust-shell">
     <!-- LEFT: customer list -->
     <aside class="qb-cust-side" id="qbCustSide">
@@ -2857,8 +2861,10 @@ function openCustomerByName(name){
 // or "Needs series". Old tubs auto-resolved as out-of-warranty from model year are
 // shown as a resolved count, not a task. Office-only.
 function rndrSpaDataWorklist(){
-  var el=document.getElementById("adminSpaWorklist");if(!el)return;
-  if(typeof isAdmin!=="undefined"&&!isAdmin){el.innerHTML="";return}
+  var _wlEls=["adminSpaWorklist","custSpaWorklist"].map(function(id){return document.getElementById(id)}).filter(Boolean);
+  if(!_wlEls.length)return;
+  function fill(html){_wlEls.forEach(function(e){e.innerHTML=html})}
+  if(typeof isAdmin!=="undefined"&&!isAdmin){fill("");return}
   var byCust={};
   [...active,...done].forEach(function(t){
     if(!t.customer)return;var k=t.customer.trim().toLowerCase();if(!k)return;
@@ -2876,7 +2882,7 @@ function rndrSpaDataWorklist(){
   });
   var total=needDate.length+needSeries.length;
   if(total===0){
-    el.innerHTML='<div class="card" style="margin:0;border-left:4px solid var(--c-success-fg)"><div style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--c-success-fg)">'+icon("check-circle",16,{color:"var(--c-success-fg)"})+'Spa data complete</div><div style="font-size:var(--fs-sm);color:var(--i2);margin-top:6px">Every customer with spa info can be auto-anchored'+(legacyOOW?' \u00B7 '+legacyOOW+' auto-marked out of warranty from model year':'')+'.</div></div>';
+    fill('<div class="card" style="margin:0;border-left:4px solid var(--c-success-fg)"><div style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--c-success-fg)">'+icon("check-circle",16,{color:"var(--c-success-fg)"})+'Spa data complete</div><div style="font-size:var(--fs-sm);color:var(--i2);margin-top:6px">🎉 Nela — every customer with spa info can be auto-anchored'+(legacyOOW?' \u00B7 '+legacyOOW+' auto-marked out of warranty from model year':'')+'. Nothing to do right now!</div></div>');
     return;
   }
   function row(item,tag,bg,fg){
@@ -2889,7 +2895,8 @@ function rndrSpaDataWorklist(){
   }
   var h='<div class="card" style="margin:0;border-left:4px solid var(--c-warning-fg)">';
   h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ln);margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">🗂️</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Spa Data Worklist</span></div><span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 9px;border-radius:10px;font-weight:800">'+total+'</span></div>';
-  h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:12px;line-height:1.5">These customers can\'t auto-anchor warranty yet. Add the missing info to their spa description so techs never set warranty by hand'+(legacyOOW?'. <b>'+legacyOOW+'</b> old tub'+(legacyOOW>1?'s were':' was')+' auto-marked out of warranty from model year':'')+'.</div>';
+  h+='<div style="background:linear-gradient(135deg,#0A1A3A,#13294f);color:#fff;border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:var(--fs-sm);line-height:1.5"><b>📌 Nela — this list is yours.</b> Open each customer and add their <b>install date + spa series</b> to the spa description. Each one you complete locks that customer\'s warranty automatically, so techs never guess. Goal: keep this number trending toward zero.</div>';
+  h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:12px;line-height:1.5">These customers can\'t auto-anchor warranty yet'+(legacyOOW?'. <b>'+legacyOOW+'</b> old tub'+(legacyOOW>1?'s were':' was')+' auto-marked out of warranty from model year':'')+'.</div>';
   if(needDate.length){
     h+='<div style="font-size:var(--fs-xs);font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--c-warning-fg);margin:4px 0 2px">Needs install date ('+needDate.length+')</div>';
     needDate.slice(0,40).forEach(function(it){h+=row(it,"No date","var(--c-warning-bg)","var(--c-warning-fg)")});
@@ -2901,7 +2908,7 @@ function rndrSpaDataWorklist(){
     if(needSeries.length>40)h+='<div style="font-size:var(--fs-xs);color:var(--i3);padding:6px 0">+'+(needSeries.length-40)+' more…</div>';
   }
   h+='</div>';
-  el.innerHTML=h;
+  fill(h);
 }
 
 // ─── COMMAND PALETTE (⌘/Ctrl+K) ────────────────────────────────────────────
@@ -8623,7 +8630,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${_svcWarrantyBadge(t)}${_followUpBadge(t)}${_recurrentBadge(t)}${_paymentPendingBadge(t)}${_customerRiskBadge(t)}${_warMismatchBadge}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${_svcWarrantyBadge(t)}${_followUpBadge(t)}${_recurrentBadge(t)}${_paymentPendingBadge(t)}${_customerRiskBadge(t)}${_warMismatchBadge}${t.wcType==='chem'?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Water Change is covered under this customer's Chemical Maintenance plan — no charge. In QuickBooks just enter the service; nothing else to bill for the water change.">🧪 WC · Chem plan (no charge)</span>`:''}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:8px">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})<span style="padding:2px 9px;border-radius:6px;background:var(--c-money-bg,#dcfce7);color:var(--c-money-fg,#166534);font-weight:800;font-size:var(--fs-sm)" title="Time on site rounded to the nearest 15 min — bill the customer this many hours">💵 Bill: ${billLabel}</span></div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -8898,6 +8905,9 @@ function buildCustomerReport(t,notesOverride){
   if(parts.length){
     qb+="\nParts used/replaced:\n";
     parts.forEach(p=>{qb+="  - "+(p.qty||1)+"x "+p.n+(p.c?" ("+p.c+")":"")+"\n"});
+  }
+  if(t.wcType==='chem'){
+    qb+="\n*** Water Change covered under Chemical Maintenance plan — NO CHARGE. Enter the service only. ***\n";
   }
   try{
     var _bill=(typeof _billingFor==="function")?_billingFor(t):null;
@@ -9474,19 +9484,31 @@ function rndrSlog(){
     });
     h+='</div></div>';
   }
-  // Show Repeats section as a card grid (no background wrapper, just header + cards)
+  // Show Repeats section as a card grid — mirrors the reschedule treatment:
+  // booked (green, has date) vs needs-date (red), each with a Program now button.
   var repeats=filtered.filter(t=>t.isRepeat);
   if(repeats.length){
+    var _canProgRep=currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");
     h+='<div style="margin-bottom:18px">';
     h+='<div class="lbl" style="color:var(--c-danger-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("repeat",16,{color:"var(--c-danger-fg)"})+'Repeats <span style="background:var(--c-danger-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+repeats.length+'</span></div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">';
     repeats.forEach(function(t){
       var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
-      h+='<div style="background:#fff;border:1px solid #fecaca;border-left:3px solid var(--c-danger-fg);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
-        (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
-        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
-        (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
+      var techLine=(t.techs&&t.techs.length)?t.techs.join(", "):"";
+      var hasDate=!!t.date;
+      var accent=hasDate?"var(--c-success-fg)":"var(--c-danger-fg)";
+      var accentBg=hasDate?"var(--c-success-bg)":"#fecaca";
+      h+='<div style="background:#fff;border:1px solid '+accentBg+';border-left:3px solid '+accent+';border-radius:10px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.03)">'+
+        '<div onclick="openTktDetail(\''+t.id+'\')" style="cursor:pointer">'+
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span><span style="font-size:var(--fs-xs);font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;background:'+(hasDate?'var(--c-success-bg);color:var(--c-success-fg)':'var(--c-danger-bg);color:var(--c-danger-fg)')+'">'+(hasDate?'\u2713 booked':'\uD83D\uDD04 repeat')+'</span></div>'+
+          (hasDate
+            ?'<div style="font-size:var(--fs-sm);color:var(--c-success-fg);font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar-days",11,{color:"var(--c-success-fg)"})+t.date+(t.arrival?' \u00B7 '+t.arrival:'')+'</div>'
+            :'<div style="font-size:var(--fs-sm);color:var(--c-danger-fg);font-weight:700;margin-bottom:4px">\u26A0 Needs a date</div>')+
+          (techLine?'<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:4px">\uD83D\uDC64 '+esc(techLine)+'</div>':(hasDate?'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);font-weight:700;margin-bottom:4px">\u26A0 No tech assigned yet</div>':''))+
+          (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+          (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
+        '</div>'+
+        (_canProgRep?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" style="margin-top:9px;width:100%;padding:9px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar",13,{color:"#fff"})+(hasDate?'Reschedule':'Program now')+'</button>':'')+
       '</div>';
     });
     h+='</div></div>';
@@ -12661,6 +12683,7 @@ let selectedCustKey=null;
 let qbCustTab="info"; // 'info' | 'spa' | 'history'
 
 function rndrCust(){
+  try{rndrSpaDataWorklist()}catch(_e){}
   const q=(document.getElementById("searchCust")||{}).value||"";
   const sortMode=(document.getElementById("qbCustSort")||{}).value||"name";
   // Skeleton during initial load
