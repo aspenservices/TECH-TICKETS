@@ -154,6 +154,64 @@ body.dark-mode input::placeholder,body.dark-mode textarea::placeholder{color:var
 /* Native date/time pickers: make the little calendar/clock glyph visible on dark */
 body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,body.dark-mode input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(.85)}
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMBER GOLD THEME — layered ON TOP of dark mode (body has BOTH classes).
+   Activated via the header theme button (Light → Dark → Ember) & persisted.
+   Strategy: override TOKENS (auto-applies through every var()) + a few glassy
+   surface treatments + editorial serif. Fully reversible — switch back anytime.
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-ember{
+  --bg:#14100c;          /* espresso page */
+  --cd:#1d1812;          /* card base (glass drawn on top) */
+  --ink:#F4EDE2;         /* warm cream text */
+  --i2:#C9BCA9;          /* warm muted */
+  --i3:#9F9281;          /* warmer muted */
+  --ln:rgba(229,205,160,.14);   /* gold hairline */
+  --ac:#D9B45B;--acd:#C79A3F;   /* GOLD accent (primary) */
+  --br:#D9B45B;--brl:#EBCE86;
+  --acl:#2a2114;         /* warm accent tint */
+  --hdr-bg:#17110b;      /* deep espresso header */
+  /* warm radial glow over the espresso base */
+  background-image:
+    radial-gradient(125% 60% at 50% -12%, rgba(224,132,74,.13), transparent 55%),
+    radial-gradient(90% 50% at 100% 0%, rgba(217,180,91,.06), transparent 50%);
+  background-attachment:fixed;
+}
+/* Glassy surfaces — frosted, gold hairline, deep soft shadow */
+body.theme-ember .tkt,
+body.theme-ember .card,
+body.theme-ember .dt-sec,
+body.theme-ember .usr-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012))!important;
+  border:1px solid rgba(229,205,160,.13)!important;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 10px 32px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.05)!important;
+}
+body.theme-ember .kpi-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.06),transparent 42%),rgba(255,255,255,.025)!important;
+  border:1px solid rgba(229,205,160,.14)!important;
+}
+/* Bottom nav → frosted espresso glass; active tab turns gold via --ac */
+body.theme-ember .bottom-nav{
+  background:rgba(26,19,12,.82)!important;
+  border-top:1px solid rgba(229,205,160,.16);
+  -webkit-backdrop-filter:saturate(160%) blur(16px);backdrop-filter:saturate(160%) blur(16px);
+}
+/* Premium header — keep the Aspen Spas logo ALWAYS visible (subtle gold glow) */
+body.theme-ember .hdr{
+  background:linear-gradient(180deg,#1d150d,#140f09)!important;
+  border-bottom:1px solid rgba(229,205,160,.16);
+  box-shadow:0 2px 22px rgba(0,0,0,.4);
+}
+body.theme-ember .hdr-logo{opacity:1!important;filter:drop-shadow(0 1px 7px rgba(217,180,91,.28))}
+body.theme-ember .hdr .theme-btn,body.theme-ember .hdr .lock-btn,body.theme-ember .hdr-sub{color:#EBCE86}
+/* Editorial serif on the marquee numbers & greeting (the Ember signature) */
+body.theme-ember .kpi-hello,
+body.theme-ember .kpi-val,
+body.theme-ember .hdr-sub,
+body.theme-ember .dt-sec-t{font-family:'Fraunces',Georgia,serif;letter-spacing:-.2px}
+body.theme-ember .kpi-val{font-weight:600}
+
 /* ─── ICON SYSTEM (Lucide) ─── */
 .lucide-icon{display:inline-block;vertical-align:middle;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .icon-fallback{display:inline-block;vertical-align:middle}
@@ -1309,7 +1367,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -6928,25 +6986,44 @@ function checkGate(){const a=document.getElementById("fArr").value;document.getE
 
 // ═══════════════ DESIGN: THEME (dark/light) + CONFETTI + WELCOME KPIs ═══════════════
 // Apply saved theme, or follow the system preference when the user hasn't chosen.
+// ─── THEME SYSTEM — 3-state cycle: Light → Dark → Ember Gold ────────────────
+// Ember Gold layers ON TOP of dark mode (body gets BOTH .dark-mode and
+// .theme-ember) so it reuses every dark-mode override and stays coherent.
+// Persisted in localStorage "aspenTheme" = "light" | "dark" | "ember".
+function _curTheme(){
+  if(document.body.classList.contains("theme-ember"))return "ember";
+  if(document.body.classList.contains("dark-mode"))return "dark";
+  return "light";
+}
+function _setTheme(mode){
+  var dark=(mode==="dark"||mode==="ember");
+  document.body.classList.toggle("dark-mode",dark);
+  document.body.classList.toggle("theme-ember",mode==="ember");
+  _syncThemeBtn(mode);
+}
 function _applyTheme(){
   try{
     var saved=localStorage.getItem("aspenTheme");
-    var dark = saved ? (saved==="dark")
-                     : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.body.classList.toggle("dark-mode",!!dark);
-    _syncThemeBtn(dark);
+    if(saved==="ember"||saved==="dark"||saved==="light"){_setTheme(saved);return;}
+    // No manual choice yet → follow the OS (light/dark only).
+    var dark=(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    _setTheme(dark?"dark":"light");
   }catch(_e){}
 }
-function _syncThemeBtn(dark){
+function _syncThemeBtn(mode){
   var b=document.getElementById("themeToggleBtn");
-  if(b)b.innerHTML=icon(dark?"sun":"moon",20,{color:"currentColor"});
+  if(!b)return;
+  // Icon hints the NEXT theme in the cycle (Light→Dark→Ember→Light).
+  if(mode==="light"){b.innerHTML=icon("moon",20,{color:"currentColor"});b.title="Theme: Light \u2192 tap for Dark";}
+  else if(mode==="dark"){b.innerHTML=icon("flame",20,{color:"currentColor"});b.title="Theme: Dark \u2192 tap for Ember Gold";}
+  else{b.innerHTML=icon("sun",20,{color:"currentColor"});b.title="Theme: Ember Gold \u2192 tap for Light";}
 }
 function toggleTheme(){
-  var dark=!document.body.classList.contains("dark-mode");
-  document.body.classList.add("dark-mode"); // force transition baseline
-  document.body.classList.toggle("dark-mode",dark);
-  try{localStorage.setItem("aspenTheme",dark?"dark":"light")}catch(_e){}
-  _syncThemeBtn(dark);
+  var cur=_curTheme();
+  var next=(cur==="light")?"dark":(cur==="dark")?"ember":"light";
+  _setTheme(next);
+  try{localStorage.setItem("aspenTheme",next)}catch(_e){}
+  if(typeof toast==="function")toast(next==="ember"?"Ember Gold \u2728":next==="dark"?"Dark mode \u2713":"Light mode \u2713");
 }
 // Inject the toggle button into the header (before the lock button).
 function _mountThemeToggle(){
@@ -6955,10 +7032,10 @@ function _mountThemeToggle(){
     if(!hdr||!lock||document.getElementById("themeToggleBtn"))return;
     var b=document.createElement("button");
     b.id="themeToggleBtn";b.className="theme-btn";b.type="button";
-    b.title="Light / dark mode";b.setAttribute("aria-label","Toggle dark mode");
+    b.title="Theme";b.setAttribute("aria-label","Switch theme");
     b.onclick=toggleTheme;
     hdr.insertBefore(b,lock);
-    _syncThemeBtn(document.body.classList.contains("dark-mode"));
+    _syncThemeBtn(_curTheme());
   }catch(_e){}
 }
 // ─── DENSITY (Compact / Comfortable) ───────────────────────────────────────
@@ -7006,8 +7083,7 @@ function _watchSystemTheme(){
     var mq=window.matchMedia("(prefers-color-scheme: dark)");
     var handler=function(e){
       if(localStorage.getItem("aspenTheme"))return; // user picked manually → leave it
-      document.body.classList.toggle("dark-mode",e.matches);
-      _syncThemeBtn(e.matches);
+      _setTheme(e.matches?"dark":"light");
     };
     if(mq.addEventListener)mq.addEventListener("change",handler);
     else if(mq.addListener)mq.addListener(handler);
