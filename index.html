@@ -600,6 +600,10 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 .cal-event.done{opacity:.45;text-decoration:line-through}
 .cal-more{font-size:var(--fs-xs);color:var(--i3);padding:1px 6px;font-weight:600;cursor:pointer}
 .cal-more:hover{color:var(--ac)}
+/* ─── Calendar — premium polish: today cell tint + event pill hover lift ─── */
+.cal-day.today{background:linear-gradient(180deg,var(--acl) 0%,#fff 62%);box-shadow:inset 0 2px 0 0 var(--ac)}
+.cal-event{transition:opacity .12s,transform .12s,box-shadow .12s;border-radius:var(--r-sm)}
+.cal-event:hover{opacity:1;transform:translateX(1px);box-shadow:0 2px 6px rgba(0,0,0,.10)}
 .cal-day-detail{margin-top:12px}
 .cal-day-detail .cal-detail-hdr{font-size:var(--fs-base);font-weight:700;color:var(--br);margin-bottom:8px}
 .cal-tkt-mini{padding:8px 10px;background:#fff;border:1px solid var(--ln);border-radius:var(--r-md);margin-bottom:5px;cursor:grab;box-shadow:var(--sh-xs)}
@@ -11688,7 +11692,20 @@ function openTktDetail(id){
   // record. Mutates the live object so subsequent saves include the
   // enriched values automatically.
   try{_enrichTicketWithExistingCustomer(t)}catch(_e){console.warn("[enrich]",_e)}
-  document.getElementById("tktDetailTitle").innerHTML='<span style="display:inline-flex;align-items:center;gap:10px;min-width:0">'+_avatarHTML(t.customer,32)+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.customer||"Ticket")+'</span></span>';
+  // ── HERO TITLE — avatar + name + a subtitle line (zone dot · zone · scheduled day/time)
+  var _zT=effectiveZone(t);
+  var _zcT=ZONE_COLORS[_zT]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
+  var _dT=t.date?(function(){var d=new Date(t.date+"T00:00:00");return isNaN(d.getTime())?t.date:d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})})():"";
+  var _subT=[];
+  if(_zT)_subT.push('<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:'+_zcT.text+';display:inline-block;flex-shrink:0"></span>'+esc(_zT)+'</span>');
+  if(_dT)_subT.push('<span>'+(t.arrival?esc(t.arrival)+' \u00b7 ':'')+esc(_dT)+'</span>');
+  document.getElementById("tktDetailTitle").innerHTML=
+    '<span style="display:inline-flex;align-items:center;gap:12px;min-width:0">'
+    +_avatarHTML(t.customer,46)
+    +'<span style="display:flex;flex-direction:column;min-width:0;gap:2px">'
+      +'<span style="font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--br);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.customer||"Ticket")+'</span>'
+      +(_subT.length?'<span style="font-size:11.5px;font-weight:600;color:var(--i2);display:flex;flex-wrap:wrap;gap:3px 10px">'+_subT.join("")+'</span>':'')
+    +'</span></span>';
   const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
   const _city=effectiveCity(t);
   const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");
