@@ -752,6 +752,27 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 .qb-cust-empty-state h3{font-size:var(--fs-xl);color:var(--i2);margin-bottom:8px;font-weight:600}
 .qb-cust-empty-state p{font-size:var(--fs-base);color:var(--i3);max-width:340px;margin:0 auto;line-height:1.5}
 
+/* ─── Customers tab — visual polish (hero header + avatar rows) ─── */
+.qb-cust-row .app-av{flex-shrink:0}
+.qb-cust-row-name{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;white-space:normal;overflow:visible}
+.qb-cust-row-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;line-height:1.25}
+.qb-cust-row-sub{font-size:10.5px;color:var(--i3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-cust-row.active .qb-cust-row-sub{color:var(--c-success-fg);opacity:.8}
+/* Detail HERO — beautiful customer summary card */
+.qb-cust-hero{padding:22px 24px 18px;border-bottom:2px solid var(--ln);background:linear-gradient(135deg,var(--acl) 0%,var(--cd) 58%,var(--bg) 100%)}
+.qb-cust-hero-row{display:flex;align-items:center;gap:16px}
+.qb-cust-hero .app-av{flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.13);border:3px solid #fff}
+.qb-cust-hero-meta{min-width:0}
+.qb-cust-hero-name{font-size:25px;font-weight:800;color:var(--ink);margin:0;letter-spacing:-.4px;line-height:1.12;overflow:hidden;text-overflow:ellipsis}
+.qb-cust-hero-sub{margin-top:5px;font-size:12.5px;color:var(--i2);font-weight:600;display:flex;flex-wrap:wrap;gap:4px 12px}
+.qb-cust-hero-sub span{display:inline-flex;align-items:center;gap:4px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.qb-cust-hero-stats{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.qb-cust-stat{flex:1;min-width:90px;background:rgba(255,255,255,.78);border:1px solid var(--ln);border-radius:12px;padding:10px 13px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.qb-cust-stat .v{font-size:18px;font-weight:800;color:var(--br);line-height:1.1;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-cust-stat .l{font-size:10px;font-weight:700;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
+body.dark-mode .qb-cust-stat{background:rgba(255,255,255,.06)}
+body.dark-mode .qb-cust-hero .app-av{border-color:rgba(255,255,255,.18)}
+
 /* Detail pane — QB-style "Customer Information" header card */
 .qb-cust-info-hdr{padding:20px 24px 14px;border-bottom:2px solid var(--ln);background:linear-gradient(180deg,var(--cd),var(--bg))}
 .qb-cust-info-title{font-size:24px;font-weight:700;color:var(--ink);margin:0;letter-spacing:-.3px}
@@ -12930,8 +12951,10 @@ function rndrCust(){
       const zoneTag=c.zone?'<span class="qb-cust-row-zone" style="color:'+zc.text+'">'+esc(c.zone)+'</span>':'<span class="qb-cust-row-zone"></span>';
       const alerts=getCustomerAlerts(c);
       const alertBadge=alerts.length?'<span title="'+alerts.length+' alert(s) — click customer to see details" style="display:inline-flex;align-items:center;justify-content:center;background:#dc2626;color:white;font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px;margin-right:5px;min-width:16px;height:14px;vertical-align:middle;">🔔 '+alerts.length+'</span>':'';
+      const sub=c.phone?'<span class="qb-cust-row-sub">'+esc(c.phone)+'</span>':'';
       return '<div class="qb-cust-row'+(isActive?" active":"")+'" onclick="qbCustSelect(\''+keyEsc+'\')">'+
-             '<span class="qb-cust-row-name">'+alertBadge+esc(c.name)+'</span>'+
+             _avatarHTML(c.name,30)+
+             '<span class="qb-cust-row-name"><span class="qb-cust-row-nm">'+alertBadge+esc(c.name)+'</span>'+sub+'</span>'+
              '<span class="qb-cust-row-visits">'+c.tickets.length+'</span>'+
              zoneTag+
              '</div>';
@@ -13060,8 +13083,26 @@ function qbCustRenderDetail(customers){
     h+='</div>';
   }
 
-  // ── HEADER: "Customer Information" (mimics QB)
-  h+='<div class="qb-cust-info-hdr" style="display:flex;align-items:center;gap:12px">'+_avatarHTML(c.name,44)+'<h2 class="qb-cust-info-title" style="margin:0">'+esc(c.name)+'</h2></div>';
+  // ── HERO HEADER — visual customer summary (avatar, name, location, quick stats)
+  var _last=c.lastDate||((sorted[0]&&sorted[0].date)||"");
+  var _lastTxt=_last?(function(){var d=new Date(_last+"T00:00:00");return isNaN(d.getTime())?_last:d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})})():"\u2014";
+  h+='<div class="qb-cust-hero">'+
+       '<div class="qb-cust-hero-row">'+_avatarHTML(c.name,64)+
+         '<div class="qb-cust-hero-meta">'+
+           '<h2 class="qb-cust-hero-name">'+esc(c.name)+'</h2>'+
+           '<div class="qb-cust-hero-sub">'+
+             (c.zone?'<span>\uD83D\uDCCD '+esc(c.zone)+'</span>':'')+
+             (c.phone?'<span>\uD83D\uDCDE '+esc(c.phone)+'</span>':'')+
+             (fullAddr.trim()?'<span>\uD83C\uDFE0 '+esc(fullAddr)+'</span>':'')+
+           '</div>'+
+         '</div>'+
+       '</div>'+
+       '<div class="qb-cust-hero-stats">'+
+         '<div class="qb-cust-stat"><div class="v">'+c.tickets.length+'</div><div class="l">Visit'+(c.tickets.length!==1?'s':'')+'</div></div>'+
+         '<div class="qb-cust-stat"><div class="v" title="'+esc(c.zone||'')+'">'+esc(c.zone||'\u2014')+'</div><div class="l">Zone</div></div>'+
+         '<div class="qb-cust-stat"><div class="v">'+_lastTxt+'</div><div class="l">Last service</div></div>'+
+       '</div>'+
+     '</div>';
 
   // ── PENDING PAYMENT BANNER — if this customer has open invoice alerts,
   // surface them right at the top of the profile so Nela never misses them
