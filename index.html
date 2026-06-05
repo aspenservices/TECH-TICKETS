@@ -400,6 +400,13 @@ body.density-compact .tkt-tags{margin-top:3px;gap:3px}
 body.density-compact .tkt-tag{padding:1px 6px}
 body.density-compact .tkt-status{padding:3px 8px}
 body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
+/* ─── PRESS micro-interaction — subtle tactile "push" on tap. Respects reduced-motion. ─── */
+.tkt-h,.tkt-done-btn,.tkt-dl,.theme-btn{transition:transform .08s var(--ease-out,ease),box-shadow var(--dur-base) var(--ease-out),background .12s}
+.tkt-h:active{transform:scale(.992)}
+.tkt-done-btn:active,.tkt-dl:active,.theme-btn:active{transform:scale(.95)}
+@media(prefers-reduced-motion:reduce){.tkt-h:active,.tkt-done-btn:active,.tkt-dl:active,.theme-btn:active{transform:none}}
+/* View Transitions — keep the tab cross-fade snappy (≤200ms). Only applies where supported. */
+@media(prefers-reduced-motion:no-preference){::view-transition-old(root),::view-transition-new(root){animation-duration:.18s}}
 .day-sep{display:flex;align-items:center;gap:12px;margin:20px 0 12px;padding:0 4px}.day-sep:first-child{margin-top:0}.day-sep .day-line{flex:1;height:1px;background:var(--ac);opacity:.3}.day-sep .day-lbl{font-size:var(--fs-sm);font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ac);white-space:nowrap;padding:4px 12px;background:var(--acl);border-radius:var(--r-2xl)}
 .clr-btn{margin-top:16px;margin-bottom:20px;padding:10px 20px;background:none;border:1.5px solid var(--ln);border-radius:var(--r-lg);color:var(--i3);font-size:var(--fs-sm);font-weight:600}.clr-btn:active{border-color:var(--r);color:var(--r)}
 
@@ -6684,7 +6691,14 @@ async function deleteTodo(id){
   try{await db.collection("todos").doc(id).delete()}catch(e){toast("Error","err")}
 }
 
-function showTab(i){[0,1,2,3,4,5,6,7,8,9].forEach(n=>{document.getElementById("tab"+n).classList.toggle("on",n===i);document.getElementById("pg"+n).classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
+// View Transitions: smooth native cross-fade between tabs. Progressive — falls
+// back to an instant switch where unsupported or when reduced-motion is on.
+function showTab(i){
+  var _reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(document.startViewTransition&&!_reduce){try{document.startViewTransition(function(){_showTabImpl(i)});return}catch(_e){}}
+  _showTabImpl(i);
+}
+function _showTabImpl(i){[0,1,2,3,4,5,6,7,8,9].forEach(n=>{document.getElementById("tab"+n).classList.toggle("on",n===i);document.getElementById("pg"+n).classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
   try{if(typeof _renderPresenceCluster==="function")_renderPresenceCluster()}catch(_e){}
   // My Apps hub — lazy-load active app's iframe + render sub-tabs
   if(i===9){
@@ -8466,7 +8480,9 @@ async function promptDialog(message, opts){
 })();
 
 // ═══ MARK DONE ═══
-async function markDone(docId){if(!db)return;try{await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});toast("Ticket completed ✓");if(typeof celebrate==="function")celebrate({count:90});setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
+// Short haptic pulse on supported devices — used on confirm actions. No-op elsewhere.
+function _haptic(ms){try{if(navigator.vibrate)navigator.vibrate(ms||15)}catch(_e){}}
+async function markDone(docId){if(!db)return;_haptic(22);try{await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});toast("Ticket completed ✓");if(typeof celebrate==="function")celebrate({count:90});setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
 // ═══ RESCHEDULE REASON PICKER ═══
 // Quick-pick modal shown when a tech reschedules a visit. Returns a Promise
 // that resolves to {reason, note} or null if canceled. Structured reasons let
@@ -8627,6 +8643,7 @@ async function _readdReschedToSlog(id){
 
 async function markResched(docId){
   if(!db)return;
+  _haptic(18);
   // Ask the tech WHY (structured reason) before rescheduling.
   var _info=null;
   try{_info=await _askReschedReason()}catch(_e){_info=null}
