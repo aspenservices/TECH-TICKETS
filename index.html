@@ -366,7 +366,9 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 
 /* Tickets */
 .tkt{background:var(--cd);border-radius:var(--rad);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-xs);border:1px solid #f0ece8;transition:box-shadow var(--dur-base) var(--ease-out),border-color var(--dur-base) var(--ease-out)}
-.tkt:hover{box-shadow:var(--sh-sm);border-color:#e8e0d4}
+.tkt:hover{box-shadow:var(--sh-sm);border-color:#e8e0d4;transform:translateY(-2px)}
+.tkt{transition:box-shadow var(--dur-base) var(--ease-out),border-color var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out)}
+@media(prefers-reduced-motion:reduce){.tkt:hover{transform:none}}
 .tkt.completed .tkt-left h4{text-decoration:line-through}
 .tkt.report-sent{opacity:.45;background:#f7f5ef}.tkt.report-sent .tkt-left h4{text-decoration:line-through;color:var(--i3)}
 .report-sent-tag{padding:3px 8px;border-radius:6px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-bg);color:var(--c-success-fg);display:inline-flex;align-items:center;gap:4px}
@@ -3098,11 +3100,9 @@ function _cmdPalKey(e){
   else if(e.key==="Escape"){e.preventDefault();_cmdPalClose()}
 }
 function _cmdPalInitLauncher(){
-  if(document.getElementById("cmdPalLauncher"))return;
-  var b=document.createElement("button");b.id="cmdPalLauncher";b.type="button";b.title="Quick search (⌘K / Ctrl+K)";b.onclick=_cmdPalOpenFn;
-  b.innerHTML='<span style="font-size:14px">🔎</span><span style="font-size:12px;font-weight:800;letter-spacing:.3px">⌘K</span>';
-  b.style.cssText="position:fixed;bottom:18px;right:18px;z-index:9998;display:flex;align-items:center;gap:6px;padding:9px 13px;border:none;border-radius:999px;background:linear-gradient(135deg,var(--ac,#c0552b),var(--br,#6b3410));color:#fff;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)";
-  document.body.appendChild(b);
+  // Floating ⌘K launcher removed per Nela's request (it cluttered the view).
+  // The ⌘K / Ctrl+K keyboard shortcut still opens Quick Search.
+  var ex=document.getElementById("cmdPalLauncher");if(ex)ex.remove();
 }
 document.addEventListener("keydown",function(e){if((e.metaKey||e.ctrlKey)&&(e.key==="k"||e.key==="K")){e.preventDefault();_cmdPalOpen?_cmdPalClose():_cmdPalOpenFn()}});
 if(document.readyState!=="loading")_cmdPalInitLauncher();else window.addEventListener("DOMContentLoaded",_cmdPalInitLauncher);
