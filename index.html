@@ -476,6 +476,12 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 .toast.warn::before{content:"!"}
 .toast.err::before{content:"✕"}
 @keyframes toastIn{0%{opacity:0;transform:translateX(-50%) translateY(-16px) scale(.92)}60%{opacity:1;transform:translateX(-50%) translateY(2px) scale(1.02)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+/* ─── Top activity bar — premium indeterminate loading sweep (initial data load) ─── */
+#actBar{position:fixed;top:0;left:0;right:0;height:3px;z-index:99999;pointer-events:none;opacity:0;transition:opacity .3s ease;overflow:hidden}
+#actBar.on{opacity:1}
+#actBar>.bar{position:absolute;top:0;height:100%;width:38%;border-radius:0 3px 3px 0;background:linear-gradient(90deg,transparent,var(--ac),var(--acd));box-shadow:0 0 10px var(--ac),0 0 4px var(--ac);animation:actSweep 1.05s cubic-bezier(.45,0,.25,1) infinite}
+@keyframes actSweep{0%{left:-40%}100%{left:100%}}
+@media(prefers-reduced-motion:reduce){#actBar>.bar{animation:none;width:100%;left:0;opacity:.55}}
 /* ─── SKELETON LOADER (replaces blank flash on heavy data renders) ─── */
 .skel{background:linear-gradient(90deg,#f0ece8 0%,#faf6f0 50%,#f0ece8 100%);background-size:200% 100%;animation:skelShimmer 1.4s linear infinite;border-radius:var(--r-md);height:14px;width:100%}
 .skel-card{background:#fff;border:1.5px solid var(--ln);border-radius:var(--r-xl);padding:12px;margin-bottom:10px}
@@ -606,13 +612,19 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 .cal-day.today{background:linear-gradient(180deg,var(--acl) 0%,#fff 62%);box-shadow:inset 0 2px 0 0 var(--ac)}
 .cal-event{transition:opacity .12s,transform .12s,box-shadow .12s;border-radius:var(--r-sm)}
 .cal-event:hover{opacity:1;transform:translateX(1px);box-shadow:0 2px 6px rgba(0,0,0,.10)}
-/* ─── Breathing pass #2 — Calendar (#pg1) & Service Log (#pg5): more room, scoped per-tab ─── */
-#pg1 .cal-day{padding:8px 8px 6px}
-#pg1 .cal-events{gap:3px}
-#pg1 .cal-event{padding:2px 8px}
+/* ─── Breathing pass #2 — per-tab spacing, scoped by page id ─── */
+/* Daily (#pg1) */
+#pg1 .tkt{margin-bottom:14px}
+/* Calendar (#pg4) — same breathing treatment as Daily */
+#pg4 .cal-day{padding:8px 8px 6px}
+#pg4 .cal-events{gap:3px}
+#pg4 .cal-event{padding:2px 8px}
+/* Service Log (#pg5) */
 #pg5 .card{margin-bottom:16px}
 #pg5 .tkt{margin-bottom:14px}
 #pg5 .slog-subtabs{margin-bottom:16px}
+/* Customers (#pg6) — roomier list rows (detail panel already spacious) */
+#pg6 .qb-cust-row{padding:11px 14px}
 .cal-day-detail{margin-top:12px}
 .cal-day-detail .cal-detail-hdr{font-size:var(--fs-base);font-weight:700;color:var(--br);margin-bottom:8px}
 .cal-tkt-mini{padding:8px 10px;background:#fff;border:1px solid var(--ln);border-radius:var(--r-md);margin-bottom:5px;cursor:grab;box-shadow:var(--sh-xs)}
@@ -5532,6 +5544,7 @@ function initFirebase(){
       else active.push(d);
     });
     _dataLoaded=true;
+    try{_activityDone()}catch(_e){}
     // Sort by createdAt descending (newest first)
     const sortFn=(a,b)=>{
       const ta=a.createdAt?a.createdAt.toMillis?a.createdAt.toMillis():0:0;
@@ -7330,7 +7343,7 @@ async function init(){
   await loadTechs();
   buildTechPills();
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
-  mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();updateOnlineStatus();
+  _activityStart();mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();updateOnlineStatus();
   // Load persisted Maps distance cache early so Admin's "Drive" badge appears immediately
   // (without requiring user to open Maps tab first). Firestore sync still happens lazily on Maps load.
   if(typeof _mapsLoadLocalCache==="function")_mapsLoadLocalCache();
@@ -8334,6 +8347,10 @@ function resetForm(){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 function toast(m,t){const e=document.getElementById("toast");e.textContent=m;e.className="toast show"+(t==="warn"?" warn":t==="err"?" err":"");setTimeout(()=>e.classList.remove("show"),2500)}
+// ─── Top activity bar — premium loading sweep (shown during the initial data load) ───
+function _actBarEl(){var b=document.getElementById("actBar");if(!b){b=document.createElement("div");b.id="actBar";b.innerHTML='<div class="bar"></div>';(document.body||document.documentElement).appendChild(b)}return b}
+function _activityStart(){try{_actBarEl().classList.add("on")}catch(_e){}}
+function _activityDone(){try{var b=document.getElementById("actBar");if(b)setTimeout(function(){b.classList.remove("on")},350)}catch(_e){}}
 
 // ═══ OFFLINE STATUS INDICATOR (Feature 10) ═══
 // Firestore offline persistence is already enabled (writes queue locally and
