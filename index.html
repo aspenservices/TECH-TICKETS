@@ -390,6 +390,16 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .tkt-done-btn{margin-top:10px;padding:10px 20px;background:var(--br);color:#fff;border:none;border-radius:var(--r-md);font-size:var(--fs-base);font-weight:600;width:100%}.tkt-done-btn:active{background:var(--ink)}
 .tkt-meta{margin-top:8px;font-size:var(--fs-xs);color:#bbb}
 .no-tkt{text-align:center;padding:50px 20px;color:var(--i3)}.no-tkt h3{font-size:var(--fs-lg);margin-bottom:6px;color:#bbb}
+/* ─── DENSITY: Compact view — tightens ticket cards so more fit per screen.
+   Scoped to .tkt* only; toggled via body.density-compact. Reversible. ─── */
+body.density-compact .tkt{margin-bottom:7px}
+body.density-compact .tkt-h{padding:9px 12px;min-height:0}
+body.density-compact .tkt-left h4{font-size:var(--fs-base)}
+body.density-compact .tkt-left p{margin-top:1px}
+body.density-compact .tkt-tags{margin-top:3px;gap:3px}
+body.density-compact .tkt-tag{padding:1px 6px}
+body.density-compact .tkt-status{padding:3px 8px}
+body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 .day-sep{display:flex;align-items:center;gap:12px;margin:20px 0 12px;padding:0 4px}.day-sep:first-child{margin-top:0}.day-sep .day-line{flex:1;height:1px;background:var(--ac);opacity:.3}.day-sep .day-lbl{font-size:var(--fs-sm);font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ac);white-space:nowrap;padding:4px 12px;background:var(--acl);border-radius:var(--r-2xl)}
 .clr-btn{margin-top:16px;margin-bottom:20px;padding:10px 20px;background:none;border:1.5px solid var(--ln);border-radius:var(--r-lg);color:var(--i3);font-size:var(--fs-sm);font-weight:600}.clr-btn:active{border-color:var(--r);color:var(--r)}
 
@@ -6892,6 +6902,58 @@ function _mountThemeToggle(){
     _syncThemeBtn(document.body.classList.contains("dark-mode"));
   }catch(_e){}
 }
+// ─── DENSITY (Compact / Comfortable) ───────────────────────────────────────
+// Lets power users tighten the ticket cards so more fit per screen. Persisted
+// per-device in localStorage; purely cosmetic (CSS body.density-compact).
+function _applyDensity(){
+  try{
+    var compact=localStorage.getItem("aspenDensity")==="compact";
+    document.body.classList.toggle("density-compact",compact);
+    _syncDensityBtn(compact);
+  }catch(_e){}
+}
+function _syncDensityBtn(compact){
+  var b=document.getElementById("densityToggleBtn");if(!b)return;
+  b.innerHTML=compact
+    ?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="4" y1="14" x2="20" y2="14"/><line x1="4" y1="18" x2="20" y2="18"/></svg>'
+    :'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/></svg>';
+  b.title=compact?"Compact view (tap for comfortable)":"Comfortable view (tap for compact)";
+}
+function toggleDensity(){
+  var compact=!document.body.classList.contains("density-compact");
+  document.body.classList.toggle("density-compact",compact);
+  try{localStorage.setItem("aspenDensity",compact?"compact":"comfortable")}catch(_e){}
+  _syncDensityBtn(compact);
+  if(typeof toast==="function")toast(compact?"Compact view \u2713":"Comfortable view \u2713");
+}
+function _mountDensityToggle(){
+  try{
+    var hdr=document.querySelector(".hdr"),anchor=document.getElementById("themeToggleBtn")||document.getElementById("lockBtn");
+    if(!hdr||!anchor||document.getElementById("densityToggleBtn"))return;
+    var b=document.createElement("button");
+    b.id="densityToggleBtn";b.className="theme-btn";b.type="button";
+    b.setAttribute("aria-label","Toggle compact density");
+    b.onclick=toggleDensity;
+    hdr.insertBefore(b,anchor);
+    _syncDensityBtn(document.body.classList.contains("density-compact"));
+  }catch(_e){}
+}
+// ─── AUTO DARK MODE — follow the OS theme LIVE (only when no manual choice) ──
+// _applyTheme() already follows the system on load; this keeps it in sync if
+// the OS flips (e.g. at sunset) without a reload. A manual choice wins.
+function _watchSystemTheme(){
+  try{
+    if(!window.matchMedia)return;
+    var mq=window.matchMedia("(prefers-color-scheme: dark)");
+    var handler=function(e){
+      if(localStorage.getItem("aspenTheme"))return; // user picked manually → leave it
+      document.body.classList.toggle("dark-mode",e.matches);
+      _syncThemeBtn(e.matches);
+    };
+    if(mq.addEventListener)mq.addEventListener("change",handler);
+    else if(mq.addListener)mq.addListener(handler);
+  }catch(_e){}
+}
 // Lightweight self-contained confetti burst (no library). Used on wins.
 function celebrate(opts){
   try{
@@ -7205,6 +7267,9 @@ async function init(){
   // Apply saved/system theme and add the header light/dark toggle button
   _applyTheme();
   _mountThemeToggle();
+  _watchSystemTheme();   // auto-follow OS theme live (unless user chose manually)
+  _applyDensity();       // restore compact/comfortable preference
+  _mountDensityToggle(); // add the header density toggle
   // Start real-time presence once Firestore is ready (safe under anon auth)
   setTimeout(function(){try{_presenceStart()}catch(_e){}},2000);
   // Copy the brand logo from the header to the login screen for visual continuity
