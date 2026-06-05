@@ -212,6 +212,51 @@ body.theme-ember .hdr-sub,
 body.theme-ember .dt-sec-t{font-family:'Fraunces',Georgia,serif;letter-spacing:-.2px}
 body.theme-ember .kpi-val{font-weight:600}
 
+/* ── EMBER RESCUE — light inline-styled widgets (Alerts/Cobranza, Service Log cards,
+   Pending-CC, Needs-Attention) were built with white/cream backgrounds + dark text,
+   so they showed up pale on espresso. Flip them to glass with legible warm text.
+   Backgrounds use the same :not() guards as the dark-mode catch-all so we keep the
+   paper-like report preview white and never hit round avatars. ── */
+/* Light card/panel backgrounds → espresso glass */
+body.theme-ember [style*="background:white"]:not(#repPreviewBox):not([style*="border-radius:50%"]),
+body.theme-ember [style*="background:#fff"]:not(#repPreviewBox):not([style*="border-radius:50%"]),
+body.theme-ember [style*="background: #fff"]:not(#repPreviewBox):not([style*="border-radius:50%"]),
+body.theme-ember [style*="background:#f9fafb"]:not(#repPreviewBox),
+body.theme-ember [style*="background:#fefce8"]:not(#repPreviewBox),
+body.theme-ember [style*="background:#dbeafe"]:not(#repPreviewBox){
+  background:rgba(255,255,255,.045)!important;border-color:rgba(229,205,160,.14)!important;
+}
+/* Cream / amber summary, note & gradient tints → warm dark amber glass */
+body.theme-ember [style*="#fef3c7"]:not(#repPreviewBox),
+body.theme-ember [style*="#fed7aa"]:not(#repPreviewBox),
+body.theme-ember [style*="#fef9c3"]:not(#repPreviewBox),
+body.theme-ember [style*="#fde68a"]:not([style*="border-radius:50%"]){
+  background:linear-gradient(135deg,rgba(217,180,91,.13),rgba(224,132,74,.05))!important;
+  border-color:rgba(229,205,160,.22)!important;
+}
+/* Hardcoded dark text → legible cream / muted (scoped to the affected widgets) */
+body.theme-ember #alertsTabBody [style*="color:#111827"],body.theme-ember #slogList [style*="color:#111827"],
+body.theme-ember #alertsTabBody [style*="color:#0f172a"]{color:var(--ink)!important}
+body.theme-ember #alertsTabBody [style*="color:#4b5563"],body.theme-ember #alertsTabBody [style*="color:#374151"],
+body.theme-ember #slogList [style*="color:#4b5563"]{color:var(--i2)!important}
+body.theme-ember #alertsTabBody [style*="color:#6b7280"],body.theme-ember #alertsTabBody [style*="color:#9ca3af"],
+body.theme-ember #slogList [style*="color:#9ca3af"]{color:var(--i3)!important}
+body.theme-ember #alertsTabBody [style*="color:#1d4ed8"],body.theme-ember #alertsTabBody [style*="color:#1e40af"]{color:var(--c-info-fg)!important}
+body.theme-ember #alertsTabBody [style*="color:#7c2d12"],body.theme-ember #alertsTabBody [style*="color:#92400e"],
+body.theme-ember #alertsTabBody [style*="color:#854d0e"],body.theme-ember [style*="color:#7a5a10"]{color:#E8B96A!important}
+/* Pending Credit Card cards (class-based, Calendar) */
+body.theme-ember .cc-card{background:linear-gradient(135deg,rgba(217,180,91,.12),rgba(224,132,74,.05))!important;border-color:rgba(229,205,160,.22)!important}
+body.theme-ember .cc-hdr{color:#E8B96A!important}
+body.theme-ember .cc-card-name{color:var(--ink)!important}
+body.theme-ember .cc-card-line{color:var(--i2)!important}
+body.theme-ember .cc-card-hint{color:var(--i3)!important}
+/* Needs-Attention pinned panel (class-based) */
+body.theme-ember .attn-panel{background:linear-gradient(135deg,rgba(217,180,91,.10),rgba(255,255,255,.025))!important;border-color:rgba(229,205,160,.2)!important}
+body.theme-ember .attn-panel.empty{background:rgba(95,184,154,.10)!important;border-color:rgba(95,184,154,.32)!important}
+body.theme-ember .attn-cell{background:rgba(255,255,255,.05)!important;border-color:rgba(229,205,160,.18)!important}
+body.theme-ember .attn-cell:hover{background:rgba(255,255,255,.09)!important}
+body.theme-ember .attn-cell-lbl{color:var(--i2)!important}
+
 /* ─── ICON SYSTEM (Lucide) ─── */
 .lucide-icon{display:inline-block;vertical-align:middle;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .icon-fallback{display:inline-block;vertical-align:middle}
