@@ -9,8 +9,13 @@
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.0.0";
+const CACHE_VERSION = "v1.1.0";
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
+
+// How long to wait for the network on an HTML navigation before falling back to
+// the cached app shell. Long enough that a normal connection serves fresh code,
+// short enough that a flaky field connection doesn't block the launch.
+const HTML_NET_TIMEOUT_MS = 3000;
 
 // Files that make up the "app shell" — cached on install for instant offline load.
 const APP_SHELL = [
@@ -82,6 +87,25 @@ self.addEventListener("fetch", function (event) {
   // ── Skip chrome-extension:// and other non-http(s) protocols
   if (!url.startsWith("http")) return;
 
+  // ── NETWORK-FIRST (with timeout) for the app shell HTML ──────────────
+  // Fix (Jun 2026): the cache-first path below served a STALE index.html and
+  // only refreshed it in the background, so a freshly deployed fix showed up
+  // "one load late" — the May-2026 incident (Jeremy's iPhone PWA kept running
+  // cached buggy code when a deploy didn't bump the version). We now try the
+  // NETWORK FIRST so the newest code wins, BUT with a short timeout fallback to
+  // cache: the index.html is large (~1.3MB), so on a slow/flaky field
+  // connection we must not block the launch on a full download. If the network
+  // doesn't answer within HTML_NET_TIMEOUT_MS we serve the cached shell
+  // instantly; the in-flight fetch still refreshes the cache for next launch.
+  const isDoc =
+    req.mode === "navigate" ||
+    req.destination === "document" ||
+    (req.headers.get("Accept") || "").indexOf("text/html") !== -1;
+  if (isDoc) {
+    event.respondWith(htmlNetworkFirst(req));
+    return;
+  }
+
   // Cache-first strategy with network fallback + runtime caching
   event.respondWith(
     caches.match(req).then(function (cached) {
@@ -121,6 +145,55 @@ function fetchAndCache(req) {
       });
     }
     return resp;
+  });
+}
+
+// Network-first for the HTML shell, with a timeout fallback to cache so a slow
+// connection never blocks the launch. The network fetch keeps running even
+// after a timeout so the cache is refreshed for the next launch (revalidate).
+function htmlNetworkFirst(req) {
+  return new Promise(function (resolve) {
+    var settled = false;
+    function done(resp) {
+      if (settled) return;
+      settled = true;
+      resolve(resp);
+    }
+    // 1) Start the network fetch. On success, refresh the cache and (if we
+    //    haven't already fallen back) serve the fresh response.
+    fetch(req)
+      .then(function (resp) {
+        // Refresh the cached shell whenever we get a good same-origin response.
+        if (resp && resp.ok && resp.type === "basic") {
+          var copy = resp.clone();
+          caches.open(CACHE_NAME).then(function (c) {
+            c.put(req, copy).catch(function () {});
+          });
+        }
+        // Serve the fresh response if it's good; on a 4xx/5xx prefer the cached
+        // shell (a transient server error shouldn't replace a working app).
+        if (resp && resp.ok) {
+          done(resp);
+        } else {
+          caches.match(req).then(function (hit) {
+            done(hit || resp);
+          });
+        }
+      })
+      .catch(function () {
+        // Network failed entirely → cache, then offline fallback.
+        caches.match(req).then(function (hit) {
+          done(hit || caches.match("./index.html"));
+        });
+      });
+    // 2) If the network is too slow, serve the cached shell now (only if we
+    //    actually have it cached; otherwise keep waiting for the network).
+    setTimeout(function () {
+      if (settled) return;
+      caches.match(req).then(function (hit) {
+        if (hit) done(hit);
+      });
+    }, HTML_NET_TIMEOUT_MS);
   });
 }
 

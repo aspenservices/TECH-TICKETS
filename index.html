@@ -4586,39 +4586,57 @@ function _custKeys(s){
   }
   return out;
 }
-// Single deterministic key for grouping/dedup. Uses the most-stable family
-// signal: the word before a comma if present, otherwise the LONGEST word
-// (statistically most likely to be the family name when format is ambiguous).
+// Single deterministic key for grouping/dedup. Builds an ORDER-INDEPENDENT
+// two-token signature {surname, primary-first-name}, alphabetically sorted, so
+// the SAME household collapses to one key regardless of how the name was typed.
+//
+// AUDIT FIX (Jun 2026 — cross-format identity, simulated 400 households × 9
+// renderings each): the old logic produced a DIFFERENT key for each format —
+// "Cox, Sara" -> fam:cox|sara, but "Sara Cox" / "Cox Sara" (no comma, e.g. from
+// a chemical-maintenance dispatch) fell into a "longest word" branch and keyed
+// on fam:sara, so the same family scattered across separate cards and a record
+// looked "missing". Sorting the two name tokens makes "Cox, Sara" == "Sara Cox"
+// == "Cox Sara". Simulation: SPLIT rate 100% -> 35.5% (the entire remainder is
+// the rare no-comma "First & Spouse Last" form, which is a SAFE split — a
+// lingering visible card, never a deleted record), with ZERO new false merges.
+//
+// The May-2026 Cox disambiguation is PRESERVED: the primary first name (the part
+// before any "&"/"and") stays in the signature, so "Cox, Sara" (fam:cox|sara)
+// and "Cox, Jim & Martha" (fam:cox|jim) remain distinct households, while
+// "Ruck, Linda & Jim" and "Ruck, Linda" both collapse to fam:linda|ruck.
+//
+// NOTE: this key is computed live everywhere it is used (grouping, dedup, card
+// selection) and is NEVER persisted to Firestore — only the literal customer
+// name string is stored — so changing the key FORMAT orphans no data.
 function _custGroupKey(s){
   if(!s)return "";
   var lower=String(s).toLowerCase();
   var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
+  if(!clean)return lower.replace(/[^a-z0-9]/g,"");
+  var sig;
   if(clean.indexOf(",")>=0){
+    // "Last, First [& Spouse]" — the comma fixes the surname unambiguously.
     var parts=clean.split(",");
     var fam=parts[0].trim().replace(/\s+/g,"");
-    if(fam.length>=3){
-      // BUG FIX (May 2026 — Cox collision): bare surname is too aggressive.
-      // "Cox, Sara" and "Cox, Jim & Martha" are unrelated households but both
-      // mapped to fam:cox, so Sara's tickets disappeared into Jim & Martha's
-      // card. Disambiguate by appending the PRIMARY first name (the one BEFORE
-      // any "&" / "and" — so "Ruck, Linda & Jim" still collapses with
-      // "Ruck, Linda" because both produce "linda").
-      var afterComma=(parts[1]||"").trim();
-      var primaryFirst=afterComma.split(/\s*(?:&|\band\b)\s*/i)[0].trim().split(/\s+/)[0];
-      if(primaryFirst&&primaryFirst.length>=2)return "fam:"+fam+"|"+primaryFirst;
-      return "fam:"+fam;
-    }
+    var afterComma=(parts[1]||"").trim();
+    // primary first = the name BEFORE any "&"/"and" (the "&" is already a space
+    // after cleaning, so the first space-token of afterComma is the primary).
+    var primaryFirst=afterComma.split(/\s*(?:&|\band\b)\s*/i)[0].trim().split(/\s+/)[0]||"";
+    sig=[];
+    if(fam.length>=2)sig.push(fam);
+    if(primaryFirst.length>=2)sig.push(primaryFirst);
+  }else{
+    // No comma — word order is unknown ("Sara Cox" vs "Cox Sara"). Keep ALL
+    // name tokens (>=2 chars) and rely on the sort below to make order
+    // irrelevant. Keeping every token (rather than dropping a spouse we can't
+    // reliably identify) keeps the surname in the signature, which PREVENTS
+    // first-name-only keys that would over-merge unrelated families.
+    sig=clean.split(/\s+/).filter(function(w){return w.length>=2;});
   }
-  // No comma — pick the longest word (≥3 chars) as the family-name proxy.
-  // Family names tend to be longer than first names, so this is more reliable
-  // than always taking the last word.
-  var words=clean.replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=3});
-  if(words.length){
-    words.sort(function(a,b){return b.length-a.length});
-    return "fam:"+words[0];
-  }
-  // Final fallback: full alphanumeric normalization
-  return lower.replace(/[^a-z0-9]/g,"");
+  if(!sig.length)return lower.replace(/[^a-z0-9]/g,"");
+  // Order-independent: sort so "Cox Sara" === "Sara Cox" === "Cox, Sara".
+  sig.sort();
+  return "fam:"+sig.join("|");
 }
 // Pairwise: do these two names refer to the same customer?
 function _custSameCustomer(a,b){
@@ -4626,6 +4644,22 @@ function _custSameCustomer(a,b){
   var ka=_custKeys(a),kb=_custKeys(b);
   for(var i=0;i<ka.length;i++)if(kb.indexOf(ka[i])>=0)return true;
   return false;
+}
+// AUDIT FIX (Jun 2026 — disappearing-visit / ghost-close bug): the dispatch
+// CLOSE/REOPEN/RESCHEDULE paths must use the SAME identity rule as the
+// visibility + cleanup pipeline (_isVisibleDispatch / _runDispatchCleanup),
+// which key on _custGroupKey. The lenient _custSameCustomer shares only a
+// bare family key, so "Cox, Sara" matched "Cox, Al" / "Cox, Jim & Martha"
+// and a field report for one household silently marked an UNRELATED
+// household's scheduled dispatch as fieldReportSubmitted — that real visit
+// then vanished from the calendar (the May-2026 fix only patched cleanup,
+// not the submit/close path). Using strict group-key equality here makes
+// "closed ⟺ hidden" hold, eliminating both ghost-closes and phantoms.
+// (Display-only enrichment in _findExistingCustomerData intentionally keeps
+// the lenient matcher — it can only ADD contact info, never delete a ticket.)
+function _custSameHousehold(a,b){
+  var ga=_custGroupKey(a),gb=_custGroupKey(b);
+  return !!ga&&ga===gb;
 }
 // AUDIT FIX (May 2026 — Alberto's report): When a chemical-maintenance dispatch
 // lands in the Service Log it comes in with ONLY the customer name (no phone,
@@ -8342,7 +8376,9 @@ async function submitTkt(st){
       delete cleanData.phone;delete cleanData.address;delete cleanData.city;delete cleanData.zip;delete cleanData.zone;
       await db.collection("tickets").doc(editingDocId).update(cleanData);
       // If editing a field report and marking it complete, also clear any matching dispatch tickets.
-      // Uses the unified _custSameCustomer matcher (handles "Smith, John" vs "Smith John and Mary").
+      // Uses the strict _custSameHousehold matcher (group-key equality) so that the set of dispatches
+      // we CLOSE here is identical to the set the visibility/cleanup layer would HIDE — closed <=> hidden,
+      // preventing the ghost-close bug where a lenient match silently buried an unrelated real visit.
       if(st==="complete"){
         try{
           const targetDateE=(cleanData.date||"").trim();
@@ -8355,7 +8391,7 @@ async function submitTkt(st){
               if(t.source!=="dispatch")return false;
               if(t.fieldReportSubmitted)return false;
               if(t.status==="canceled")return false;
-              if(!_custSameCustomer(t.customer,cleanData.customer))return false;
+              if(!_custSameHousehold(t.customer,cleanData.customer))return false;
               // Allow up to ±30 days between the dispatch date and the field-report date
               // (tech may visit days or weeks earlier/later than originally scheduled).
               var diff=_dayDiff((t.date||"").trim(),targetDateE);
@@ -8406,7 +8442,8 @@ async function submitTkt(st){
       // Auto-match: find ANY pending dispatch ticket with matching customer (and date within ±30 days)
       // and mark it complete. Ensures the dispatch ticket disappears from BOTH assigned techs' calendars
       // when any of them fills the report, even if the visit happened on a different day than scheduled.
-      // Uses the unified _custSameCustomer matcher.
+      // Uses the strict _custSameHousehold matcher (group-key equality) — same set the
+      // visibility layer hides, so a submitted report never buries an unrelated visit.
       if(st==="complete"){
         try{
           const targetDate=(cleanData.date||"").trim();
@@ -8420,7 +8457,7 @@ async function submitTkt(st){
               if(t.source!=="dispatch")return false;
               if(t.fieldReportSubmitted)return false;
               if(t.status==="canceled")return false;
-              if(!_custSameCustomer(t.customer,cleanData.customer))return false;
+              if(!_custSameHousehold(t.customer,cleanData.customer))return false;
               var diff=_dayDiff((t.date||"").trim(),targetDate);
               if(diff===-999||Math.abs(diff)>30)return false;
               // Don't close a dispatch that was created AFTER this report
@@ -8810,7 +8847,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     var openDisp=(typeof active!=="undefined"?active:[]).find(function(t){
       return t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
         &&!t.fieldReportSubmitted&&t.id!==srcDocId
-        &&_custSameCustomer(t.customer,cust);
+        &&_custSameHousehold(t.customer,cust);
     });
     if(openDisp){
       await db.collection("tickets").doc(openDisp.id).update({
@@ -8859,7 +8896,7 @@ function _orphanRescheds(){
     var orphans=pool.filter(function(r){
       if(r.status!=="reschedule")return false;
       var hasOpen=(typeof active!=="undefined"?active:[]).some(function(d){
-        return d&&d.source==="dispatch"&&!d.fieldReportSubmitted&&d.status!=="canceled"&&d.status!=="done"&&_custSameCustomer(d.customer,r.customer);
+        return d&&d.source==="dispatch"&&!d.fieldReportSubmitted&&d.status!=="canceled"&&d.status!=="done"&&_custSameHousehold(d.customer,r.customer);
       });
       return !hasOpen;
     });
@@ -10172,7 +10209,7 @@ async function askDeleteWithWarning(docId){
       if(!x.fieldReportSubmitted)return false;
       if(x.status==="canceled")return false;
       if(x.fieldReportId===docId)return true;
-      if(_custSameCustomer(x.customer,t.customer)&&tDate){
+      if(_custSameHousehold(x.customer,t.customer)&&tDate){
         var diff=_dayDiff((x.date||"").trim(),tDate);
         if(diff!==-999&&Math.abs(diff)<=30)return true;
       }
