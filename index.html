@@ -636,6 +636,7 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 /* On mobile, dock toast above the bottom-nav so it doesn't cover the header */
 @media(max-width:600px){
   .toast{top:auto;bottom:calc(72px + env(safe-area-inset-bottom));}
+  #syncBadge{bottom:calc(78px + env(safe-area-inset-bottom));}
 }
 .toast.show{display:inline-flex;animation:toastIn var(--dur-slow) var(--ease-spring)}
 .toast.warn{background:var(--ac)}
@@ -4004,11 +4005,14 @@ function updAdmin(){
     if(sub){
       if(currentUser){
         const role=currentUser.role==="admin"?"Admin":(currentUser.role==="organizer"?"Organizer":"Tech");
-        sub.textContent=`${currentUser.name} · ${role} · 🔑 PIN`;
+        // Techs: PINs are managed by the office only — no self-service entry.
+        var _subTech=currentUser.role==="tech";
+        sub.textContent=`${currentUser.name} · ${role}`+(_subTech?"":" · 🔑 PIN");
         sub.style.display="";
-        sub.style.cursor="pointer";
-        sub.title="Click to change your PIN";
-        sub.onclick=function(){if(typeof changeMyPIN==="function")changeMyPIN()};
+        sub.style.cursor=_subTech?"":"pointer";
+        sub.title=_subTech?"":"Click to change your PIN";
+        sub.onclick=_subTech?null:function(){if(typeof changeMyPIN==="function")changeMyPIN()};
+        if(typeof _enforceTechUX==="function")try{_enforceTechUX()}catch(_e){}
       }else{
         sub.textContent="Service Ticket System";
         sub.style.cursor="";
@@ -5848,6 +5852,8 @@ async function editUserPin(i){
 // remember from other apps. PIN must be 4 digits and not collide with another user.
 async function changeMyPIN(){
   if(!currentUser){toast("Not logged in","err");return}
+  // Techs can't self-change PINs (office manages them in Admin → Users & PINs)
+  if(currentUser.role==="tech"){toast("PINs are managed by the office — ask Alberto or Nela","warn");return}
   var current=currentUser.pin||"";
   var np=await promptDialog("Change your PIN — "+currentUser.name+"\n\nEnter a new 4-digit PIN. You'll use it to log in next time.",current);
   if(np===null)return;
@@ -7319,6 +7325,7 @@ function _syncThemeBtn(mode){
   else{b.innerHTML=icon("sun",20,{color:"currentColor"});b.title="Theme: Aspen Brand \u2192 tap for Light";}
 }
 function toggleTheme(){
+  if(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"){_setTheme("light");try{localStorage.setItem("aspenTheme","light")}catch(_e){}if(typeof toast==="function")toast("Light mode is fixed for technicians");return}
   var cur=_curTheme();
   var next=(cur==="light")?"dark":(cur==="dark")?"ember":(cur==="ember")?"aspen":"light";
   _setTheme(next);
@@ -7382,6 +7389,7 @@ function _watchSystemTheme(){
     if(!window.matchMedia)return;
     var mq=window.matchMedia("(prefers-color-scheme: dark)");
     var handler=function(e){
+      if(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"){_setTheme("light");return} // techs: always light
       if(localStorage.getItem("aspenTheme"))return; // user picked manually → leave it
       _setTheme(e.matches?"dark":"light");
     };
@@ -16453,24 +16461,33 @@ function _setSyncBadge(state){ // "ok" | "offline" | "pending"
   else if(state==="pending"){_syncBadgeEl.className="pending";_syncBadgeEl.textContent="\u23F3 Syncing changes\u2026";}
   else{_syncBadgeEl.className="";}
 }
+var _syncPendStreak=0;
 async function _syncCheck(){
   try{
-    if(!navigator.onLine){_setSyncBadge("offline");return}
-    if(typeof db==="undefined"||!db||!db.waitForPendingWrites){_setSyncBadge("ok");return}
+    if(document.hidden)return; // background tab — don't poll
+    if(!navigator.onLine){_setSyncBadge("offline");_syncPendStreak=0;return}
+    if(typeof db==="undefined"||!db||!db.waitForPendingWrites){_setSyncBadge("ok");_syncPendStreak=0;return}
+    // BUG FIX (Jun 2026): the original 900ms race lost on any slow link even
+    // with ZERO pending writes → the badge showed "Syncing…" all day. Give
+    // Firestore a realistic 2.5s window AND require two consecutive misses
+    // before bothering the user; clear instantly on the first success.
     var res=await Promise.race([
       db.waitForPendingWrites().then(function(){return "clear"}),
-      new Promise(function(r){setTimeout(function(){r("pending")},900)})
+      new Promise(function(r){setTimeout(function(){r("pending")},2500)})
     ]);
-    _setSyncBadge(res==="clear"?"ok":"pending");
-  }catch(_e){_setSyncBadge("ok")}
+    if(res==="clear"){_syncPendStreak=0;_setSyncBadge("ok");}
+    else{_syncPendStreak++;if(_syncPendStreak>=2)_setSyncBadge("pending");}
+  }catch(_e){_setSyncBadge("ok");_syncPendStreak=0}
 }
 function _startSyncWatch(){
   _mountSyncBadge();
   window.addEventListener("online",_syncCheck);
   window.addEventListener("offline",function(){_setSyncBadge("offline")});
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)_syncCheck()});
   if(_syncTimer)clearInterval(_syncTimer);
-  _syncTimer=setInterval(_syncCheck,6000);
+  _syncTimer=setInterval(_syncCheck,10000);
   _syncCheck();
+  setTimeout(function(){if(typeof _enforceTechUX==="function")_enforceTechUX()},800);
 }
 
 /* ── 4) OUTDOOR HIGH-CONTRAST MODE — layers on top of any theme; persisted. ── */
@@ -16484,6 +16501,10 @@ function _syncOutdoorBtn(on){
   b.style.opacity=on?"1":"0.55";
 }
 function toggleOutdoor(){
+  if(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"){
+    document.body.classList.add("outdoor");try{localStorage.setItem("aspenOutdoor","1")}catch(_e){}
+    if(typeof toast==="function")toast("Outdoor mode stays ON for field work \u2600\uFE0F");return;
+  }
   var on=!document.body.classList.contains("outdoor");
   document.body.classList.toggle("outdoor",on);
   try{localStorage.setItem("aspenOutdoor",on?"1":"0")}catch(_e){}
@@ -16717,6 +16738,33 @@ async function calCycleDaySlots(id,ev){
     toast(nv===1?"Back to a normal stop (1 slot)":"\u23F1 Takes "+nv+" of 4 slots"+(nv>=4?" \u2014 whole day":""));
     setTimeout(function(){if(typeof rndrCal==="function")try{rndrCal()}catch(_e){}},350);
   }catch(e){toast("Error","err")}
+}
+
+/* ── TECH UX LOCKDOWN (Jun 2026) ───────────────────────────────────────────
+   Field phones stay predictable: techs always get LIGHT theme + OUTDOOR
+   high-contrast ON, and the theme/outdoor buttons disappear for them (the
+   office roles keep full control). Re-entrant — safe to call on every
+   header refresh; restores the buttons when an admin logs in on the same
+   device after a tech. ── */
+function _isTechUser(){return !!(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech")}
+function _enforceTechUX(){
+  try{
+    var tech=_isTechUser();
+    var tb=document.getElementById("themeToggleBtn");
+    var ob=document.getElementById("outdoorToggleBtn");
+    if(tech){
+      if(typeof _setTheme==="function")_setTheme("light");
+      try{localStorage.setItem("aspenTheme","light")}catch(_e){}
+      document.body.classList.add("outdoor");
+      try{localStorage.setItem("aspenOutdoor","1")}catch(_e){}
+      if(typeof _syncOutdoorBtn==="function")_syncOutdoorBtn(true);
+      if(tb)tb.style.display="none";
+      if(ob)ob.style.display="none";
+    }else{
+      if(tb)tb.style.display="";
+      if(ob)ob.style.display="";
+    }
+  }catch(_e){}
 }
 
 /* ── SAVE PHOTOS TO THE SHARED iCLOUD FOLDER (Jun 2026) ────────────────────
