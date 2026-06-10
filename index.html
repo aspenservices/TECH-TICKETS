@@ -1479,7 +1479,86 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style id="auditExtrasJun2026">
+/* ═══ AUDIT ADDITIONS (Jun 2026) — additive only; existing themes untouched ═══ */
+
+/* ── ASPEN BRAND THEME (4th theme in the cycle, light-based) ──
+   Deep Blue #134A63 · Teal #1C8FA8 · Aqua #4FC3D9 · Copper #B5733A
+   Poppins (display) + Source Sans 3 (body). Only brand tokens are overridden;
+   semantic status colors (success/warning/danger) stay identical app-wide. */
+body.theme-aspen{
+  --ac:#1C8FA8;--acl:#E6F5F9;--acd:#0F6B83;
+  --br:#134A63;--brl:#3C7390;
+  --hdr-bg:#0E3A4F;
+  --ink:#13242E;--i2:#41606F;--i3:#7E98A4;
+  --ln:#DCE7EC;--bg:#F3F8FA;--cd:#ffffff;
+  --c-money-strong:#B5733A;--c-money-fg:#8A5527;--c-money-bg:#F7EBDD;
+  font-family:'Source Sans 3','Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+body.theme-aspen .dt-sec-t,body.theme-aspen .kpi-hello,body.theme-aspen .cal-hdr h3,
+body.theme-aspen h1,body.theme-aspen h2,body.theme-aspen h3{
+  font-family:'Poppins','Source Sans 3',sans-serif;letter-spacing:-.2px;
+}
+
+/* ── OUTDOOR HIGH-CONTRAST MODE (layers on top of ANY theme) ──
+   For techs working in direct sunlight: bigger type, hard blacks, visible
+   borders instead of soft shadows. Persisted in localStorage "aspenOutdoor". */
+body.outdoor{zoom:1.08;--ink:#000;--i2:#1c1c1c;--i3:#3d3d3d;--ln:#8a8a8a;}
+body.outdoor.dark-mode{--ink:#fff;--i2:#ececec;--i3:#d4d4d4;--ln:#7e8694;}
+body.outdoor .card,body.outdoor .tkt{border:1.5px solid var(--ln) !important;box-shadow:none !important;}
+body.outdoor input,body.outdoor select,body.outdoor textarea{border-width:1.5px !important;}
+
+/* ── TOUCH TARGETS ≥44px on coarse pointers (gloves / wet fingers) ── */
+@media(pointer:coarse){
+  input[type=time],input[type=date],input[type=text],input[type=tel],input[type=number],select{min-height:44px;}
+  .tab{min-height:44px;display:inline-flex;align-items:center;}
+  .pill{min-height:40px;}
+  .qb{min-width:40px;height:40px;}
+  .prm{min-width:40px;min-height:40px;}
+  button.qadd{min-height:44px;}
+}
+
+/* ── SYNC / OFFLINE BADGE ── */
+#syncBadge{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + var(--sb));
+  z-index:9000;display:none;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;
+  font-size:var(--fs-sm);font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.18);pointer-events:none;}
+#syncBadge.offline{display:inline-flex;background:var(--c-danger-bg);color:var(--c-danger-fg);border:1px solid var(--c-danger-border);}
+#syncBadge.pending{display:inline-flex;background:var(--c-warning-bg);color:var(--c-warning-fg);border:1px solid var(--c-warning-border);}
+
+/* ── TIME SANITY WARNING (field report form) ── */
+#timeSanity{display:none;margin-top:10px;padding:9px 12px;border-radius:10px;font-size:var(--fs-sm);font-weight:600;line-height:1.45;}
+#timeSanity.warn{display:block;background:var(--c-warning-bg);color:var(--c-warning-fg);border:1px solid var(--c-warning-border);}
+#timeSanity.info{display:block;background:var(--c-info-bg);color:var(--c-info-fg);border:1px solid var(--c-info-border);}
+
+/* ── CUSTOMER MERGE PANEL (admin, inside customer card) ── */
+#custMergePanel{display:none;margin-top:10px;padding:12px;border:1px dashed var(--ln);border-radius:12px;background:var(--c-ash,rgba(0,0,0,.03));}
+#custMergePanel.show{display:block;}
+#custMergePanel select{width:100%;min-height:44px;margin:8px 0;}
+
+/* ── ADMIN NATIVE-STYLE FOLDABLE SECTIONS (details/summary, Jun 2026) ── */
+details.adm-fold{margin:0;}
+details.adm-fold>summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ln);min-height:44px;}
+details.adm-fold>summary::-webkit-details-marker{display:none;}
+details.adm-fold>summary .adm-fold-arrow{font-size:var(--fs-md);color:var(--i2);transition:transform .2s;transform:rotate(-90deg);}
+details.adm-fold[open]>summary .adm-fold-arrow{transform:none;}
+details.adm-fold>summary:hover .adm-fold-arrow{color:var(--ink);}
+details.adm-fold>.adm-fold-body{padding-top:12px;}
+
+/* ── SERVICE LOG preset pills reuse the field-report pill look ── */
+#slWtRow .wt{min-height:40px;}
+
+/* ── DAY-SLOTS ticket card (calendar Team view) — height grows with the
+      number of daily positions the job occupies (2/3/4 of 4) ── */
+.mt-col .cal-slots-2{min-height:240px;}
+.mt-col .cal-slots-3{min-height:340px;}
+.mt-col .cal-slots-4{min-height:440px;}
+.cal-tkt-mini[class*="cal-slots-"]{display:flex;flex-direction:column;border:2px solid var(--ac)!important;background:repeating-linear-gradient(135deg,var(--acl),var(--acl) 14px,var(--cd) 14px,var(--cd) 28px)!important;box-shadow:0 4px 14px rgba(0,0,0,.10);}
+.cal-allday-banner{background:var(--ac);color:#fff;font-weight:800;font-size:var(--fs-sm);letter-spacing:.4px;text-transform:uppercase;border-radius:8px;padding:7px 10px;margin-bottom:8px;text-align:center;}
+.sl-slot-btn{width:34px;height:34px;border:1.5px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--i2);font-weight:800;font-size:var(--fs-md);cursor:pointer;}
+.sl-slot-btn.on{background:var(--ac);border-color:var(--ac);color:#fff;}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -1524,8 +1603,8 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
   <div id="ticketMode" style="display:none">
   <div id="editBanner" style="display:none;padding:12px 16px;background:var(--acl);border:2px solid var(--ac);border-radius:12px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:var(--fs-md);font-weight:700;color:var(--acd);display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="pencil" data-size="14" data-color="var(--acd)"></span>Editing Ticket</span><span id="editCustName" style="font-size:var(--fs-base);color:var(--i2)"></span></div><button onclick="resetForm();setMode('ticket');toast('Edit cancelled')" style="padding:6px 14px;background:none;border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--ac);cursor:pointer">Cancel</button></div><div style="font-size:var(--fs-sm);color:var(--acd);margin-top:8px;line-height:1.4;opacity:.85"><b>Note:</b> If you change arrival/departure times, labor will recalculate automatically.</div></div>
   <div class="progress" id="uploadProg"><div class="progress-bar" id="uploadBar"></div></div>
-  <div class="card" id="cardCust"><div class="card-summary"></div><div class="g2"><div class="field"><div class="lbl">Customer<span class="req">*</span></div><input type="text" id="fCust" placeholder="Customer name" autocomplete="off" onblur="frAutoFillCustWarranty()"></div><div class="field"><div class="lbl">Date</div><input type="date" id="fDate"></div></div></div>
-  <div class="card" id="cardTech"><div class="card-summary"></div><div class="lbl">Technician<span class="req">*</span> <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="pill-row" id="techRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddTech()" title="Add a new technician"><span class="qadd-plus">+</span><span>Add tech</span></button></div><div class="g2" style="margin-top:14px"><div class="field"><div class="lbl">Arrival<span class="req">*</span></div><input type="time" id="fArr"></div><div class="field"><div class="lbl">Departure<span class="req">*</span></div><input type="time" id="fDep"></div></div></div>
+  <div class="card" id="cardCust"><div class="card-summary"></div><div class="g2"><div class="field" style="position:relative"><div class="lbl">Customer<span class="req">*</span></div><input type="text" id="fCust" placeholder="Customer name" autocomplete="off" oninput="_suggestFor('fCust')" onblur="frAutoFillCustWarranty();_hideSuggestSoon('fCust')"><div class="cust-suggest" id="fCustSuggest"></div></div><div class="field"><div class="lbl">Date</div><input type="date" id="fDate"></div></div></div>
+  <div class="card" id="cardTech"><div class="card-summary"></div><div class="lbl">Technician<span class="req">*</span> <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="pill-row" id="techRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddTech()" title="Add a new technician"><span class="qadd-plus">+</span><span>Add tech</span></button></div><div class="g2" style="margin-top:14px"><div class="field"><div class="lbl">Arrival<span class="req">*</span></div><input type="time" id="fArr" onchange="_timeSanity()"></div><div class="field"><div class="lbl">Departure<span class="req">*</span></div><input type="time" id="fDep" onchange="_timeSanity()"></div></div><div id="timeSanity"></div></div>
   <div id="gateHint" style="text-align:center;padding:20px;color:var(--i3);font-size:var(--fs-base);font-weight:500">⏱ Enter <b>Arrival</b> time to continue</div>
   <div id="formGate" style="display:none">
   <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes" id="visitBtn1" onclick="setVisit(1)">1st Visit</button><button class="wb no" id="visitBtn2" onclick="setVisit(2)">2nd Visit</button><button class="wb" id="visitBtn3" onclick="setVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="visitBtn4" onclick="setVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="visitBtn5" onclick="setVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button></div><div class="w-result rda-cov" id="visitInfo" style="margin-top:8px;display:none"></div></div>
@@ -1563,7 +1642,7 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 
   <!-- ══ ESTIMATE MODE ══ -->
   <div id="estMode" style="display:none">
-  <div class="card"><div class="g2"><div class="field"><div class="lbl">Customer</div><input type="text" id="eCust" placeholder="Customer name" autocomplete="off"></div><div class="field"><div class="lbl">Date</div><input type="date" id="eDate"></div></div></div>
+  <div class="card"><div class="g2"><div class="field" style="position:relative"><div class="lbl">Customer</div><input type="text" id="eCust" placeholder="Customer name" autocomplete="off" oninput="_suggestFor('eCust')" onblur="_hideSuggestSoon('eCust')"><div class="cust-suggest" id="eCustSuggest"></div></div><div class="field"><div class="lbl">Date</div><input type="date" id="eDate"></div></div></div>
   <div class="card">
     <div class="lbl">Customer Contact <span class="sub">(required for estimate)</span></div>
     <div class="field" style="margin-bottom:10px"><input type="text" id="eCustPhone" placeholder="Phone number" autocomplete="off" inputmode="tel"></div>
@@ -1685,7 +1764,19 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-success-strong);cursor:pointer"><input type="checkbox" id="slPaid" style="width:18px;height:18px"> 💰 Paid</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--r);cursor:pointer" title="Customer must pay BEFORE the tech does any work"><input type="checkbox" id="slPBS" style="width:18px;height:18px"> 💳 Payment before service</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-warning-fg);cursor:pointer" title="This job needs an extra technician (2-person job)"><input type="checkbox" id="slNeed2" style="width:18px;height:18px"> 👥 Needs 2nd tech</label>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--ac)" title="How many of the technician's 4 daily positions this job takes (4 = whole day)">⏱ Day slots:
+            <span style="display:inline-flex;gap:4px"><button type="button" id="slSlot1" onclick="slSetSlots(1)" class="sl-slot-btn on">1</button><button type="button" id="slSlot2" onclick="slSetSlots(2)" class="sl-slot-btn">2</button><button type="button" id="slSlot3" onclick="slSetSlots(3)" class="sl-slot-btn">3</button><button type="button" id="slSlot4" onclick="slSetSlots(4)" class="sl-slot-btn">4</button></span>
+          </span>
         </div>
+        <!-- AUDIT ADDITION Jun 2026: billing presets at CALL time. The office sets
+             Type of Work + Visit Type on the very first call; the dispatch carries
+             them and the tech's Field Report adopts them automatically — so HOW the
+             customer will be charged (warranty / CM / flat-rate service) is decided
+             from the first phone call, not re-guessed in the field. -->
+        <!-- Identical to the Field Report's Visit Type + Type of Work blocks, so the
+             office sets billing at CALL time exactly the way the tech sees it later. -->
+        <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes on-y" id="slVisitBtn1" onclick="slSetVisit(1)">1st Visit</button><button class="wb no" id="slVisitBtn2" onclick="slSetVisit(2)">2nd Visit</button><button class="wb" id="slVisitBtn3" onclick="slSetVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="slVisitBtn4" onclick="slSetVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="slVisitBtn5" onclick="slSetVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button></div><div class="w-result rda-cov" id="slVisitInfo" style="margin-top:8px"><b>1st Visit</b> — TC $150 + $100/hr additional</div></div>
+        <div class="card"><div class="lbl">Type of Work <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="wt-row" id="slWtRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddWT();setTimeout(_slRenderWT,700)" title="Add a new work type"><span class="qadd-plus">+</span><span>Add type</span></button></div></div>
         <div class="form-section-card" style="margin-bottom:16px;background:var(--c-info-bg);border:1.5px solid var(--c-info-border);border-radius:14px;padding:16px 18px">
           <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-info-fg);font-weight:800;font-size:14px;letter-spacing:.3px">🛁 SPA DESCRIPTION <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— model, serial number, equipment</span></div>
           <textarea id="slSpaDesc" rows="7" placeholder="e.g. Aspen ES Elite 2024 · Serial #ASP-12345 · Standard pump · LED lights..." oninput="slSpaDescChanged()" style="width:100%;min-height:160px;padding:14px 16px;border:2px solid #cdd6df;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
@@ -1736,6 +1827,19 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 <div class="wrap" id="pg3">
   <!-- Welcome dashboard with animated count-up KPIs (rendered by rndrAdminWelcome) -->
   <div id="adminWelcome"></div>
+  <!-- AUDIT ADDITION Jun 2026: one-tap billing export for a day's completed work.
+       Builds customer/parts/labor/total rows, copies a paste-ready summary,
+       downloads a CSV, and (optional) queues rows in Firestore "billingQueue"
+       for the Invoice Tracker to import. -->
+  <div class="card" id="billingExportCard" style="margin-bottom:18px">
+    <div class="lbl">📤 Billing Export <span class="sub">(completed work → Invoice Tracker)</span></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <input type="date" id="bxDate" style="flex:0 0 auto">
+      <button class="qadd" type="button" onclick="exportBillingDay()" style="min-height:44px">Export day</button>
+      <span id="bxStatus" style="font-size:var(--fs-sm);color:var(--i3)"></span>
+    </div>
+    <div id="bxOut" style="display:none;margin-top:10px;font-size:var(--fs-sm);line-height:1.55;white-space:pre-wrap;background:var(--c-ash,rgba(0,0,0,.04));border-radius:10px;padding:10px 12px;max-height:260px;overflow:auto"></div>
+  </div>
   <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
     <div>
       <h1 style="font-size:var(--fs-2xl);font-weight:800;color:var(--br);margin:0 0 4px;letter-spacing:-.3px;display:flex;align-items:center;gap:10px"><span class="lucide-mount" data-lucide="settings" data-size="22"></span>Settings</h1>
@@ -2835,6 +2939,9 @@ function frAutoFillCustWarranty(){
   var c=(typeof getCustData==="function")?getCustData(name):null;
   var desc=(c&&c.spaDesc)?c.spaDesc:"";
   frAnchorWarranty(desc);
+  // AUDIT Jun 2026: adopt the billing presets the office chose at CALL time
+  // (Type of Work + Visit Type stored on the open dispatch for this customer).
+  if(typeof _frAdoptDispatchPresets==="function"){try{_frAdoptDispatchPresets(name)}catch(_e){}}
 }
 
 // ─── WARRANTY AUTO-ANCHOR (Field Report) ───────────────────────────────────
@@ -3077,6 +3184,26 @@ function billableMins(rawMins){
   if(rawMins<60)return 60; // 1-hour minimum
   return BILLING.roundMode==="nearest"?Math.round(rawMins/15)*15:Math.ceil(rawMins/15)*15;
 }
+
+// AUDIT FIX (Jun 2026 — 100k extreme-input fuzz). Two real failures fixed:
+// (1) Malformed times ("9", "ab:cd", "  ") parsed to NaN and leaked
+//     NaN hours/mins into the returned object — the UI displayed "NaN".
+// (2) IDENTICAL arrival/departure tripped the midnight wrap (mins<=0 →
+//     +=1440) and silently billed a 24-HOUR visit: a $2,450 invoice from a
+//     typo. The wrap now applies only to NEGATIVE spans (a genuine
+//     past-midnight visit); equal times = 0 measurable minutes on site
+//     (bills as TC-only on visit 1, base hour on visit 2).
+// Returns total on-site minutes, or null when either time is malformed
+// (callers treat null exactly like missing times).
+function _visitMins(a,d){
+  var pa=/^\s*(\d{1,2}):(\d{2})\s*$/.exec(a||""),
+      pd=/^\s*(\d{1,2}):(\d{2})\s*$/.exec(d||"");
+  if(!pa||!pd)return null;
+  if(+pa[1]>23||+pa[2]>59||+pd[1]>23||+pd[2]>59)return null;
+  var m=(+pd[1]*60+ +pd[2])-(+pa[1]*60+ +pa[2]);
+  if(m<0)m+=1440; // genuine past-midnight visit only — NOT equal times
+  return m;
+}
 async function loadBilling(){if(!db)return;try{const doc=await db.collection("config").doc("billing").get();if(doc.exists&&doc.data()&&doc.data().roundMode){BILLING.roundMode=doc.data().roundMode;try{rndrBillingCard()}catch(_e){}}}catch(e){}}
 async function saveBilling(){if(!db)return;try{await db.collection("config").doc("billing").set({roundMode:BILLING.roundMode})}catch(e){console.warn("[saveBilling]",e);if(typeof toast==="function")toast("Could not save billing rule","err")}}
 function setBillingRound(mode){
@@ -3227,8 +3354,14 @@ function rndrSpaDataWorklist(){
       '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><span style="font-size:var(--fs-xs);font-weight:800;padding:2px 8px;border-radius:6px;background:'+bg+';color:'+fg+'">'+tag+'</span>'+
       '<button onclick="openCustomerByName(decodeURIComponent(\''+encodeURIComponent(item.name)+'\'))" style="padding:5px 10px;border:1.5px solid var(--ac);background:#fff;color:var(--ac);border-radius:7px;font-size:var(--fs-xs);font-weight:800;cursor:pointer;white-space:nowrap">Open</button></div></div>';
   }
-  var h='<div class="card" style="margin:0;border-left:4px solid var(--c-warning-fg)">';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ln);margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">🗂️</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Spa Data Worklist</span></div><span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 9px;border-radius:10px;font-weight:800">'+total+'</span></div>';
+  // AUDIT Jun 2026: foldable like the other Admin sections (Technicians, Users
+  // & PINs). <details> needs no ids, so it stays safe even though this HTML is
+  // rendered into TWO containers (admin + customers tab). Starts CLOSED — this
+  // is the longest list in the tab and used to bury everything below it.
+  var _wlOpen="1"===(function(){try{return localStorage.getItem("adminWorklistOpen")||"0"}catch(_e){return "0"}})();
+  var h='<div class="card" style="margin:0;border-left:4px solid var(--c-warning-fg)"><details class="adm-fold"'+(_wlOpen?' open':'')+' ontoggle="try{localStorage.setItem(\'adminWorklistOpen\',this.open?\'1\':\'0\')}catch(_e){}">';
+  h+='<summary><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">🗂️</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Spa Data Worklist</span><span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 9px;border-radius:10px;font-weight:800">'+total+'</span></div><span class="adm-fold-arrow">\u25BC</span></summary>';
+  h+='<div class="adm-fold-body">';
   h+='<div style="background:linear-gradient(135deg,#0A1A3A,#13294f);color:#fff;border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:var(--fs-sm);line-height:1.5"><b>📌 Nela — this list is yours.</b> Open each customer and add their <b>install date + spa series</b> to the spa description. Each one you complete locks that customer\'s warranty automatically, so techs never guess. Goal: keep this number trending toward zero.</div>';
   h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:12px;line-height:1.5">These customers can\'t auto-anchor warranty yet'+(legacyOOW?'. <b>'+legacyOOW+'</b> old tub'+(legacyOOW>1?'s were':' was')+' auto-marked out of warranty from model year':'')+'.</div>';
   if(needDate.length){
@@ -3241,6 +3374,7 @@ function rndrSpaDataWorklist(){
     needSeries.slice(0,40).forEach(function(it){h+=row(it,"No series","var(--c-ash)","var(--i2)")});
     if(needSeries.length>40)h+='<div style="font-size:var(--fs-xs);color:var(--i3);padding:6px 0">+'+(needSeries.length-40)+' more…</div>';
   }
+  h+='</div></details>'; // close adm-fold-body + details (unconditional)
   h+='</div>';
   fill(h);
 }
@@ -3327,30 +3461,30 @@ function _billableMins(rawMins){
   return billableMins(rawMins);
 }
 
+
 // CM: no labor charge, only parts charged
 if(v===3){
-  if(!arr||!dep)return{amount:0,tc:0,extra:0,extraAmt:0,hours:0,mins:0,label:"CM — No labor charge",free:true,cm:true};
-  const[ah,am]=arr.split(":").map(Number),[dh,dm]=dep.split(":").map(Number);
-  let mins=(dh*60+dm)-(ah*60+am);if(mins<=0)mins+=1440;const hrs=mins/60;
+  const mins=_visitMins(arr,dep);
+  if(mins===null)return{amount:0,tc:0,extra:0,extraAmt:0,hours:0,mins:0,label:"CM — No labor charge",free:true,cm:true};
+  const hrs=mins/60;
   return{amount:0,tc:0,extra:0,extraAmt:0,hours:+hrs.toFixed(2),mins,label:"CM — No labor charge",free:true,cm:true};
 }
 // Repeat: labor FREE (warranty treatment)
 if(v===4){
-  if(!arr||!dep)return{amount:0,tc:0,extra:0,extraAmt:0,hours:0,mins:0,label:"Repeat — Warranty (no charge)",free:true,repeat:true};
-  const[ah,am]=arr.split(":").map(Number),[dh,dm]=dep.split(":").map(Number);
-  let mins=(dh*60+dm)-(ah*60+am);if(mins<=0)mins+=1440;const hrs=mins/60;
+  const mins=_visitMins(arr,dep);
+  if(mins===null)return{amount:0,tc:0,extra:0,extraAmt:0,hours:0,mins:0,label:"Repeat — Warranty (no charge)",free:true,repeat:true};
+  const hrs=mins/60;
   return{amount:0,tc:0,extra:0,extraAmt:0,hours:+hrs.toFixed(2),mins,label:"Repeat — Warranty (no charge)",free:true,repeat:true};
 }
 // Delivery: no labor charge, parts charged normally
 if(v===5){
-  if(!arr||!dep)return{amount:0,tc:0,extra:0,extraAmt:0,hours:0,mins:0,label:"Delivery — No labor charge",free:true,delivery:true};
-  const[ah,am]=arr.split(":").map(Number),[dh,dm]=dep.split(":").map(Number);
-  let mins=(dh*60+dm)-(ah*60+am);if(mins<=0)mins+=1440;const hrs=mins/60;
+  const mins=_visitMins(arr,dep);
+  if(mins===null)return{amount:0,tc:0,extra:0,extraAmt:0,hours:0,mins:0,label:"Delivery — No labor charge",free:true,delivery:true};
+  const hrs=mins/60;
   return{amount:0,tc:0,extra:0,extraAmt:0,hours:+hrs.toFixed(2),mins,label:"Delivery — No labor charge",free:true,delivery:true};
 }
-if(!arr||!dep)return null;
-const[ah,am]=arr.split(":").map(Number),[dh,dm]=dep.split(":").map(Number);
-let mins=(dh*60+dm)-(ah*60+am);if(mins<=0)mins+=1440;
+const mins=_visitMins(arr,dep);
+if(mins===null)return null;
 // Apply the new billable-time rounding to compute hours used for charging.
 // `rawMins` keeps the actual on-site duration (still recorded for reporting),
 // `billMins`/`billHrs` are what the dollar math uses.
@@ -4611,6 +4745,17 @@ function _custKeys(s){
 function _custGroupKey(s){
   if(!s)return "";
   var lower=String(s).toLowerCase();
+  // AUDIT FIX (Jun 2026 — accent/punctuation identity, found by 200k-name
+  // simulation): accented letters and intra-name punctuation were replaced
+  // with SPACES by the cleaner below, splitting the name into fragments and
+  // producing a DIFFERENT key per format — "Muñoz, José" keyed fam:jos|muoz
+  // but "José Muñoz" keyed fam:jos|mu|oz; "O'Brien, Pat" vs "Pat O'Brien"
+  // and "Smith-Jones, Mary" vs "Mary Smith-Jones" split the same way.
+  // Fix: (a) strip diacritics via NFD so ñ→n, é→e ("muñoz"→"munoz"), and
+  // (b) DELETE apostrophes/hyphens/periods (instead of spacing them) so
+  // "o'brien"→"obrien" and "smith-jones"→"smithjones" stay single tokens.
+  if(lower.normalize)lower=lower.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  lower=lower.replace(/['\u2018\u2019\-\u2010\u2011\u2013\u2014.]/g,"");
   var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
   if(!clean)return lower.replace(/[^a-z0-9]/g,"");
   var sig;
@@ -4999,11 +5144,13 @@ function rndrAdminFTF(){
   });
   var perLabel=_ftfPeriod==="month"?"This month":_ftfPeriod==="week"?"This week":"All time";
   function pillBtn(val,label){return '<button onclick="setFtfPeriod(\''+val+'\')" style="padding:4px 10px;border:1px solid var(--ln);border-radius:6px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;background:'+(_ftfPeriod===val?'var(--ac)':'var(--bg)')+';color:'+(_ftfPeriod===val?'#fff':'var(--i2)')+'">'+label+'</button>'}
-  var h='<div class="card" style="margin:0">';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ac);margin-bottom:12px">';
-  h+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83C\uDFAF</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">First-Time Fix Rate</span></div>';
-  h+='<div style="display:flex;gap:6px">'+pillBtn("month","Month")+pillBtn("week","Week")+pillBtn("all","All")+'</div>';
-  h+='</div>';
+  // AUDIT Jun 2026: foldable like the other Admin sections. State survives
+  // re-renders via localStorage (details resets when innerHTML is rebuilt).
+  var _ftfOpen="0"!==(function(){try{return localStorage.getItem("adminFTFOpen")||"0"}catch(_e){return "0"}})();
+  var h='<div class="card" style="margin:0"><details class="adm-fold"'+(_ftfOpen?' open':'')+' ontoggle="try{localStorage.setItem(\'adminFTFOpen\',this.open?\'1\':\'0\')}catch(_e){}">';
+  h+='<summary><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83C\uDFAF</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">First-Time Fix Rate</span></div><span class="adm-fold-arrow">\u25BC</span></summary>';
+  h+='<div class="adm-fold-body">';
+  h+='<div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:10px">'+pillBtn("month","Month")+pillBtn("week","Week")+pillBtn("all","All")+'</div>';
   if(!techs.length){
     h+='<div style="text-align:center;padding:24px;color:var(--i3);font-size:var(--fs-sm)">No completed or rescheduled visits in this period yet.</div>';
   }else{
@@ -5025,6 +5172,7 @@ function rndrAdminFTF(){
     });
     h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:8px;font-style:italic">Higher is better. Low rates often mean missing parts, off diagnoses, or access issues \u2014 see the Repeated Reschedules panel below.</div>';
   }
+  h+='</div></details>'; // close adm-fold-body + details
   h+='</div>';
   el.innerHTML=h;
 }
@@ -7132,11 +7280,15 @@ function checkGate(){const a=document.getElementById("fArr").value;document.getE
 
 // ═══════════════ DESIGN: THEME (dark/light) + CONFETTI + WELCOME KPIs ═══════════════
 // Apply saved theme, or follow the system preference when the user hasn't chosen.
-// ─── THEME SYSTEM — 3-state cycle: Light → Dark → Ember Gold ────────────────
+// ─── THEME SYSTEM — 4-state cycle: Light → Dark → Ember Gold → Aspen Brand ──
 // Ember Gold layers ON TOP of dark mode (body gets BOTH .dark-mode and
 // .theme-ember) so it reuses every dark-mode override and stays coherent.
-// Persisted in localStorage "aspenTheme" = "light" | "dark" | "ember".
+// Aspen Brand (Jun 2026, additive) is LIGHT-based: it only overrides the brand
+// tokens (Deep Blue/Teal/Copper + Poppins/Source Sans 3) and leaves every
+// semantic status color untouched. Existing themes are not modified.
+// Persisted in localStorage "aspenTheme" = "light" | "dark" | "ember" | "aspen".
 function _curTheme(){
+  if(document.body.classList.contains("theme-aspen"))return "aspen";
   if(document.body.classList.contains("theme-ember"))return "ember";
   if(document.body.classList.contains("dark-mode"))return "dark";
   return "light";
@@ -7145,12 +7297,13 @@ function _setTheme(mode){
   var dark=(mode==="dark"||mode==="ember");
   document.body.classList.toggle("dark-mode",dark);
   document.body.classList.toggle("theme-ember",mode==="ember");
+  document.body.classList.toggle("theme-aspen",mode==="aspen");
   _syncThemeBtn(mode);
 }
 function _applyTheme(){
   try{
     var saved=localStorage.getItem("aspenTheme");
-    if(saved==="ember"||saved==="dark"||saved==="light"){_setTheme(saved);return;}
+    if(saved==="ember"||saved==="dark"||saved==="light"||saved==="aspen"){_setTheme(saved);return;}
     // No manual choice yet → follow the OS (light/dark only).
     var dark=(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
     _setTheme(dark?"dark":"light");
@@ -7162,14 +7315,15 @@ function _syncThemeBtn(mode){
   // Icon hints the NEXT theme in the cycle (Light→Dark→Ember→Light).
   if(mode==="light"){b.innerHTML=icon("moon",20,{color:"currentColor"});b.title="Theme: Light \u2192 tap for Dark";}
   else if(mode==="dark"){b.innerHTML=icon("flame",20,{color:"currentColor"});b.title="Theme: Dark \u2192 tap for Ember Gold";}
-  else{b.innerHTML=icon("sun",20,{color:"currentColor"});b.title="Theme: Ember Gold \u2192 tap for Light";}
+  else if(mode==="ember"){b.innerHTML=icon("droplets",20,{color:"currentColor"});b.title="Theme: Ember Gold \u2192 tap for Aspen Brand";}
+  else{b.innerHTML=icon("sun",20,{color:"currentColor"});b.title="Theme: Aspen Brand \u2192 tap for Light";}
 }
 function toggleTheme(){
   var cur=_curTheme();
-  var next=(cur==="light")?"dark":(cur==="dark")?"ember":"light";
+  var next=(cur==="light")?"dark":(cur==="dark")?"ember":(cur==="ember")?"aspen":"light";
   _setTheme(next);
   try{localStorage.setItem("aspenTheme",next)}catch(_e){}
-  if(typeof toast==="function")toast(next==="ember"?"Ember Gold \u2728":next==="dark"?"Dark mode \u2713":"Light mode \u2713");
+  if(typeof toast==="function")toast(next==="ember"?"Ember Gold \u2728":next==="dark"?"Dark mode \u2713":next==="aspen"?"Aspen Brand \uD83C\uDF0A":"Light mode \u2713");
 }
 // Inject the toggle button into the header (before the lock button).
 function _mountThemeToggle(){
@@ -8850,9 +9004,16 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
         &&_custSameHousehold(t.customer,cust);
     });
     if(openDisp){
+      // AUDIT FIX Jun 2026: the reused dispatch's ORIGINAL notes are the
+      // customer's last call comment ("LEAKING — call before arriving", gate
+      // codes, etc.). Overwriting them with only the tech's reschedule note
+      // silently destroyed that context — the office re-booked blind. Now the
+      // previous call notes are PRESERVED below the reschedule header.
+      var keepNotes=(openDisp.notes||"").trim();
+      var mergedNotes=newNotes+(keepNotes&&newNotes.indexOf(keepNotes)<0?("\n\n\u2014 Previous call notes \u2014\n"+keepNotes):"");
       await db.collection("tickets").doc(openDisp.id).update({
         date:"",status:"pending",techs:[],autoFromResched:true,
-        reschedFromId:srcDocId,notes:newNotes,reschedAt:stamp,reschedAtMs:stampMs,
+        reschedFromId:srcDocId,notes:mergedNotes,reschedAt:stamp,reschedAtMs:stampMs,
         reschedReason:reason||"",reschedNote:reasonNote||""
       });
       try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:openDisp.id})}catch(_e){}
@@ -8862,10 +9023,39 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     // ── Otherwise build a fresh dispatch ticket, enriching contact info from
     //    customer history (field reports don't carry phone/address).
     var cd=null;try{cd=_findExistingCustomerData(cust,srcDocId)}catch(_e){}
+    // AUDIT FIX Jun 2026: also carry the customer's most recent prior comment
+    // (their last call notes / gate code / access info) into the new call, so
+    // the office never re-books without the context the last ticket had.
+    try{
+      var _hist=_pool.filter(function(x){
+        return x&&x.id!==srcDocId&&x.customer&&(x.notes||"").trim()
+          &&_custSameHousehold(x.customer,cust);
+      }).sort(function(a,b){
+        // Prefer DISPATCH-source notes: those are the customer's actual call
+        // comments (gate codes, access info). A newer tech-report note must
+        // not shadow them — the tech notes already travel in the header above.
+        var sa=a.source==="dispatch"?0:1, sb=b.source==="dispatch"?0:1;
+        if(sa!==sb)return sa-sb;
+        var ma=(typeof _ticketCreatedMs==="function")?_ticketCreatedMs(a):0;
+        var mb=(typeof _ticketCreatedMs==="function")?_ticketCreatedMs(b):0;
+        return mb-ma;
+      });
+      var _lastN=_hist.length?(_hist[0].notes||"").trim():"";
+      if(_lastN&&newNotes.indexOf(_lastN)<0){
+        newNotes+="\n\n\u2014 Last customer notes"+(_hist[0].date?(" ("+_hist[0].date+")"):"")+" \u2014\n"+_lastN;
+      }
+    }catch(_e){}
     var w=srcData.warranty||{};
     var wt=(srcData.workTypes||[]).filter(function(x){return x&&x!=="Service Call"});
     if(!wt.length)wt=["Service Call"];
-    var docRef=await db.collection("tickets").add({
+    // AUDIT FIX Jun 2026 (validated by 1000-device concurrency simulation):
+    // add() gave the auto-dispatch a RANDOM id, so two devices processing the
+    // SAME reschedule concurrently (double-tap, edit+submit double path, or two
+    // open tabs) each created their own dispatch — duplicate "needs a date"
+    // calls for one customer. A DETERMINISTIC id derived from the source report
+    // makes creation idempotent: the second writer lands on the SAME doc.
+    var docRef=db.collection("tickets").doc("resched_"+srcDocId);
+    await docRef.set({
       customer:(cd&&cd.bestName&&cd.bestName.length>cust.length)?cd.bestName:cust,
       date:"",techs:[],workTypes:wt,
       warranty:{has:w.has===true?true:w.has===false?false:null,model:w.model||"",year:w.year||0,type:w.type||"rda",label:w.label||"N/W"},
@@ -8883,7 +9073,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       reschedReason:reason||"",reschedNote:reasonNote||"",
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       submitted:stamp
-    });
+    },{merge:true});
     try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:docRef.id})}catch(_e){}
   }catch(e){console.warn("[_autoCreateReschedDispatch]",e)}
 }
@@ -9064,7 +9254,7 @@ function fmtTime(mins){const h=Math.floor(mins/60),m=mins%60;return h>0?(m>0?`${
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
   const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w),t.noLabor||false);
-  const timeOnSiteMin=(t.arrival&&t.departure)?(()=>{const[ah,am]=t.arrival.split(":").map(Number),[dh,dm]=t.departure.split(":").map(Number);let m=(dh*60+dm)-(ah*60+am);if(m<=0)m+=1440;return m})():0;
+  const timeOnSiteMin=_visitMins(t.arrival,t.departure)||0; // AUDIT FIX Jun 2026: NaN-safe; equal times = 0, not a 24h wrap
   const timeOnSite=timeOnSiteMin?fmtTime(timeOnSiteMin):"";
   // Billable hours = time on site rounded to the nearest 15-min increment, shown in
   // decimal (e.g. 6h19m → 6.25 hrs). Matches the quarter-hour rule the office bills by.
@@ -9102,7 +9292,7 @@ ${lb&&lb.free?`<div style="display:flex;justify-content:space-between;font-size:
 ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:var(--fs-sm);color:var(--i3);margin-top:4px">Internal RDA: $${t.totalRda.toFixed(2)}</div>`:""}
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:var(--fs-sm);color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
-${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button>`:""}
+${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
 <div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
@@ -9117,7 +9307,7 @@ function copyTkt(isDone,i){
   const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w),t.noLabor||false);
   const partsTotal=(t.parts||[]).reduce((s,p)=>s+((p.ch!=null?p.ch:p.p)*p.qty),0);
   const laborAmt=lb?lb.amount:0;
-  const timeMin=(t.arrival&&t.departure)?(()=>{const[ah,am]=t.arrival.split(":").map(Number),[dh,dm]=t.departure.split(":").map(Number);let m=(dh*60+dm)-(ah*60+am);if(m<=0)m+=1440;return m})():0;
+  const timeMin=_visitMins(t.arrival,t.departure)||0; // AUDIT FIX Jun 2026: NaN-safe; equal times = 0, not a 24h wrap
   let txt=`ASPEN SPAS - SERVICE TICKET\n\n`;
   txt+=`Customer: ${t.customer}\n`;
   txt+=`Date: ${t.date}\n`;
@@ -9309,10 +9499,10 @@ function buildCustomerReport(t,notesOverride){
   try{if(t.date){const d=new Date(t.date+"T12:00:00");const mo=["January","February","March","April","May","June","July","August","September","October","November","December"];dateLabel=mo[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear()}}catch(_e){}
   // Time on site
   let durLabel="";
-  if(t.arrival&&t.departure){
-    const[ah,am]=t.arrival.split(":").map(Number),[dh,dm]=t.departure.split(":").map(Number);
-    let m=(dh*60+dm)-(ah*60+am);if(m<=0)m+=1440;
-    durLabel=fmtTime(m);
+  {
+    // AUDIT FIX Jun 2026: NaN-safe parse; equal times = 0 min, not a 24h wrap
+    const m=_visitMins(t.arrival,t.departure);
+    if(m)durLabel=fmtTime(m);
   }
   const techList=(t.techs||[]).filter(Boolean).join(", ")||"";
   const photos=(t.media||[]).filter(m=>m&&m.type!=="pdf");
@@ -9910,27 +10100,9 @@ function rndrSlog(){
     });
     h+='</div></div>';
   }
-  // ── Rescheduled BUT now booked (green ✓) — a reschedule that got a new date
-  //    via Program now. Kept visible here so it doesn't appear to "vanish" once
-  //    it has a date/tech (which removes it from the unassigned `all` pool). ──
-  var reschedBooked=_reschedSrc.filter(function(t){return !!t.date}).sort(function(a,b){return (a.date||"").localeCompare(b.date||"")});
-  if(reschedBooked.length){
-    h+='<div style="margin-bottom:18px">';
-    h+='<div class="lbl" style="color:var(--c-success-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("check-circle",16,{color:"var(--c-success-fg)"})+'Rescheduled \u2014 booked <span style="background:var(--c-success-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+reschedBooked.length+'</span></div>';
-    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">';
-    reschedBooked.forEach(function(t){
-      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
-      var techLine=(t.techs&&t.techs.length)?t.techs.join(", "):"";
-      h+='<div style="background:#fff;border:1px solid var(--c-success-bg);border-left:3px solid var(--c-success-fg);border-radius:10px;padding:12px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-lg);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span><span style="font-size:var(--fs-xs);font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;background:var(--c-success-bg);color:var(--c-success-fg)">\u2713 booked</span></div>'+
-        '<div style="font-size:var(--fs-sm);color:var(--c-success-fg);font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("calendar-days",11,{color:"var(--c-success-fg)"})+t.date+(t.arrival?' \u00B7 '+t.arrival:'')+'</div>'+
-        (techLine?'<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:4px">\uD83D\uDC64 '+esc(techLine)+'</div>':'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);font-weight:700;margin-bottom:4px">\u26A0 No tech assigned yet</div>')+
-        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
-        (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
-      '</div>';
-    });
-    h+='</div></div>';
-  }
+  // AUDIT Jun 2026 (Alberto): once a reschedule is BOOKED (has a date) it
+  // already lives on the calendar — the green "Rescheduled — Booked" banner
+  // only duplicated information and pushed the real content down. Removed.
   // ── New Spa section (purple, sparkle emoji — installs/deliveries highlight) ──
   var newSpas=filtered.filter(function(t){return t.isNewSpa});
   if(newSpas.length){
@@ -10331,8 +10503,12 @@ async function slCreateCall(){
   try{
     if(createBtn&&slMediaFiles.length)createBtn.textContent="Creating ticket...";
     const docRef=await db.collection("tickets").add({
-      customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:warrantyObj,
-      visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
+      customer:cu,date:dt||"",techs:[],
+      // AUDIT Jun 2026: billing presets chosen at call time (fallback = old behavior)
+      workTypes:(typeof slWTypes!=="undefined"&&slWTypes.length)?[...slWTypes]:["Service Call"],
+      warranty:warrantyObj,
+      visitNum:(typeof slVisitNum!=="undefined"&&slVisitNum)?slVisitNum:1,
+      noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
       spaDesc:(document.getElementById("slSpaDesc")||{}).value||"",notes:notes,
       reportedIssue:((document.getElementById("slReported")||{}).value||"").trim(),
       phone:ph,phone2:ph2.trim(),email:((document.getElementById("slCustEmail")||{}).value||"").trim(),address:addr,city:city,zip:zip,zone:zone,
@@ -10344,6 +10520,8 @@ async function slCreateCall(){
       payCredit:document.getElementById("slCredit").checked,
       paymentBeforeService:(document.getElementById("slPBS")||{}).checked||false,
       needsOtherTech:(document.getElementById("slNeed2")||{}).checked||false,
+      daySlots:(typeof slDaySlots!=="undefined"&&slDaySlots>1)?Math.min(4,slDaySlots):1,
+      allDay:(typeof slDaySlots!=="undefined"&&slDaySlots>=4),
       partWarranty90:(document.getElementById("slPart90Chk")||{}).checked||false,
       partWarranty90Start:((document.getElementById("slPart90Chk")||{}).checked)?(((document.getElementById("slPart90Date")||{}).value||"")||null):null,
       partWarranty90Name:(((document.getElementById("slPart90Chk")||{}).checked)?((document.getElementById("slPart90Name")||{}).value||""):""),
@@ -10394,6 +10572,7 @@ async function slCreateCall(){
     var _slDtClr=document.getElementById("slDate");
     if(_slDtClr){_slDtClr.value="";delete _slDtClr.dataset.userTouched}
     slResetWarranty();
+    if(typeof _slResetPresets==="function")_slResetPresets();
     slClearMedia();
     rndrSlog();
   }catch(e){
@@ -11337,7 +11516,9 @@ function rndrCalTeam(sel,allTkts){
     inner+=' ondragleave="this.classList.remove(\'drop-over-col\')"';
     inner+=' ondrop="calDropOnTech(event,\''+dropTarget+'\',\''+sel+'\')">';
     inner+='<div class="mt-col-hdr" style="background:'+bgColor+'" onclick="calToggleTeamSection(\''+tnKey.replace(/'/g,"\\'")+'\')">';
-    inner+='<span>'+esc(tnLabel)+' ('+colTickets.length+')</span>';
+    var _usedSlots=colTickets.reduce(function(a,t){return a+((t&&t.status!=="canceled")?_tSlots(t):0)},0);
+    var _slotTag=_usedSlots>=4?' \u00B7 \u23F1 FULL ('+_usedSlots+'/4)':(_usedSlots>colTickets.length?' \u00B7 \u23F1 '+_usedSlots+'/4':'');
+    inner+='<span>'+esc(tnLabel)+' ('+colTickets.length+')'+_slotTag+'</span>';
     inner+='<span class="mt-col-toggle">▼</span>';
     inner+='</div>';
     inner+='<div class="mt-col-body">';
@@ -11548,7 +11729,14 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   else if(t.isNewSpa)cardEdge=";border-left:3px solid var(--c-purple-strong);background:#faf5ff";
   else if(needsReport)cardEdge=";border-left:3px solid #d97706;background:#fffbeb";
   else if(t.paid)cardEdge=";border-left:3px solid var(--c-success-strong);background:var(--c-paid-tint)";
-  let h=`<div class="cal-tkt-mini${stRowClass}"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${cardEdge}">`;if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:#d97706;color:#fff;display:inline-block;margin-right:4px">⚠ NEEDS REPORT</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">🔥 URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">✨ NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+  const _slots=_tSlots(t);
+  let h=`<div class="cal-tkt-mini${stRowClass}${_slots>1?" cal-slots-"+_slots:""}"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${cardEdge}">`;
+  // DAY SLOTS (Jun 2026): the office decides how many of the tech's 4 daily
+  // positions this job takes. The card grows with the slot count so the day
+  // visually reads as occupied (4 = whole day).
+  if(_slots>1)h+=`<div class="cal-allday-banner">⏱ ${_slots>=4?"ALL DAY — takes the whole day":"TAKES "+_slots+" OF 4 SLOTS"}</div>`;
+  if(canDismiss)h+=`<button onclick="calCycleDaySlots('${t.id}',event)" title="Day slots: ${_slots} of 4 — tap to change (1→2→3→4)" style="position:absolute;top:6px;right:34px;min-width:24px;height:24px;border:1.5px solid var(--ac);border-radius:7px;background:${_slots>1?"var(--ac)":"#fff"};color:${_slots>1?"#fff":"var(--ac)"};font-size:11px;font-weight:800;cursor:pointer;line-height:1;padding:0 4px;z-index:2">⏱${_slots>1?_slots:""}</button>`;
+  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:#d97706;color:#fff;display:inline-block;margin-right:4px">⚠ NEEDS REPORT</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">🔥 URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">✨ NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket — admin/organizer only (the UI also hides
 // the toggle from techs, but defense in depth prevents console-side bypass).
@@ -11675,7 +11863,12 @@ function rndrCcReminders(){
   const ccTkts=[...active].filter(function(t){return t.ccRequested&&t.date&&t.date>=today&&t.source==="dispatch"&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_ccHasReport(t)});
   if(!ccTkts.length){el.innerHTML="";return}
   ccTkts.sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
-  var h='<div class="cc-reminders"><div class="cc-hdr" style="display:flex;align-items:center;gap:6px">'+icon("credit-card",16)+'Pending Credit Card Requests — '+ccTkts.length+'</div><div class="cc-grid">';
+  // AUDIT Jun 2026: the calendar is the star of this tab — these reminder
+  // cards now fold into one line (default closed; your choice persists).
+  var _ccOpen="1"===(function(){try{return localStorage.getItem("calCcOpen")||"0"}catch(_e){return "0"}})();
+  var h='<div class="cc-reminders"><details class="adm-fold"'+(_ccOpen?' open':'')+' ontoggle="try{localStorage.setItem(\'calCcOpen\',this.open?\'1\':\'0\')}catch(_e){}">';
+  h+='<summary style="border-bottom:none;padding-bottom:0"><div class="cc-hdr" style="display:flex;align-items:center;gap:6px;margin:0">'+icon("credit-card",16)+'Pending Credit Card Requests — '+ccTkts.length+'</div><span class="adm-fold-arrow">\u25BC</span></summary>';
+  h+='<div class="adm-fold-body"><div class="cc-grid">';
   ccTkts.forEach(function(t){
     var _zEff=effectiveZone(t);
     var zc=ZONE_COLORS[_zEff||""]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
@@ -11691,13 +11884,14 @@ function rndrCcReminders(){
     h+='<div class="cc-card-hint">Tap for full details →</div>';
     h+='</div>';
   });
-  h+='</div></div>';
+  h+='</div></div></details></div>';
   el.innerHTML=h;
 }
 
 // ═══ "NECESITA ATENCIÓN" PANEL — at-a-glance dispatch summary ═══
-let _attnCollapsed=false;
-function attnToggleCollapse(){_attnCollapsed=!_attnCollapsed;rndrAttnPanel()}
+// AUDIT Jun 2026: starts collapsed so the calendar dominates; persists choice.
+let _attnCollapsed=(function(){try{return localStorage.getItem("calAttnCollapsed")!=="0"}catch(_e){return true}})();
+function attnToggleCollapse(){_attnCollapsed=!_attnCollapsed;try{localStorage.setItem("calAttnCollapsed",_attnCollapsed?"1":"0")}catch(_e){}rndrAttnPanel()}
 function rndrAttnPanel(){
   const el=document.getElementById("attnPanel");if(!el)return;
   // Only admin/organizer dispatch — techs don't need this view
@@ -13412,6 +13606,13 @@ function qbCustRenderDetail(customers){
   // ── ACTION BAR
   h+='<div class="qb-cust-action-bar">';
   h+='<button class="qb-cust-btn primary" onclick="custSaveInfo()">💾 Save Customer Info</button>';
+  // AUDIT ADDITION Jun 2026: admin-only merge — folds this customer's tickets
+  // into another customer (fixes historical duplicate cards created before the
+  // identity fixes; uses the same batch-rename pattern as custSaveInfo).
+  if(typeof isAdmin!=="undefined"&&isAdmin){
+    h+='<button class="qb-cust-btn" onclick="custMergeStart()">⇄ Merge into another customer…</button>';
+    h+='<div id="custMergePanel"></div>';
+  }
   h+='<button class="qb-cust-btn brand" onclick="custCreateTicket()">+ Schedule Service Call</button>';
   if(c.phone)h+='<a class="qb-cust-btn" href="tel:'+esc(c.phone)+'">📞 Call</a>';
   if(fullAddr)h+='<a class="qb-cust-btn" href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank">📍 Map</a>';
@@ -13616,7 +13817,7 @@ async function custCreateTicket(){
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
-function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();slClearMedia();toast("Form cleared")}
+function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;if(typeof slSetSlots==="function")try{slSetSlots(1)}catch(_e){}var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();if(typeof _slResetPresets==="function")_slResetPresets();slClearMedia();toast("Form cleared")}
 function calClearForm(){document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;var sd=document.getElementById("calSpaDesc");if(sd)sd.value="";toast("Form cleared")}
 function showCustSuggest(prefix){
   var input=document.getElementById(prefix+"CustName");
@@ -16170,6 +16371,489 @@ init();</script>
     </div>
   </div>
 </div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUDIT ADDITIONS (Jun 2026) — self-contained module. Reads app globals
+   (active, done, db, isAdmin, esc, toast, icon, calcLabor, fmtTime,
+   _custGroupKey, _labTypeFromWarranty, selectedCustKey) but modifies none of
+   the existing functions. Everything here degrades silently if a global is
+   missing, so it can never break the core app.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1) CUSTOMER AUTOCOMPLETE for the Field Report (fCust) and Edit (eCust)
+       forms. Reuses the proven pattern from the scheduling form's
+       showCustSuggest, generalized to any input id, with diacritic-insensitive
+       matching (José matches "jose") so the suggestion — not free typing —
+       becomes the normal way names enter the system. ── */
+function _normSearch(x){
+  x=String(x||"").toLowerCase();
+  if(x.normalize)x=x.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  return x;
+}
+function _suggestFor(inputId){
+  try{
+    var input=document.getElementById(inputId),dd=document.getElementById(inputId+"Suggest");
+    if(!input||!dd)return;
+    var q=_normSearch(input.value).trim();
+    if(q.length<2){dd.classList.remove("show");return}
+    var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var seen={},matches=[];
+    for(var i=0;i<all.length;i++){
+      var t=all[i],name=t.customer||"";var key=_normSearch(name).trim();
+      if(!key||seen[key])continue;
+      if(key.indexOf(q)>=0){seen[key]=1;matches.push({name:name,phone:t.phone||""});if(matches.length>=8)break;}
+    }
+    if(!matches.length){dd.classList.remove("show");return}
+    dd.innerHTML=matches.map(function(m){
+      return '<div class="cust-suggest-item" onmousedown="_pickSuggest(\''+inputId+'\',\''+esc(m.name).replace(/'/g,"\\'")+'\')"><strong>'+esc(m.name)+'</strong><span>'+esc(m.phone)+'</span></div>';
+    }).join("");
+    dd.classList.add("show");
+  }catch(_e){}
+}
+function _pickSuggest(inputId,name){
+  var input=document.getElementById(inputId),dd=document.getElementById(inputId+"Suggest");
+  if(input)input.value=name;
+  if(dd)dd.classList.remove("show");
+  if(inputId==="fCust"&&typeof frAutoFillCustWarranty==="function"){try{frAutoFillCustWarranty()}catch(_e){}}
+  if(typeof scheduleDraftSave==="function"){try{scheduleDraftSave()}catch(_e){}}
+}
+function _hideSuggestSoon(inputId){
+  setTimeout(function(){var dd=document.getElementById(inputId+"Suggest");if(dd)dd.classList.remove("show")},180);
+}
+
+/* ── 2) TIME SANITY — catches the typo at the SOURCE (the billing engine is
+       already hardened; this tells the tech before submit). ── */
+function _timeSanity(){
+  try{
+    var box=document.getElementById("timeSanity");if(!box)return;
+    var a=(document.getElementById("fArr")||{}).value,d=(document.getElementById("fDep")||{}).value;
+    box.className="";box.textContent="";
+    if(!a||!d)return;
+    var m=(typeof _visitMins==="function")?_visitMins(a,d):null;
+    if(m===null)return;
+    if(m===0){box.className="warn";box.textContent="\u26A0\uFE0F Arrival and Departure are the same — 0 minutes on site (bills Trip Charge only). Double-check the times.";}
+    else if(d<a){box.className="info";box.textContent="\u2139\uFE0F Departure is before Arrival — counted as a past-midnight visit: "+(typeof fmtTime==="function"?fmtTime(m):m+" min")+" on site.";}
+  }catch(_e){}
+}
+
+/* ── 3) SYNC / OFFLINE BADGE — shows when the device is offline (changes are
+       saved locally by Firestore persistence) or when writes are still
+       waiting to reach the server. Polls db.waitForPendingWrites() raced
+       against a short timer — no existing listener is touched. ── */
+var _syncBadgeEl=null,_syncTimer=null;
+function _mountSyncBadge(){
+  if(document.getElementById("syncBadge"))return;
+  var el=document.createElement("div");el.id="syncBadge";document.body.appendChild(el);_syncBadgeEl=el;
+}
+function _setSyncBadge(state){ // "ok" | "offline" | "pending"
+  if(!_syncBadgeEl)return;
+  if(state==="offline"){_syncBadgeEl.className="offline";_syncBadgeEl.textContent="\uD83D\uDCF4 Offline — changes saved on this device";}
+  else if(state==="pending"){_syncBadgeEl.className="pending";_syncBadgeEl.textContent="\u23F3 Syncing changes\u2026";}
+  else{_syncBadgeEl.className="";}
+}
+async function _syncCheck(){
+  try{
+    if(!navigator.onLine){_setSyncBadge("offline");return}
+    if(typeof db==="undefined"||!db||!db.waitForPendingWrites){_setSyncBadge("ok");return}
+    var res=await Promise.race([
+      db.waitForPendingWrites().then(function(){return "clear"}),
+      new Promise(function(r){setTimeout(function(){r("pending")},900)})
+    ]);
+    _setSyncBadge(res==="clear"?"ok":"pending");
+  }catch(_e){_setSyncBadge("ok")}
+}
+function _startSyncWatch(){
+  _mountSyncBadge();
+  window.addEventListener("online",_syncCheck);
+  window.addEventListener("offline",function(){_setSyncBadge("offline")});
+  if(_syncTimer)clearInterval(_syncTimer);
+  _syncTimer=setInterval(_syncCheck,6000);
+  _syncCheck();
+}
+
+/* ── 4) OUTDOOR HIGH-CONTRAST MODE — layers on top of any theme; persisted. ── */
+function _applyOutdoor(){
+  try{var on=localStorage.getItem("aspenOutdoor")==="1";document.body.classList.toggle("outdoor",on);_syncOutdoorBtn(on);}catch(_e){}
+}
+function _syncOutdoorBtn(on){
+  var b=document.getElementById("outdoorToggleBtn");if(!b)return;
+  b.textContent="\uD83D\uDD76\uFE0F";
+  b.title=on?"Outdoor mode ON \u2192 tap to turn off":"Outdoor mode (high contrast for sunlight) \u2192 tap to turn on";
+  b.style.opacity=on?"1":"0.55";
+}
+function toggleOutdoor(){
+  var on=!document.body.classList.contains("outdoor");
+  document.body.classList.toggle("outdoor",on);
+  try{localStorage.setItem("aspenOutdoor",on?"1":"0")}catch(_e){}
+  _syncOutdoorBtn(on);
+  if(typeof toast==="function")toast(on?"Outdoor mode \u2600\uFE0F":"Outdoor mode off");
+}
+function _mountOutdoorToggle(tries){
+  tries=tries||0;
+  var anchor=document.getElementById("themeToggleBtn");
+  if(!anchor){if(tries<20)setTimeout(function(){_mountOutdoorToggle(tries+1)},500);return}
+  if(document.getElementById("outdoorToggleBtn"))return;
+  var b=document.createElement("button");
+  b.id="outdoorToggleBtn";b.className=anchor.className;b.type="button";
+  b.onclick=toggleOutdoor;
+  anchor.parentNode.insertBefore(b,anchor);
+  _syncOutdoorBtn(document.body.classList.contains("outdoor"));
+}
+
+/* ── 5) MERGE CUSTOMERS (admin) — folds every ticket of the currently open
+       customer card into a target customer, using the SAME batch-rename
+       pattern custSaveInfo already uses. Fixes historical duplicate cards
+       created before the identity fixes. Chunked at 400 writes/batch. ── */
+function custMergeStart(){
+  try{
+    var panel=document.getElementById("custMergePanel");if(!panel)return;
+    if(panel.classList.contains("show")){panel.classList.remove("show");panel.innerHTML="";return}
+    if(typeof selectedCustKey==="undefined"||!selectedCustKey){return}
+    var all=[].concat(active||[],done||[]);
+    // canonical name per group key = the most frequent exact spelling
+    var groups={};
+    all.forEach(function(t){
+      if(!t.customer)return;
+      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+      (groups[k]=groups[k]||{}); groups[k][t.customer]=(groups[k][t.customer]||0)+1;
+    });
+    var options=[];
+    Object.keys(groups).forEach(function(k){
+      if(k===selectedCustKey)return;
+      var best="",n=0;Object.keys(groups[k]).forEach(function(nm){if(groups[k][nm]>n){n=groups[k][nm];best=nm}});
+      options.push(best);
+    });
+    options.sort(function(a,b){return a.localeCompare(b)});
+    panel.innerHTML='<div style="font-weight:700;margin-bottom:4px">Merge this customer\u2019s tickets into:</div>'+
+      '<select id="custMergeTarget"><option value="">\u2014 choose target customer \u2014</option>'+
+      options.map(function(n){return '<option value="'+esc(n).replace(/"/g,"&quot;")+'">'+esc(n)+'</option>'}).join("")+'</select>'+
+      '<div style="display:flex;gap:8px"><button class="qb-cust-btn primary" onclick="custMergeApply()">Merge now</button>'+
+      '<button class="qb-cust-btn" onclick="custMergeStart()">Cancel</button></div>'+
+      '<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px">Every ticket on this card will be renamed to the target customer. This cannot be undone automatically.</div>';
+    panel.classList.add("show");
+  }catch(_e){console.warn("custMergeStart:",_e)}
+}
+async function custMergeApply(){
+  try{
+    if(!db||!selectedCustKey)return;
+    var selEl=document.getElementById("custMergeTarget");
+    var target=selEl?selEl.value:"";
+    if(!target){toast("Choose a target customer first","warn");return}
+    var all=[].concat(active||[],done||[]);
+    var toMove=all.filter(function(t){
+      if(!t.customer)return false;
+      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+      return k===selectedCustKey;
+    });
+    if(!toMove.length){toast("No tickets found on this card","warn");return}
+    if(!confirm("Merge "+toMove.length+" ticket"+(toMove.length!==1?"s":"")+" into \u201C"+target+"\u201D? This cannot be undone automatically."))return;
+    for(var i=0;i<toMove.length;i+=400){
+      var batch=db.batch();
+      toMove.slice(i,i+400).forEach(function(t){batch.update(db.collection("tickets").doc(t.id),{customer:target})});
+      await batch.commit();
+    }
+    toast("Merged "+toMove.length+" ticket"+(toMove.length!==1?"s":"")+" into "+target+" \u2713");
+    selectedCustKey=(typeof _custGroupKey==="function"?_custGroupKey(target):null);
+    var panel=document.getElementById("custMergePanel");if(panel){panel.classList.remove("show");panel.innerHTML="";}
+    if(typeof refreshAll==="function")setTimeout(refreshAll,400);
+    else if(typeof rndrCust==="function")setTimeout(rndrCust,400);
+  }catch(e){console.warn("custMergeApply:",e);toast("Merge failed","err")}
+}
+
+/* ── 6) BILLING DAY EXPORT — one tap turns a day's completed work into
+       paste-ready text + CSV download + (optional) Firestore "billingQueue"
+       rows that the Invoice Tracker can import later. Uses the exact same
+       parts/labor math the ticket views use. ── */
+function _billingRowsFor(dateStr){
+  var pool=[].concat(active||[],done||[]).filter(function(t){
+    return t&&t.source!=="dispatch"&&t.date===dateStr&&(t.status==="complete"||t.status==="done");
+  });
+  return pool.map(function(t){
+    var parts=(t.parts||[]).reduce(function(s,p){return s+(((p.ch!=null?p.ch:p.p)||0)*(p.qty||1))},0);
+    var lb=null;
+    try{lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{}):"none"),t.noLabor||false)}catch(_e){}
+    var labor=lb&&typeof lb.amount==="number"?lb.amount:0;
+    return {id:t.id,customer:t.customer||"",visit:t.visitNum||1,parts:+parts.toFixed(2),labor:+labor.toFixed(2),total:+(parts+labor).toFixed(2)};
+  }).sort(function(a,b){return a.customer.localeCompare(b.customer)});
+}
+async function exportBillingDay(){
+  try{
+    var dEl=document.getElementById("bxDate"),st=document.getElementById("bxStatus"),out=document.getElementById("bxOut");
+    var d=dEl&&dEl.value?dEl.value:new Date().toISOString().slice(0,10);
+    var rows=_billingRowsFor(d);
+    if(!rows.length){if(st)st.textContent="No completed tickets on "+d;if(out){out.style.display="none"}return}
+    var grand=rows.reduce(function(s,r){return s+r.total},0);
+    var txt="ASPEN SPAS \u2014 BILLING EXPORT "+d+"\n"+rows.map(function(r){
+      return r.customer+"  |  visit "+r.visit+"  |  parts $"+r.parts.toFixed(2)+"  |  labor $"+r.labor.toFixed(2)+"  |  TOTAL $"+r.total.toFixed(2);
+    }).join("\n")+"\n\u2014\u2014\u2014\nDAY TOTAL: $"+grand.toFixed(2)+"  ("+rows.length+" ticket"+(rows.length!==1?"s":"")+")";
+    if(out){out.textContent=txt;out.style.display="block"}
+    try{await navigator.clipboard.writeText(txt)}catch(_e){}
+    // CSV download
+    var csv="Date,Customer,Visit,Parts,Labor,Total,TicketId\n"+rows.map(function(r){
+      return d+',"'+r.customer.replace(/"/g,'""')+'",'+r.visit+","+r.parts+","+r.labor+","+r.total+","+r.id;
+    }).join("\n");
+    var blob=new Blob([csv],{type:"text/csv"});var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="aspen-billing-"+d+".csv";a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},2000);
+    // Optional Firestore queue for Invoice Tracker import
+    if(db&&confirm("Also queue these "+rows.length+" rows in Firestore (billingQueue) for the Invoice Tracker import?")){
+      var batch=db.batch();
+      rows.forEach(function(r){batch.set(db.collection("billingQueue").doc(d+"_"+r.id),{date:d,customer:r.customer,visit:r.visit,parts:r.parts,labor:r.labor,total:r.total,ticketId:r.id,exportedAt:firebase.firestore.FieldValue.serverTimestamp(),status:"pending"},{merge:true})});
+      await batch.commit();
+      if(st)st.textContent=rows.length+" rows copied + CSV downloaded + queued \u2713";
+    }else{
+      if(st)st.textContent=rows.length+" rows copied + CSV downloaded \u2713";
+    }
+  }catch(e){console.warn("exportBillingDay:",e);if(typeof toast==="function")toast("Export failed","err")}
+}
+
+/* ── 7) SERVICE LOG BILLING PRESETS — Type of Work + Visit Type at call time.
+       Stored on the dispatch (workTypes / visitNum); the Field Report adopts
+       them when the tech enters the customer (see _frAdoptDispatchPresets). ── */
+var slWTypes=[],slVisitNum=1;
+function _slRenderWT(){
+  var wr=document.getElementById("slWtRow");if(!wr||typeof WT==="undefined")return;
+  wr.innerHTML="";
+  WT.forEach(function(w){
+    var b=document.createElement("button");
+    b.type="button";b.className="wt"+(slWTypes.indexOf(w)>=0?" on":"");
+    b.innerHTML='<span class="dot"></span>'+w;
+    b.onclick=function(){
+      if(slWTypes.indexOf(w)>=0)slWTypes=slWTypes.filter(function(x){return x!==w});
+      else slWTypes.push(w);
+      wr.querySelectorAll(".wt").forEach(function(x){x.classList.toggle("on",slWTypes.indexOf(x.textContent)>=0)});
+    };
+    wr.appendChild(b);
+  });
+}
+// Visit toggle for the Service Log — mirrors the Field Report's setVisit()
+// visuals and billing hints exactly (same wb classes, same texts).
+function slSetVisit(v){slVisitNum=v;
+  var b1=document.getElementById("slVisitBtn1");if(b1)b1.className="wb yes"+(v===1?" on-y":"");
+  var b2=document.getElementById("slVisitBtn2");if(b2)b2.className="wb no"+(v===2?" on-n":"");
+  var b3=document.getElementById("slVisitBtn3");if(b3){b3.className="wb"+(v===3?" on-y":"");b3.style.cssText=v===3?"flex:1;background:var(--c-success-strong);border-color:var(--c-success-strong);color:#fff":"flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)";}
+  var b4=document.getElementById("slVisitBtn4");if(b4){b4.className="wb"+(v===4?" on-y":"");b4.style.cssText=v===4?"flex:1;background:var(--c-danger-strong);border-color:var(--c-danger-strong);color:#fff":"flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)";}
+  var b5=document.getElementById("slVisitBtn5");if(b5){b5.className="wb"+(v===5?" on-y":"");b5.style.cssText=v===5?"flex:1;background:var(--c-info-fg);border-color:var(--c-info-fg);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px":"flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px";}
+  var info=document.getElementById("slVisitInfo");
+  if(info){info.style.display="block";info.style.background="";info.style.borderColor="";info.style.color="";
+    if(v===1){info.className="w-result rda-cov";info.innerHTML="<b>1st Visit</b> — TC $150 + $100/hr additional"}
+    else if(v===2){info.className="w-result rda-cov";info.innerHTML="<b>2nd Visit</b> — $100/hr only (no TC)"}
+    else if(v===3){info.className="w-result full-cov";info.innerHTML="<b>CM (Chemicals Maintenance / Courtesy)</b> — No labor charge. Parts charged normally."}
+    else if(v===4){info.className="w-result full-cov";info.innerHTML="<b>Repeat Visit</b> — Warranty (our fix). Parts and labor free (chemicals &amp; supplies still charged)."}
+    else if(v===5){info.className="w-result rda-cov";info.style.background="var(--c-info-bg)";info.style.borderColor="var(--c-info-border)";info.style.color="var(--c-info-fg)";info.innerHTML="<b>📦 Delivery</b> — No labor charge. Parts charged normally."}
+  }
+}
+function _slResetPresets(){slWTypes=[];slVisitNum=1;_slRenderWT();if(typeof slSetVisit==="function")slSetVisit(1);}
+
+/* ── 8) FIELD REPORT ADOPTS CALL-TIME PRESETS — when the tech enters/picks a
+       customer, find their newest OPEN dispatch; if the office preset Type of
+       Work / Visit Type on the call, apply them — but ONLY onto untouched
+       defaults, so a tech's manual choices are never overwritten. ── */
+function _frAdoptDispatchPresets(name){
+  if(!name)return;
+  var pool=(typeof active!=="undefined"?active:[]);
+  var disp=pool.filter(function(t){
+    return t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
+      &&!t.fieldReportSubmitted&&t.customer
+      &&(typeof _custSameHousehold==="function"?_custSameHousehold(t.customer,name):false);
+  }).sort(function(a,b){
+    var ma=(typeof _ticketCreatedMs==="function")?_ticketCreatedMs(a):0;
+    var mb=(typeof _ticketCreatedMs==="function")?_ticketCreatedMs(b):0;
+    return mb-ma;
+  })[0];
+  if(!disp)return;
+  var applied=[];
+  // Type of Work: only if the tech hasn't picked any yet
+  var preset=(disp.workTypes||[]).filter(function(x){return x&&x!=="Service Call"});
+  if(preset.length&&typeof wTypes!=="undefined"&&wTypes.length===0){
+    preset.forEach(function(w){
+      if(wTypes.indexOf(w)<0){wTypes.push(w);if(typeof onWTAdd==="function"){try{onWTAdd(w)}catch(_e){}}}
+    });
+    var wr=document.getElementById("wtRow");
+    if(wr)wr.querySelectorAll(".wt").forEach(function(x){x.classList.toggle("on",wTypes.indexOf(x.textContent)>=0)});
+    if(typeof rndr==="function"){try{rndr()}catch(_e){}}
+    applied.push(preset.join(", "));
+  }
+  // Spa warranty: the office may have marked Under/No warranty on the call.
+  // The auto-anchor from the spa record is ALWAYS authoritative — we only
+  // adopt the call's warranty when the anchor could NOT compute (picker open,
+  // wHas still null). Runs BEFORE visit adoption since CM/Repeat/Delivery
+  // lock the warranty card.
+  try{
+    var dw=disp.warranty;
+    if(dw&&(dw.has===true||dw.has===false)
+       &&typeof _frWarLocked!=="undefined"&&!_frWarLocked
+       &&typeof wHas!=="undefined"&&wHas===null
+       &&typeof setWYN==="function"){
+      setWYN(dw.has);
+      applied.push(dw.has?"Under warranty":"No warranty");
+    }
+  }catch(_e){}
+  // Visit type: only if still on the default 1st visit
+  if(disp.visitNum&&disp.visitNum>1&&typeof visitNum!=="undefined"&&visitNum===1&&typeof setVisit==="function"){
+    try{setVisit(disp.visitNum);applied.push(["","","2nd Visit","CM","Repeat","Delivery"][disp.visitNum]||"")}catch(_e){}
+  }
+  if(applied.length&&typeof toast==="function")toast("Presets from Service Log call: "+applied.filter(Boolean).join(" \u00B7 "));
+}
+
+/* ── DAY-SLOTS (Jun 2026) ──────────────────────────────────────────────────
+   Alberto decides how many of the tech's 4 daily positions a job takes:
+   1 = normal stop · 2/3 = big job · 4 = whole day. Stored as `daySlots`;
+   legacy `allDay:true` tickets read as 4. ── */
+function _tSlots(t){if(!t)return 1;if(t.daySlots&&t.daySlots>1)return Math.min(4,t.daySlots);return t.allDay?4:1}
+var slDaySlots=1;
+function slSetSlots(n){slDaySlots=Math.max(1,Math.min(4,n||1));
+  for(var i=1;i<=4;i++){var b=document.getElementById("slSlot"+i);if(b)b.className="sl-slot-btn"+(i===slDaySlots?" on":"")}}
+async function calCycleDaySlots(id,ev){
+  if(ev){try{ev.stopPropagation()}catch(_e){}}
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can change this","err");return}
+  if(!db)return;
+  var t=[...(typeof active!=="undefined"?active:[]),...(typeof done!=="undefined"?done:[])].find(function(x){return x.id===id});
+  var cur=_tSlots(t);
+  var nv=cur>=4?1:cur+1; // 1 → 2 → 3 → 4 → back to 1
+  try{
+    await db.collection("tickets").doc(id).update({daySlots:nv,allDay:nv>=4});
+    toast(nv===1?"Back to a normal stop (1 slot)":"\u23F1 Takes "+nv+" of 4 slots"+(nv>=4?" \u2014 whole day":""));
+    setTimeout(function(){if(typeof rndrCal==="function")try{rndrCal()}catch(_e){}},350);
+  }catch(e){toast("Error","err")}
+}
+
+/* ── SAVE PHOTOS TO THE SHARED iCLOUD FOLDER (Jun 2026) ────────────────────
+   A web page can't push files to an icloud.com link directly (Apple has no
+   API for that). BUT the shared folder lives locally inside iCloud Drive on
+   the Mac — so we use the File System Access API: Alberto picks the shared
+   folder ONCE in Chrome, the permission is remembered (IndexedDB), and from
+   then on one click writes  "Customer — date/photo1.jpg + Work Summary.txt"
+   straight into it. iCloud then syncs it to everyone automatically.
+   Safari/iOS don't support the API → falls back to the classic ZIP. ── */
+function _idbHandleStore(mode){
+  return new Promise(function(res,rej){
+    var rq=indexedDB.open("aspenFS",1);
+    rq.onupgradeneeded=function(){rq.result.createObjectStore("handles")};
+    rq.onsuccess=function(){
+      try{
+        var tx=rq.result.transaction("handles",mode),st=tx.objectStore("handles");
+        res(st);
+      }catch(e){rej(e)}
+    };
+    rq.onerror=function(){rej(rq.error)};
+  });
+}
+function _fsGetHandle(){return _idbHandleStore("readonly").then(function(st){return new Promise(function(res){var g=st.get("photosDir");g.onsuccess=function(){res(g.result||null)};g.onerror=function(){res(null)}})})}
+function _fsSetHandle(h){return _idbHandleStore("readwrite").then(function(st){return new Promise(function(res){var pq=st.put(h,"photosDir");pq.onsuccess=function(){res(true)};pq.onerror=function(){res(false)}})})}
+async function _getPhotosDir(forceNew){
+  if(!window.showDirectoryPicker)return null; // Safari/iOS — caller falls back to ZIP
+  var h=null;
+  if(!forceNew){try{h=await _fsGetHandle()}catch(_e){}}
+  if(h){
+    try{
+      var pm=await h.queryPermission({mode:"readwrite"});
+      if(pm!=="granted")pm=await h.requestPermission({mode:"readwrite"});
+      if(pm==="granted")return h;
+    }catch(_e){}
+  }
+  // First time (or permission lost): ask Alberto to pick the shared iCloud folder.
+  try{
+    h=await window.showDirectoryPicker({mode:"readwrite",id:"aspenPhotos",startIn:"documents"});
+    try{await _fsSetHandle(h)}catch(_e){}
+    return h;
+  }catch(_e){return null} // user canceled
+}
+function _icloudSummaryText(t){
+  var L=[];
+  L.push("ASPEN SPAS \u2014 WORK SUMMARY");
+  L.push("=============================");
+  L.push("Customer:  "+(t.customer||"\u2014"));
+  L.push("Date:      "+(t.date||"\u2014"));
+  if(t.techs&&t.techs.length)L.push("Tech(s):   "+t.techs.join(", "));
+  if(t.arrival||t.departure)L.push("Time:      "+(t.arrival||"?")+" \u2192 "+(t.departure||"?"));
+  var vis=["","1st Visit","2nd Visit","CM (Courtesy)","Repeat (warranty)","Delivery"][t.visitNum]||"";
+  if(vis)L.push("Visit:     "+vis);
+  if(t.wHas===true)L.push("Warranty:  Under warranty"+(t.wMod?" \u00B7 "+t.wMod:"")+(t.wYr?" \u00B7 "+t.wYr:""));
+  else if(t.wHas===false)L.push("Warranty:  No warranty");
+  var wt=t.workTypes||t.wTypes;
+  if(wt&&wt.length)L.push("Work:      "+wt.join(", "));
+  // Parts may be a label string (legacy) or an array of items
+  if(Array.isArray(t.parts)&&t.parts.length){
+    L.push("");L.push("PARTS");
+    t.parts.forEach(function(pp){if(pp&&pp.n)L.push("  \u2022 "+pp.n+(pp.qty>1?"  x"+pp.qty:"")+(pp.r?"  $"+pp.r:""))});
+  }else if(typeof t.parts==="string"&&t.parts.trim()){L.push("");L.push("PARTS: "+t.parts.trim())}
+  if(t.total)L.push("");
+  if(t.total)L.push("TOTAL:     $"+t.total);
+  if(t.notes&&String(t.notes).trim()){L.push("");L.push("NOTES");L.push(String(t.notes).trim())}
+  L.push("");L.push("Photos in this folder: see attached files.");
+  L.push("Generated by TECH-TICKETS \u00B7 "+new Date().toLocaleString());
+  return L.join("\n");
+}
+async function saveTktToICloud(ticketIdx,list,ev){
+  if(ev){try{ev.stopPropagation()}catch(_e){}}
+  var t=list[ticketIdx];if(!t||!t.media||!t.media.length){toast("No photos on this ticket","warn");return}
+  var btn=ev&&ev.target?ev.target:null;var orig=btn?btn.textContent:"";
+  if(!window.showDirectoryPicker){
+    toast("This browser can't write to folders \u2014 downloading ZIP instead","warn");
+    try{dlZip(ticketIdx,list)}catch(_e){}
+    return;
+  }
+  if(btn){btn.textContent="\u23F3 Saving\u2026";btn.disabled=true}
+  try{
+    var dir=await _getPhotosDir(false);
+    if(!dir){if(btn){btn.textContent=orig;btn.disabled=false}return} // canceled
+    var folderName=((t.customer||"Customer").replace(/[\\\/:*?"<>|]/g,"").trim()||"Customer")+" \u2014 "+(t.date||fmtD(new Date()));
+    var sub=await dir.getDirectoryHandle(folderName,{create:true});
+    var okCount=0;
+    for(var i=0;i<t.media.length;i++){
+      var m=t.media[i];
+      try{
+        var blob=null;
+        if(m.url){var resp=await fetch(m.url);blob=await resp.blob()}
+        else if(m.data){var b64=m.data.split(",")[1];var bin=atob(b64);var arr=new Uint8Array(bin.length);for(var j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);blob=new Blob([arr],{type:"image/jpeg"})}
+        if(!blob)continue;
+        var ext=(m.type==="pdf")?"pdf":"jpg";
+        var fh=await sub.getFileHandle((i+1)+"_"+(m.type||"photo")+"."+ext,{create:true});
+        var w=await fh.createWritable();await w.write(blob);await w.close();
+        okCount++;
+      }catch(fe){console.warn("photo "+(i+1)+" failed:",fe)}
+    }
+    // Work summary alongside the photos
+    try{
+      var sfh=await sub.getFileHandle("Work Summary.txt",{create:true});
+      var sw=await sfh.createWritable();await sw.write(_icloudSummaryText(t));await sw.close();
+    }catch(se){console.warn("summary failed:",se)}
+    toast("\u2601\uFE0F Saved "+okCount+" photo"+(okCount!==1?"s":"")+" + summary to \u201C"+folderName+"\u201D \u2014 iCloud is syncing");
+    // Same admin cleanup offer as the ZIP flow: free Firebase storage.
+    if(db&&t.id&&isAdmin&&okCount===t.media.length){
+      setTimeout(async function(){
+        var ok=await confirmDialog("\u2705 "+okCount+" photo"+(okCount!==1?"s":"")+" saved to the iCloud folder.\n\nDelete these photos from Firebase to save storage space?\n\n(They are safely in the shared folder \u2014 deleting only removes them from the app's cloud.)");
+        if(!ok)return;
+        try{
+          if(storage){for(var k=0;k<t.media.length;k++){var mm=t.media[k];if(mm.path){try{await storage.ref().child(mm.path).delete()}catch(_de){}}}}
+          await db.collection("tickets").doc(t.id).update({media:[]});
+          toast("Photos removed from cloud \u2713");
+        }catch(err){console.error(err);toast("Could not delete from cloud","err")}
+      },400);
+    }
+  }catch(e){console.error(e);toast("Could not save to folder","err")}
+  if(btn){btn.textContent=orig;btn.disabled=false}
+}
+
+/* ── INIT ── */
+(function(){
+  function boot(){
+    try{_applyOutdoor()}catch(_e){}
+    try{_mountOutdoorToggle()}catch(_e){}
+    try{_startSyncWatch()}catch(_e){}
+    try{var dEl=document.getElementById("bxDate");if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10)}catch(_e){}
+    try{_slRenderWT();slSetVisit(1)}catch(_e){}
+    // WT list grows from Firestore config after load — rebuild sl pills when the
+    // Service Log tab is opened so the row always shows the full current list.
+    try{var t5=document.getElementById("tab5");if(t5)t5.addEventListener("click",function(){setTimeout(_slRenderWT,150)})}catch(_e){}
+
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();
+</script>
 
 </body>
 </html>
