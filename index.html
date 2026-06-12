@@ -4062,10 +4062,11 @@ function rndrAdminOrphans(){
   var el=document.getElementById("adminOrphans");if(!el)return;
   if(!isAdmin){el.innerHTML="";return}
   var idx=_buildFieldReportIndex();
-  var orphans=[...active,...done].filter(function(t){
-    if(t.source!=="dispatch")return false;
-    if(!t.fieldReportSubmitted)return false;
-    if(t.status==="canceled")return false;
+  var _pool=[...active,...done];
+  var _reportById={};_pool.forEach(function(t){if(t.source!=="dispatch")_reportById[t.id]=t});
+  var _closed=_pool.filter(function(t){return t.source==="dispatch"&&t.fieldReportSubmitted&&t.status!=="canceled"});
+  // ── Class A (original): closed but NO field report anywhere near it ──
+  var orphans=_closed.filter(function(t){
     var cust=_custGroupKey(t.customer);
     var dt=(t.date||"").trim();
     // Has an exact field report on this date? → not orphan
@@ -4076,32 +4077,101 @@ function rndrAdminOrphans(){
     if(cust&&dt&&_hasMatchingReport(cust,dt,dispatchCreatedMs,idx.customerReports,todayStr))return false;
     return true;
   });
-  if(!orphans.length){el.innerHTML="";return}
+  // ── Class B (AUDIT FIX Jun 2026 — "shared report" victims): the old
+  // auto-match closed EVERY ±30d dispatch with ONE report's id. One report =
+  // one visit, so when 2+ closed dispatches share the same fieldReportId,
+  // every one except the NEAREST by date was wrongly closed. These never
+  // appeared in Class A (they "have" a matching report) — invisible victims.
+  var _byRid={};
+  _closed.forEach(function(t){
+    if(!t.fieldReportId||!_reportById[t.fieldReportId])return;
+    (_byRid[t.fieldReportId]=_byRid[t.fieldReportId]||[]).push(t);
+  });
+  var victims=[];
+  Object.keys(_byRid).forEach(function(rid){
+    var grp=_byRid[rid];if(grp.length<2)return;
+    var rDate=(_reportById[rid].date||"").trim();
+    grp.sort(function(a,b){
+      var da=Math.abs(_dayDiff((a.date||"").trim(),rDate)),db_=Math.abs(_dayDiff((b.date||"").trim(),rDate));
+      if(da===-999)da=9999;if(db_===-999)db_=9999;
+      return da-db_;
+    });
+    for(var i=1;i<grp.length;i++)victims.push(grp[i]); // keep nearest as legit
+  });
+  // ── Class B+ (chaos-sim round 2): single-linked closes whose report sits
+  // STRICTLY CLOSER to an OPEN dispatch of the same household — the report
+  // most likely belongs to that open visit, so this close is suspect. Without
+  // this, such cases were only visible in the 30-day list and then decayed.
+  var _openDisp=_pool.filter(function(t){return t.source==="dispatch"&&!t.fieldReportSubmitted&&t.status!=="canceled"});
+  _closed.forEach(function(t){
+    if(!t.fieldReportId||!_reportById[t.fieldReportId])return;
+    if((_byRid[t.fieldReportId]||[]).length>1)return; // already handled above
+    var rep=_reportById[t.fieldReportId];
+    var rDate=(rep.date||"").trim(),tDate=(t.date||"").trim();
+    if(!rDate||!tDate)return;
+    var dSelf=Math.abs(_dayDiff(tDate,rDate));if(dSelf===-999)return;
+    var gk=_custGroupKey(t.customer);
+    var closerOpen=_openDisp.some(function(o){
+      if(_custGroupKey(o.customer)!==gk)return false;
+      var d2=Math.abs(_dayDiff((o.date||"").trim(),rDate));
+      return d2!==-999&&!isNaN(d2)&&d2<dSelf;
+    });
+    if(closerOpen)victims.push(t);
+  });
+  var _victimIds=new Set(victims.map(function(t){return t.id}));
+  orphans=orphans.filter(function(t){return !_victimIds.has(t.id)});
+  // ── Class C: everything closed in the last 30 days (pure audit window) ──
+  var _cutMs=Date.now()-30*86400000;
+  var recent=_closed.filter(function(t){
+    if(_victimIds.has(t.id))return false;
+    if(orphans.some(function(o){return o.id===t.id}))return false;
+    var ms=Date.parse(t.fieldReportSubmittedAt||"");
+    return !isNaN(ms)&&ms>=_cutMs;
+  }).sort(function(a,b){return (b.fieldReportSubmittedAt||"").localeCompare(a.fieldReportSubmittedAt||"")}).slice(0,50);
+  if(!orphans.length&&!victims.length&&!recent.length){el.innerHTML="";return}
   orphans.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});
-  var rows=orphans.map(function(t){
+  victims.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});
+  function _row(t,badge){
     var techs=(t.techs||[]).join(", ")||"—";
+    var via=t.cleanedUpBy?(" · "+esc(t.cleanedUpBy)):(t.fieldReportId?" · report-match":"");
     return '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 12px;background:var(--c-warning-bg);border:1px solid var(--c-warning-border);border-radius:8px;margin-bottom:6px">'+
-      '<div><div style="font-weight:700;font-size:var(--fs-md);color:var(--c-warning-fg)">'+esc(t.customer||"—")+'</div>'+
-      '<div style="font-size:var(--fs-sm);color:var(--i2);margin-top:2px">'+esc(t.date||"no date")+' · '+esc(techs)+'</div></div>'+
+      '<div><div style="font-weight:700;font-size:var(--fs-md);color:var(--c-warning-fg)">'+esc(t.customer||"—")+(badge?' <span style="background:var(--c-danger-strong);color:#fff;font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">'+badge+'</span>':'')+'</div>'+
+      '<div style="font-size:var(--fs-sm);color:var(--i2);margin-top:2px">'+esc(t.date||"no date")+' · '+esc(techs)+via+'</div></div>'+
       '<div style="display:flex;gap:6px">'+
       '<button onclick="openTktDetail(\''+t.id+'\')" style="padding:6px 12px;background:#fff;border:1.5px solid var(--c-warning-border);border-radius:6px;font-size:var(--fs-sm);font-weight:600;color:var(--c-warning-fg);cursor:pointer">Open</button>'+
-      '<button onclick="_orphanRestore(\''+t.id+'\')" title="Restore to calendar (clear fieldReportSubmitted flag)" style="padding:6px 12px;background:var(--c-warning-strong);border:none;border-radius:6px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer">Restore</button>'+
+      '<button onclick="_orphanRestore(\''+t.id+'\')" title="Restore (clear the submitted flag so it reappears)" style="padding:6px 12px;background:var(--c-warning-strong);border:none;border-radius:6px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer">Restore</button>'+
       '</div></div>';
-  }).join("");
+  }
+  var rows=victims.map(function(t){return _row(t,"closed by shared report")}).join("")+orphans.map(function(t){return _row(t,"")}).join("");
+  var _recentHtml="";
+  if(recent.length){
+    _recentHtml='<details class="adm-fold" style="margin-top:10px"><summary style="border-bottom:none;padding-bottom:0"><div style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:800;color:var(--i2)">'+icon("history",14,{color:"var(--i2)"})+'Recently closed (last 30 days) — '+recent.length+'</div><span class="adm-fold-arrow">\u25BC</span></summary><div class="adm-fold-body">'+
+      '<div style="font-size:var(--fs-xs);color:var(--i3);margin:6px 0 8px;line-height:1.4">Every dispatch auto-closed or report-matched in the last 30 days. If a customer\'s visit is missing from the calendar, look here first and Restore it.</div>'+
+      recent.map(function(t){return _row(t,"")}).join("")+'</div></details>';
+  }
   el.innerHTML='<div class="card" style="margin-bottom:0">'+
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:2px solid var(--c-warning-strong)">'+
     icon("alert-triangle",18,{color:"var(--c-warning-fg)"})+
     '<span style="font-size:var(--fs-base);font-weight:800;color:var(--c-warning-fg);letter-spacing:.4px;text-transform:uppercase">Orphan Dispatches</span>'+
-    '<span style="background:var(--c-warning-strong);color:#fff;font-size:var(--fs-sm);font-weight:700;padding:2px 10px;border-radius:12px">'+orphans.length+'</span>'+
-    '<span style="margin-left:auto;font-size:var(--fs-sm);color:var(--i2)">Marked submitted but no matching field report</span>'+
-    '</div>'+rows+'</div>';
+    '<span style="background:var(--c-warning-strong);color:#fff;font-size:var(--fs-sm);font-weight:700;padding:2px 10px;border-radius:12px">'+(orphans.length+victims.length)+'</span>'+
+    '<span style="margin-left:auto;font-size:var(--fs-sm);color:var(--i2)">Closed without a real matching field report</span>'+
+    '</div>'+rows+_recentHtml+'</div>';
 }
 async function _orphanRestore(id){
   if(!db)return;
   var ok=await confirmDialog({title:"Restore ticket?",message:"This will clear the 'submitted' flag and the ticket will reappear in the calendar so the tech can re-submit the field report.",okText:"Restore",cancelText:"Cancel"});
   if(!ok)return;
   try{
-    await db.collection("tickets").doc(id).update({fieldReportSubmitted:false});
+    // AUDIT FIX (Jun 2026): also clear the report linkage — leaving
+    // fieldReportId behind let the pairing/cleanup instantly re-close the
+    // restored ticket on the next pass.
+    await db.collection("tickets").doc(id).update({
+      fieldReportSubmitted:false,
+      cleanupExempt:true,
+      fieldReportId:firebase.firestore.FieldValue.delete(),
+      fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
+      cleanedUpBy:firebase.firestore.FieldValue.delete()
+    });
     toast("Restored to calendar ✓");
     setTimeout(refreshAll,400);
   }catch(e){toast("Error: "+e.message,"err")}
@@ -4957,6 +5027,11 @@ async function _runDispatchCleanup(opts){
   opts=opts||{};
   if(!db)return{cleaned:0,failed:0,scanned:0};
   if(!currentUser||currentUser.role==="tech")return{cleaned:0,failed:0,scanned:0};
+  // SIM FINDING (Jun 2026 — 100k chaos runs): an OFFLINE admin device queues
+  // its close-writes; when they flush minutes later they re-close tickets that
+  // were restored or resurfaced in the meantime (stale clobber). Cleanup is
+  // never urgent — skip it entirely while offline.
+  if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return{cleaned:0,failed:0,scanned:0};
   // Debounce: if we ran successfully <30s ago and not forced, skip
   if(!opts.force){
     if(Date.now()-_lastCleanupAt<30000)return{cleaned:0,failed:0,scanned:0};
@@ -4994,14 +5069,12 @@ async function _runDispatchCleanup(opts){
     // for the surprise-deletion bug.
     var dispatchCreatedMs=_ticketCreatedMs(t);
     if(dispatchCreatedMs&&(nowMs-dispatchCreatedMs)<GRACE_MS)return false;
-    // Same-day exact match: if a non-dispatch report already exists for this
-    // customer on this date, the dispatch was definitely fulfilled.
-    if(idx.fieldReportKeys.has(cust+"|"+dispatchDate))return true;
-    // ±30 day soft match — ONLY when the report was filed AFTER the dispatch
-    // was created (a report from BEFORE this dispatch existed cannot have
-    // been the work for it; it belongs to a previous visit).
-    if(_hasMatchingReport(cust,dispatchDate,dispatchCreatedMs,idx.customerReports,todayStr))return true;
-    return false;
+    // AUDIT FIX (Jun 2026): the same-day exact match counted ANY report —
+    // including "reschedule" — so a reschedule could PERMANENTLY close the
+    // very dispatch being re-booked, and one completed report could close
+    // every open dispatch of the household within ±30 days. Now a dispatch
+    // is stale ONLY if the one-report-one-dispatch pairing accounted for it.
+    return !!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id));
   });
   _lastCleanupAt=Date.now();
   if(!stale.length)return{cleaned:0,failed:0,scanned:0};
@@ -5009,11 +5082,16 @@ async function _runDispatchCleanup(opts){
   var ok=0,fail=0;
   for(var i=0;i<stale.length;i++){
     try{
-      await db.collection("tickets").doc(stale[i].id).update({
+      var _updC={
         fieldReportSubmitted:true,
         fieldReportSubmittedAt:new Date().toISOString(),
         cleanedUpBy:opts.silent?"auto-cleanup":"admin-cleanup"
-      });
+      };
+      // Record WHICH report fulfilled this dispatch (from the pairing) so the
+      // close is auditable and the report can't account for a second dispatch.
+      var _pairedRid=idx.servedDispatchReportId&&idx.servedDispatchReportId[stale[i].id];
+      if(_pairedRid)_updC.fieldReportId=_pairedRid;
+      await db.collection("tickets").doc(stale[i].id).update(_updC);
       ok++;
     }catch(e){fail++;console.warn("Could not clean ticket "+stale[i].id+":",e)}
   }
@@ -8562,7 +8640,16 @@ async function submitTkt(st){
               if(_dispatchMs&&_dispatchMs>_editReportCreatedMs)return false;
               return true;
             });
-            for(const dt of matchesE){
+            // AUDIT FIX (Jun 2026): one report = one visit = close at most ONE
+            // dispatch (the nearest by date). Closing every ±30d match nuked a
+            // household's OTHER scheduled visits (e.g. chem maint + repair).
+            // SIM FINDING: tech overlap breaks 1-day ties toward the right visit.
+            matchesE.sort(function(a,b){
+              var sa=Math.abs(_dayDiff((a.date||"").trim(),targetDateE))-(_pairTechOverlap(cleanData.techs,a.techs)?1.5:0);
+              var sb=Math.abs(_dayDiff((b.date||"").trim(),targetDateE))-(_pairTechOverlap(cleanData.techs,b.techs)?1.5:0);
+              return sa-sb;
+            });
+            for(const dt of matchesE.slice(0,1)){
               try{
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
@@ -8584,6 +8671,7 @@ async function submitTkt(st){
       // Create new ticket
       cleanData.media=compressedMedia;
       cleanData.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      cleanData.createdAtMs=Date.now();
       cleanData.submitted=new Date().toLocaleString();
       const newRef=await db.collection("tickets").add(cleanData);
       // If this field report was started from a dispatch ticket, mark that dispatch ticket as completed
@@ -8627,7 +8715,15 @@ async function submitTkt(st){
               if(_dispatchMs&&_dispatchMs>_newReportCreatedMs)return false;
               return true;
             });
-            for(const dt of matches){
+            // AUDIT FIX (Jun 2026): one report = one visit = close at most ONE
+            // dispatch (the nearest by date) — same rule as the edit path.
+            // SIM FINDING: tech overlap breaks 1-day ties toward the right visit.
+            matches.sort(function(a,b){
+              var sa=Math.abs(_dayDiff((a.date||"").trim(),targetDate))-(_pairTechOverlap(cleanData.techs,a.techs)?1.5:0);
+              var sb=Math.abs(_dayDiff((b.date||"").trim(),targetDate))-(_pairTechOverlap(cleanData.techs,b.techs)?1.5:0);
+              return sa-sb;
+            });
+            for(const dt of matches.slice(0,1)){
               try{
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
@@ -9002,15 +9098,46 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     var stamp=new Date().toLocaleString();
     var stampMs=Date.now();
 
+    // ── SIM FINDING (Jun 2026 — 2-device race): device A (post-cleanup view)
+    //    creates the deterministic resched_<src> call while device B (stale
+    //    view) reuses the parent → TWO open "needs a date" calls. A fresh
+    //    server read (bypasses the stale snapshot) before reusing prevents it.
+    try{
+      var _freshR=await db.collection("tickets").doc("resched_"+srcDocId).get();
+      if(_freshR.exists){
+        var _fd=_freshR.data()||{};
+        if(_fd.status!=="canceled"&&_fd.status!=="done"&&!_fd.fieldReportSubmitted){
+          try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:"resched_"+srcDocId})}catch(_e){}
+          return; // an open auto-call already exists — don't duplicate
+        }
+      }
+    }catch(_e){}
+
     // ── If an OPEN dispatch already exists for this customer (typically the
     //    parent the field report was filed against), reuse it instead of
     //    creating a duplicate: clear its date so it resurfaces as "needs a
     //    new date", and flag it as a reschedule.
-    var openDisp=(typeof active!=="undefined"?active:[]).find(function(t){
-      return t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
-        &&!t.fieldReportSubmitted&&t.id!==srcDocId
-        &&_custSameHousehold(t.customer,cust);
-    });
+    var openDisp=(function(){
+      // SIM FINDING (Jun 2026 — duplicate "needs a date" calls): when a
+      // household has SEVERAL open dispatches, `.find` returned whichever came
+      // first in each device's local array — two devices could reuse DIFFERENT
+      // docs for the same reschedule. Deterministic scored pick (the dispatch
+      // dated the visit being rescheduled, then tech overlap, then oldest id)
+      // makes every device converge on the same doc.
+      var _cands=(typeof active!=="undefined"?active:[]).filter(function(t){
+        return t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
+          &&!t.fieldReportSubmitted&&t.id!==srcDocId
+          &&_custSameHousehold(t.customer,cust);
+      });
+      if(!_cands.length)return null;
+      _cands.sort(function(a,b){
+        var sa=((a.date||"").trim()===origDate&&origDate?0:1)-( _pairTechOverlap(srcData.techs,a.techs)?0.5:0);
+        var sb=((b.date||"").trim()===origDate&&origDate?0:1)-( _pairTechOverlap(srcData.techs,b.techs)?0.5:0);
+        if(sa!==sb)return sa-sb;
+        return String(a.id).localeCompare(String(b.id));
+      });
+      return _cands[0];
+    })();
     if(openDisp){
       // AUDIT FIX Jun 2026: the reused dispatch's ORIGINAL notes are the
       // customer's last call comment ("LEAKING — call before arriving", gate
@@ -9022,7 +9149,16 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       await db.collection("tickets").doc(openDisp.id).update({
         date:"",status:"pending",techs:[],autoFromResched:true,
         reschedFromId:srcDocId,notes:mergedNotes,reschedAt:stamp,reschedAtMs:stampMs,
-        reschedReason:reason||"",reschedNote:reasonNote||""
+        reschedReason:reason||"",reschedNote:reasonNote||"",
+        // AUDIT FIX (Jun 2026 — reschedule-orphan race): if auto-cleanup closed
+        // this dispatch milliseconds before we reuse it (it saw the reschedule
+        // report as a same-day fulfilment), the resurfaced call kept
+        // fieldReportSubmitted:true and was INVISIBLE in every view forever.
+        // Resurfacing must always reopen it.
+        fieldReportSubmitted:false,
+        fieldReportId:firebase.firestore.FieldValue.delete(),
+        fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
+        cleanedUpBy:firebase.firestore.FieldValue.delete()
       });
       try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:openDisp.id})}catch(_e){}
       return;
@@ -9079,7 +9215,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       media:[],videoLinks:null,source:"dispatch",status:"pending",
       autoFromResched:true,reschedFromId:srcDocId,reschedAt:stamp,reschedAtMs:stampMs,
       reschedReason:reason||"",reschedNote:reasonNote||"",
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:stamp
     },{merge:true});
     try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:docRef.id})}catch(_e){}
@@ -9203,43 +9339,71 @@ async function askDelete(docId){
 async function delTicket(docId){if(!db)return;try{await db.collection("tickets").doc(docId).delete();toast("Ticket deleted ✓")}catch(e){toast("Error deleting","err")}}
 
 // ═══ DOWNLOAD ═══
-async function dlZip(ticketIdx,list){
+async function dlZip(ticketIdx,list,ev){
   const t=list[ticketIdx];if(!t||!t.media||!t.media.length)return;
-  const btn=event.target;const originalCount=t.media.length;
-  btn.textContent="⏳ Zipping...";btn.disabled=true;
+  // PHOTO-LOSS FIX (Jun 2026 — reported by Alberto: "ZIP opens empty but the
+  // photos were deleted from Firebase"). Root causes in the old flow:
+  //   1. Per-photo fetch failures were swallowed (console.warn) and NOT counted,
+  //      so JSZip produced a valid-but-EMPTY archive, the toast said "✓", and
+  //      the delete dialog claimed all N photos were in it. Confirming deleted
+  //      everything from Storage → permanent loss.
+  //   2. resp.ok was never checked: an expired/revoked URL returns 403/404 and
+  //      the JSON error body was zipped AS the photo (bytes present, garbage).
+  //   3. PDFs were written as .jpg.
+  // New rule: count VERIFIED bytes per item; deletion is only offered when
+  // every single photo verifiably made it into the archive.
+  const btn=(ev&&ev.target)||(typeof event!=="undefined"&&event?event.target:null);
+  const originalCount=t.media.length;
+  const orig=btn?btn.textContent:"";
+  if(btn){btn.textContent="⏳ Zipping...";btn.disabled=true}
   try{
     const zip=new JSZip();
     const folder=zip.folder(t.customer.replace(/[^a-zA-Z0-9 _-]/g,"").replace(/\s+/g,"_")+"_"+t.date);
-    // Process each photo: either fetch from Storage URL or decode base64
+    let okCount=0;const failed=[];
     for(let i=0;i<t.media.length;i++){
       const m=t.media[i];
-      const ext="jpg";
+      const ext=(m.type==="pdf")?"pdf":"jpg";
       try{
         if(m.url){
-          // Storage-hosted: fetch as blob
           const resp=await fetch(m.url);
+          if(!resp.ok)throw new Error("HTTP "+resp.status);
           const blob=await resp.blob();
-          folder.file(`${i+1}_${m.type||"photo"}.${ext}`,blob);
+          if(!blob||!blob.size)throw new Error("empty response");
+          folder.file((i+1)+"_"+(m.type||"photo")+"."+ext,blob);
+          okCount++;
         }else if(m.data){
-          // Base64 fallback (legacy tickets)
-          const b64=m.data.split(",")[1];
-          folder.file(`${i+1}_${m.type||"photo"}.${ext}`,b64,{base64:true});
-        }
-      }catch(fetchErr){console.warn("Photo "+(i+1)+" failed to fetch:",fetchErr)}
+          // Base64 fallback (legacy tickets) — tolerate raw base64 without the data: prefix
+          const b64=(m.data.indexOf(",")>=0)?m.data.split(",")[1]:m.data;
+          if(!b64)throw new Error("empty base64");
+          folder.file((i+1)+"_"+(m.type||"photo")+"."+ext,b64,{base64:true});
+          okCount++;
+        }else{throw new Error("no url/data")}
+      }catch(fetchErr){failed.push(i+1);console.warn("Photo "+(i+1)+" failed:",fetchErr)}
     }
+    if(!okCount){
+      toast("None of the "+originalCount+" photos could be downloaded — nothing was saved and NOTHING was deleted. Check your connection and try again.","err");
+      if(btn){btn.textContent=orig||("⬇ Download ZIP ("+(t.media||[]).length+")");btn.disabled=false}
+      return;
+    }
+    // Work summary alongside the photos (parity with the iCloud-folder flow)
+    try{folder.file("Work Summary.txt",_icloudSummaryText(t))}catch(_se){}
     const blob=await zip.generateAsync({type:"blob"});
+    if(!blob||blob.size<100)throw new Error("ZIP came out empty ("+(blob?blob.size:0)+" bytes)");
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`${t.customer.replace(/\s+/g,"_")}_${t.date}.zip`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-    toast("ZIP downloaded ✓");
-    // After successful download, ask to delete photos from Firebase to save space.
-    // Admin-only: techs can download but never delete media.
-    if(db&&t.id&&isAdmin){
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url)},60000);
+    if(failed.length){
+      toast("ZIP downloaded with "+okCount+" of "+originalCount+" photos — photo"+(failed.length!==1?"s":"")+" #"+failed.join(", #")+" FAILED. Nothing was deleted from Firebase.","warn");
+    }else{
+      toast("ZIP downloaded ✓ ("+okCount+" photo"+(okCount!==1?"s":"")+")");
+    }
+    // Deletion offer — admin-only, and ONLY when every photo verifiably made it in.
+    if(db&&t.id&&isAdmin&&okCount===originalCount&&!failed.length){
       setTimeout(async ()=>{
-        const ok=(await confirmDialog("✅ ZIP downloaded with "+originalCount+" photo"+(originalCount!==1?"s":"")+".\n\nDelete these photos from Firebase to save storage space?\n\n(The ZIP is already saved on your computer — deleting only removes them from the cloud database.)"));
+        const ok=(await confirmDialog("✅ ZIP downloaded — all "+okCount+" photo"+(okCount!==1?"s":"")+" verified inside ("+(blob.size/1024/1024).toFixed(1)+" MB).\n\nOPEN THE ZIP AND CHECK IT FIRST.\n\nDelete these photos from Firebase to save storage space?\n\n(Deleting only removes them from the app's cloud — make sure the ZIP opens correctly before accepting.)"));
         if(!ok)return;
         try{
-          // Delete from Storage if any photos were stored there
           if(storage){
             for(const m of t.media){
               if(m.path){
@@ -9249,11 +9413,11 @@ async function dlZip(ticketIdx,list){
           }
           await db.collection("tickets").doc(t.id).update({media:[]});
           toast("Photos removed from cloud ✓");
-        }catch(err){console.error(err);toast("Could not delete from cloud","err")}
+        }catch(err){console.error(err);toast("Could not delete from cloud: "+(err&&err.message||err),"err")}
       },400);
     }
-  }catch(e){console.error(e);toast("Download failed","err")}
-  btn.textContent=`⬇ Download ZIP (${(t.media||[]).length})`;btn.disabled=false;
+  }catch(e){console.error(e);toast("Download failed: "+((e&&e.message)||e)+" — nothing was deleted.","err")}
+  if(btn){btn.textContent=`⬇ Download ZIP (${(t.media||[]).length})`;btn.disabled=false}
 }
 
 // ═══ RENDER TICKETS ═══
@@ -9300,7 +9464,7 @@ ${lb&&lb.free?`<div style="display:flex;justify-content:space-between;font-size:
 ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:var(--fs-sm);color:var(--i3);margin-top:4px">Internal RDA: $${t.totalRda.toFixed(2)}</div>`:""}
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:var(--fs-sm);color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
-${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"})">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
+${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"},event)">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
 <div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
@@ -10006,11 +10170,8 @@ function rndrSlog(){
   var _slIdx=_buildFieldReportIndex();
   var _slToday=fmtD(new Date());
   function _slServed(t){
-    var c=_custGroupKey(t.customer);var d=(t.date||"").trim();
-    if(!c||!d)return false;
-    if(_slIdx.fieldReportKeys.has(c+"|"+d))return true;
-    var dCreatedMs=_ticketCreatedMs(t);
-    return _hasMatchingReport(c,d,dCreatedMs,_slIdx.customerReports,_slToday);
+    // AUDIT FIX (Jun 2026): pairing membership — see _buildFieldReportIndex.
+    return !!(_slIdx.servedDispatchIds&&_slIdx.servedDispatchIds.has(t.id));
   }
   const all=[...active,...done].filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_slServed(t)).filter(t=>tktMatchesSearch(t,q));
   // AUDIT FIX (May 2026 — Alberto's report): chemical-maintenance dispatch
@@ -10534,7 +10695,7 @@ async function slCreateCall(){
       partWarranty90Start:((document.getElementById("slPart90Chk")||{}).checked)?(((document.getElementById("slPart90Date")||{}).value||"")||null):null,
       partWarranty90Name:(((document.getElementById("slPart90Chk")||{}).checked)?((document.getElementById("slPart90Name")||{}).value||""):""),
       media:[],videoLinks:null,source:"dispatch",status:"pending",
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:new Date().toLocaleString()
     });
     // If files are attached, upload them under the new ticket's ID and update the doc.
@@ -10830,7 +10991,7 @@ async function sendEstToActive(){
       notes:notes?("ESTIMATE ACCEPTED ✓\n"+notes):"ESTIMATE ACCEPTED ✓",
       media:[{data:sigData,type:"signature"}],
       videoLinks:null,status:"complete",phone:ph,address:addr,city:city,zip:zip,zone:zone,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:new Date().toLocaleString(),
       isEstimate:true,signedAt:new Date().toLocaleString()
     });
@@ -10998,7 +11159,7 @@ async function submitCustSig(){
       notes:d.notes?("ESTIMATE ACCEPTED ✓\n"+d.notes):"ESTIMATE ACCEPTED ✓",
       media:[{data:custSigData,type:"signature"}],
       videoLinks:null,status:"complete",phone:d.phone||"",address:d.address||"",city:d.city||"",zip:d.zip||"",zone:d.zone||"",
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:new Date().toLocaleString(),
       isEstimate:true,signedAt:new Date().toLocaleString(),
       estimateToken:custEstToken
@@ -11146,9 +11307,14 @@ function rndrCalTechPills(counts){
 // Returns the millisecond timestamp when a ticket was created in Firestore.
 // Prefers serverTimestamp; falls back to the "submitted" string. 0 = unknown.
 function _ticketCreatedMs(t){
+  // Order matters (Jun 2026 chaos sim): createdAt is SERVER time — immune to a
+  // device with a wrong clock — so it wins when synced. createdAtMs (plain
+  // client number) covers offline-pending serverTimestamps and is locale-proof,
+  // unlike Date.parse(toLocaleString()) which breaks in Spanish ("a. m." → NaN).
   if(t&&t.createdAt&&typeof t.createdAt.toMillis==="function"){
-    try{return t.createdAt.toMillis()}catch(_){}
+    try{var _sm=t.createdAt.toMillis();if(_sm>0)return _sm}catch(_){}
   }
+  if(t&&typeof t.createdAtMs==="number"&&t.createdAtMs>0)return t.createdAtMs;
   if(t&&t.submitted){
     var p=Date.parse(t.submitted);
     if(!isNaN(p))return p;
@@ -11162,12 +11328,45 @@ function _ticketCreatedMs(t){
 //   customerHasCompletedReport — Set of customers that have ANY done/complete report ever
 //   customerReports      — { customerGroupKey: [{date, createdMs}, ...] }
 // Reused by every caller in the same render tick — cheap (linear scan of active+done).
+// Do two tech lists share at least one tech? Used by the report↔dispatch
+// pairing and submitTkt's nearest-match sort: the tech who actually did the
+// visit is on the dispatch, so overlap is a strong identity signal when two
+// sibling visits sit 1 day apart (SIM FINDING Jun 2026 — wrong-sibling close).
+function _pairTechOverlap(a,b){
+  if(!a||!b||!a.length||!b.length)return false;
+  for(var i=0;i<a.length;i++)if(b.indexOf(a[i])>=0)return true;
+  return false;
+}
 function _buildFieldReportIndex(){
   const fieldReportKeys=new Set();
   const customerHasCompletedReport=new Set();
   const customerReports={};
+  // ── AUDIT FIX (Jun 2026 — "orphaned tickets" report by Alberto) ──────────
+  // ONE field report documents ONE visit, so it may account for AT MOST ONE
+  // open dispatch. The previous logic let a single complete report hide (and
+  // auto-cleanup permanently close) EVERY open dispatch of the household
+  // within ±30 days — a customer with two scheduled visits (e.g. chem maint
+  // + a repair) silently lost the second one when the first was completed.
+  // Also: "reschedule"/pending reports counted as same-day fulfilment, so a
+  // reschedule could permanently close the very dispatch being re-booked.
+  // New model: greedy nearest-date PAIRING between completed (done/complete)
+  // reports and open dispatches. Only PAIRED dispatches are "served".
+  const _openByCust={};            // custKey -> [{id,date,createdMs}]
+  const consumedReportIds=new Set(); // reports already linked to a dispatch via fieldReportId
+  const _grNow=Date.now(),_GR=5*60*1000; // SIM FINDING: mirror cleanup's 5-min grace
   [...active,...done].forEach(t=>{
-    if(t.source==="dispatch")return; // only tech-submitted field reports
+    if(t.source==="dispatch"){
+      if(t.fieldReportId)consumedReportIds.add(t.fieldReportId);
+      if(!t.fieldReportSubmitted&&t.status!=="canceled"&&!t.cleanupExempt){
+        const c=_custGroupKey(t.customer),d=(t.date||"").trim();
+        const _cm=_ticketCreatedMs(t);
+        // Grace: a dispatch created minutes ago must stay VISIBLE (cleanup
+        // already skips it; if pairing hid it now, it would be invisible yet
+        // un-closed — unreachable from every recovery panel for 5 minutes).
+        if(c&&d&&!(_cm>0&&(_grNow-_cm)<_GR)){(_openByCust[c]=_openByCust[c]||[]).push({id:t.id,date:d,createdMs:_cm,techs:t.techs||[]});}
+      }
+      return;
+    }
     const cust=_custGroupKey(t.customer);
     const dt=(t.date||"").trim();
     if(!cust)return;
@@ -11176,11 +11375,49 @@ function _buildFieldReportIndex(){
       customerHasCompletedReport.add(cust);
       if(dt){
         if(!customerReports[cust])customerReports[cust]=[];
-        customerReports[cust].push({date:dt,createdMs:_ticketCreatedMs(t)});
+        // SIM FINDING (Jun 2026): two devices double-submitting the same visit
+        // create TWO report docs — counting both let the duplicate close a
+        // SECOND, unrelated dispatch. Same customer + same date = one visit.
+        var _dupR=customerReports[cust].some(function(r){return r.date===dt});
+        if(!_dupR)customerReports[cust].push({id:t.id,date:dt,createdMs:_ticketCreatedMs(t),techs:t.techs||[]});
       }
     }
   });
-  return {fieldReportKeys,customerHasCompletedReport,customerReports};
+  // Pairing: per customer, match each UNCONSUMED completed report to at most
+  // one open dispatch (nearest date first, ±30 days, report created AFTER the
+  // dispatch when both timestamps exist; legacy/no-timestamp pairs only count
+  // once the dispatch date is in the past).
+  const servedDispatchIds=new Set();
+  const servedDispatchReportId={}; // dispatchId -> reportId that fulfilled it
+  const _prToday=fmtD(new Date());
+  Object.keys(_openByCust).forEach(cust=>{
+    const reps=(customerReports[cust]||[]).filter(r=>r.id&&!consumedReportIds.has(r.id));
+    if(!reps.length)return;
+    const disps=_openByCust[cust];
+    const cand=[];
+    for(let i=0;i<reps.length;i++)for(let j=0;j<disps.length;j++){
+      const r=reps[i],d=disps[j];
+      const t1=Date.parse(d.date+"T00:00:00"),t2=Date.parse(r.date+"T00:00:00");
+      if(isNaN(t1)||isNaN(t2))continue;
+      const diff=Math.abs(Math.round((t2-t1)/86400000));
+      if(diff>30)continue;
+      if(r.createdMs>0&&d.createdMs>0){
+        if(r.createdMs<=d.createdMs)continue; // dispatch created AFTER report = new separate visit
+      }else{
+        if(!(d.date<_prToday))continue;       // legacy timestamps: only past-dated dispatches
+      }
+      cand.push({ri:i,dj:j,diff:diff,score:diff-(_pairTechOverlap(r.techs,d.techs)?1.5:0)});
+    }
+    cand.sort((a,b)=>a.score-b.score||a.diff-b.diff||((reps[a.ri].createdMs||0)-(reps[b.ri].createdMs||0)));
+    const ru=new Set(),du=new Set();
+    cand.forEach(c=>{
+      if(ru.has(c.ri)||du.has(c.dj))return;
+      ru.add(c.ri);du.add(c.dj);
+      servedDispatchIds.add(disps[c.dj].id);
+      servedDispatchReportId[disps[c.dj].id]=reps[c.ri].id;
+    });
+  });
+  return {fieldReportKeys,customerHasCompletedReport,customerReports,servedDispatchIds,servedDispatchReportId,consumedReportIds};
 }
 
 // Is there a field report within ±30 days of this dispatch's visit date,
@@ -11217,11 +11454,11 @@ function _isVisibleDispatch(t,idx,today,isTech){
   if(t.source!=="dispatch")return false;
   if(t.fieldReportSubmitted)return false;
   if(t.status==="canceled")return false;
-  const cust=_custGroupKey(t.customer);
-  const dt=(t.date||"").trim();
-  if(cust&&dt&&idx.fieldReportKeys.has(cust+"|"+dt))return false;
-  const dispatchCreatedMs=_ticketCreatedMs(t);
-  if(cust&&dt&&_hasMatchingReport(cust,dt,dispatchCreatedMs,idx.customerReports,today))return false;
+  // AUDIT FIX (Jun 2026): membership in the one-report-one-dispatch pairing
+  // replaces the old same-day-any-report + broad ±30d checks. A reschedule
+  // report no longer hides anything, and one completed report can hide at
+  // most ONE open dispatch (the nearest), never the whole household.
+  if(idx&&idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id))return false;
   if(isTech&&t.status==="done")return false;
   return true;
 }
@@ -11809,8 +12046,8 @@ function rndrCalQueue(){
   // agree on what counts as "already done".
   var _idx=_buildFieldReportIndex();
   function _hasReport(t){
-    var c=_custGroupKey(t.customer);var d=(t.date||"").trim();
-    return c&&d&&_idx.fieldReportKeys.has(c+"|"+d);
+    // AUDIT FIX (Jun 2026): pairing membership — reschedule reports no longer hide calls.
+    return !!(_idx.servedDispatchIds&&_idx.servedDispatchIds.has(t.id));
   }
   // Only show unassigned DISPATCH tickets — also exclude any whose customer+date already has a field report
   let unassigned=active.filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_hasReport(t));
@@ -11865,8 +12102,8 @@ function rndrCcReminders(){
   // here, would throw ReferenceError). Use the canonical field-report index.
   var _ccIdx=_buildFieldReportIndex();
   function _ccHasReport(t){
-    var c=_custGroupKey(t.customer);var d=(t.date||"").trim();
-    return c&&d&&_ccIdx.fieldReportKeys.has(c+"|"+d);
+    // AUDIT FIX (Jun 2026): pairing membership — see _buildFieldReportIndex.
+    return !!(_ccIdx.servedDispatchIds&&_ccIdx.servedDispatchIds.has(t.id));
   }
   const ccTkts=[...active].filter(function(t){return t.ccRequested&&t.date&&t.date>=today&&t.source==="dispatch"&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_ccHasReport(t)});
   if(!ccTkts.length){el.innerHTML="";return}
@@ -12057,7 +12294,7 @@ async function calDropOnTech(e,techName,ds){
     setTimeout(refreshAll,400);
   }catch(er){toast("Error: "+er.message,"err")}
 }
-async function calCreateCall(){if(!db){toast("Firebase not configured","err");return}const cu=document.getElementById("calCustName").value.trim();const ph=_normalizePhone(document.getElementById("calCustPhone").value);const addr=document.getElementById("calCustAddr").value.trim();const city=document.getElementById("calCustCity").value.trim();const zip=document.getElementById("calCustZip").value.trim();const dt=document.getElementById("calDate").value;const notes=document.getElementById("calNotes").value.trim();var zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";var manZ=document.getElementById("calManualZone");if(manZ&&manZ.value.trim())zone=manZ.value.trim();if(zip&&city&&!ZIP_CITIES[zip]){customZips[zip+"_city"]=city;if(zone)customZips[zip+"_zone"]=zone;saveCustomZips()}const ccFile=document.getElementById("calCcFile").checked;const ccReq=document.getElementById("calCcReq").checked;if(!cu){toast("Enter customer name","warn");return}try{await db.collection("tickets").add({customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,spaDesc:(document.getElementById("calSpaDesc")||{}).value||"",notes:notes,phone:ph,address:addr,city:city,zip:zip,zone:zone,ccOnFile:ccFile,ccRequested:ccReq,isRepeat:document.getElementById("calRepeat").checked,payCheck:document.getElementById("calCheck").checked,payCredit:document.getElementById("calCredit").checked,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created ✓");document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";var _sd2=document.getElementById("calSpaDesc");if(_sd2)_sd2.value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;rndrCal()}catch(e){console.error(e);toast("Error: "+e.message,"err")}}
+async function calCreateCall(){if(!db){toast("Firebase not configured","err");return}const cu=document.getElementById("calCustName").value.trim();const ph=_normalizePhone(document.getElementById("calCustPhone").value);const addr=document.getElementById("calCustAddr").value.trim();const city=document.getElementById("calCustCity").value.trim();const zip=document.getElementById("calCustZip").value.trim();const dt=document.getElementById("calDate").value;const notes=document.getElementById("calNotes").value.trim();var zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";var manZ=document.getElementById("calManualZone");if(manZ&&manZ.value.trim())zone=manZ.value.trim();if(zip&&city&&!ZIP_CITIES[zip]){customZips[zip+"_city"]=city;if(zone)customZips[zip+"_zone"]=zone;saveCustomZips()}const ccFile=document.getElementById("calCcFile").checked;const ccReq=document.getElementById("calCcReq").checked;if(!cu){toast("Enter customer name","warn");return}try{await db.collection("tickets").add({customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,spaDesc:(document.getElementById("calSpaDesc")||{}).value||"",notes:notes,phone:ph,address:addr,city:city,zip:zip,zone:zone,ccOnFile:ccFile,ccRequested:ccReq,isRepeat:document.getElementById("calRepeat").checked,payCheck:document.getElementById("calCheck").checked,payCredit:document.getElementById("calCredit").checked,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});toast("Ticket created ✓");document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";var _sd2=document.getElementById("calSpaDesc");if(_sd2)_sd2.value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;rndrCal()}catch(e){console.error(e);toast("Error: "+e.message,"err")}}
 
 // ═══ TICKET DETAIL MODAL ═══
 // Tracks which ticket is currently visible in the detail modal (used by features
@@ -12431,13 +12668,11 @@ function openTktDetail(id){
         // field report for the same customer/date that's hiding this dispatch?
         try{
           var _wIdx=_buildFieldReportIndex();
-          var _wCust=_custGroupKey(t.customer);
           var _wDate=(t.date||"").trim();
-          var _wToday=fmtD(new Date());
-          var _wCreatedMs=_ticketCreatedMs(t);
-          var _wExactSameDay=_wCust&&_wDate&&_wIdx.fieldReportKeys.has(_wCust+"|"+_wDate);
-          var _wSoftMatch=_wCust&&_wDate&&_hasMatchingReport(_wCust,_wDate,_wCreatedMs,_wIdx.customerReports,_wToday);
-          if(_wExactSameDay||_wSoftMatch){
+          // AUDIT FIX (Jun 2026): same pairing the views use — one report can
+          // only account for ONE dispatch, and reschedule reports never count.
+          var _wServed=_wIdx.servedDispatchIds&&_wIdx.servedDispatchIds.has(t.id);
+          if(_wServed){
             _whereWarn.push("A field report exists for "+t.customer+" on or around "+(_wDate||"this date")+", so the planning views (Calendar / Maps / Service Log) hide this dispatch as already served. Auto-cleanup will mark it submitted on the next pass — or open the field report and re-link it.");
           }else if(!t.techs||!t.techs.length){
             _whereTags.push("Service Log");
@@ -13823,7 +14058,7 @@ async function custCreateTicket(){
   });
   // Gather all notes from history
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
-  try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
+  try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
 function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;if(typeof slSetSlots==="function")try{slSetSlots(1)}catch(_e){}var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();if(typeof _slResetPresets==="function")_slResetPresets();slClearMedia();toast("Form cleared")}
 function calClearForm(){document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;var sd=document.getElementById("calSpaDesc");if(sd)sd.value="";toast("Form cleared")}
@@ -16840,7 +17075,7 @@ async function saveTktToICloud(ticketIdx,list,ev){
   var btn=ev&&ev.target?ev.target:null;var orig=btn?btn.textContent:"";
   if(!window.showDirectoryPicker){
     toast("This browser can't write to folders \u2014 downloading ZIP instead","warn");
-    try{dlZip(ticketIdx,list)}catch(_e){}
+    try{dlZip(ticketIdx,list,ev)}catch(_e){}
     return;
   }
   if(btn){btn.textContent="\u23F3 Saving\u2026";btn.disabled=true}
@@ -16854,8 +17089,13 @@ async function saveTktToICloud(ticketIdx,list,ev){
       var m=t.media[i];
       try{
         var blob=null;
-        if(m.url){var resp=await fetch(m.url);blob=await resp.blob()}
-        else if(m.data){var b64=m.data.split(",")[1];var bin=atob(b64);var arr=new Uint8Array(bin.length);for(var j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);blob=new Blob([arr],{type:"image/jpeg"})}
+        if(m.url){
+          var resp=await fetch(m.url);
+          if(!resp.ok)throw new Error("HTTP "+resp.status); // PHOTO-LOSS FIX: a 403/404 error body is NOT a photo
+          blob=await resp.blob();
+          if(!blob||!blob.size)throw new Error("empty response");
+        }
+        else if(m.data){var _raw=(m.data.indexOf(",")>=0)?m.data.split(",")[1]:m.data;if(!_raw)throw new Error("empty base64");var bin=atob(_raw);var arr=new Uint8Array(bin.length);for(var j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);blob=new Blob([arr],{type:(m.type==="pdf")?"application/pdf":"image/jpeg"})}
         if(!blob)continue;
         var ext=(m.type==="pdf")?"pdf":"jpg";
         var fh=await sub.getFileHandle((i+1)+"_"+(m.type||"photo")+"."+ext,{create:true});
