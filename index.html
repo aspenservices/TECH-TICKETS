@@ -2175,7 +2175,7 @@ details.adm-fold>.adm-fold-body{padding-top:12px;}
       <button onclick="closeTechTool()" style="padding:9px 16px;background:var(--cd);border:1.5px solid var(--ln);border-radius:10px;font-size:var(--fs-md);font-weight:700;color:var(--i1);cursor:pointer;font-family:inherit">← Tech Tools</button>
       <div id="ttViewerTitle" style="font-size:var(--fs-md);font-weight:700;color:var(--i1)"></div>
     </div>
-    <iframe id="ttFrame" title="Tech tool" style="width:100%;height:calc(100vh - 210px);min-height:540px;border:1.5px solid var(--ln);border-radius:14px;background:#0E3A4F" sandbox="allow-scripts allow-same-origin"></iframe>
+    <iframe id="ttFrame" title="Tech tool" allowtransparency="true" style="width:100%;height:calc(100vh - 175px);min-height:560px;border:none;border-radius:0;background:transparent;display:block" sandbox="allow-scripts allow-same-origin"></iframe>
   </div>
 </div>
 
@@ -17194,6 +17194,27 @@ var TECH_TOOLS=[
    html:function(){return _ttDecode(BLU_FUSION_HTML_B64)}}
 ];
 var _ttUrls={};
+// ── Embed integration (Jun 2026 — Alberto: "que sea parte de la app, no algo
+//    flotando"). The BF file ships styled as a phone MOCKUP: gray backdrop,
+//    460px card, 22px radius, drop shadow, fixed 820px height. These injected
+//    overrides flatten it into a native full-bleed pane: transparent body, the
+//    page's real background color (read live via getComputedStyle so every
+//    theme — light/dark/ember/aspen — matches), full width/height, no frame.
+//    The deep-blue header band and bottom nav stay: that's the tool's brand
+//    chrome, same pattern as the My Apps hub header.
+function _ttEmbedify(html){
+  var bg="#F8F5F0";
+  try{var c=getComputedStyle(document.body).backgroundColor;if(c&&c!=="rgba(0, 0, 0, 0)"&&c!=="transparent")bg=c}catch(_e){}
+  var ov='<style id="ttEmbedOverrides">'+
+    'html{background:transparent !important}'+
+    'body{margin:0 !important;padding:0 !important;background:transparent !important;display:block !important;min-height:0 !important}'+
+    '#bfApp{max-width:none !important;width:100% !important;margin:0 !important;border-radius:0 !important;box-shadow:none !important;height:100vh !important;max-height:100vh !important;background:'+bg+' !important}'+
+    '#bfApp .bf-screen{background:'+bg+' !important;padding:18px clamp(16px,4vw,40px) !important}'+
+    '#bfApp .bf-screen>*{max-width:820px;margin-left:auto !important;margin-right:auto !important}'+
+    '</style>';
+  if(/<\/head>/i.test(html))return html.replace(/<\/head>/i,ov+"</head>");
+  return ov+html;
+}
 function renderTechTools(){
   var list=document.getElementById("ttList");if(!list)return;
   list.innerHTML=TECH_TOOLS.map(function(t){
@@ -17212,13 +17233,14 @@ function openTechTool(key){
   var t=null;for(var i=0;i<TECH_TOOLS.length;i++)if(TECH_TOOLS[i].key===key)t=TECH_TOOLS[i];
   if(!t)return;
   try{
-    if(!_ttUrls[key]){
-      _ttUrls[key]=URL.createObjectURL(new Blob([t.html()],{type:"text/html"}));
+    var _thKey=key+"|"+((typeof _curTheme==="function")?_curTheme():"light");
+    if(!_ttUrls[_thKey]){
+      _ttUrls[_thKey]=URL.createObjectURL(new Blob([_ttEmbedify(t.html())],{type:"text/html"}));
     }
     document.getElementById("ttHub").style.display="none";
     document.getElementById("ttViewer").style.display="";
     document.getElementById("ttViewerTitle").textContent=t.emoji+" "+t.label;
-    document.getElementById("ttFrame").src=_ttUrls[key];
+    document.getElementById("ttFrame").src=_ttUrls[_thKey];
     try{window.scrollTo({top:0,behavior:"smooth"})}catch(_e){}
   }catch(e){console.error("[techTools]",e);toast("Could not open tool: "+((e&&e.message)||e),"err")}
 }
