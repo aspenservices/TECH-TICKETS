@@ -1117,7 +1117,21 @@ body.dark-mode .qb-cust-hero .app-av{border-color:rgba(255,255,255,.18)}
   body{padding-bottom:64px}
   /* Avoid overlap with floating to-do widget */
   .todo-wrap{bottom:calc(64px + env(safe-area-inset-bottom))!important}
+  /* OPTION 1 (Jun 2026 — Alberto): PHONES ONLY — hide the top tab bar so the
+     bottom icon bar is the single nav. Desktop keeps the top tabs untouched. */
+  #tabBar{display:none!important}
 }
+.more-sheet-back{position:fixed;inset:0;background:rgba(15,30,38,.45);z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.more-sheet-back.show{opacity:1;pointer-events:auto}
+.more-sheet{position:fixed;left:0;right:0;bottom:0;z-index:999;background:var(--cd);border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.22);padding:8px 10px calc(14px + env(safe-area-inset-bottom));transform:translateY(102%);transition:transform .26s cubic-bezier(.22,1,.36,1);max-height:80vh;overflow-y:auto}
+.more-sheet.show{transform:translateY(0)}
+.more-sheet .grip{width:38px;height:4px;background:var(--ln);border-radius:3px;margin:6px auto 12px}
+.more-sheet .ms-title{font-size:var(--fs-xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--i3);padding:0 8px 8px}
+.more-sheet .ms-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 12px;background:none;border:none;border-radius:13px;font-family:inherit;font-size:var(--fs-md);font-weight:600;color:var(--ink);cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+.more-sheet .ms-item:active{background:var(--bg)}
+.more-sheet .ms-item .ms-ic{width:26px;text-align:center;font-size:19px;flex-shrink:0}
+.more-sheet .ms-item .ms-bdg{margin-left:auto;background:var(--c-danger-strong,#c0392b);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px}
+.more-sheet .ms-item.on{color:var(--ac);background:var(--acl,#FDF0E3)}
 
 /* ─── Modern search icon (replace 🔍 emoji with Lucide-style SVG) ─── */
 .search-wrap::before{
@@ -2182,6 +2196,8 @@ details.adm-fold>.adm-fold-body{padding-top:12px;}
 
 <!-- ══ BOTTOM NAV (mobile only — populated by buildBottomNav()) ══ -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Primary"></nav>
+<div class="more-sheet-back" id="moreSheetBack" onclick="closeMoreSheet()"></div>
+<div class="more-sheet" id="moreSheet" role="dialog" aria-label="Más opciones"><div class="grip"></div><div class="ms-title">Más</div><div id="moreSheetItems"></div></div>
 
 <!-- ══ CUSTOM DIALOG (replaces confirm() and prompt() with Apple-style modal) ══ -->
 <div id="cdBg" class="cd-bg" role="dialog" aria-modal="true" aria-labelledby="cdTitle">
@@ -7202,7 +7218,7 @@ function showTab(i){
   if(document.startViewTransition&&!_reduce){try{document.startViewTransition(function(){_showTabImpl(i)});return}catch(_e){}}
   _showTabImpl(i);
 }
-function _showTabImpl(i){[0,1,2,3,4,5,6,7,8,9,10].forEach(n=>{document.getElementById("tab"+n).classList.toggle("on",n===i);document.getElementById("pg"+n).classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
+function _showTabImpl(i){try{closeMoreSheet()}catch(_e){}[0,1,2,3,4,5,6,7,8,9,10].forEach(n=>{document.getElementById("tab"+n).classList.toggle("on",n===i);document.getElementById("pg"+n).classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
   try{if(typeof _renderPresenceCluster==="function")_renderPresenceCluster()}catch(_e){}
   // Tech Tools hub — render the tool list on entry
   if(i===10){if(typeof renderTechTools==="function")renderTechTools()}
@@ -7319,12 +7335,52 @@ function buildBottomNav(){
   else ids=[0,1,4,5,7];
   var current=-1;
   [0,1,2,3,4,5,6,7,9,10].forEach(function(n){var el=document.getElementById("tab"+n);if(el&&el.classList.contains("on"))current=n});
+  // OPTION 1 (Jun 2026): bottom bar is the single mobile nav → 4 hot tabs + Más.
+  var hot=ids.slice(0,4);
   var html="";
-  ids.forEach(function(n){
+  hot.forEach(function(n){
     var m=meta[n];if(!m)return;
     html+='<button class="bn-btn'+(current===n?" on":"")+'" onclick="showTab('+n+')" type="button">'+icon(m.ic,22,{color:"currentColor"})+'<span>'+m.lbl+'</span></button>';
   });
+  var moreActive=(hot.indexOf(current)<0);
+  html+='<button class="bn-btn'+(moreActive?" on":"")+'" onclick="openMoreSheet()" type="button" aria-label="Más">'+icon("more-horizontal",22,{color:"currentColor"})+'<span>Más</span></button>';
   nav.innerHTML=html;
+}
+function _bnHotIds(){
+  if(!currentUser)return[0,1,4,5,7];
+  if(currentUser.role==="tech")return[0,1,4,10];
+  if(currentUser.name==="Nela")return[0,1,4,5,9];
+  if(currentUser.name==="Celia")return[0,4,5,6,9];
+  return[0,1,4,5,7];
+}
+function openMoreSheet(){
+  if(!currentUser)return;
+  var hot=_bnHotIds().slice(0,4);
+  var current=-1;[0,1,2,3,4,5,6,7,9,10].forEach(function(n){var el=document.getElementById("tab"+n);if(el&&el.classList.contains("on"))current=n});
+  var meta={0:["📋","Field Report"],1:["✅",(currentUser.role==="tech")?"My Tickets":"Daily"],
+    2:["✔️","Completed"],3:["⚙️","Admin"],4:["📅","Calendar"],5:["📞","Service Log"],
+    6:["👥","Customers"],7:["🗺️","Maps"],8:["🔔","Alerts"],9:["💼","My Apps"],10:["🧰","Tech Tools"]};
+  var out="";
+  // Every tab the user can actually reach (its top-tab exists & isn't .hidden)
+  // and isn't already one of the 4 hot tabs. Roles stay the source of truth.
+  [0,4,5,1,6,8,10,9,2,3,7].forEach(function(n){
+    if(hot.indexOf(n)>=0)return;
+    var tEl=document.getElementById("tab"+n);
+    if(!tEl)return;
+    if(n!==0&&tEl.classList.contains("hidden"))return; // not visible for this role
+    var m=meta[n];if(!m)return;
+    var bdg="";
+    var bEl=document.getElementById("bdg"+n);
+    if(bEl&&bEl.style.display!=="none"&&bEl.textContent&&bEl.textContent!=="0")bdg='<span class="ms-bdg">'+esc(bEl.textContent)+'</span>';
+    out+='<button class="ms-item'+(current===n?" on":"")+'" onclick="showTab('+n+');closeMoreSheet()" type="button"><span class="ms-ic">'+m[0]+'</span><span>'+esc(m[1])+'</span>'+bdg+'</button>';
+  });
+  document.getElementById("moreSheetItems").innerHTML=out;
+  document.getElementById("moreSheetBack").classList.add("show");
+  document.getElementById("moreSheet").classList.add("show");
+}
+function closeMoreSheet(){
+  var b=document.getElementById("moreSheetBack"),sh=document.getElementById("moreSheet");
+  if(b)b.classList.remove("show");if(sh)sh.classList.remove("show");
 }
 
 // ═══ TECH MANAGEMENT ═══
@@ -17214,11 +17270,11 @@ var _TT_NATIVE_OVERRIDES="\n/* ── native in-page mode (injected by Tech Tool
   "#bfApp .bf-navbtn{padding:9px 4px 8px;min-height:52px}\n"+
   "#bfApp .bf-navbtn .nl{font-size:10.5px;display:block}\n"+
   "/* nav fix (Jun 2026): force segmented bar to TOP, compact, no safe-area bottom pad */\n"+
-  "#bfApp .bf-nav{position:sticky !important; top:6px !important; bottom:auto !important; z-index:40 !important; margin:2px 0 12px !important; border-radius:12px !important; overflow:hidden !important; padding:5px 5px !important; border-top:none !important; flex-shrink:0 !important; box-shadow:0 6px 16px rgba(14,58,79,.26) !important;}\n"+
+  "#bfApp .bf-nav{position:static !important; top:auto !important; bottom:auto !important; z-index:1 !important; margin:0 0 12px !important; border-radius:12px !important; overflow:hidden !important; padding:5px 5px !important; border-top:none !important; flex-shrink:0 !important; box-shadow:0 4px 12px rgba(14,58,79,.20) !important;}\n"+
   "#bfApp .bf-navbtn{min-height:42px !important; padding:6px 2px !important; gap:2px !important;}\n"+
   "#bfApp .bf-navbtn .ni{font-size:16px !important;}\n"+
   "#bfApp .bf-navbtn .nl{font-size:9.5px !important; display:block !important;}\n"+
-  "#bfApp .bf-screen{padding-bottom:96px !important;}\n"+
+  "#bfApp .bf-screen{padding-bottom:130px !important;}\n"+
   "/* ══════════════════════════════════════════════════════════════════════════\n"+"   NATIVE THEME BRIDGE (Jun 2026 — Alberto: \"debe sentirse nativa, no algo\n"+"   sobrepuesto\"). BF ships its own design system (white cards, own nav, own\n"+"   tokens). Here we remap BF's CSS variables onto TECH-TICKETS design tokens\n"+"   and restyle its components to use the SAME card/surface/border/inputs as\n"+"   the rest of the app. Inherits light / dark / ember automatically because it\n"+"   points at the app's live vars. Appended after BF's <style>, so it wins.\n"+"   ══════════════════════════════════════════════════════════════════════════ */\n"+"#bfApp{\n"+"  --deep:var(--hdr-bg); --deep2:var(--hdr-bg); --teal:var(--ac); --aqua:var(--ac);\n"+"  --copper:var(--ac); --charcoal:var(--ink); --slate:var(--i2); --mist:var(--ln);\n"+"  --off:transparent; --white:var(--cd); --ok:var(--c-success-strong);\n"+"  --warn:var(--c-warning-strong); --danger:var(--c-danger-strong);\n"+"  --r:var(--rad); --sh:var(--sh-xs);\n"+"  font-family:var(--body) !important; color:var(--ink) !important;\n"+"}\n"+"/* Cards / accordions / option rows → TECH-TICKETS .card surface */\n"+"#bfApp .bf-qcard,#bfApp .bf-acc,#bfApp .bf-cat,#bfApp .bf-calc,#bfApp .bf-support,#bfApp .bf-howto{\n"+"  background:var(--cd) !important; border:1px solid var(--ln) !important;\n"+"  border-radius:var(--rad) !important; box-shadow:var(--sh-xs) !important;\n"+"}\n"+"#bfApp .bf-choice{\n"+"  background:var(--cd) !important; border:1px solid var(--ln) !important;\n"+"  border-radius:var(--r-lg) !important; box-shadow:var(--sh-xs) !important;\n"+"}\n"+"#bfApp .bf-choice:active{transform:scale(.992); background:var(--acl) !important; border-color:var(--ac) !important;}\n"+"/* Headings & body text adopt app ink colors */\n"+"#bfApp h2,#bfApp h3,#bfApp .bf-qcard b,#bfApp .bf-cathead{color:var(--ink) !important;}\n"+"#bfApp .bf-intro,#bfApp .bf-qcard p,#bfApp .bf-note{color:var(--i2) !important;}\n"+"#bfApp .bf-qcard .bf-q,#bfApp [class*=\"PREGUNTA\"],#bfApp .bf-kicker{color:var(--ac) !important;}\n"+"/* Inputs / search → app input look */\n"+"#bfApp .bf-search input,#bfApp .bf-field input,#bfApp .bf-field select,#bfApp input[type=\"text\"],#bfApp input[type=\"number\"]{\n"+"  background:var(--cd) !important; border:1.5px solid var(--ln) !important;\n"+"  color:var(--ink) !important; border-radius:var(--r-md) !important;\n"+"}\n"+"/* Primary action buttons → app accent (copper) */\n"+"#bfApp .bf-btn{background:var(--ac) !important; color:#fff !important; border-radius:var(--r-md) !important; font-family:var(--body) !important;}\n"+"#bfApp .bf-btn.sec,#bfApp .bf-btn.ghost{background:var(--cd) !important; color:var(--ac) !important; border:1.5px solid var(--ln) !important;}\n"+"/* Chips → app pill style */\n"+"#bfApp .bf-chip{background:var(--cd) !important; border:1.5px solid var(--ln) !important; color:var(--i2) !important;}\n"+"#bfApp .bf-chip.on,#bfApp .bf-chip[aria-pressed=\"true\"]{background:var(--ac) !important; color:#fff !important; border-color:var(--ac) !important;}\n"+"/* The teal \"result\" gradient → flat app accent tint with readable ink */\n"+"#bfApp .bf-out{background:var(--acl) !important; color:var(--ink) !important; border:1px solid var(--ac) !important; border-radius:var(--r-md) !important;}\n"+"#bfApp .bf-out *{color:var(--ink) !important;}\n"+"/* Reference tables read as app tables */\n"+"#bfApp .bf-table th{background:var(--c-ash) !important; color:var(--i2) !important;}\n"+"#bfApp .bf-table td,#bfApp .bf-table th{border-color:var(--ln) !important;}\n"+"/* Segmented top nav: keep the Aspen header tint so it reads as chrome, but use\n"+"   the app's HEADER background (matches the dark bar at the top of the app). */\n"+"#bfApp .bf-nav{background:var(--hdr-bg) !important;}\n"+"#bfApp .bf-navbtn{color:rgba(255,255,255,.62) !important;}\n"+"#bfApp .bf-navbtn.on,#bfApp .bf-navbtn[aria-selected=\"true\"]{color:#fff !important;}\n"+"#bfApp .bf-navbtn.on:after{background:var(--ac) !important;}\n"+
   "/* contrast fix (Jun 2026): checklist/steps/howto/note had hardcoded light bg + light text → invisible in dark/ember */\n"+
   "#bfApp .bf-check{background:var(--cd) !important; border:1px solid var(--ln) !important; color:var(--ink) !important;}\n"+
@@ -17273,11 +17329,11 @@ function _ttMountNative(t){
     if(top)top.style.setProperty("display","none","important");
     // 4. The 5-tab nav = sticky segmented bar at the TOP (thumb-reachable),
     //    keeping its Aspen deep-blue gradient as the tool's identity.
-    if(nav){["position:sticky","top:6px","bottom:auto","z-index:40","border-radius:12px","margin:2px 0 12px",
-      "padding:5px 5px","border-top:none","box-shadow:0 6px 16px rgba(14,58,79,.26)","overflow:hidden"].forEach(function(d){
+    if(nav){["position:static","top:auto","bottom:auto","z-index:1","border-radius:12px","margin:0 0 12px",
+      "padding:5px 5px","border-top:none","box-shadow:0 4px 12px rgba(14,58,79,.20)","overflow:hidden"].forEach(function(d){
         var p=d.split(":");nav.style.setProperty(p[0],p.slice(1).join(":"),"important")});}
     // 5. Content flows with the page — no inner scrollbox, transparent on theme bg.
-    if(scr){["flex:none","overflow:visible","height:auto","background:transparent","padding:6px 0 96px"]
+    if(scr){["flex:none","overflow:visible","height:auto","background:transparent","padding:6px 0 130px"]
       .forEach(function(d){var p=d.split(":");scr.style.setProperty(p[0],p.slice(1).join(":"),"important")});}
     _ttMounted[t.key]=true;
     return true;
