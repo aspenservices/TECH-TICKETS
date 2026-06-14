@@ -340,7 +340,7 @@ input[type="date"],input[type="time"],
   font-variant-numeric:tabular-nums;
   font-feature-settings:"tnum";
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
 /* ─── ACCESSIBLE FOCUS RING ─── Modern focus-visible — only shows on keyboard nav, not mouse clicks */
 *:focus{outline:none}
@@ -355,8 +355,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   box-shadow:inset 0 -2px 0 var(--ac);
 }
 html{font-size:var(--fs-lg);-webkit-text-size-adjust:100%}
-html{font-size:115%;overflow-x:hidden}body{font-family:'Manrope',-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;overflow-x:hidden;max-width:100vw;letter-spacing:-.1px}
+html{font-size:115%;overflow-x:hidden}body{font-family:'Manrope',-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;overflow-x:hidden;max-width:100vw;letter-spacing:-.1px;overscroll-behavior-y:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;accent-color:var(--ac);caret-color:var(--ac)}
 input,button,textarea,select{font-family:inherit;font-size:inherit}button{cursor:pointer}
+/* iOS auto-zooms when focusing a field smaller than 16px. On touch devices force
+   all text inputs to 16px so tapping a field never triggers a zoom (pinch-zoom
+   stays available). Desktop (fine pointer) is unaffected, so compact layouts keep
+   their sizing on mouse-driven screens. */
+@media(pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),textarea,select{font-size:16px}}
+button{-webkit-touch-callout:none}
 
 /* Header — liminal, branded brown, no shouty orange bar */
 .hdr{background:var(--hdr-bg);color:#fff;padding:10px 18px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center}
@@ -740,9 +746,9 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
   .cal-hdr > div:first-child{flex:1 1 100%;min-width:0;flex-wrap:wrap;align-items:flex-start;gap:8px}
   .cal-hdr > div:nth-child(2){flex:1 1 100%;justify-content:space-between;width:100%}
   .cal-views{flex-wrap:wrap}
-  .cal-vb{flex:1;padding:6px 8px;font-size:var(--fs-sm);min-width:55px}
+  .cal-vb{flex:1;padding:6px 8px;font-size:var(--fs-sm);min-width:55px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   .cal-nav{flex:1;max-width:160px}
-  .cal-nav button{flex:1;height:38px;font-size:var(--fs-xl)}
+  .cal-nav button{flex:1;height:44px;font-size:var(--fs-xl)}
   #todoTriggerBtn{flex-shrink:0;padding:0 10px!important;font-size:var(--fs-sm)!important}
   /* The View Route Map button + day progress bar were also overflowing;
      wrap the whole content area's children flush to the page edge. */
@@ -8862,7 +8868,26 @@ async function submitTkt(st){
       cleanData.createdAt=firebase.firestore.FieldValue.serverTimestamp();
       cleanData.createdAtMs=Date.now();
       cleanData.submitted=new Date().toLocaleString();
-      const newRef=await db.collection("tickets").add(cleanData);
+      // Deterministic report id when this report was started FROM a dispatch
+      // (_backToTktId set): a concurrent or stale double-submit — two techs with
+      // the same dispatch still open on their screens, or one device acting on a
+      // stale (offline) view — then converges to ONE report doc (merge) instead
+      // of creating DUPLICATE field reports for the same visit. Walk-in reports
+      // with no parent dispatch keep an auto-generated id (genuinely separate).
+      let newRef;
+      if(_backToTktId){
+        newRef=db.collection("tickets").doc("rep_"+_backToTktId);
+        // Union the media (arrayUnion) rather than letting merge REPLACE the array,
+        // so a second stale/concurrent submit landing on the same report keeps BOTH
+        // techs' photos/PDF instead of the last write clobbering the first's. Other
+        // scalar fields still merge last-write-wins.
+        const _mediaArr=Array.isArray(cleanData.media)?cleanData.media.slice():[];
+        if(_mediaArr.length)cleanData.media=firebase.firestore.FieldValue.arrayUnion.apply(null,_mediaArr);
+        else delete cleanData.media;
+        await newRef.set(cleanData,{merge:true});
+      }else{
+        newRef=await db.collection("tickets").add(cleanData);
+      }
       // If this field report was started from a dispatch ticket, mark that dispatch ticket as completed
       // so it disappears from the calendar (both for techs and admin)
       if(_backToTktId&&st==="complete"){
