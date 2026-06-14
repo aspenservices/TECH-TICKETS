@@ -539,7 +539,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .empty{padding:40px 20px;text-align:center;color:var(--i3);font-size:var(--fs-md)}
 
 /* Tickets */
-.tkt{background:var(--cd);border-radius:var(--rad);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-xs);border:1px solid #f0ece8;transition:box-shadow var(--dur-base) var(--ease-out),border-color var(--dur-base) var(--ease-out)}
+.tkt{--fs-xs:12px;--fs-sm:13.2px;--fs-base:15.6px;--fs-md:16.8px;--fs-lg:19.2px;--fs-xl:21.6px;background:var(--cd);border-radius:var(--rad);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-xs);border:1px solid #f0ece8;transition:box-shadow var(--dur-base) var(--ease-out),border-color var(--dur-base) var(--ease-out)}
 .tkt:hover{box-shadow:var(--sh-sm);border-color:#e8e0d4;transform:translateY(-2px)}
 .tkt{transition:box-shadow var(--dur-base) var(--ease-out),border-color var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out)}
 @media(prefers-reduced-motion:reduce){.tkt:hover{transform:none}}
@@ -557,7 +557,9 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .tkt-tag.tw.series-ss{background:var(--series-ss-bg);color:var(--series-ss-fg);border:1px solid var(--series-ss-bd)}
 .tkt-status{padding:5px 10px;border-radius:var(--r-xl);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;margin-left:8px;white-space:nowrap}
 .st-done{background:var(--acl);color:var(--ac)}.st-resched{background:#fef3cd;color:#856404}.st-complete{background:var(--c-ash-2);color:var(--i3)}
-.tkt-body{padding:0 14px 14px;display:none;border-top:1px solid var(--c-ash-2);font-size:var(--fs-sm)}.tkt-body.open{display:block;padding-top:8px;max-height:180px;overflow-y:auto}
+.tkt-body{padding:0 14px 14px;display:none;border-top:1px solid var(--c-ash-2);font-size:var(--fs-sm)}
+.tkt-body button{min-width:0;max-width:100%}
+.tkt-body>div{max-width:100%}.tkt-body.open{display:block;padding-top:8px;max-height:180px;overflow-y:auto}
 .tkt-row{display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;gap:8px}.tkt-row span:first-child{flex:1;min-width:0}.tkt-row span:last-child{font-weight:600;color:var(--br);flex-shrink:0}
 .tkt-total{display:flex;justify-content:space-between;font-size:var(--fs-lg);font-weight:700;border-top:2px solid #eee;margin-top:8px;padding-top:10px}.tkt-total span:last-child{color:var(--br)}
 .tkt-notes{font-size:var(--fs-sm);color:var(--i2);margin-top:6px;padding:8px 10px;background:#f9f9f6;border-radius:var(--r-md);font-style:italic;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;max-height:100px;overflow-y:auto}
@@ -17735,7 +17737,8 @@ var TR={
   "Enter a valid 5-digit ZIP":"Ingresa un código postal válido de 5 dígitos","Enter name":"Ingresa el nombre","File is empty":"El archivo está vacío",
   "HIDDEN":"OCULTO","Hide from views":"Ocultar de las vistas","Invalid zone":"Zona inválida",
   "No ZIPs match the current filters":"Ningún código postal coincide con los filtros","No zone":"Sin zona","Nothing to import":"Nada que importar",
-  "Override removed ✓":"Anulación eliminada ✓","Read-only":"Solo lectura","Rename technician:":"Renombrar técnico:","Show again":"Mostrar de nuevo","Status":"Estado"
+  "Override removed ✓":"Anulación eliminada ✓","Read-only":"Solo lectura","Rename technician:":"Renombrar técnico:","Show again":"Mostrar de nuevo","Status":"Estado",
+  "Submitted":"Enviado","Pending":"Pendiente","Edit Ticket":"Editar ticket"
 };
 function _i18nStr(s){ if(APP_LANG!=="es"||s==null) return s; var t=(""+s).trim(); return (t&&TR[t]!=null)?(""+s).replace(t,TR[t]):s; }
 function _i18nPass(root){
