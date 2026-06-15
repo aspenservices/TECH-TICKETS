@@ -1357,6 +1357,8 @@ body,.card,.tkt,.hdr,input,textarea,select,.pill,.wb{transition:background-color
 .theme-btn{background:none;border:none;color:inherit;cursor:pointer;padding:6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;opacity:.85;transition:opacity .15s var(--ease-snap,ease),transform .15s var(--ease-snap,ease)}
 .theme-btn:hover{opacity:1}
 .theme-btn:active{transform:scale(.88)}
+.lang-btn{font-size:12.5px;font-weight:800;letter-spacing:.6px;border:1.5px solid rgba(255,255,255,.4);border-radius:8px;padding:5px 9px;min-width:36px;opacity:1}
+.lang-btn:hover{opacity:1;background:rgba(255,255,255,.14)}
 @media(hover:hover){.tkt{transition:box-shadow var(--dur-base,.22s) var(--ease-out,ease),transform var(--dur-base,.22s) var(--ease-out,ease)}.tkt:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.10)}}
 body.dark-mode .tkt:hover{box-shadow:0 8px 24px rgba(0,0,0,.45)}
 #confettiCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99999;display:none}
@@ -7555,6 +7557,29 @@ function _mountThemeToggle(){
     _syncThemeBtn(_curTheme());
   }catch(_e){}
 }
+// ─── LANGUAGE TOGGLE (header pill, desktop + mobile) ───────────────────────
+// Shows the current language code (ES/EN) as a small pill in the header and
+// toggles the whole app between Spanish and English. On mobile the More sheet
+// also exposes this; here it gives desktop (top-nav) users a visible control.
+function _syncLangBtn(){
+  var b=document.getElementById("langToggleBtn");
+  if(!b)return;
+  b.textContent=(typeof APP_LANG!=="undefined"&&APP_LANG==="en")?"EN":"ES";
+  var t=(b.textContent==="EN")?"Language: English \u2192 tap for Espa\u00f1ol":"Idioma: Espa\u00f1ol \u2192 toca para English";
+  b.title=t;b.setAttribute("aria-label",t);
+}
+function _mountLangToggle(){
+  try{
+    var hdr=document.querySelector(".hdr");
+    var anchor=document.getElementById("densityToggleBtn")||document.getElementById("themeToggleBtn")||document.getElementById("lockBtn");
+    if(!hdr||!anchor||document.getElementById("langToggleBtn"))return;
+    var b=document.createElement("button");
+    b.id="langToggleBtn";b.className="theme-btn lang-btn";b.type="button";
+    b.onclick=function(){if(typeof toggleAppLang==="function")toggleAppLang();};
+    hdr.insertBefore(b,anchor);
+    _syncLangBtn();
+  }catch(_e){}
+}
 // ─── DENSITY (Compact / Comfortable) ───────────────────────────────────────
 // Lets power users tighten the ticket cards so more fit per screen. Persisted
 // per-device in localStorage; purely cosmetic (CSS body.density-compact).
@@ -7926,6 +7951,7 @@ async function init(){
   _watchSystemTheme();   // auto-follow OS theme live (unless user chose manually)
   _applyDensity();       // restore compact/comfortable preference
   _mountDensityToggle(); // add the header density toggle
+  _mountLangToggle();    // add the header ES/EN language toggle (visible on desktop)
   // Start real-time presence once Firestore is ready (safe under anon auth)
   setTimeout(function(){try{_presenceStart()}catch(_e){}},2000);
   // Copy the brand logo from the header to the login screen for visual continuity
@@ -17584,6 +17610,7 @@ function applyAppLang(){
   try{if(typeof _i18nPass==="function")_i18nPass(document.body);}catch(e){}
   try{_ttUpdateLangBtn();}catch(e){}
   try{_ttSyncToolLang();}catch(e){}
+  try{_syncLangBtn();}catch(e){}
   _applyingLang=false;
 }
 function setAppLang(l){APP_LANG=(l==="en")?"en":"es";try{localStorage.setItem("appLang",APP_LANG)}catch(e){}applyAppLang();}
