@@ -11610,12 +11610,23 @@ function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0
 // BULLET JOURNAL — shared organization log (Alberto + Nela). Firestore: "bujo".
 // Faithful BuJo method adapted to digital: rapid logging (task • / event ○ /
 // note –), signifiers (★ priority, ! idea), daily / monthly / future logs,
-// custom collections, and the migration ritual.
+// custom collections, and the migration ritual. Plus: customizable quick
+// buttons, progress + overdue tracking, AI interpret (✨), convert-to-ticket.
 // ═══════════════════════════════════════════════════════════════════════════
 var _bujoInited=false, bujo=[], bujoSub="today", bujoFilter="all",
     bujoType="task", bujoSig="", bujoSel=fmtD(new Date()),
     bujoMonth=new Date().getMonth(), bujoYear=new Date().getFullYear(),
-    bujoColl="", bujoDraft="", bujoSchedFor="";
+    bujoColl="", bujoDraft="", bujoSchedFor="",
+    bujoBtns=[], _bujoBtnsLoaded=false, bujoQuickColl="", bujoCfgOpen=false, bujoAIBusy=false;
+
+// Starter quick buttons (seeded once; fully editable by the user via ⚙️).
+var BUJO_DEFAULT_BTNS=[
+  {emoji:"💰",label:"Cobranza",type:"task",collection:"Cobranza",sig:"priority"},
+  {emoji:"🧾",label:"QB",type:"task",collection:"QB",sig:""},
+  {emoji:"📞",label:"Llamar",type:"task",collection:"",sig:""},
+  {emoji:"👥",label:"Cliente",type:"note",collection:"Clientes",sig:""},
+  {emoji:"📋",label:"Tom",type:"task",collection:"Tom",sig:""}
+];
 
 function bujoInit(){
   if(_bujoInited||!db)return; _bujoInited=true;
@@ -11624,6 +11635,13 @@ function bujoInit(){
     var pg=document.getElementById("pg11");
     if(pg&&pg.classList.contains("show"))rndrBujo();
   },function(e){console.warn("[bujo sync]",e)});
+  // quick buttons config (shared, in config/bujoButtons)
+  db.collection("config").doc("bujoButtons").get().then(function(doc){
+    if(doc.exists&&doc.data()&&Array.isArray(doc.data().list)&&doc.data().list.length)bujoBtns=doc.data().list;
+    else bujoBtns=BUJO_DEFAULT_BTNS.slice();
+    _bujoBtnsLoaded=true;
+    var pg=document.getElementById("pg11"); if(pg&&pg.classList.contains("show"))rndrBujo();
+  }).catch(function(){bujoBtns=BUJO_DEFAULT_BTNS.slice();_bujoBtnsLoaded=true;});
 }
 
 // ── small helpers ──────────────────────────────────────────────────────────
@@ -11651,6 +11669,16 @@ function _bujoSort(list){
     var tb=b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0;
     return ta-tb;
   });
+}
+function _bujoIsOverdue(e){
+  return !!(e.eventDate&&e.eventDate<_bujoToday()&&e.status!=="done"&&e.status!=="cancelled"&&(e.type==="event"||e.status==="scheduled"));
+}
+function _bujoSameDay(ts){ if(!ts||!ts.toMillis)return false; try{return fmtD(new Date(ts.toMillis()))===_bujoToday()}catch(e){return false} }
+function _bujoKnownColls(){
+  var set={};
+  bujo.forEach(function(e){if(e.collection)set[e.collection]=1});
+  bujoBtns.forEach(function(b){if(b.collection)set[b.collection]=1});
+  return Object.keys(set);
 }
 function _bujoGlyph(e){
   if(e.type==="event")return "○";
@@ -11680,15 +11708,19 @@ function bujoAdd(){
   if(!db){toast("Offline","err");return;}
   var now=firebase.firestore.FieldValue.serverTimestamp();
   var inColl=(bujoSub==="collection-view");
+  var dest=inColl?bujoColl:(bujoQuickColl||"");
+  var status="open", evt="";
+  if(bujoType==="event"){evt=bujoSchedFor||bujoSel;}
+  else if(bujoType==="task"&&bujoSchedFor){status="scheduled";evt=bujoSchedFor;} // AI/quick scheduled task
   var entry={
-    type:bujoType, text:txt, status:"open", sig:bujoSig,
-    collection:inColl?bujoColl:"",
-    logDate:inColl?_bujoToday():bujoSel,
-    eventDate:(bujoType==="event"?(bujoSchedFor||bujoSel):""),
+    type:bujoType, text:txt, status:status, sig:bujoSig,
+    collection:dest,
+    logDate:(inColl||dest)?_bujoToday():bujoSel,
+    eventDate:evt,
     owner:(currentUser?currentUser.name:"?"),
     createdAt:now, updatedAt:now, doneAt:null
   };
-  inp.value=""; bujoDraft=""; bujoSig=""; bujoSchedFor="";
+  inp.value=""; bujoDraft=""; bujoSig=""; bujoSchedFor=""; bujoQuickColl="";
   db.collection("bujo").add(entry)
     .then(function(){toast(L2("Agregado","Added"));rndrBujo();})
     .catch(function(e){console.warn("[bujoAdd]",e);toast("Error","err")});
@@ -11724,6 +11756,223 @@ function bujoNavMonth(delta){bujoMonth+=delta;if(bujoMonth>11){bujoMonth=0;bujoY
 function bujoOpenColl(enc){bujoColl=decodeURIComponent(enc);bujoSub="collection-view";rndrBujo()}
 function bujoNewColl(){var n=prompt(L2("Nombre de la colección","Collection name"));if(n&&n.trim()){bujoColl=n.trim();bujoSub="collection-view";rndrBujo()}}
 
+// ── quick buttons (customizable, 1-click prefill) ────────────────────────────
+function bujoQuick(i){
+  var b=bujoBtns[i]; if(!b)return;
+  bujoType=b.type||"task"; bujoSig=b.sig||""; bujoQuickColl=b.collection||""; bujoSchedFor="";
+  rndrBujo();
+  setTimeout(function(){var inp=document.getElementById("bujoInput");if(inp)inp.focus()},30);
+}
+function bujoClearQuick(){bujoQuickColl="";rndrBujo()}
+function _bujoQuickRow(){
+  if(!bujoBtns.length)return "";
+  var h='<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:7px;margin-bottom:9px;-webkit-overflow-scrolling:touch;align-items:center">';
+  bujoBtns.forEach(function(b,i){
+    h+='<button onclick="bujoQuick('+i+')" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--ln);background:var(--bg);color:var(--ink);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap"><span>'+esc(b.emoji||"•")+'</span>'+esc(b.label||"")+'</button>';
+  });
+  h+='<button onclick="bujoOpenBtnCfg()" title="'+L2("Editar botones","Edit buttons")+'" style="flex:0 0 auto;width:32px;height:32px;border-radius:50%;border:1.5px dashed var(--i3);background:var(--cd);color:var(--i3);cursor:pointer;font-size:14px">⚙️</button>';
+  h+='</div>';
+  return h;
+}
+
+// ── quick-buttons config panel ───────────────────────────────────────────────
+function bujoOpenBtnCfg(){bujoCfgOpen=true;rndrBujo()}
+function bujoCloseBtnCfg(){bujoCfgOpen=false;rndrBujo()}
+function bujoSaveBtns(){
+  if(!db){toast("Offline","err");return;}
+  db.collection("config").doc("bujoButtons").set({list:bujoBtns}).then(function(){toast(L2("Botones guardados","Buttons saved"))}).catch(function(e){console.warn(e);toast("Error","err")});
+}
+function bujoDelBtn(i){ bujoBtns.splice(i,1); bujoSaveBtns(); rndrBujo(); }
+function bujoAddBtn(){
+  var em=(document.getElementById("bcfgEmoji")||{}).value||"";
+  var lb=(document.getElementById("bcfgLabel")||{}).value||"";
+  var ty=(document.getElementById("bcfgType")||{}).value||"task";
+  var co=(document.getElementById("bcfgColl")||{}).value||"";
+  var sg=(document.getElementById("bcfgSig")||{}).value||"";
+  lb=lb.trim(); co=co.trim(); em=em.trim();
+  if(!lb){toast(L2("Ponle un nombre al botón","Give the button a name"),"warn");return;}
+  bujoBtns.push({emoji:em||"•",label:lb,type:ty,collection:co,sig:sg});
+  bujoSaveBtns(); rndrBujo();
+}
+function _bujoCfgView(){
+  var h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><button onclick="bujoCloseBtnCfg()" style="padding:6px 12px;border:1px solid var(--ln);border-radius:9px;background:var(--cd);color:var(--i2);cursor:pointer;font-family:inherit;font-weight:700;font-size:13px">‹ '+L2("Volver","Back")+'</button><div style="font-weight:800;color:var(--ink);font-size:16px">⚙️ '+L2("Editar botones rápidos","Edit quick buttons")+'</div></div>';
+  h+='<div style="font-size:12px;color:var(--i3);margin-bottom:12px">'+L2("Cada botón pre-llena tipo, colección y prioridad con un toque. Tú decides cuáles.","Each button pre-fills type, collection and priority with one tap. You decide which ones.")+'</div>';
+  // existing buttons
+  if(bujoBtns.length){
+    bujoBtns.forEach(function(b,i){
+      h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--ln);border-radius:11px;margin-bottom:7px;background:var(--cd)">';
+      h+='<span style="font-size:18px">'+esc(b.emoji||"•")+'</span>';
+      h+='<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink);font-size:14px">'+esc(b.label||"")+'</div><div style="font-size:11px;color:var(--i3)">'+esc(b.type||"task")+(b.collection?(" · "+esc(b.collection)):"")+(b.sig==="priority"?" · ★":(b.sig==="idea"?" · !":""))+'</div></div>';
+      h+='<button onclick="bujoDelBtn('+i+')" title="'+L2("Eliminar","Delete")+'" style="width:30px;height:30px;border:1px solid var(--ln);border-radius:8px;background:var(--cd);color:var(--c-danger-strong);font-size:14px;cursor:pointer;font-family:inherit">🗑</button>';
+      h+='</div>';
+    });
+  }else{
+    h+=_bujoEmpty(L2("Sin botones. Agrega el primero abajo.","No buttons. Add the first one below."));
+  }
+  // add form
+  h+='<div style="margin-top:14px;padding:13px;border:1.5px dashed var(--ac);border-radius:12px;background:var(--acl)">';
+  h+='<div style="font-weight:800;color:var(--acd);font-size:13px;margin-bottom:9px">'+L2("Nuevo botón","New button")+'</div>';
+  h+='<div style="display:flex;gap:7px;margin-bottom:8px">';
+  h+='<input id="bcfgEmoji" placeholder="💰" maxlength="2" style="width:54px;text-align:center;padding:9px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:15px;background:var(--cd)">';
+  h+='<input id="bcfgLabel" placeholder="'+L2("Nombre","Label")+'" style="flex:1;padding:9px 11px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:14px;background:var(--cd);color:var(--ink)">';
+  h+='</div>';
+  h+='<div style="display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap">';
+  h+='<select id="bcfgType" style="flex:1;min-width:90px;padding:9px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:13px;background:var(--cd);color:var(--ink)"><option value="task">'+L2("Tarea","Task")+'</option><option value="event">'+L2("Evento","Event")+'</option><option value="note">'+L2("Nota","Note")+'</option></select>';
+  h+='<select id="bcfgSig" style="flex:1;min-width:90px;padding:9px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:13px;background:var(--cd);color:var(--ink)"><option value="">'+L2("Sin marca","No mark")+'</option><option value="priority">★ '+L2("Prioridad","Priority")+'</option><option value="idea">! '+L2("Idea","Idea")+'</option></select>';
+  h+='</div>';
+  h+='<input id="bcfgColl" placeholder="'+L2("Colección (opcional)","Collection (optional)")+'" style="width:100%;padding:9px 11px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:14px;background:var(--cd);color:var(--ink);margin-bottom:9px;box-sizing:border-box">';
+  h+='<button onclick="bujoAddBtn()" style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--ac);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">+ '+L2("Agregar botón","Add button")+'</button>';
+  h+='</div>';
+  return h;
+}
+
+// ── AI interpret (✨) ─────────────────────────────────────────────────────────
+async function bujoAI(){
+  var inp=document.getElementById("bujoInput"); if(!inp)return;
+  var txt=(inp.value||"").trim();
+  if(!txt){toast(L2("Escribe algo para interpretar","Type something to interpret"),"warn");return;}
+  var key=(typeof getAIKey==="function")?getAIKey():"";
+  if(!key){toast(L2("Configura tu API key en Admin primero","Set your API key in Admin first"),"warn");return;}
+  bujoDraft=txt; bujoAIBusy=true; rndrBujo();
+  try{
+    var colls=_bujoKnownColls();
+    var sys="You parse a quick note into a bullet-journal entry. Today is "+_bujoToday()+" (YYYY-MM-DD). "
+      +"Known collections: "+(colls.length?colls.join(", "):"(none)")+". "
+      +"Return ONLY a JSON object, no preamble, no markdown, with keys: "
+      +"type ('task'|'event'|'note'), sig (''|'priority'|'idea'), collection (one of the known collections if it clearly fits, else ''), "
+      +"eventDate ('YYYY-MM-DD' if the note implies a date/deadline, else ''), text (the cleaned note text). "
+      +"Rules: a to-do is 'task'; something happening at a time is 'event'; a thought/reference is 'note'. "
+      +"Mark 'priority' only if clearly urgent/important. Resolve relative dates (today, tomorrow, Friday) against today. Keep text concise.";
+    var res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,system:sys,messages:[{role:"user",content:txt}]})
+    });
+    if(!res.ok){var em="AI "+res.status;if(res.status===401)em+=" — key invalid (Admin tab)";throw new Error(em);}
+    var data=await res.json();
+    var out=(data.content||[]).filter(function(b){return b.type==="text"}).map(function(b){return b.text}).join("").trim();
+    out=out.replace(/```json/g,"").replace(/```/g,"").trim();
+    var p=JSON.parse(out);
+    if(p.type==="task"||p.type==="event"||p.type==="note")bujoType=p.type;
+    if(p.sig===""||p.sig==="priority"||p.sig==="idea")bujoSig=p.sig;
+    bujoQuickColl=(typeof p.collection==="string")?p.collection:"";
+    bujoSchedFor=(typeof p.eventDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(p.eventDate))?p.eventDate:"";
+    bujoDraft=(typeof p.text==="string"&&p.text.trim())?p.text.trim():txt;
+    toast(L2("Interpretado — revisa y agrega","Interpreted — review and add"));
+  }catch(e){console.warn("[bujoAI]",e);toast(L2("No se pudo interpretar","Couldn't interpret"),"err");}
+  bujoAIBusy=false;
+  var i0=document.getElementById("bujoInput"); if(i0)i0.value=bujoDraft||"";
+  rndrBujo();
+  setTimeout(function(){var i2=document.getElementById("bujoInput");if(i2){i2.focus();try{i2.setSelectionRange(i2.value.length,i2.value.length)}catch(_e){}}},30);
+}
+
+// ── progress + overdue stats ─────────────────────────────────────────────────
+function _bujoStats(){
+  var all=_bujoVisible(bujo);
+  var openT=all.filter(function(e){return e.type==="task"&&e.status==="open"}).length;
+  var doneToday=all.filter(function(e){return e.type==="task"&&e.status==="done"&&_bujoSameDay(e.doneAt)}).length;
+  var overdue=all.filter(_bujoIsOverdue).length;
+  function chip(val,label,color,bg){
+    return '<div style="flex:1;min-width:0;background:'+bg+';border-radius:11px;padding:9px 11px;text-align:center"><div style="font-size:20px;font-weight:800;line-height:1;color:'+color+'">'+val+'</div><div style="font-size:10px;font-weight:700;color:var(--i3);margin-top:3px;text-transform:uppercase;letter-spacing:.3px">'+label+'</div></div>';
+  }
+  var h='<div style="display:flex;gap:7px;margin-bottom:13px">';
+  h+=chip(openT,L2("Abiertas","Open"),"var(--ac)","var(--acl)");
+  h+=chip(doneToday,L2("Hechas hoy","Done today"),"var(--c-success-strong)","var(--c-success-bg)");
+  h+=chip(overdue,L2("Vencidas","Overdue"),overdue>0?"var(--c-danger-strong)":"var(--i3)",overdue>0?"var(--c-danger-bg)":"var(--c-neutral-bg)");
+  h+='</div>';
+  return h;
+}
+
+// ── entry card ───────────────────────────────────────────────────────────────
+function _bujoActBtn(onclick,glyph,title,color){
+  return '<button onclick="'+onclick+'" title="'+title+'" style="width:30px;height:30px;border:1px solid var(--ln);border-radius:8px;background:var(--cd);color:'+color+';font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0">'+glyph+'</button>';
+}
+function _bujoEntry(e,opts){
+  opts=opts||{};
+  var struck=(e.type==="task"&&(e.status==="done"||e.status==="cancelled"));
+  var overdue=_bujoIsOverdue(e);
+  var glyph=_bujoGlyph(e);
+  var glyphColor=(e.type==="task"&&e.status==="done")?"var(--c-success-strong)":(e.status==="cancelled"?"var(--i3)":(e.type==="note"?"var(--i3)":"var(--ac)"));
+  var clickable=(e.type==="task"&&e.status!=="cancelled");
+  var border=overdue?"var(--c-danger-strong)":"var(--ln)";
+  var h='<div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid '+border+';border-radius:11px;margin-bottom:7px;background:'+(overdue?"var(--c-danger-bg)":"var(--cd)")+'">';
+  h+='<button '+(clickable?'onclick="bujoCycle(\''+e.id+'\')"':'')+' style="flex-shrink:0;width:26px;height:26px;border:none;background:none;font-size:18px;line-height:1;color:'+glyphColor+';cursor:'+(clickable?"pointer":"default")+';font-weight:800;font-family:inherit;padding:0">'+glyph+'</button>';
+  h+='<div style="flex:1;min-width:0">';
+  h+='<div style="font-size:14px;color:var(--ink);'+(struck?"text-decoration:line-through;color:var(--i3)":"")+';word-break:break-word">'+_bujoSigHTML(e)+esc(e.text)+'</div>';
+  var meta=[];
+  if(e.eventDate&&(e.type==="event"||e.status==="scheduled"))meta.push("📅 "+_bujoFmtNice(e.eventDate));
+  if(opts.showDate&&e.logDate)meta.push(_bujoFmtNice(e.logDate));
+  var metaHTML=meta.length?'<span style="font-size:11px;color:var(--i3)">'+esc(meta.join(" · "))+'</span>':"";
+  var overdueTag=overdue?'<span style="font-size:10px;font-weight:800;color:#fff;background:var(--c-danger-strong);border-radius:999px;padding:1px 7px">'+L2("VENCIDA","OVERDUE")+'</span>':"";
+  h+='<div style="display:flex;align-items:center;gap:7px;margin-top:5px;flex-wrap:wrap">'+_bujoOwner(e)+metaHTML+overdueTag+(e.convertedToTicket?'<span style="font-size:10px;font-weight:700;color:var(--c-info-fg)">🎫 '+L2("Ticket creado","Ticket created")+'</span>':"")+'</div>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:3px;flex-shrink:0">';
+  if(e.type==="task"&&e.status!=="cancelled"){
+    if(e.status!=="done")h+=_bujoActBtn("bujoCycle('"+e.id+"')","✓",L2("Hecho","Done"),"var(--c-success-strong)");
+    if(opts.showMigrate!==false&&e.status==="open")h+=_bujoActBtn("bujoMigrate('"+e.id+"')","›",L2("A hoy","To today"),"var(--ac)");
+    h+=_bujoActBtn("bujoToggleSched('"+e.id+"')","‹",L2("Agendar","Schedule"),"var(--c-info-strong)");
+    h+=_bujoActBtn("bujoConvert('"+e.id+"')","🎫",L2("A ticket","To ticket"),"var(--c-info-strong)");
+    h+=_bujoActBtn("bujoCancelTask('"+e.id+"')","⊘",L2("Cancelar","Cancel"),"var(--i3)");
+  }
+  h+=_bujoActBtn("bujoDel('"+e.id+"')","🗑",L2("Eliminar","Delete"),"var(--c-danger-strong)");
+  h+='</div></div>';
+  h+='<div id="bujoSched_'+e.id+'" style="display:none;margin:-3px 0 9px 36px"><input type="date" onchange="bujoDoSchedule(\''+e.id+'\',this.value)" style="padding:6px 9px;border:1.5px solid var(--c-info-border);border-radius:8px;font-family:inherit;font-size:13px"></div>';
+  return h;
+}
+
+// ── convert-to-ticket modal ──────────────────────────────────────────────────
+function _bujoEnsureModal(){
+  if(document.getElementById("bujoCvtBg"))return;
+  var h='<div class="mbg" id="bujoCvtBg" onclick="if(event.target===this)bujoCvtClose()">'
+    +'<div class="modal" style="max-width:440px;width:100%;background:var(--cd);border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom))">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:20px">🎫</span><h3 style="margin:0;font-size:17px;font-weight:800;color:var(--ink)">'+L2("Convertir en ticket","Convert to ticket")+'</h3><button onclick="bujoCvtClose()" style="margin-left:auto;width:30px;height:30px;border:none;background:var(--c-neutral-bg);border-radius:8px;font-size:18px;cursor:pointer;color:var(--i2)">×</button></div>'
+    +'<div style="font-size:12px;color:var(--i3);margin-bottom:12px">'+L2("Crea un ticket de servicio (estado: pendiente) con esta nota. La entrada se marcará como hecha.","Creates a service ticket (status: pending) from this note. The entry will be marked done.")+'</div>'
+    +'<div id="bujoCvtText" style="font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:9px;padding:10px 12px;margin-bottom:12px;word-break:break-word"></div>'
+    +'<input type="hidden" id="bujoCvtId">'
+    +'<label style="display:block;font-size:11px;font-weight:700;color:var(--i2);margin-bottom:4px">'+L2("Cliente *","Customer *")+'</label>'
+    +'<input id="bujoCvtCustomer" placeholder="'+L2("Nombre del cliente","Customer name")+'" style="width:100%;padding:11px 13px;border:1.5px solid var(--ln);border-radius:10px;font-family:inherit;font-size:14px;background:var(--bg);color:var(--ink);margin-bottom:11px;box-sizing:border-box">'
+    +'<label style="display:block;font-size:11px;font-weight:700;color:var(--i2);margin-bottom:4px">'+L2("Teléfono (opcional)","Phone (optional)")+'</label>'
+    +'<input id="bujoCvtPhone" placeholder="555-123-4567" style="width:100%;padding:11px 13px;border:1.5px solid var(--ln);border-radius:10px;font-family:inherit;font-size:14px;background:var(--bg);color:var(--ink);margin-bottom:16px;box-sizing:border-box">'
+    +'<div style="display:flex;gap:9px"><button onclick="bujoCvtClose()" style="flex:1;padding:12px;border:1.5px solid var(--ln);border-radius:11px;background:var(--cd);color:var(--i2);font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">'+L2("Cancelar","Cancel")+'</button>'
+    +'<button onclick="bujoCvtCreate()" style="flex:1;padding:12px;border:none;border-radius:11px;background:var(--ac);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">'+L2("Crear ticket","Create ticket")+'</button></div>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML("beforeend",h);
+}
+function bujoConvert(id){
+  var e=bujo.find(function(x){return x.id===id}); if(!e)return;
+  _bujoEnsureModal();
+  document.getElementById("bujoCvtText").textContent=e.text||"";
+  document.getElementById("bujoCvtId").value=id;
+  document.getElementById("bujoCvtCustomer").value="";
+  document.getElementById("bujoCvtPhone").value="";
+  document.getElementById("bujoCvtBg").classList.add("open");
+  setTimeout(function(){var c=document.getElementById("bujoCvtCustomer");if(c)c.focus()},40);
+}
+function bujoCvtClose(){var bg=document.getElementById("bujoCvtBg");if(bg)bg.classList.remove("open")}
+function bujoCvtCreate(){
+  if(!db){toast("Offline","err");return;}
+  var id=(document.getElementById("bujoCvtId")||{}).value||"";
+  var cust=((document.getElementById("bujoCvtCustomer")||{}).value||"").trim();
+  var phone=((document.getElementById("bujoCvtPhone")||{}).value||"").trim();
+  if(!cust){toast(L2("Escribe el nombre del cliente","Enter the customer name"),"warn");return;}
+  var e=bujo.find(function(x){return x.id===id});
+  var notes=e?(e.text||""):"";
+  db.collection("tickets").add({
+    customer:cust, date:fmtD(new Date()), techs:[], workTypes:["Service Call"],
+    warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},
+    visitNum:1, noLabor:false, arrival:"", departure:"", parts:[],
+    total:0, partsCost:0, totalRda:0, notes:notes,
+    phone:phone, address:"", city:"", zip:"", zone:"",
+    media:[], videoLinks:null, source:"journal", status:"pending",
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(), createdAtMs:Date.now(),
+    submitted:new Date().toLocaleString()
+  }).then(function(){
+    if(id)bujoUpd(id,{status:"done",doneAt:firebase.firestore.FieldValue.serverTimestamp(),convertedToTicket:true});
+    bujoCvtClose();
+    toast(L2("Ticket creado ✓","Ticket created ✓"));
+  }).catch(function(err){console.warn("[bujoCvt]",err);toast("Error: "+err.message,"err")});
+}
+
 // ── render ───────────────────────────────────────────────────────────────────
 function rndrBujo(){
   var shell=document.getElementById("bujoShell"); if(!shell)return;
@@ -11737,6 +11986,8 @@ function rndrBujo(){
   h+='<div style="margin-left:auto;display:inline-flex;border:1.5px solid var(--ln);border-radius:9px;overflow:hidden">';
   h+=_bujoSeg("all",L2("Todas","All"))+_bujoSeg("mine",L2("Mías","Mine"));
   h+='</div></div>';
+  // config panel takes over the body
+  if(bujoCfgOpen){shell.innerHTML=h+_bujoCfgView();return;}
   // subnav
   var subs=[["today",L2("Hoy","Today")],["month",L2("Mes","Month")],["future",L2("Futuro","Future")],["collections",L2("Colecciones","Collections")],["migrate",L2("Migrar","Migrate")]];
   var activeSub=(bujoSub==="collection-view"?"collections":bujoSub);
@@ -11748,6 +11999,8 @@ function rndrBujo(){
     h+='<button onclick="bujoSetSub(\''+s[0]+'\')" style="flex:0 0 auto;padding:7px 14px;border-radius:999px;border:1.5px solid '+(on?"var(--ac)":"var(--ln)")+';background:'+(on?"var(--ac)":"var(--cd)")+';color:'+(on?"#fff":"var(--i2)")+';font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">'+s[1]+bdg+'</button>';
   });
   h+='</div>';
+  // progress stats (not on collections list)
+  if(bujoSub!=="collections")h+=_bujoStats();
   // body
   if(bujoSub==="today")h+=_bujoComposer()+_bujoTodayView();
   else if(bujoSub==="month")h+=_bujoMonthView();
@@ -11766,12 +12019,19 @@ function _bujoSeg(val,label){
 function _bujoComposer(){
   var typeBtns=[["task","•",L2("Tarea","Task")],["event","○",L2("Evento","Event")],["note","–",L2("Nota","Note")]];
   var h='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:12px;margin-bottom:14px;box-shadow:var(--sh-sm)">';
+  // quick buttons
+  h+=_bujoQuickRow();
+  // active quick destination chip
+  if(bujoQuickColl)
+    h+='<div style="display:inline-flex;align-items:center;gap:6px;background:var(--acl);color:var(--acd);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:700;margin-bottom:9px">→ '+esc(bujoQuickColl)+' <span onclick="bujoClearQuick()" style="cursor:pointer;font-weight:900">×</span></div>';
+  // type selector
   h+='<div style="display:flex;gap:6px;margin-bottom:8px">';
   typeBtns.forEach(function(t){
     var on=(bujoType===t[0]);
     h+='<button onclick="bujoSetType(\''+t[0]+'\')" style="flex:1;padding:8px 6px;border-radius:9px;border:1.5px solid '+(on?"var(--ac)":"var(--ln)")+';background:'+(on?"var(--acl)":"var(--cd)")+';color:'+(on?"var(--acd)":"var(--i2)")+';font-weight:700;font-size:13px;cursor:pointer;font-family:inherit"><span style="font-size:16px;margin-right:5px">'+t[1]+'</span>'+t[2]+'</button>';
   });
   h+='</div>';
+  // signifiers + event date
   h+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">';
   h+='<span style="font-size:11px;color:var(--i3);font-weight:700">'+L2("Marcar:","Mark:")+'</span>';
   h+='<button onclick="bujoToggleSig(\'priority\')" title="'+L2("Prioridad","Priority")+'" style="padding:5px 12px;border-radius:8px;border:1.5px solid '+(bujoSig==="priority"?"var(--ac)":"var(--ln)")+';background:'+(bujoSig==="priority"?"var(--ac)":"var(--cd)")+';color:'+(bujoSig==="priority"?"#fff":"var(--ac)")+';font-weight:900;cursor:pointer;font-family:inherit">★</button>';
@@ -11779,41 +12039,12 @@ function _bujoComposer(){
   if(bujoType==="event")
     h+='<input type="date" value="'+(bujoSchedFor||bujoSel)+'" onchange="bujoSchedFor=this.value" style="margin-left:auto;padding:6px 9px;border:1.5px solid var(--ln);border-radius:8px;font-family:inherit;font-size:12px;color:var(--ink);background:var(--cd)">';
   h+='</div>';
+  // input row + AI
   h+='<div style="display:flex;gap:8px">';
   h+='<input id="bujoInput" placeholder="'+L2("Captura rápida… (Enter para agregar)","Rapid log… (Enter to add)")+'" oninput="bujoDraft=this.value" onkeydown="if(event.key===\'Enter\'){event.preventDefault();bujoAdd()}" style="flex:1;padding:11px 13px;border:1.5px solid var(--ln);border-radius:10px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg)">';
+  h+='<button onclick="bujoAI()" title="'+L2("Interpretar con AI","Interpret with AI")+'" style="padding:0 13px;border-radius:10px;border:1.5px solid var(--c-purple-strong);background:'+(bujoAIBusy?"var(--c-purple-strong)":"var(--c-purple-bg)")+';color:'+(bujoAIBusy?"#fff":"var(--c-purple-strong)")+';font-weight:800;font-size:15px;cursor:pointer;font-family:inherit">'+(bujoAIBusy?"…":"✨")+'</button>';
   h+='<button onclick="bujoAdd()" style="padding:0 18px;border-radius:10px;border:none;background:var(--ac);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">'+L2("Agregar","Add")+'</button>';
   h+='</div></div>';
-  return h;
-}
-function _bujoActBtn(onclick,glyph,title,color){
-  return '<button onclick="'+onclick+'" title="'+title+'" style="width:30px;height:30px;border:1px solid var(--ln);border-radius:8px;background:var(--cd);color:'+color+';font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0">'+glyph+'</button>';
-}
-function _bujoEntry(e,opts){
-  opts=opts||{};
-  var struck=(e.type==="task"&&(e.status==="done"||e.status==="cancelled"));
-  var glyph=_bujoGlyph(e);
-  var glyphColor=(e.type==="task"&&e.status==="done")?"var(--c-success-strong)":(e.status==="cancelled"?"var(--i3)":(e.type==="note"?"var(--i3)":"var(--ac)"));
-  var clickable=(e.type==="task"&&e.status!=="cancelled");
-  var h='<div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid var(--ln);border-radius:11px;margin-bottom:7px;background:var(--cd)">';
-  h+='<button '+(clickable?'onclick="bujoCycle(\''+e.id+'\')"':'')+' style="flex-shrink:0;width:26px;height:26px;border:none;background:none;font-size:18px;line-height:1;color:'+glyphColor+';cursor:'+(clickable?"pointer":"default")+';font-weight:800;font-family:inherit;padding:0">'+glyph+'</button>';
-  h+='<div style="flex:1;min-width:0">';
-  h+='<div style="font-size:14px;color:var(--ink);'+(struck?"text-decoration:line-through;color:var(--i3)":"")+';word-break:break-word">'+_bujoSigHTML(e)+esc(e.text)+'</div>';
-  var meta=[];
-  if(e.eventDate&&(e.type==="event"||e.status==="scheduled"))meta.push("📅 "+_bujoFmtNice(e.eventDate));
-  if(opts.showDate&&e.logDate)meta.push(_bujoFmtNice(e.logDate));
-  var metaHTML=meta.length?'<span style="font-size:11px;color:var(--i3)">'+esc(meta.join(" · "))+'</span>':"";
-  h+='<div style="display:flex;align-items:center;gap:7px;margin-top:5px">'+_bujoOwner(e)+metaHTML+'</div>';
-  h+='</div>';
-  h+='<div style="display:flex;gap:3px;flex-shrink:0">';
-  if(e.type==="task"&&e.status!=="cancelled"){
-    if(e.status!=="done")h+=_bujoActBtn("bujoCycle('"+e.id+"')","✓",L2("Hecho","Done"),"var(--c-success-strong)");
-    if(opts.showMigrate!==false&&e.status==="open")h+=_bujoActBtn("bujoMigrate('"+e.id+"')","›",L2("A hoy","To today"),"var(--ac)");
-    h+=_bujoActBtn("bujoToggleSched('"+e.id+"')","‹",L2("Agendar","Schedule"),"var(--c-info-strong)");
-    h+=_bujoActBtn("bujoCancelTask('"+e.id+"')","⊘",L2("Cancelar","Cancel"),"var(--i3)");
-  }
-  h+=_bujoActBtn("bujoDel('"+e.id+"')","🗑",L2("Eliminar","Delete"),"var(--c-danger-strong)");
-  h+='</div></div>';
-  h+='<div id="bujoSched_'+e.id+'" style="display:none;margin:-3px 0 9px 36px"><input type="date" onchange="bujoDoSchedule(\''+e.id+'\',this.value)" style="padding:6px 9px;border:1.5px solid var(--c-info-border);border-radius:8px;font-family:inherit;font-size:13px"></div>';
   return h;
 }
 function _bujoTodayView(){
@@ -13040,6 +13271,127 @@ function _reportedFoundHTML(t){
   if(fnd)rows+='<div style="display:flex;gap:8px;align-items:flex-start'+(rep?';margin-top:6px':'')+'"><span style="font-size:var(--fs-xs);font-weight:800;color:var(--i2);min-width:74px;padding-top:1px">Tech found</span><span style="font-size:var(--fs-sm);color:var(--ink);font-weight:600">'+esc(fnd)+'</span></div>';
   return '<div class="dt-sec"><div class="dt-sec-t">\uD83D\uDDE3\uFE0F Customer reported</div>'+rows+'<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:6px">↳ What the tech did is in the notes below.</div></div>';
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// CHARGE LOG (Authorize.Net) — bulletproof, audit-ready collection trail.
+// Lives on each ticket as t.charges = [{amount, txnId, result, note, at, by}].
+// Every entry is stamped with date/time + author automatically: efficiency for
+// Nela (see real charge status at a glance) AND hard evidence (transaction IDs
+// with timestamps) so the work is defensible. Admin/organizer only.
+// ═══════════════════════════════════════════════════════════════════════════
+function _chgIsAdmin(){return !!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"));}
+function _chgFindTk(id){try{return [].concat(active||[],done||[]).find(function(x){return x.id===id})}catch(e){return null}}
+function _chgMoney(n){var v=Number(n)||0;return "$"+v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function _chgResultMeta(r){
+  switch(r){
+    case "approved": return {lbl:"Approved",bg:"var(--c-success-bg)",fg:"var(--c-success-fg)",bd:"var(--c-success-strong)"};
+    case "declined": return {lbl:"Declined",bg:"var(--c-danger-bg)",fg:"var(--r)",bd:"var(--c-danger-strong)"};
+    case "pending":  return {lbl:"Pending",bg:"var(--c-warning-bg)",fg:"var(--c-warning-fg)",bd:"var(--c-warning-strong)"};
+    case "refunded": return {lbl:"Refunded",bg:"var(--c-ash-2)",fg:"var(--i2)",bd:"var(--ln)"};
+    case "voided":   return {lbl:"Voided",bg:"var(--c-ash-2)",fg:"var(--i2)",bd:"var(--ln)"};
+    default:         return {lbl:r||"—",bg:"var(--c-ash-2)",fg:"var(--i2)",bd:"var(--ln)"};
+  }
+}
+function _chgFmtWhen(iso){
+  try{var d=new Date(iso);if(isNaN(d.getTime()))return esc(iso);
+    return d.toLocaleString(undefined,{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+  }catch(e){return esc(iso)}
+}
+
+function _chargeTrailHTML(t){
+  if(!t)return "";
+  var admin=_chgIsAdmin();
+  var charges=Array.isArray(t.charges)?t.charges:[];
+  // newest first
+  var list=charges.slice().sort(function(a,b){return (b.at||"")<(a.at||"")?-1:((b.at||"")>(a.at||"")?1:0)});
+  var collected=charges.filter(function(c){return c.result==="approved"}).reduce(function(s,c){return s+(Number(c.amount)||0)},0);
+  var h='<div class="dt-sec" id="chgSec_'+t.id+'">';
+  h+='<div class="dt-sec-t" style="display:flex;align-items:center;justify-content:space-between"><span>💳 Charge Log</span><span style="font-size:var(--fs-xs,11px);color:var(--i3);font-weight:500;text-transform:none;letter-spacing:0">Authorize.Net · audit trail</span></div>';
+
+  // summary line
+  if(collected>0)
+    h+='<div style="font-size:var(--fs-sm,12px);color:var(--c-success-fg);font-weight:700;margin-bottom:8px">'+_chgMoney(collected)+' collected'+(t.total?(' of '+_chgMoney(t.total)):'')+'</div>';
+
+  // existing charges
+  if(!list.length){
+    h+='<div style="font-size:var(--fs-sm,12px);color:var(--i3);padding:8px 0 10px">No charges logged yet.</div>';
+  }else{
+    list.forEach(function(c){
+      var m=_chgResultMeta(c.result);
+      h+='<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border:1px solid var(--ln);border-radius:10px;margin-bottom:7px;background:var(--cd)">';
+      h+='<span style="flex-shrink:0;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;background:'+m.bg+';color:'+m.fg+';border:1px solid '+m.bd+'">'+m.lbl+'</span>';
+      h+='<div style="flex:1;min-width:0">';
+      h+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-family:var(--fmono,ui-monospace),monospace;font-weight:700;font-size:14px;color:var(--ink)">'+_chgMoney(c.amount)+'</span>';
+      if(c.txnId)h+='<span style="font-family:var(--fmono,ui-monospace),monospace;font-size:11.5px;color:var(--i2)" title="Authorize.Net Transaction ID">#'+esc(c.txnId)+'</span>';
+      h+='</div>';
+      if(c.note)h+='<div style="font-size:12px;color:var(--i2);margin-top:2px">'+esc(c.note)+'</div>';
+      h+='<div style="font-size:11px;color:var(--i3);margin-top:3px">'+_chgFmtWhen(c.at)+(c.by?(' · '+esc(c.by)):'')+'</div>';
+      h+='</div>';
+      if(admin)h+='<button onclick="chgDelete(\''+t.id+'\','+charges.indexOf(c)+')" title="Remove this entry" style="flex-shrink:0;width:28px;height:28px;border:1px solid var(--ln);border-radius:7px;background:var(--cd);color:var(--i3);cursor:pointer;font-size:13px">✕</button>';
+      h+='</div>';
+    });
+  }
+
+  // add form (admin/organizer only)
+  if(admin){
+    h+='<div style="margin-top:10px;padding:12px;border:1.5px dashed var(--ac);border-radius:11px;background:var(--acl)">';
+    h+='<div style="font-weight:800;color:var(--acd);font-size:12px;margin-bottom:9px">Log a charge</div>';
+    h+='<div style="display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap">';
+    h+='<input id="chgAmt_'+t.id+'" type="number" inputmode="decimal" placeholder="Amount" value="'+(t.total&&!charges.length?esc(t.total):"")+'" style="flex:1;min-width:110px;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:14px;background:var(--cd);color:var(--ink)">';
+    h+='<select id="chgResult_'+t.id+'" style="flex:1;min-width:120px;padding:10px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:13px;background:var(--cd);color:var(--ink)"><option value="approved">Approved</option><option value="declined">Declined</option><option value="pending">Pending</option><option value="refunded">Refunded</option><option value="voided">Voided</option></select>';
+    h+='</div>';
+    h+='<input id="chgTxn_'+t.id+'" placeholder="Authorize.Net Transaction ID" style="width:100%;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:var(--fmono,ui-monospace),monospace;font-size:13px;background:var(--cd);color:var(--ink);margin-bottom:8px;box-sizing:border-box">';
+    h+='<input id="chgNote_'+t.id+'" placeholder="Note (optional) — e.g. card declined, retrying Friday" style="width:100%;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:13px;background:var(--cd);color:var(--ink);margin-bottom:10px;box-sizing:border-box">';
+    h+='<button onclick="chgAdd(\''+t.id+'\')" style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--ac);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">Log charge</button>';
+    h+='<div style="font-size:10.5px;color:var(--i3);margin-top:8px;line-height:1.5">Each entry is stamped with date, time and your name automatically — your proof the charge was handled.</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+function chgAdd(id){
+  if(!db){toast("Offline","err");return;}
+  if(!_chgIsAdmin())return;
+  var amtEl=document.getElementById("chgAmt_"+id),
+      txnEl=document.getElementById("chgTxn_"+id),
+      resEl=document.getElementById("chgResult_"+id),
+      noteEl=document.getElementById("chgNote_"+id);
+  var amount=parseFloat((amtEl&&amtEl.value||"").replace(/[^0-9.\-]/g,""));
+  if(isNaN(amount)||amount<=0){toast("Enter a valid amount","warn");return;}
+  var entry={
+    amount:Math.round(amount*100)/100,
+    txnId:(txnEl&&txnEl.value||"").trim(),
+    result:(resEl&&resEl.value)||"approved",
+    note:(noteEl&&noteEl.value||"").trim(),
+    at:new Date().toISOString(),
+    by:(currentUser&&currentUser.name)||"?",
+    gateway:"authnet"
+  };
+  db.collection("tickets").doc(id).update({charges:firebase.firestore.FieldValue.arrayUnion(entry)})
+    .then(function(){
+      var t=_chgFindTk(id);
+      if(t){ if(!Array.isArray(t.charges))t.charges=[]; t.charges.push(entry); _chgRefresh(id,t); }
+      toast("Charge logged ✓");
+    })
+    .catch(function(e){console.warn("[chgAdd]",e);toast("Error: "+e.message,"err");});
+}
+function chgDelete(id,idx){
+  if(!db||!_chgIsAdmin())return;
+  if(!confirm("Remove this charge entry from the log?"))return;
+  var t=_chgFindTk(id); if(!t||!Array.isArray(t.charges))return;
+  var removed=t.charges[idx]; if(!removed)return;
+  db.collection("tickets").doc(id).update({charges:firebase.firestore.FieldValue.arrayRemove(removed)})
+    .then(function(){
+      t.charges.splice(idx,1); _chgRefresh(id,t);
+      toast("Entry removed");
+    })
+    .catch(function(e){console.warn("[chgDelete]",e);toast("Error","err");});
+}
+function _chgRefresh(id,t){
+  var sec=document.getElementById("chgSec_"+id);
+  if(sec){ var wrap=document.createElement("div"); wrap.innerHTML=_chargeTrailHTML(t); sec.parentNode.replaceChild(wrap.firstChild,sec); }
+}
+
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -13377,6 +13729,7 @@ function openTktDetail(id){
     h+='</div></div>';
   }
   h+='</div>';
+  h+=_chargeTrailHTML(t);
   document.getElementById("tktDetailBody").innerHTML=h;
   // Populate the attachments section (rendered separately so we can re-render in place)
   if(typeof renderTdAttachments==="function")renderTdAttachments(t.id);
