@@ -1591,6 +1591,214 @@ details.adm-fold>.adm-fold-body{padding-top:12px;}
 .sl-slot-btn.on{background:var(--ac);border-color:var(--ac);color:#fff;}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="aspen-vsv2">
+/* ══════════════════════════════════════════════════════════════════════════
+   VISUAL SYSTEM v2 (Jun 2026 — Alberto). Appended LAST so it wins by source
+   order. Pure CSS, additive, fully reversible: delete this style block to revert.
+   Appearance only — status pills, card depth + status rail, controls, focus.
+   No markup/JS changes. Inherits Light / Dark / Ember from the app's tokens.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 1 · Depth — a slightly warmer lift on light-mode surfaces (token-level). */
+:root{
+  --sh-xs:0 1px 3px rgba(60,43,31,.06);
+  --sh-sm:0 1px 2px rgba(60,43,31,.05),0 8px 22px rgba(60,43,31,.08);
+}
+
+/* 2 · Status pills v2.
+   .tkt-status gets the full treatment (dot + tint + hairline).
+   .st-badge (calendar/log chips) gets only the refreshed colours — no size
+   change, so tight rows stay intact. Solid fallback first; color-mix enhances. */
+.tkt-status{
+  display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;
+  background:#f5f5f4;background:var(--c-neutral-bg,#f5f5f4);
+  color:#57534e;color:var(--c-neutral-fg,#57534e);
+}
+.tkt-status::before{
+  content:"";width:7px;height:7px;border-radius:50%;flex:0 0 auto;
+  background:var(--st,currentColor);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--st,currentColor) 22%,transparent);
+}
+/* shared state palette — keyed off the app's existing semantic strong colours */
+.st-done{--st:#16a34a;background:#dcfce7;color:#15803d}
+.st-complete{--st:#2563eb;background:#dbeafe;color:#1e40af}
+.st-pending{--st:#6b7280;background:#f3f4f6;color:#4b5563}
+.st-resched,.st-reschedule{--st:#f59e0b;background:#fff3e0;color:#b45309}
+.st-canceled{--st:#dc2626;background:#fef2f2;color:#b91c1c}
+.st-done,.st-complete,.st-pending,.st-resched,.st-reschedule,.st-canceled{
+  background:color-mix(in srgb,var(--st) 13%,var(--cd));
+  color:color-mix(in srgb,var(--st),#0f0f0f 30%);
+}
+.tkt-status.st-done,.tkt-status.st-complete,.tkt-status.st-pending,
+.tkt-status.st-resched,.tkt-status.st-reschedule,.tkt-status.st-canceled{
+  border-color:color-mix(in srgb,var(--st) 24%,transparent);
+}
+body.dark-mode .st-done,body.dark-mode .st-complete,body.dark-mode .st-pending,
+body.dark-mode .st-resched,body.dark-mode .st-reschedule,body.dark-mode .st-canceled,
+body.theme-ember .st-done,body.theme-ember .st-complete,body.theme-ember .st-pending,
+body.theme-ember .st-resched,body.theme-ember .st-reschedule,body.theme-ember .st-canceled{
+  background:color-mix(in srgb,var(--st) 20%,transparent);
+  color:color-mix(in srgb,var(--st),#ffffff 34%);
+}
+
+/* 3 · Ticket-card status rail — INSET shadow (no positioning, no pseudo →
+   zero containing-block risk). Quiet copper by default, green when completed.
+   Ember keeps its own glass treatment untouched. */
+.tkt{box-shadow:inset 3px 0 0 var(--rail,color-mix(in srgb,var(--ac) 45%,transparent)),var(--sh-xs)}
+.tkt:hover{box-shadow:inset 3px 0 0 var(--rail,color-mix(in srgb,var(--ac) 45%,transparent)),var(--sh-sm)}
+.tkt.completed{--rail:#16a34a}
+body.dark-mode .tkt,
+body.dark-mode .tkt:hover{box-shadow:inset 3px 0 0 var(--rail,color-mix(in srgb,var(--ac) 65%,transparent)),0 1px 3px rgba(0,0,0,.45)}
+
+/* 4 · Controls — comfier touch target + a focus ring you can actually see. */
+.pill{min-height:44px}
+:where(button,a,input,textarea,select,.pill,.fpill,.tkt-h):focus-visible{
+  outline:2px solid var(--ac);outline-offset:2px;border-radius:6px;
+}
+
+/* ── Tech reminder banner (#3 · Jun 2026) — tech-only "tickets need details" nudge.
+   Flags the signed-in tech's submitted (complete) tickets missing notes or photos.
+   Theme-aware via tokens; additive; remove this CSS + #techReminder + its script block to revert. */
+#techReminder{display:none;margin:0 0 14px;border:1px solid var(--c-warning-border,#fcd34d);background:var(--c-warning-bg,#fff3e0);border-radius:var(--rad,14px);padding:14px 16px;animation:vsRemIn .35s cubic-bezier(.22,.61,.36,1)}
+@keyframes vsRemIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+body.dark-mode #techReminder,body.theme-ember #techReminder{background:color-mix(in srgb,var(--c-warning-strong) 15%,transparent);border-color:color-mix(in srgb,var(--c-warning-strong) 30%,transparent)}
+.trem-head{display:flex;align-items:flex-start;gap:11px}
+.trem-ic{font-size:18px;line-height:1.2;flex-shrink:0}
+.trem-head b{display:block;font-size:14.5px;color:var(--c-warning-fg,#b45309)}
+body.dark-mode .trem-head b,body.theme-ember .trem-head b{color:color-mix(in srgb,var(--c-warning-strong),#fff 30%)}
+.trem-sub{display:block;font-size:12px;color:var(--i2);margin-top:2px}
+.trem-x{margin-left:auto;flex-shrink:0;width:30px;height:30px;border:none;background:transparent;color:var(--c-warning-fg,#b45309);font-size:15px;cursor:pointer;border-radius:8px;line-height:1}
+.trem-x:active{background:rgba(0,0,0,.08)}
+.trem-list{margin-top:11px;display:flex;flex-direction:column;gap:6px}
+.trem-row{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:8px 11px}
+.trem-cust{font-weight:700;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trem-date{font-size:11.5px;color:var(--i3);flex-shrink:0}
+.trem-miss{margin-left:auto;display:flex;gap:5px;flex-shrink:0}
+.trem-miss i{font-style:normal;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:6px;background:color-mix(in srgb,var(--c-danger-strong) 13%,var(--cd));color:#b91c1c;border:1px solid color-mix(in srgb,var(--c-danger-strong) 24%,transparent)}
+body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(in srgb,var(--c-danger-strong) 20%,transparent);color:color-mix(in srgb,var(--c-danger-strong),#fff 34%)}
+.trem-more{font-size:12px;font-weight:700;color:var(--i2);padding:4px 2px}
+
+/* == #5 DESKTOP REDESIGN . STAGE A: SIDEBAR (hover-expand rail . Jun 2026) ====
+   >=1024px only. Collapsed icon-rail by default (74px); expands to full labels on
+   mouse hover or keyboard focus (focus-within). Content is offset by the COLLAPSED
+   width, so the expanded panel floats over content with a shadow (no reflow).
+   Pure CSS, additive, reversible. Mobile (<1024px) is completely untouched. */
+@media (min-width:1024px){
+  body{ padding-left:74px; }
+
+  #tabBar.tabs{
+    position:fixed; top:0; left:0; bottom:0; width:74px;
+    flex-direction:column; align-items:stretch;
+    overflow-x:hidden; overflow-y:auto;
+    background:var(--hdr-bg);
+    border-bottom:none; border-right:1px solid rgba(255,255,255,.07);
+    box-shadow:none; gap:2px; padding:16px 10px;
+    z-index:var(--z-sticky);
+    transition:width .18s ease, box-shadow .18s ease, padding .18s ease;
+  }
+  #tabBar.tabs:hover, #tabBar.tabs:focus-within{
+    width:248px; padding:16px 12px; box-shadow:8px 0 28px rgba(0,0,0,.22);
+  }
+
+  /* brand: "A" mark collapsed, full name expanded */
+  #tabBar.tabs::before{
+    content:"A"; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    color:var(--ac); font-weight:800; font-size:20px; height:34px; margin-bottom:8px;
+  }
+  #tabBar.tabs:hover::before, #tabBar.tabs:focus-within::before{
+    content:"ASPEN SPAS"; justify-content:flex-start; font-size:12px; letter-spacing:1.4px;
+    padding:0 13px; height:auto; margin-bottom:10px;
+  }
+
+  /* nav items: centered icon-only when collapsed, icon+label when expanded */
+  #tabBar.tabs .tab{
+    flex:0 0 auto; width:100%; position:relative;
+    display:flex; align-items:center; justify-content:center; gap:0;
+    padding:12px 0; border-radius:10px; border-bottom:none;
+    font-size:0; font-weight:600; white-space:nowrap;
+    color:rgba(255,255,255,.62); background:transparent;
+  }
+  #tabBar.tabs:hover .tab, #tabBar.tabs:focus-within .tab{
+    justify-content:flex-start; gap:11px; padding:11px 13px; font-size:13.5px;
+  }
+  #tabBar.tabs .tab:hover{ background:rgba(255,255,255,.07); color:#fff; }
+  #tabBar.tabs .tab.on{ background:var(--ac); color:#fff; font-weight:700; }
+  body.theme-ember #tabBar.tabs .tab.on{ color:#1a1208; }
+  #tabBar.tabs .tab.hidden{ display:none; }
+
+  /* icons (every tab gets one so the collapsed rail always shows an icon) */
+  #tabBar.tabs #tab0::before{ content:"\1F4DD"; }
+  #tabBar.tabs #tab4::before{ content:"\1F4C5"; }
+  #tabBar.tabs #tab5::before{ content:"\1F4CB"; }
+  #tabBar.tabs #tab1::before{ content:"\1F3AB"; }
+  #tabBar.tabs #tab6::before{ content:"\1F465"; }
+  #tabBar.tabs #tab8::before{ content:"\1F514"; }
+  #tabBar.tabs #tab2::before{ content:"\2705"; }
+  #tabBar.tabs #tab3::before{ content:"\1F4CA"; }
+  #tabBar.tabs #tab7::before{ content:"\1F5FA"; }
+  #tabBar.tabs #tab9::before{ content:"\1F4BC"; }
+  #tabBar.tabs #tab10::before{ content:"\1F9F0"; }
+  #tabBar.tabs .tab::before{ font-size:18px; line-height:1; flex:0 0 auto; }
+  #tabBar.tabs:hover .tab::before, #tabBar.tabs:focus-within .tab::before{ font-size:15px; }
+  /* tab9/tab10 carry their emoji in the label text, so drop the ::before when expanded */
+  #tabBar.tabs:hover #tab9::before, #tabBar.tabs:focus-within #tab9::before,
+  #tabBar.tabs:hover #tab10::before, #tabBar.tabs:focus-within #tab10::before{ display:none; }
+
+  /* badges: small dot on the icon when collapsed, full count when expanded */
+  #tabBar.tabs .tab .badge{
+    position:absolute; top:7px; right:17px; width:9px; min-width:9px; height:9px;
+    padding:0; font-size:0; line-height:0; border-radius:999px; box-shadow:0 0 0 2px var(--hdr-bg);
+  }
+  #tabBar.tabs:hover .tab .badge, #tabBar.tabs:focus-within .tab .badge{
+    position:static; width:auto; min-width:auto; height:auto; padding:1px 7px;
+    font-size:10px; line-height:1.4; margin-left:auto; box-shadow:none;
+  }
+
+  /* desktop nav is the sidebar; hide the mobile bottom nav + more sheet */
+  #bottomNav, .more-sheet, .more-sheet-back{ display:none !important; }
+}
+
+
+/* == #5 DESKTOP REDESIGN . STAGE B: TICKETS MASTER-DETAIL ====================
+   Desktop (>=1024px): the active list (#aList) is the master column; the selected
+   ticket renders fully-expanded into #ticketDetail on the right. Mobile is
+   untouched (panel hidden, list keeps its in-place accordion). Pure-additive. */
+#ticketDetail{ display:none; }
+#ticketDetailBack{ display:none; }
+@media (min-width:1024px){
+  /* Detail DRAWER: the per-tech board (#aList) stays full-width; the selected
+     ticket slides in from the right as an overlay. Mobile is untouched. */
+  #ticketsSplit{ display:block; }
+  #aList{ min-width:0; }
+  #aList .tkt-body{ display:none !important; }   /* desktop uses the drawer, not the inline accordion */
+  #aList .tkt-h{ cursor:pointer; }
+  #aList .tkt.tkt-sel{ border-color:var(--ac) !important;
+    box-shadow:inset 3px 0 0 var(--ac),0 0 0 3px color-mix(in srgb,var(--ac) 22%,transparent),0 8px 22px rgba(60,43,31,.10) !important; }
+
+  #ticketDetailBack{ display:block; position:fixed; inset:0; background:rgba(15,32,43,.34);
+    opacity:0; pointer-events:none; transition:opacity .22s ease; z-index:3998; }
+  #ticketDetailBack.on{ opacity:1; pointer-events:auto; }
+
+  #ticketDetail{ display:block; position:fixed; top:0; right:0; bottom:0;
+    width:min(520px,86vw); max-width:none; max-height:none; overflow:auto;
+    background:var(--bg); box-shadow:-14px 0 40px rgba(0,0,0,.24);
+    transform:translateX(101%); transition:transform .26s cubic-bezier(.22,.61,.36,1);
+    z-index:4000; padding:16px 20px 28px; }
+  #ticketDetail.open{ transform:translateX(0); }
+  #ticketDetail::before{ content:none !important; }   /* no placeholder in drawer mode */
+
+  #ticketDetail .td-bar{ position:sticky; top:0; z-index:2; display:flex; justify-content:flex-end;
+    background:var(--bg); padding:2px 0 8px; margin:0 0 2px; }
+  #ticketDetail .td-x{ width:36px; height:36px; border:1px solid var(--ln); background:var(--cd);
+    border-radius:10px; font-size:15px; line-height:1; color:var(--i2); cursor:pointer; }
+  #ticketDetail .td-x:hover{ background:var(--c-neutral-bg); }
+
+  #ticketDetail .tkt{ cursor:default; margin-bottom:0; }
+  #ticketDetail .tkt-h{ cursor:default; }
+  #ticketDetail .tkt-body{ display:block !important; max-height:none !important; overflow:visible !important; }
+}
+
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -1702,7 +1910,7 @@ details.adm-fold>.adm-fold-body{padding-top:12px;}
 </div>
 
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="aList"></div></div>
+<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="ticketsSplit"><div id="aList"></div><div id="ticketDetailBack" onclick="closeTicketDetail()" aria-hidden="true"></div><div id="ticketDetail" class="tkt-detail" aria-live="polite"></div></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -6067,7 +6275,7 @@ function initFirebase(){
       else active.push(d);
     });
     _dataLoaded=true;
-    try{_activityDone()}catch(_e){}
+    try{_activityDone()}catch(_e){}try{renderTechReminder()}catch(_e){}
     // Sort by createdAt descending (newest first)
     const sortFn=(a,b)=>{
       const ta=a.createdAt?a.createdAt.toMillis?a.createdAt.toMillis():0:0;
@@ -6082,6 +6290,7 @@ function initFirebase(){
     try{
       _runDispatchCleanup({silent:true,force:false});
     }catch(_e){console.warn("autoCleanup error:",_e)}
+    try{ _runReschedHeal(); }catch(_e){console.warn("reschedHeal error:",_e)}
     // Update badges — count only what actually shows in Daily tab (field reports with status complete/reschedule)
     const b1=document.getElementById("bdg1"),b2=document.getElementById("bdg2");
     const dailyPool=active.filter(t=>t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule"));
@@ -7291,7 +7500,7 @@ if(i===0&&typeof setMode==="function"){setMode(currentMode||"ticket")}
 if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){if(typeof _restoreSlogSub==="function")_restoreSlogSub();rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();if(i===8)rndrAlerts();if(i===11){bujoInit();rndrBujo();}
 if(typeof updateTodoVisibility==="function")updateTodoVisibility();
 if(typeof buildBottomNav==="function")buildBottomNav();
-_curTab=i;
+_curTab=i;try{if(typeof renderTechReminder==="function")renderTechReminder()}catch(_e){}
 if(typeof _i18nPass==="function"){try{_i18nPass(document.body)}catch(_e){}}
 try{if(typeof _ttSyncToolLang==="function")_ttSyncToolLang()}catch(_e){}}
 // ── MY APPS HUB — controls and sub-tab navigation ─────────────────────────
@@ -8843,6 +9052,8 @@ async function submitTkt(st){
     if(st==="reschedule"&&_reschedInfo){
       tktData.reschedReason=_reschedInfo.reason||"";
       tktData.reschedNote=_reschedInfo.note||"";
+      tktData.reschedAt=new Date().toLocaleString();
+      tktData.reschedAtMs=Date.now();
     }
 
     // Sanitize: remove any undefined values that Firestore rejects
@@ -9359,6 +9570,22 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       var prior=(typeof active!=="undefined"?active:[]).find(function(x){return x.id===live.reschedDispatchId&&x.status!=="canceled"&&x.status!=="done"&&!x.fieldReportSubmitted});
       if(prior)return;
     }
+    // SYNC-SIM FINDING (Jun 2026 — reuse-path duplicate): the local `live` can be
+    // a STALE snapshot that hasn't yet seen another device record reschedDispatchId
+    // (e.g. it reused an open parent dispatch). The deterministic resched_<src> id
+    // makes the CREATE path idempotent, but the REUSE path was not — two stale
+    // devices could reuse two DIFFERENT parents for the same reschedule. Re-read
+    // the SOURCE doc from the server and honor its current link so a second
+    // invocation cannot open a SECOND follow-up call.
+    try{
+      var _fSrc=await db.collection("tickets").doc(srcDocId).get();
+      var _fSrcD=(_fSrc&&_fSrc.exists)?(_fSrc.data()||{}):{};
+      if(_fSrcD.reschedDispatchId){
+        var _fLink=await db.collection("tickets").doc(_fSrcD.reschedDispatchId).get();
+        var _fLinkD=(_fLink&&_fLink.exists)?(_fLink.data()||{}):{};
+        if(_fLinkD&&_fLinkD.status!=="canceled"&&_fLinkD.status!=="done"&&!_fLinkD.fieldReportSubmitted)return;
+      }
+    }catch(_e){}
 
     var cust=srcData.customer;
     var origDate=(srcData.date||"").trim();
@@ -9547,6 +9774,129 @@ async function _readdReschedToSlog(id){
   }catch(e){toast("Error","err")}
 }
 
+// ─── ORPHAN RESCHEDULE AUTO-HEAL ────────────────────────────────────────────
+// A rescheduled visit must ALWAYS have an open "needs a date" call in the
+// Service Log, or it falls through the cracks ("orphan"). The in-flight
+// _autoCreateReschedDispatch at reschedule time can lose a race with dispatch
+// auto-cleanup or a stale 2-device snapshot, so the call never lands. This
+// reconciliation runs on every Firestore snapshot (FRESH data) and re-creates
+// any missing call via the SAME idempotent helper — so orphans drain into the
+// Service Log automatically, no manual button. Guarded so it never resurrects a
+// finished job, never re-creates a call the admin deliberately canceled, and
+// never mass-creates from historical data on deploy.
+function _reschedToHeal(){
+  try{
+    var act=(typeof active!=="undefined"?active:[]);
+    var all=[].concat(act, typeof done!=="undefined"?done:[]);
+    var now=Date.now();
+    var MAXAGE=90*24*60*60*1000; // cap how far back auto-heal reaches (~90 days)
+    var byId={}; all.forEach(function(t){ if(t&&t.id) byId[t.id]=t; });
+    var cands=all.filter(function(r){
+      if(!r||r.status!=="reschedule")return false;
+      // Only reschedules stamped AFTER this fix shipped carry reschedAtMs, so
+      // historical orphans are never mass-resurrected on deploy — those stay in
+      // the existing manual "Rescheduled visits not in Service Log" banner.
+      if(!r.reschedAtMs)return false;
+      if(!_custGroupKey(r.customer))return false; // no reliable household key (blank/punctuation-only name) — leave to manual review, never auto-heal (prevents flapping)
+      if((now-r.reschedAtMs)>MAXAGE)return false;
+      // (a) household already has an OPEN dispatch -> nothing is missing
+      if(act.some(function(d){ return d&&d.source==="dispatch"&&!d.fieldReportSubmitted&&d.status!=="canceled"&&d.status!=="done"&&_custSameHousehold(d.customer,r.customer); }))return false;
+      // (b) admin already dealt with the auto-call (canceled/closed it) -> respect it
+      if(r.reschedDispatchId){
+        var pd=byId[r.reschedDispatchId];
+        if(pd&&(pd.status==="canceled"||pd.status==="done"||pd.fieldReportSubmitted))return false;
+      }
+      // (c) household was SERVED at/after the reschedule -> don't resurrect a finished job
+      if(all.some(function(x){
+        if(!x||x.id===r.id)return false;
+        if(!_custSameHousehold(x.customer,r.customer))return false;
+        var fin=(x.status==="done")||(x.source!=="dispatch"&&x.status==="complete")||(x.source==="dispatch"&&!!x.fieldReportSubmitted);
+        if(!fin)return false;
+        var xms=x.reschedAtMs||((typeof _ticketCreatedMs==="function")?_ticketCreatedMs(x):0)||0;
+        return xms>=r.reschedAtMs;
+      }))return false;
+      return true;
+    });
+    var seen={},out=[];
+    cands.sort(function(a,b){ return (b.reschedAtMs||0)-(a.reschedAtMs||0); });
+    cands.forEach(function(r){ var k=_custGroupKey(r.customer); if(k&&seen[k])return; if(k)seen[k]=1; out.push(r); });
+    return out.slice(0,8); // pace it: at most 8 per pass
+  }catch(_e){ return []; }
+}
+var _lastReschedHealAt=0, _reschedHealing=false;
+// SYNC reconciliation: collapse duplicate auto-created "needs a date" follow-up
+// calls for the SAME source reschedule into ONE. Deterministic (every admin/org
+// device converges on the same canonical doc) and SAFE: it only merges genuine
+// empty-date placeholder follow-ups (a member carrying a real date is a scheduled
+// job, never canceled), preserves notes by merging them into the survivor, and
+// always keeps exactly one open call (no orphan, no loss).
+async function _dedupReschedFollowups(){
+  if(!db)return;
+  var pool=(typeof active!=="undefined"?active:[]);
+  var groups={};
+  for(var i=0;i<pool.length;i++){
+    var t=pool[i];
+    if(!t||t.source!=="dispatch")continue;
+    if(t.fieldReportSubmitted||t.status==="canceled"||t.status==="done")continue;
+    var isFollow=(t.autoFromResched===true)||(String(t.id).indexOf("resched_")===0)||!!t.reschedFromId;
+    if(!isFollow)continue;
+    var sid=t.reschedFromId||((String(t.id).indexOf("resched_")===0)?String(t.id).slice(8):null);
+    if(!sid)continue;
+    (groups[sid]=groups[sid]||[]).push(t);
+  }
+  for(var sid in groups){
+    var arr=groups[sid];
+    if(arr.length<2)continue;
+    var placeholders=arr.filter(function(x){return (x.date||"").trim()==="";});
+    if(placeholders.length<2)continue; // only placeholder follow-ups are safe to merge
+    placeholders.sort(function(a,b){
+      var ca=(a.id==="resched_"+sid)?0:1, cb=(b.id==="resched_"+sid)?0:1; // prefer deterministic doc
+      if(ca!==cb)return ca-cb;
+      var la=(a.notes||"").length, lb=(b.notes||"").length;
+      if(la!==lb)return lb-la;                                            // else most context
+      return String(a.id).localeCompare(String(b.id));                   // else stable by id
+    });
+    var keep=placeholders[0];
+    for(var j=1;j<placeholders.length;j++){
+      var loser=placeholders[j];
+      try{
+        var kn=(keep.notes||""), ln=(loser.notes||"").trim();
+        if(ln&&kn.indexOf(ln)<0){
+          var merged=kn+"\n\n\u2014 Merged from duplicate follow-up \u2014\n"+ln;
+          await db.collection("tickets").doc(keep.id).update({notes:merged});
+          keep.notes=merged;
+        }
+        await db.collection("tickets").doc(loser.id).update({
+          status:"canceled", reschedDupOf:keep.id,
+          canceledReason:"duplicate reschedule follow-up merged (sync reconciliation)"
+        });
+        loser.status="canceled";
+      }catch(_e){ console.warn("[dedup follow-up]",_e); }
+    }
+    try{ await db.collection("tickets").doc(sid).update({reschedDispatchId:keep.id}); }catch(_e){}
+  }
+}
+async function _runReschedHeal(){
+  try{
+    if(!db||!currentUser||currentUser.role==="tech")return;            // admin/org only, like cleanup
+    if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return;
+    if(_reschedHealing)return;
+    if(Date.now()-_lastReschedHealAt<30000)return;                     // debounce 30s
+    _reschedHealing=true; _lastReschedHealAt=Date.now();
+    // SYNC-SIM FINDING (Jun 2026 — offline-flush duplicate): the fresh-source-read
+    // guard in _autoCreateReschedDispatch stops ONLINE stale-snapshot dups, but an
+    // OFFLINE device's queued reuse/create can still flush alongside another device's
+    // follow-up for the same reschedule. Converge any such duplicate BEFORE healing.
+    try{ await _dedupReschedFollowups(); }catch(_e){ console.warn("[reschedDedup]",_e); }
+    var list=_reschedToHeal();
+    for(var i=0;i<list.length;i++){
+      try{ await _autoCreateReschedDispatch(list[i].id,list[i]); }
+      catch(_e){ console.warn("[reschedHeal]",_e); }
+    }
+  }catch(_e){ console.warn("[reschedHeal outer]",_e); }
+  finally{ _reschedHealing=false; }
+}
+
 async function markResched(docId){
   if(!db)return;
   _haptic(18);
@@ -9555,7 +9905,7 @@ async function markResched(docId){
   try{_info=await _askReschedReason()}catch(_e){_info=null}
   if(!_info)return; // canceled — leave the ticket as-is
   try{
-    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||"",needsOtherTech:!!_info.needsOtherTech,needsOtherTechReason:_info.needsOtherTech?(_info.note||""):""});
+    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||"",needsOtherTech:!!_info.needsOtherTech,needsOtherTechReason:_info.needsOtherTech?(_info.note||""):"",reschedAt:new Date().toLocaleString(),reschedAtMs:Date.now()});
     // Auto-create / resurface a Service Log call so the reschedule isn't forgotten.
     try{
       var _src=[...active,...done].find(function(x){return x.id===docId});
@@ -9762,6 +10112,7 @@ ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:v
 ${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"},event)">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
 <div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
+<button onclick="event.stopPropagation();shareTracking(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">🔗 Share</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
 </div>
 ${_canSendCustomerReport()?`<button onclick="event.stopPropagation();openReportModal(${isDone?"true":"false"},${i})" style="margin-top:8px;width:100%;padding:11px;background:${t.reportSent?"#fff":"var(--br)"};color:${t.reportSent?"var(--br)":"#fff"};border:${t.reportSent?"1.5px solid var(--br)":"none"};border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">${isDone?("📤 "+(t.reportSent?"Resend Customer Report":"Send Customer Report")):"✨ AI Report — Copy for QuickBooks"}</button>`:""}
@@ -16495,6 +16846,10 @@ function _mapsInitOnFirstShow(){
 })();
 
 const CHECKIN_REQUIRED_FROM_DATE = "2026-05-05";
+// TOGGLE — Check-in/Check-out is OPTIONAL for now: techs can still use the
+// green/red buttons, but are NOT blocked from submitting the Field Report
+// without them. Set CHECKIN_ENFORCE = true to make it mandatory again.
+const CHECKIN_ENFORCE = false;
 
 // Geofence thresholds (in meters) for distance from registered customer address
 const CHECKIN_GEOFENCE_OK_M = 100;       // <= this = green / verified
@@ -16812,6 +17167,7 @@ function _stopCheckOutReminderPoll(){
 // Returns null if OK to submit, or a string error message if not.
 function _validateCheckInForSubmit(t){
   if(!t)return null;
+  if(!CHECKIN_ENFORCE)return null; // check-in/out OPTIONAL for now — see CHECKIN_ENFORCE toggle
   if(!_ticketRequiresCheckIn(t))return null; // grandfathered
   // Admin/organizer can override — they may be entering data on behalf of techs
   if(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))return null;
@@ -18602,6 +18958,128 @@ function closeTechTool(){
   document.getElementById("ttNativeHost").style.display="none";
   var fr=document.getElementById("ttFrame");if(fr)fr.src="about:blank";
 }
+</script>
+<script>
+/* ══ TECH REMINDER (#3 · Jun 2026) ════════════════════════════════════════════
+   Tech-only banner over the active list. Surfaces THIS tech's submitted tickets
+   (status "complete") that are missing notes or photos, so nothing ships to the
+   office half-filled. Read-only; dismiss is per-session. Hooks: tickets snapshot
+   + showTab(1). Reversible: delete this script block, #techReminder, and its CSS. */
+var _techRemDismissed=false;
+function dismissTechReminder(){_techRemDismissed=true;var b=document.getElementById("techReminder");if(b)b.style.display="none";}
+function _tremHasNotes(t){return !!(t.notes && String(t.notes).trim());}
+function _tremHasPhotos(t){return Array.isArray(t.media) && t.media.some(function(m){return m && m.type!=="pdf";});}
+function renderTechReminder(){
+  var box=document.getElementById("techReminder"); if(!box) return;
+  if(!(typeof currentUser!=="undefined" && currentUser && currentUser.role==="tech")){box.style.display="none";box.innerHTML="";return;}
+  if(typeof active==="undefined" || !active){box.style.display="none";return;}
+  var me=currentUser.name;
+  var inc=active.filter(function(t){
+    if(!t || t.source==="dispatch") return false;
+    if(t.status!=="complete") return false;                 // tech-submitted field work
+    if(!(Array.isArray(t.techs)?t.techs:[]).includes(me)) return false;
+    return !_tremHasNotes(t) || !_tremHasPhotos(t);
+  });
+  if(!inc.length){box.style.display="none";box.innerHTML="";return;}
+  var rows=inc.slice(0,6).map(function(t){
+    var miss=[];
+    if(!_tremHasNotes(t)) miss.push(L2("sin notas","no notes"));
+    if(!_tremHasPhotos(t)) miss.push(L2("sin fotos","no photos"));
+    return '<div class="trem-row"><span class="trem-cust">'+esc(t.customer||"\u2014")+'</span>'
+         + '<span class="trem-date">'+esc(t.date||"")+'</span>'
+         + '<span class="trem-miss">'+miss.map(function(m){return '<i>'+m+'</i>';}).join("")+'</span></div>';
+  }).join("");
+  var more=inc.length>6 ? '<div class="trem-more">+'+(inc.length-6)+L2(' más',' more')+'</div>' : "";
+  var n=inc.length;
+  box.innerHTML='<div class="trem-head"><span class="trem-ic">\uD83D\uDCCB</span>'
+    +'<div><b>'+n+(n===1?L2(' ticket necesita detalles',' ticket needs details'):L2(' tickets necesitan detalles',' tickets need details'))+'</b>'
+    +'<span class="trem-sub">'+L2('Agrega notas y fotos antes de terminar tu ruta.','Add notes &amp; photos before you finish your route.')+'</span></div>'
+    +'<button class="trem-x" type="button" onclick="dismissTechReminder()" aria-label="'+L2('Descartar','Dismiss')+'">\u2715</button></div>'
+    +'<div class="trem-list">'+rows+more+'</div>';
+  box.style.display = _techRemDismissed ? "none" : "block";
+}
+</script>
+<script>
+/* ══ SHARE TRACKING LINK (#4 companion · Jun 2026) ════════════════════════════
+   Builds the public client-tracker.html URL from a ticket and sends it to the
+   customer by SMS (or copies it if there's no phone). The tracker page lives in
+   this same repo, so the base URL is resolved relative to the app — works on
+   GitHub Pages and on a custom domain alike. Additive; delete to revert. */
+function shareTracking(isDone, i){
+  var t = isDone ? (typeof done!=="undefined"&&done[i]) : (typeof active!=="undefined"&&active[i]);
+  if(!t){ try{toast("Ticket not found","err")}catch(e){} return; }
+  var base = new URL("client-tracker.html", location.href).href;
+  var firstName = (function(c){
+    c=(c||"").trim();
+    if(c.indexOf(",")>=0){var pr=c.split(","); return (pr[1]||"").trim()||pr[0].trim();}
+    return (c.split(/\s+/)[0])||c;
+  })(t.customer);
+  var tech = (Array.isArray(t.techs)&&t.techs[0])||"";
+  var svc  = (Array.isArray(t.workTypes)&&t.workTypes.length)?t.workTypes.join(", "):"Spa service";
+  var when = (t.date||"")+(t.arrival?(" \u00b7 "+t.arrival):"");
+  var qs = new URLSearchParams();
+  if(firstName) qs.set("cust", firstName);
+  if(tech) qs.set("t", tech);
+  qs.set("svc", svc);
+  if(when.trim()) qs.set("when", when.trim());
+  if(t.address) qs.set("addr", t.address);
+  qs.set("step", "enroute");
+  if(t.id) qs.set("ref", t.id);
+  var url = base + "?" + qs.toString();
+  var msg = "Hi! Track your Aspen Spas service here: " + url;
+  var phone = String(t.phone||"").replace(/[^+\d]/g,"");
+  if(phone){
+    window.location.href = "sms:" + phone + "?&body=" + encodeURIComponent(msg);
+  } else {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){try{toast("Tracking link copied \u2713")}catch(e){}},
+        function(){window.prompt("Copy this tracking link:", url);});
+    } else { window.prompt("Copy this tracking link:", url); }
+  }
+}
+</script>
+<script>
+/* == #5 DESKTOP REDESIGN . STAGE B: TICKETS DETAIL DRAWER (logic) ============
+   Desktop (>=1024px): the per-tech board (#aList) stays full-width. Clicking a
+   ticket slides the fully-expanded detail in from the right as an overlay drawer
+   (dim backdrop; close via X / backdrop / Esc). Mobile is untouched. Additive. */
+function _isDesktop(){ return !!(window.matchMedia && window.matchMedia("(min-width:1024px)").matches); }
+function closeTicketDetail(){
+  var dp=document.getElementById("ticketDetail"), bk=document.getElementById("ticketDetailBack");
+  if(dp) dp.classList.remove("open");
+  if(bk) bk.classList.remove("on");
+  try{ document.querySelectorAll("#aList .tkt.tkt-sel").forEach(function(x){x.classList.remove("tkt-sel")}); }catch(e){}
+}
+function showTicketDetail(p,i){
+  var dp=document.getElementById("ticketDetail"); if(!dp) return;
+  var list=(p==="d")?(typeof done!=="undefined"?done:null):(typeof active!=="undefined"?active:null);
+  if(!list||!list[i]){ return; }
+  try{
+    dp.innerHTML='<div class="td-bar"><button class="td-x" type="button" onclick="closeTicketDetail()" aria-label="Close">✕</button></div>'+tktHTML(list,i,p==="d");
+    dp.classList.add("has");
+  }catch(e){ return; }
+  try{
+    var body=document.getElementById(p+"b"+i);
+    var card=body?body.closest(".tkt"):null;
+    document.querySelectorAll("#aList .tkt.tkt-sel").forEach(function(x){x.classList.remove("tkt-sel")});
+    if(card) card.classList.add("tkt-sel");
+  }catch(e){}
+  dp.scrollTop=0;
+  var bk=document.getElementById("ticketDetailBack"); if(bk) bk.classList.add("on");
+  dp.classList.add("open");
+}
+(function(){
+  if(typeof window.tog==="function" && !window.tog.__mdWrapped){
+    var _origTog=window.tog;
+    window.tog=function(p,i){
+      var r=_origTog.apply(this,arguments);
+      try{ if(_isDesktop()) showTicketDetail(p,i); }catch(e){}
+      return r;
+    };
+    window.tog.__mdWrapped=true;
+  }
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeTicketDetail(); });
+})();
 </script>
 </body>
 </html>
