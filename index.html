@@ -9872,7 +9872,7 @@ async function improveNotesWithAI(rawText){
       "anthropic-dangerous-direct-browser-access":"true"
     },
     body:JSON.stringify({
-      model:"claude-sonnet-4-20250514",
+      model:"claude-sonnet-4-6",
       max_tokens:1000,
       system:AI_IMPROVE_SYSPROMPT,
       messages:[{role:"user",content:rawText}]
@@ -9933,7 +9933,7 @@ async function improveNotesClick(){
     toast("Notes improved with AI ✓");
   }catch(e){
     console.error("AI improve failed:",e);
-    toast("AI request failed — using original notes","err");
+    toast((e&&e.message)?e.message:"AI request failed — using original notes","err");
   }finally{
     btn.disabled=false;
     btn.style.opacity="1";
@@ -11846,7 +11846,7 @@ async function bujoAI(){
     var res=await fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",
       headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,system:sys,messages:[{role:"user",content:txt}]})
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,system:sys,messages:[{role:"user",content:txt}]})
     });
     if(!res.ok){var em="AI "+res.status;if(res.status===401)em+=" — key invalid (Admin tab)";throw new Error(em);}
     var data=await res.json();
@@ -15474,7 +15474,7 @@ async function _slExtractPartsAI(notes,ticketId){
       "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"
     },
     body:JSON.stringify({
-      model:"claude-sonnet-4-20250514",max_tokens:500,
+      model:"claude-sonnet-4-6",max_tokens:500,
       system:_AI_PARTS_SYSPROMPT,
       messages:[{role:"user",content:notes}]
     })
