@@ -1921,12 +1921,12 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
     <button type="button" class="slog-stab" data-sub="new" onclick="slogSwitchSub('new')">📞 New Service Call</button>
   </div>
   <!-- Billing rounding rule — surfaced here so organizers (who don't see the Admin tab) can manage it too -->
-  <details class="card" style="margin:0 0 12px;border-left:4px solid var(--c-money-fg,#166534)">
+  <details id="billingRuleCardOrg" class="card" style="margin:0 0 12px;border-left:4px solid var(--c-money-fg,#166534)">
     <summary style="cursor:pointer;font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:8px">💵 Billing — Rounding Rule <span style="font-size:var(--fs-xs);font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">(tap to expand)</span></summary>
     <div id="billingRoundBodyOrg" style="margin-top:12px"></div>
   </details>
   <!-- Warranty Override Log (Batch 3 #1) — office audit of manual warranty changes -->
-  <details class="card" style="margin:0 0 12px;border-left:4px solid var(--ac)">
+  <details id="warLogCardOrg" class="card" style="margin:0 0 12px;border-left:4px solid var(--ac)">
     <summary style="cursor:pointer;font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:8px">🔐 Warranty Override Log <span style="font-size:var(--fs-xs);font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">(tap to expand)</span></summary>
     <div id="warLogBodyOrg" style="margin-top:12px"></div>
   </details>
@@ -4231,6 +4231,11 @@ function updAdmin(){
   // Celia doesn't use Daily or Completed views — she focuses on Service Log,
   // Customers, Calendar, and Chemicals coordination. Hide them for her cleanly.
   var _isCelia=currentUser&&currentUser.name==="Celia";
+  // Celia (organizer) must NOT see the Billing — Rounding Rule or Warranty
+  // Override Log, even though they live inside the Service Log she does use.
+  // Hide just those two cards for her; Nela (also an organizer) keeps full access.
+  var _brc=document.getElementById("billingRuleCardOrg"); if(_brc)_brc.style.display=_isCelia?"none":"";
+  var _wlc=document.getElementById("warLogCardOrg"); if(_wlc)_wlc.style.display=_isCelia?"none":"";
   document.getElementById("tab1").classList.toggle("hidden",!currentUser||_isCelia);
   if(currentUser&&currentUser.role==="tech")document.getElementById("tab1").innerHTML="My Tickets <span class='badge' id='bdg1' style='display:none'>0</span>";
   else document.getElementById("tab1").innerHTML="Daily <span class='badge' id='bdg1' style='display:none'>0</span>";
@@ -5267,8 +5272,13 @@ function _dayDiff(d1,d2){
 function _dispatchIsDone(t){
   if(!t)return false;
   if(t.source!=="dispatch")return true; // it IS a report
-  if(t.fieldReportSubmitted===true)return true;
-  if(t.checkOutAt&&t.checkInAt)return true;
+  if(t.fieldReportSubmitted===true)return true; // a field report was actually filed / paired
+  // FIX (Jun 2026, reported by Alberto): a check-in/out ALONE used to count as
+  // "done" here, so Daily Capacity showed "All done · X filed" for visits the
+  // tech had NOT yet filed a report for — directly contradicting the Calendar,
+  // which flags the SAME ticket "⚠ NEEDS REPORT". Capacity must mean the REPORT
+  // is in. A visited-but-unreported dispatch now correctly counts as Pending
+  // (no report yet), consistent with the calendar.
   return false;
 }
 
@@ -6267,7 +6277,20 @@ async function toggleUserHidden(i){
 function initFirebase(){
   if(!db)return;
   // Single listener for ALL tickets - no composite index needed
-  db.collection("tickets").onSnapshot(snap=>{
+  db.collection("tickets").onSnapshot({includeMetadataChanges:true},snap=>{
+    // SYNC BADGE (Jun 2026 fix): drive the "Syncing changes…" indicator from this
+    // listener's metadata instead of db.waitForPendingWrites(). waitForPendingWrites
+    // is GLOBAL — it waits for EVERY collection's pending writes, and the presence
+    // heartbeat writes a doc every few seconds, so there was almost never a fully
+    // "clear" instant within the 2.5s race → the badge got stuck on "Syncing…"
+    // forever even when the user's actual ticket changes were long since saved.
+    // snap.metadata.hasPendingWrites reflects ONLY this (tickets) query, updates in
+    // real time on write + ack, and can never hang.
+    try{ _hasPendingWrites=!!(snap.metadata&&snap.metadata.hasPendingWrites); _refreshSyncBadge(); }catch(_e){}
+    // Metadata-only event (a write just got acknowledged, or a cache→server flip
+    // with identical data): the document SET didn't change — we already refreshed
+    // the badge above, so skip the heavy rebuild + cleanup + heal + re-render below.
+    if(_dataLoaded && snap.docChanges().length===0) return;
     active=[];done=[];
     snap.forEach(doc=>{
       const d={id:doc.id,...doc.data()};
@@ -12727,7 +12750,16 @@ const _fri=_buildFieldReportIndex();
 const fieldReportKeys=_fri.fieldReportKeys;
 const customerHasCompletedReport=_fri.customerHasCompletedReport;
 const customerReports=_fri.customerReports;
-const allTkts=[...active,...done].filter(t=>_isVisibleDispatch(t,_fri,today,isTech));
+const allTkts=[...active,...done].filter(t=>{
+  if(_isVisibleDispatch(t,_fri,today,isTech))return true; // open/pending dispatches, as before
+  // OPTION A (Jun 2026, requested by Alberto): keep COMPLETED visits visible in
+  // the calendar as green "✓ Reported" cards instead of vanishing the moment the
+  // field report is filed. Admin/organizer only — techs keep a clean forward
+  // schedule. Maps "Today's Routes" is UNAFFECTED: it calls _isVisibleDispatch
+  // directly (not this pool), so finished stops still drop off the route.
+  if(!isTech&&t.source==="dispatch"&&t.fieldReportSubmitted===true&&t.status!=="canceled"&&(t.date||"").trim())return true;
+  return false;
+});
 // Helper used by tech-side filters below: does this ticket's `techs` array
 // include the current tech, EITHER directly OR via pill resolution? This
 // matches the admin Team view's matching logic (line ~5602) so a ticket
@@ -13219,10 +13251,14 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
   // Highlights the card in amber so it doesn't get lost in the calendar.
   const needsReport=t.source==="dispatch"&&!!t.checkInAt&&!!t.checkOutAt&&!t.fieldReportSubmitted&&t.status!=="canceled";
+  // REPORTED (Jun 2026, Option A): a dispatch whose field report is already in.
+  // Stays in the calendar as a green "✓ Reported" card instead of disappearing.
+  const reported=t.source==="dispatch"&&t.fieldReportSubmitted===true&&t.status!=="canceled";
   let cardEdge="";
   if(t.isUrgent)cardEdge=";border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)";
   else if(t.isNewSpa)cardEdge=";border-left:3px solid var(--c-purple-strong);background:#faf5ff";
   else if(needsReport)cardEdge=";border-left:3px solid #d97706;background:#fffbeb";
+  else if(reported)cardEdge=";border-left:3px solid #16a34a;background:#f0fdf4";
   else if(t.paid)cardEdge=";border-left:3px solid var(--c-success-strong);background:var(--c-paid-tint)";
   const _slots=_tSlots(t);
   let h=`<div class="cal-tkt-mini${stRowClass}${_slots>1?" cal-slots-"+_slots:""}"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${cardEdge}">`;
@@ -13231,7 +13267,7 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // visually reads as occupied (4 = whole day).
   if(_slots>1)h+=`<div class="cal-allday-banner">⏱ ${_slots>=4?"ALL DAY — takes the whole day":"TAKES "+_slots+" OF 4 SLOTS"}</div>`;
   if(canDismiss)h+=`<button onclick="calCycleDaySlots('${t.id}',event)" title="Day slots: ${_slots} of 4 — tap to change (1→2→3→4)" style="position:absolute;top:6px;right:34px;min-width:24px;height:24px;border:1.5px solid var(--ac);border-radius:7px;background:${_slots>1?"var(--ac)":"#fff"};color:${_slots>1?"#fff":"var(--ac)"};font-size:11px;font-weight:800;cursor:pointer;line-height:1;padding:0 4px;z-index:2">⏱${_slots>1?_slots:""}</button>`;
-  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:#d97706;color:#fff;display:inline-block;margin-right:4px">⚠ NEEDS REPORT</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">🔥 URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">✨ NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:#d97706;color:#fff;display:inline-block;margin-right:4px">⚠ NEEDS REPORT</span> `;if(reported)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:#16a34a;color:#fff;display:inline-block;margin-right:4px">✓ REPORTED</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:#fef3cd;color:#856404">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">🔥 URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">✨ NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket — admin/organizer only (the UI also hides
 // the toggle from techs, but defense in depth prevents console-side bypass).
@@ -18089,9 +18125,11 @@ function _timeSanity(){
 }
 
 /* ── 3) SYNC / OFFLINE BADGE — shows when the device is offline (changes are
-       saved locally by Firestore persistence) or when writes are still
-       waiting to reach the server. Polls db.waitForPendingWrites() raced
-       against a short timer — no existing listener is touched. ── */
+       saved locally by Firestore persistence) or when this device still has
+       unsynced TICKET writes. The pending state comes from the tickets
+       listener's snapshot.metadata.hasPendingWrites (set in initFirebase) — the
+       old db.waitForPendingWrites() poll was global and hung on the constant
+       presence heartbeat, sticking the badge on "Syncing…". ── */
 var _syncBadgeEl=null,_syncTimer=null;
 function _mountSyncBadge(){
   if(document.getElementById("syncBadge"))return;
@@ -18103,23 +18141,21 @@ function _setSyncBadge(state){ // "ok" | "offline" | "pending"
   else if(state==="pending"){_syncBadgeEl.className="pending";_syncBadgeEl.textContent="\u23F3 Syncing changes\u2026";}
   else{_syncBadgeEl.className="";}
 }
-var _syncPendStreak=0;
+// Pending-writes state for the TICKETS query, kept current in real time by the
+// listener metadata (includeMetadataChanges) above. This is the single source of
+// truth for the badge — there is no waitForPendingWrites() race, so it can never
+// hang the way the old global poll did.
+var _hasPendingWrites=false;
+function _refreshSyncBadge(){
+  if(!_syncBadgeEl)return;
+  if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false){_setSyncBadge("offline");return;}
+  _setSyncBadge(_hasPendingWrites?"pending":"ok");
+}
 async function _syncCheck(){
-  try{
-    if(document.hidden)return; // background tab — don't poll
-    if(!navigator.onLine){_setSyncBadge("offline");_syncPendStreak=0;return}
-    if(typeof db==="undefined"||!db||!db.waitForPendingWrites){_setSyncBadge("ok");_syncPendStreak=0;return}
-    // BUG FIX (Jun 2026): the original 900ms race lost on any slow link even
-    // with ZERO pending writes → the badge showed "Syncing…" all day. Give
-    // Firestore a realistic 2.5s window AND require two consecutive misses
-    // before bothering the user; clear instantly on the first success.
-    var res=await Promise.race([
-      db.waitForPendingWrites().then(function(){return "clear"}),
-      new Promise(function(r){setTimeout(function(){r("pending")},2500)})
-    ]);
-    if(res==="clear"){_syncPendStreak=0;_setSyncBadge("ok");}
-    else{_syncPendStreak++;if(_syncPendStreak>=2)_setSyncBadge("pending");}
-  }catch(_e){_setSyncBadge("ok");_syncPendStreak=0}
+  // Backstop poll: the live pending state arrives via the listener metadata
+  // (_refreshSyncBadge); this just keeps online/offline correct on the timer and
+  // when the tab regains focus. No promise that can hang.
+  try{ if(document.hidden)return; _refreshSyncBadge(); }catch(_e){ try{_setSyncBadge("ok")}catch(_e2){} }
 }
 function _startSyncWatch(){
   _mountSyncBadge();
