@@ -10128,8 +10128,8 @@ function _dailyTags3(t,w,warMismatch){
   }
   // Tier 2 — coverage (spa warranty + part + service warranty + mismatch + chem WC)
   var cov=[];
-  if(w.label)cov.push('<span class="tkt-tag tw tt-cov-clic'+(w.model?(" series-"+String(w.model).toLowerCase()):"")+'" onclick="event.stopPropagation();_dailyCovToggle(\''+t.id+'\')">'+esc(w.label)+' <span style="font-size:9px;opacity:.55">\u25be</span></span>');
-  else cov.push('<span class="tkt-tag tt-cov-clic" style="background:var(--c-ash-2);color:var(--i3);font-weight:700" onclick="event.stopPropagation();_dailyCovToggle(\''+t.id+'\')">N/W <span style="font-size:9px;opacity:.55">\u25be</span></span>');
+  if(w.label)cov.push('<span class="tkt-tag tw tt-cov-clic'+(w.model?(" series-"+String(w.model).toLowerCase()):"")+'" onclick="event.stopPropagation();_dailyCovToggle(this)">'+esc(w.label)+' <span style="font-size:9px;opacity:.55">\u25be</span></span>');
+  else cov.push('<span class="tkt-tag tt-cov-clic" style="background:var(--c-ash-2);color:var(--i3);font-weight:700" onclick="event.stopPropagation();_dailyCovToggle(this)">N/W <span style="font-size:9px;opacity:.55">\u25be</span></span>');
   var p90=(typeof _part90Badge==="function")?_part90Badge(t):""; if(p90)cov.push(p90);
   var sw=(typeof _svcWarrantyBadge==="function")?_svcWarrantyBadge(t):""; if(sw)cov.push(sw);
   if(warMismatch)cov.push(warMismatch);
@@ -10186,7 +10186,7 @@ function _covDetail(t){
     +'<div style="font-size:var(--fs-sm);color:var(--ink);font-weight:600">'+L2("Partes","Parts")+': <b style="color:'+fg+'">'+partsTxt+'</b> &nbsp;\u00b7&nbsp; '+L2("Labor","Labor")+': <b style="color:var(--ac)">'+laborTxt+'</b></div>'
     +'</div>';
 }
-function _dailyCovToggle(id){var e=document.getElementById("covd-"+id);if(e)e.style.display=(e.style.display==="none"||!e.style.display)?"block":"none";}
+function _dailyCovToggle(arg){var el=(arg&&arg.nodeType===1)?arg:null;var root=el?(el.closest("#ticketDetail")||el.closest(".tkt")||document):document;var e=(root&&root.querySelector)?root.querySelector('[id^="covd-"]'):null;if(!e&&!el)e=document.getElementById("covd-"+arg);if(!e)return;e.style.display=(e.style.display==="none"||!e.style.display)?"block":"none";}
 
 // Clean one-window QB copy from the Daily card → shows the AI text + marks → QB ✓.
 function _dailyCopyQB(id){
@@ -10199,8 +10199,12 @@ function _dailyCopyQB(id){
 }
 
 // Inline Charge Log (opens inside the card, no stacked window). Reuses _chargeTrailHTML.
-function _dailyChargeToggle(id){
-  var e=document.getElementById("dqcl-"+id);if(!e)return;
+function _dailyChargeToggle(arg){
+  var btn=(arg&&arg.nodeType===1)?arg:null;
+  var root=btn?(btn.closest("#ticketDetail")||btn.closest(".tkt")||document):document;
+  var e=(root&&root.querySelector)?root.querySelector(".dq-cl"):null;
+  if(!e&&!btn)e=document.getElementById("dqcl-"+arg);
+  if(!e)return;
   var open=(e.style.display!=="none"&&e.style.display!=="");
   e.style.display=open?"none":"block";
 }
@@ -10212,7 +10216,7 @@ function _dailyQuickRow(t,isDone,i){
   try{ if(typeof _chargeTrailHTML==="function") cl=_chargeTrailHTML(t)||''; }catch(_e){}
   return '<div class="dq-label">'+L2("Acciones rápidas","Quick actions")+'</div>'
     +'<div class="dq-row">'
-      +'<button class="dq-btn" onclick="event.stopPropagation();_dailyChargeToggle(\''+id+'\')"><span class="dq-ico">\uD83D\uDCB3</span>Charge Log</button>'
+      +'<button class="dq-btn" onclick="event.stopPropagation();_dailyChargeToggle(this)"><span class="dq-ico">\uD83D\uDCB3</span>Charge Log</button>'
       +'<button class="dq-btn" onclick="event.stopPropagation();openCustomer360ByTicket(\''+id+'\')"><span class="dq-ico">\uD83D\uDC64</span>Customer 360</button>'
       +'<button class="dq-btn dq-qb" onclick="event.stopPropagation();_dailyCopyQB(\''+id+'\')"><span class="dq-ico">\uD83D\uDCCB</span>'+L2("Copiar a QB","Copy to QB")+'</button>'
     +'</div>'
@@ -10791,7 +10795,7 @@ function _showQBCopyView(text,tid){
     catch(_e){try{ta.select();document.execCommand("copy")}catch(__e){}}
     this.textContent="\u2713 Copiado \u2014 pega en QuickBooks";
     this.style.background="var(--c-success-strong,#16a34a)";
-    try{ if(window.db&&tid){ db.collection("tickets").doc(tid).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}); } }catch(_qe){}
+    try{ if((typeof db!=="undefined"&&db)&&tid){ db.collection("tickets").doc(tid).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}); var _all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]); var _lt=_all.filter(function(x){return x&&x.id===tid})[0]; if(_lt)_lt.qbCopied=true; if(typeof rndrA==="function"){try{rndrA()}catch(_r){}} } }catch(_qe){}
     try{ if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount(); }catch(_b){}
     try{ if(typeof celebrate==="function")celebrate({count:60}); }catch(_c){}
   };
