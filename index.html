@@ -1508,6 +1508,50 @@ body.dark-mode .mt{background:rgba(44,37,32,.82)}
 .kpi-sub{font-size:var(--fs-xs);color:var(--i3);margin-top:3px}
 .welcome-hero{background:linear-gradient(135deg,var(--acl),var(--cd));border:1px solid var(--ln);border-radius:var(--rad);padding:18px 20px;margin-bottom:14px}
 body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd))}
+/* ===== PANEL POR COBRAR ===== */
+#pcDailyBar:empty{display:none}
+.pc-daily-btn{display:inline-flex;align-items:center;gap:9px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border:1.5px solid var(--c-success-strong,#16a34a);border-radius:12px;padding:9px 14px;font-family:inherit;font-weight:800;font-size:var(--fs-sm,13px);cursor:pointer;transition:transform .12s,box-shadow .12s}
+.pc-daily-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.pc-daily-btn.crit{border-color:var(--c-danger-strong,#dc2626)}
+.pc-daily-ico{font-size:16px}
+.pc-daily-amt{font-weight:800}
+.pc-daily-cnt{background:var(--br);color:#fff;border-radius:999px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 6px}
+.pc-daily-crit{background:var(--c-danger-bg);color:var(--c-danger-fg);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800}
+.pc-hero{background:var(--hdr-bg,#211712);border-radius:16px;padding:18px 20px;color:#f3e9dc;margin-bottom:16px}
+.pc-hero-lbl{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#E8B96B;margin-bottom:4px}
+.pc-hero-amt{font-family:var(--font-display,'Fraunces',Georgia,serif);font-weight:600;font-size:34px;line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.pc-hero-sub{font-size:13px;color:#cbb9a6;margin-top:6px}
+.pc-bands{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.pc-band{border-radius:12px;padding:10px 9px;cursor:pointer;border:1.5px solid transparent;transition:transform .12s;text-align:left;font-family:inherit}
+.pc-band:hover{transform:translateY(-1px)}
+.pc-band.on{outline:2px solid var(--br);outline-offset:1px}
+.pc-bc{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.2px}
+.pc-bn{font-family:var(--font-display,'Fraunces',Georgia,serif);font-weight:600;font-size:21px;margin-top:2px;font-variant-numeric:tabular-nums}
+.pc-ba{font-size:12px;font-weight:700;opacity:.85;font-variant-numeric:tabular-nums}
+.pc-band.fresh{background:var(--c-success-bg);color:var(--c-success-fg)}
+.pc-band.warn{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.pc-band.late{background:var(--acl);color:var(--acd)}
+.pc-band.critical{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+.pc-row{background:var(--cd);border:1px solid var(--ln);border-radius:13px;padding:12px 14px;margin-bottom:9px;display:flex;align-items:flex-start;gap:12px}
+.pc-row.crit{border-left:4px solid var(--c-danger-strong)}
+.pc-row.lat{border-left:4px solid var(--ac)}
+.pc-row.wrn{border-left:4px solid var(--c-warning-strong)}
+.pc-row.frs{border-left:4px solid var(--c-success-strong)}
+.pc-main{flex:1;min-width:0}
+.pc-cust{font-family:var(--font-display,'Fraunces',Georgia,serif);font-weight:600;font-size:15.5px;color:var(--br)}
+.pc-meta{font-size:12.5px;color:var(--i3);margin-top:2px}
+.pc-reason{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;border-radius:6px;padding:2px 8px;margin-top:6px}
+.pc-reason.r-decl{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+.pc-reason.r-pend{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.pc-reason.r-nocc{background:var(--c-info-bg);color:var(--c-info-fg)}
+.pc-reason.r-part{background:var(--acl);color:var(--acd)}
+.pc-reason.r-none{background:var(--c-ash,#f1f5f9);color:var(--i2)}
+.pc-amt{font-family:var(--font-display,'Fraunces',Georgia,serif);font-weight:600;font-size:17px;color:var(--br);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pc-days{font-size:11px;color:var(--i3);margin-top:2px;white-space:nowrap}
+.pc-acts{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.pc-acts button{font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 10px;border:1px solid var(--ln);background:var(--cd);color:var(--br);cursor:pointer;font-family:inherit}
+.pc-acts button:hover{border-color:var(--ac);background:var(--acl)}
+.pc-note{background:var(--c-danger-bg);border:1px solid var(--c-danger-strong);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--c-danger-fg);margin-top:14px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1915,8 +1959,18 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   </div><!-- /estMode -->
 </div>
 
+<!-- ══ PANEL POR COBRAR (collections) ══ -->
+<div class="mbg" id="pcBg" onclick="if(event.target===this)_pcClose()">
+  <div class="modal" style="max-width:720px;width:96vw;height:auto;max-height:92dvh;display:flex;flex-direction:column">
+    <div class="mt"><div class="mt-bar"></div>
+      <div class="mt-t"><h3 style="display:inline-flex;align-items:center;gap:8px">💰 <span data-i18n-es="Por cobrar" data-i18n-en="Receivable">Por cobrar</span></h3></div>
+    </div>
+    <div id="pcBody" style="padding:16px;overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="ticketsSplit"><div id="aList"></div><div id="ticketDetailBack" onclick="closeTicketDetail()" aria-hidden="true"></div><div id="ticketDetail" class="tkt-detail" aria-live="polite"></div></div></div>
+<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div><div id="ticketDetailBack" onclick="closeTicketDetail()" aria-hidden="true"></div><div id="ticketDetail" class="tkt-detail" aria-live="polite"></div></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -7664,6 +7718,7 @@ function openMoreSheet(){
     if(bEl&&bEl.style.display!=="none"&&bEl.textContent&&bEl.textContent!=="0")bdg='<span class="ms-bdg">'+esc(bEl.textContent)+'</span>';
     out+='<button class="ms-item'+(current===n?" on":"")+'" onclick="showTab('+n+');closeMoreSheet()" type="button"><span class="ms-ic">'+m[0]+'</span><span>'+esc(m[1])+'</span>'+bdg+'</button>';
   });
+  out+='<button class="ms-item" onclick="closeMoreSheet();_pcOpen()" type="button"><span class="ms-ic">💰</span><span>'+L2("Por cobrar","Receivable")+'</span></button>';
   out+='<div style="display:flex;align-items:center;gap:10px;padding:14px 6px 6px;margin-top:6px;border-top:1px solid var(--ln)">'
     +'<span style="font-weight:800;color:var(--i2);font-size:var(--fs-sm)">'+L2("Idioma","Language")+'</span>'
     +'<div style="margin-left:auto;display:inline-flex;border:1.5px solid var(--ln);border-radius:10px;overflow:hidden">'
@@ -10223,6 +10278,195 @@ function _dailyQuickRow(t,isDone,i){
     +'<div class="dq-cl" id="dqcl-'+id+'" style="display:none">'+cl+'</div>';
 }
 
+
+/* ===== POR COBRAR MODULE (injected) ===== */
+/* ===== PANEL "POR COBRAR" (collections) — Phase 1: TECH-TICKETS local charges =====
+   Aging pattern mirrors Invoice Tracker computeAgingBands: fresh<=7 / warn<=14 / late<=30 / critical>30
+   Source: completed tickets where saldo = total - collected(approved) > 0
+   Auto reason: part / decl / pend / nocc / none. Bilingual via L2. */
+
+function _pcMoney(n){return "$"+(Number(n)||0).toFixed(2);}
+
+function _pcDays(t){
+  var ref=(t&&(t.completedAt||t.date))||null;
+  if(!ref)return 0;
+  var ms;
+  if(typeof ref==="number")ms=ref;
+  else if(ref&&typeof ref.seconds==="number")ms=ref.seconds*1000;          // Firestore Timestamp (plain)
+  else if(ref&&typeof ref.toDate==="function")ms=ref.toDate().getTime();    // Firestore Timestamp (live)
+  else ms=Date.parse(ref);                                                  // ISO / "YYYY-MM-DD"
+  if(!ms||isNaN(ms))return 0;
+  return Math.max(0,Math.floor((Date.now()-ms)/86400000));
+}
+
+function _pcBandOf(days){
+  if(days<=7)return "fresh";
+  if(days<=14)return "warn";
+  if(days<=30)return "late";
+  return "critical";
+}
+
+function _pcCollected(t){
+  var ch=(t&&t.charges)||[];
+  return ch.filter(function(c){return c.result==="approved";})
+           .reduce(function(s,c){return s+(Number(c.amount)||0);},0);
+}
+
+/* most recent charge by .at (ISO/ts string) */
+function _pcLatestCharge(t){
+  var ch=((t&&t.charges)||[]).slice();
+  if(!ch.length)return null;
+  ch.sort(function(a,b){return String(b.at||"").localeCompare(String(a.at||""));});
+  return ch[0];
+}
+
+function _pcReason(t,collected,saldo){
+  if(collected>0.005)return "part";                 // partial payment
+  var last=_pcLatestCharge(t);
+  if(last&&last.result==="declined")return "decl";
+  if(last&&last.result==="pending")return "pend";
+  if(last&&(last.result==="refunded"||last.result==="voided"))return t.ccOnFile?"none":"nocc";
+  // no charge attempts at all
+  return t.ccOnFile?"none":"nocc";
+}
+
+/* Core: returns {total,count,bands:{fresh,warn,late,critical:{count,amt,items}},items[]} */
+function _porCobrarData(){
+  var bands={
+    fresh:{cls:"fresh",count:0,amt:0,items:[]},
+    warn:{cls:"warn",count:0,amt:0,items:[]},
+    late:{cls:"late",count:0,amt:0,items:[]},
+    critical:{cls:"critical",count:0,amt:0,items:[]}
+  };
+  var items=[],total=0,count=0;
+  var pool=[];
+  try{pool=(Array.isArray(active)?active:[]).concat(Array.isArray(done)?done:[]);}catch(_e){pool=[];}
+  var seen={};
+  for(var i=0;i<pool.length;i++){
+    var t=pool[i];if(!t)continue;
+    if(t.id&&seen[t.id])continue; if(t.id)seen[t.id]=1;        // de-dup (a ticket can sit in both arrays)
+    if(t.source==="dispatch")continue;                         // not real field work
+    var finished=(t.status==="complete"||t.status==="done");
+    if(!finished)continue;
+    var tot=Number(t.total)||0;
+    if(tot<=0)continue;
+    var collected=_pcCollected(t);
+    var saldo=tot-collected;
+    if(saldo<=0.005)continue;                                  // fully collected
+    var days=_pcDays(t);
+    var bk=_pcBandOf(days);
+    var reason=_pcReason(t,collected,saldo);
+    var it={id:t.id,customer:t.customer||"(sin nombre)",tech:(t.techs&&t.techs[0])||"",
+            total:tot,collected:collected,saldo:saldo,days:days,band:bk,reason:reason,
+            ccOnFile:!!t.ccOnFile,date:t.date||""};
+    items.push(it);
+    bands[bk].count++;bands[bk].amt+=saldo;bands[bk].items.push(it);
+    total+=saldo;count++;
+  }
+  // sort: most overdue first
+  items.sort(function(a,b){return b.days-a.days;});
+  return {total:total,count:count,bands:bands,items:items};
+}
+
+/* ---- reason metadata (bilingual) ---- */
+function _pcReasonMeta(r){
+  if(r==="decl")return {cls:"r-decl",ic:"✕",es:"Declinada",en:"Declined"};
+  if(r==="pend")return {cls:"r-pend",ic:"◷",es:"Pendiente",en:"Pending"};
+  if(r==="nocc")return {cls:"r-nocc",ic:"🚫",es:"Sin CC en archivo",en:"No CC on file"};
+  if(r==="part")return {cls:"r-part",ic:"◐",es:"Cobro parcial",en:"Partial payment"};
+  return {cls:"r-none",ic:"○",es:"Sin cobro registrado",en:"No charge recorded"};
+}
+function _pcBandMeta(k){
+  if(k==="fresh")return {es:"Reciente ≤7d",en:"Fresh ≤7d"};
+  if(k==="warn")return {es:"Atención ≤14d",en:"Watch ≤14d"};
+  if(k==="late")return {es:"Tarde ≤30d",en:"Late ≤30d"};
+  return {es:"Crítico +30d",en:"Critical +30d"};
+}
+
+var _pcCurBand=null;
+
+function _pcRowHTML(it){
+  var rm=_pcReasonMeta(it.reason);
+  var rail=it.band==="critical"?"crit":(it.band==="late"?"lat":(it.band==="warn"?"wrn":"frs"));
+  var sub=esc(it.tech||"")+" · "+L2("completado","completed")+" "+esc(it.date||"");
+  if(it.reason==="part")sub+=" · "+L2("cobrado","collected")+" "+_pcMoney(it.collected)+" / "+_pcMoney(it.total);
+  else if(it.reason==="nocc")sub+=" · "+L2("tarjeta no registrada","no card on file");
+  var acts='<button onclick="_pcGoTicket(\''+esc(it.id)+'\')">'+L2("Ver ticket","View ticket")+'</button>'
+          +'<button onclick="_pcGo360(\''+esc(it.id)+'\')">👤 '+L2("Cliente 360","Customer 360")+'</button>';
+  return '<div class="pc-row '+rail+'" data-b="'+it.band+'">'
+    +'<div class="pc-main"><div class="pc-cust">'+esc(it.customer)+'</div>'
+    +'<div class="pc-meta">'+sub+'</div>'
+    +'<div><span class="pc-reason '+rm.cls+'">'+rm.ic+' '+L2(rm.es,rm.en)+'</span></div>'
+    +'<div class="pc-acts">'+acts+'</div></div>'
+    +'<div style="text-align:right"><div class="pc-amt">'+_pcMoney(it.saldo)+'</div>'
+    +'<div class="pc-days">'+it.days+' '+L2("días","days")+'</div></div></div>';
+}
+
+function _renderPorCobrar(){
+  var d=_porCobrarData();
+  var body=document.getElementById("pcBody");if(!body)return;
+  if(!d.count){
+    body.innerHTML='<div class="empty-state" style="padding:40px 20px;text-align:center"><div style="font-size:34px">✅</div>'
+      +'<h3 style="margin:10px 0 4px">'+L2("Todo cobrado","All collected")+'</h3>'
+      +'<p style="color:var(--i3)">'+L2("No hay tickets con saldo pendiente.","No tickets with an open balance.")+'</p></div>';
+    return;
+  }
+  var h='<div class="pc-hero"><div class="pc-hero-lbl">'+L2("Total por cobrar","Total receivable")+'</div>'
+    +'<div class="pc-hero-amt">'+_pcMoney(d.total)+'</div>'
+    +'<div class="pc-hero-sub">'+d.count+' '+L2("tickets sin cobrar por completo · desde el Charge Log","tickets not fully collected · from the Charge Log")+'</div></div>';
+  // bands
+  h+='<div class="pc-bands">';
+  ["fresh","warn","late","critical"].forEach(function(k){
+    var b=d.bands[k],bm=_pcBandMeta(k);
+    var on=(_pcCurBand===k)?" on":"";
+    h+='<button class="pc-band '+k+on+'" onclick="_pcFilt(\''+k+'\')">'
+      +'<div class="pc-bc">'+L2(bm.es,bm.en)+'</div>'
+      +'<div class="pc-bn">'+b.count+'</div>'
+      +'<div class="pc-ba">'+_pcMoney(b.amt)+'</div></button>';
+  });
+  h+='</div>';
+  // list (respect current band filter)
+  var rows=d.items.filter(function(it){return !_pcCurBand||it.band===_pcCurBand;});
+  h+='<div id="pcList">'+rows.map(_pcRowHTML).join("")+'</div>';
+  // critical note
+  if(d.bands.critical.count){
+    h+='<div class="pc-note">🔔 <b>'+d.bands.critical.count+' '+L2("crítico(s) +30 días","critical +30 days")+'</b> — '
+      +L2("requieren seguimiento de cobranza urgente.","need urgent collections follow-up.")+'</div>';
+  }
+  body.innerHTML=h;
+}
+
+function _pcFilt(k){
+  _pcCurBand=(_pcCurBand===k)?null:k;
+  _renderPorCobrar();
+}
+
+function _pcOpen(){
+  _pcCurBand=null;
+  _renderPorCobrar();
+  var bg=document.getElementById("pcBg");if(bg)bg.classList.add("open");
+}
+function _pcClose(){var bg=document.getElementById("pcBg");if(bg)bg.classList.remove("open");}
+
+function _pcGoTicket(id){_pcClose();if(typeof openTktDetail==="function")openTktDetail(id);}
+function _pcGo360(id){_pcClose();if(typeof openCustomer360ByTicket==="function")openCustomer360ByTicket(id);else if(typeof openTktDetail==="function")openTktDetail(id);}
+
+/* ---- Daily top bar button (office staff only) ---- */
+function _pcRenderDailyBar(){
+  var bar=document.getElementById("pcDailyBar");if(!bar)return;
+  if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
+  if(!_dataLoaded){bar.innerHTML="";return;}
+  var d=_porCobrarData();
+  if(!d.count){bar.innerHTML="";return;}
+  var crit=d.bands.critical.count;
+  bar.innerHTML='<button class="pc-daily-btn'+(crit?" crit":"")+'" onclick="_pcOpen()" type="button">'
+    +'<span class="pc-daily-ico">💰</span>'
+    +'<span class="pc-daily-txt">'+L2("Por cobrar","Receivable")+'</span>'
+    +'<span class="pc-daily-amt">'+_pcMoney(d.total)+'</span>'
+    +'<span class="pc-daily-cnt">'+d.count+'</span>'
+    +(crit?'<span class="pc-daily-crit">'+crit+' '+L2("crít.","crit")+'</span>':'')+'</button>';
+}
+
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
   const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w),t.noLabor||false);
@@ -10904,6 +11148,7 @@ function rndrA(){
   try{_renderQbCopyBadge()}catch(_e){}
   try{_renderWelcomeKPIs()}catch(_e){}
   try{_renderPresenceCluster()}catch(_e){}
+  try{_pcRenderDailyBar()}catch(_e){}
   // Show skeleton placeholders during initial data load (before Firestore's
   // first snapshot arrives). Prevents the empty-list flash on cold open.
   if(!_dataLoaded&&!active.length&&!done.length){el.innerHTML=_skeletonHTML(4);return}
