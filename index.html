@@ -556,7 +556,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .tkt-h{padding:16px;display:flex;justify-content:space-between;align-items:flex-start;min-height:56px;user-select:none}.tkt-h:active{background:var(--bg)}
 .tkt-left h4{user-select:text;-webkit-user-select:text}
 .tkt-left{flex:1;min-width:0}.tkt-left h4{font-size:var(--fs-md);font-weight:700;color:var(--br)}.tkt-left p{font-size:var(--fs-sm);color:#888;margin-top:3px}
-.tkt-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.tkt-tag{font-size:var(--fs-xs);padding:2px 8px;border-radius:var(--r-sm);background:var(--c-ash-2);color:var(--i2);font-weight:600}.tkt-tag.tw{background:var(--acl);color:var(--acd)}.tkt-tiers{display:flex;flex-direction:column;gap:6px;margin-top:7px}.tt-row,.tt-cov,.tt-svc,.tt-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}.tt-cov{background:var(--bg);border:1px solid var(--ln);border-radius:9px;padding:6px 8px}.tt-meta{margin-top:1px;padding-top:6px;border-top:1px dashed var(--ln)}.tkt-svc-chip{background:var(--c-ash)!important;color:var(--i3)!important;font-weight:600}
+.tkt-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.tkt-tag{font-size:var(--fs-xs);padding:2px 8px;border-radius:var(--r-sm);background:var(--c-ash-2);color:var(--i2);font-weight:600}.tkt-tag.tw{background:var(--acl);color:var(--acd)}.tkt-tiers{display:flex;flex-direction:column;gap:6px;margin-top:7px}.tt-row,.tt-cov,.tt-svc,.tt-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}.tt-cov{background:var(--bg);border:1px solid var(--ln);border-radius:9px;padding:6px 8px}.tt-meta{margin-top:1px;padding-top:6px;border-top:1px dashed var(--ln)}.tkt-svc-chip{background:var(--c-ash)!important;color:var(--i3)!important;font-weight:600}.dq-label{font-size:var(--fs-xs);font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--ac);margin:12px 0 6px}.dq-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.dq-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:11px;border:1.5px solid var(--ln);background:var(--cd);color:var(--br);font-weight:700;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}.dq-btn:hover{border-color:var(--ac);background:var(--acl)}.dq-btn .dq-ico{font-size:17px}.dq-btn.dq-qb{background:var(--br);color:#fff;border-color:var(--br)}.dq-cl{margin-top:10px}.tt-covd{margin-top:7px;border-radius:10px;padding:8px 11px}.tkt.qb-pending{border-color:var(--c-warning-strong)}.tt-cov-clic{cursor:pointer}
 /* Warranty tag inherits series color when the spa model is known. */
 .tkt-tag.tw.series-vs{background:var(--series-vs-bg);color:var(--series-vs-fg);border:1px solid var(--series-vs-bd)}
 .tkt-tag.tw.series-gs{background:var(--series-gs-bg);color:var(--series-gs-fg);border:1px solid var(--series-gs-bd)}
@@ -10128,8 +10128,8 @@ function _dailyTags3(t,w,warMismatch){
   }
   // Tier 2 — coverage (spa warranty + part + service warranty + mismatch + chem WC)
   var cov=[];
-  if(w.label)cov.push('<span class="tkt-tag tw'+(w.model?(" series-"+String(w.model).toLowerCase()):"")+'">'+esc(w.label)+'</span>');
-  else cov.push('<span class="tkt-tag" style="background:var(--c-ash-2);color:var(--i3);font-weight:700">N/W</span>');
+  if(w.label)cov.push('<span class="tkt-tag tw tt-cov-clic'+(w.model?(" series-"+String(w.model).toLowerCase()):"")+'" onclick="event.stopPropagation();_dailyCovToggle(\''+t.id+'\')">'+esc(w.label)+' <span style="font-size:9px;opacity:.55">\u25be</span></span>');
+  else cov.push('<span class="tkt-tag tt-cov-clic" style="background:var(--c-ash-2);color:var(--i3);font-weight:700" onclick="event.stopPropagation();_dailyCovToggle(\''+t.id+'\')">N/W <span style="font-size:9px;opacity:.55">\u25be</span></span>');
   var p90=(typeof _part90Badge==="function")?_part90Badge(t):""; if(p90)cov.push(p90);
   var sw=(typeof _svcWarrantyBadge==="function")?_svcWarrantyBadge(t):""; if(sw)cov.push(sw);
   if(warMismatch)cov.push(warMismatch);
@@ -10145,13 +10145,78 @@ function _dailyTags3(t,w,warMismatch){
   if((t.videoLinks||[]).length)meta.push('<span class="tkt-tag" style="background:#e8e8e8">\uD83D\uDCF9 '+t.videoLinks.length+'</span>');
   if(t.reportImproved)meta.push('<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">\u2728 AI ready</span>');
   if(t.qbCopied)meta.push('<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">\u2192 QB \u2713</span>');
+  if(!t.qbCopied&&(t.status==='complete'||t.status==='done'))meta.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:700">'+L2("Pendiente QB","Pending QB")+'</span>');
   if(t.reportSent)meta.push('<span class="report-sent-tag">\uD83D\uDCE4 Report sent</span>');
   var h="";
   if(t1.length)h+='<div class="tt-row">'+t1.join("")+'</div>';
-  if(cov.length)h+='<div class="tt-cov">'+cov.join("")+'</div>';
+  if(cov.length)h+='<div class="tt-cov">'+cov.join("")+'</div>'+'<div id="covd-'+t.id+'" style="display:none" onclick="event.stopPropagation()">'+((typeof _covDetail==="function")?_covDetail(t):"")+'</div>';
   if(svcChips)h+='<div class="tt-svc">'+svcChips+'</div>';
   if(meta.length)h+='<div class="tt-meta">'+meta.join("")+'</div>';
   return h;
+}
+
+// ═══ DAILY CARD CORE UPGRADE (Nela, Jun 2026) ═══
+// One-click quick actions + clickable warranty coverage + clean QB copy + bilingual.
+
+// Coverage detail panel (bilingual) — reuses _billingFor so the rules stay exact.
+function _covDetail(t){
+  var w=(t&&t.warranty)||{};
+  var b=(typeof _billingFor==="function")?_billingFor(t):null;
+  var head;
+  if(w.has===true&&w.label) head=L2("Estado de garantía: ","Warranty status: ")+esc(w.label);
+  else if(w.has===false) head=L2("Fuera de garantía de fábrica (N/W)","Out of factory warranty (N/W)");
+  else head=L2("Garantía sin definir","Warranty not set");
+  var partsTxt,laborTxt,tone="ok";
+  if(b){
+    partsTxt=b.partsFree?L2("GRATIS (100%)","FREE (100%)")
+      :(/50%/.test(b.parts)?L2("50% retail","50% retail")
+      :/verify/i.test(b.parts)?L2("verificar","verify")
+      :L2("a precio RDA","at RDA (retail)"));
+    laborTxt=b.laborFree?L2("GRATIS","FREE")
+      :(/TC only/i.test(b.labor)?L2("solo TC (horas extra cubiertas)","TC only (extra hrs covered)")
+      :/verify/i.test(b.labor)?L2("verificar","verify")
+      :L2("se cobra (TC $150 + $100/hr)","chargeable (TC $150 + $100/hr)"));
+    if(!b.partsFree&&!b.laborFree)tone="warn";
+  } else { partsTxt=L2("ver ticket","see ticket"); laborTxt=L2("ver ticket","see ticket"); tone="muted"; }
+  var bg=tone==="ok"?"var(--c-success-bg)":tone==="warn"?"var(--c-warning-bg)":"var(--bg)";
+  var bd=tone==="ok"?"var(--c-success-strong)":tone==="warn"?"var(--c-warning-strong)":"var(--ln)";
+  var fg=tone==="ok"?"var(--c-success-fg)":tone==="warn"?"var(--c-warning-fg)":"var(--i2)";
+  return '<div class="tt-covd" style="background:'+bg+';border:1px solid '+bd+'">'
+    +'<div style="font-weight:800;color:'+fg+';font-size:var(--fs-sm);display:flex;align-items:center;gap:6px;margin-bottom:3px">\uD83D\uDEE1\uFE0F '+head+'</div>'
+    +'<div style="font-size:var(--fs-sm);color:var(--ink);font-weight:600">'+L2("Partes","Parts")+': <b style="color:'+fg+'">'+partsTxt+'</b> &nbsp;\u00b7&nbsp; '+L2("Labor","Labor")+': <b style="color:var(--ac)">'+laborTxt+'</b></div>'
+    +'</div>';
+}
+function _dailyCovToggle(id){var e=document.getElementById("covd-"+id);if(e)e.style.display=(e.style.display==="none"||!e.style.display)?"block":"none";}
+
+// Clean one-window QB copy from the Daily card → shows the AI text + marks → QB ✓.
+function _dailyCopyQB(id){
+  var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+  var t=all.filter(function(x){return x&&x.id===id})[0];
+  if(!t){toast&&toast(L2("Ticket no encontrado","Ticket not found"),"warn");return;}
+  var rep=(typeof buildCustomerReport==="function")?buildCustomerReport(t):null;
+  var txt=rep?(rep.textQB||rep.textPlain||""):"";
+  if(typeof _showQBCopyView==="function")_showQBCopyView(txt,id);
+}
+
+// Inline Charge Log (opens inside the card, no stacked window). Reuses _chargeTrailHTML.
+function _dailyChargeToggle(id){
+  var e=document.getElementById("dqcl-"+id);if(!e)return;
+  var open=(e.style.display!=="none"&&e.style.display!=="");
+  e.style.display=open?"none":"block";
+}
+
+// The one-click quick-actions row.
+function _dailyQuickRow(t,isDone,i){
+  var id=t.id;
+  var cl='';
+  try{ if(typeof _chargeTrailHTML==="function") cl=_chargeTrailHTML(t)||''; }catch(_e){}
+  return '<div class="dq-label">'+L2("Acciones rápidas","Quick actions")+'</div>'
+    +'<div class="dq-row">'
+      +'<button class="dq-btn" onclick="event.stopPropagation();_dailyChargeToggle(\''+id+'\')"><span class="dq-ico">\uD83D\uDCB3</span>Charge Log</button>'
+      +'<button class="dq-btn" onclick="event.stopPropagation();openCustomer360ByTicket(\''+id+'\')"><span class="dq-ico">\uD83D\uDC64</span>Customer 360</button>'
+      +'<button class="dq-btn dq-qb" onclick="event.stopPropagation();_dailyCopyQB(\''+id+'\')"><span class="dq-ico">\uD83D\uDCCB</span>'+L2("Copiar a QB","Copy to QB")+'</button>'
+    +'</div>'
+    +'<div class="dq-cl" id="dqcl-'+id+'" style="display:none">'+cl+'</div>';
 }
 
 function tktHTML(list,i,isDone){
@@ -10186,7 +10251,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}" style="border-left:4px solid ${_dailyRail(t)}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tiers">${_dailyTags3(t,w,_warMismatchBadge)}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}${(t.status==='complete'||isDone)&&!t.qbCopied?' qb-pending':''}" style="border-left:4px solid ${_dailyRail(t)}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tiers">${_dailyTags3(t,w,_warMismatchBadge)}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:8px">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})<span style="padding:2px 9px;border-radius:6px;background:var(--c-money-bg,#dcfce7);color:var(--c-money-fg,#166534);font-weight:800;font-size:var(--fs-sm)" title="Time on site rounded to the nearest 15 min — bill the customer this many hours">💵 Bill: ${billLabel}</span></div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -10196,7 +10261,7 @@ ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:var(--fs-sm);color:v
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:var(--fs-sm);color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
 ${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"},event)">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
-<div style="display:flex;gap:8px;margin-top:10px">
+${_dailyQuickRow(t,isDone,i)}<div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();shareTracking(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">🔗 Share</button>
 <button onclick="event.stopPropagation();editTkt(${i},${isDone?1:0})" style="flex:1;padding:10px;background:var(--acl);border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("pencil",13,{color:"var(--acd)"})}Edit Ticket</button>
