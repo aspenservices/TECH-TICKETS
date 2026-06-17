@@ -10688,12 +10688,62 @@ async function sendReportText(){
 }
 
 // ── Copy: full plaintext to clipboard ──────────────────────────────────────
+// ── QuickBooks copy view (Nela, Jun 2026). Shows the AI-polished QB text on
+//    screen (selectable + Copy button) instead of copying it silently, so she
+//    can see/verify exactly what goes into QuickBooks. Tokenized for Ember.
+function _showQBCopyView(text,tid){
+  var old=document.getElementById("qbCopyView"); if(old)old.remove();
+  var ov=document.createElement("div");
+  ov.id="qbCopyView";
+  ov.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(20,12,8,.55);display:flex;align-items:center;justify-content:center;padding:18px";
+  ov.innerHTML=
+    '<div style="background:var(--cd,#fff);border-radius:16px;max-width:580px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.4)">'
+    +'<div style="display:flex;align-items:center;gap:8px;padding:15px 18px;border-bottom:1px solid var(--ln,#eee)">'
+      +'<span style="font-size:18px">\uD83D\uDCCB</span>'
+      +'<b style="font-size:16px;color:var(--br,#3D2B1F);font-family:Fraunces,Georgia,serif">QuickBooks text \u2014 AI polished</b>'
+      +'<button id="qbCopyClose" style="margin-left:auto;background:none;border:none;font-size:22px;line-height:1;color:var(--i3,#999);cursor:pointer">\u00d7</button>'
+    +'</div>'
+    +'<div style="padding:14px 18px;overflow:auto">'
+      +'<p style="margin:0 0 9px;font-size:13px;color:var(--i3,#777)">Rev\u00edsalo y c\u00f3pialo a QuickBooks. Las notas originales del t\u00e9cnico no se tocan.</p>'
+      +'<textarea id="qbCopyText" readonly style="width:100%;min-height:250px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;border:1px solid var(--ln,#ddd);border-radius:10px;padding:12px;background:var(--bg,#faf8f4);color:var(--ink,#1f1a15);resize:vertical;box-sizing:border-box"></textarea>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px;padding:14px 18px;border-top:1px solid var(--ln,#eee)">'
+      +'<button id="qbCopyBtn" style="width:100%;padding:13px;background:var(--br,#3D2B1F);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer">\uD83D\uDCCB Copiar para QuickBooks</button>'
+      +'<div style="display:flex;gap:8px">'
+        +'<button id="qbMarkSent" style="flex:1;padding:9px;background:transparent;color:var(--i2,#574E45);border:1px solid var(--ln,#ddd);border-radius:9px;font-weight:600;font-size:12.5px;cursor:pointer">\u2713 Marcar como enviado al cliente</button>'
+        +'<button id="qbDone" style="flex:0 0 auto;padding:9px 16px;background:transparent;color:var(--i3,#999);border:1px solid var(--ln,#ddd);border-radius:9px;font-weight:600;font-size:12.5px;cursor:pointer">Cerrar</button>'
+      +'</div>'
+    +'</div></div>';
+  document.body.appendChild(ov);
+  var ta=document.getElementById("qbCopyText");
+  ta.value=text; ta.focus(); try{ta.select()}catch(_s){}
+  function closeOv(){var e=document.getElementById("qbCopyView");if(e)e.remove();}
+  ov.addEventListener("click",function(e){if(e.target===ov)closeOv()});
+  document.getElementById("qbCopyClose").onclick=closeOv;
+  document.getElementById("qbDone").onclick=function(){closeOv();try{if(typeof closeReportModal==="function")closeReportModal()}catch(_e){}};
+  document.getElementById("qbCopyBtn").onclick=async function(){
+    try{await navigator.clipboard.writeText(text);}
+    catch(_e){try{ta.select();document.execCommand("copy")}catch(__e){}}
+    this.textContent="\u2713 Copiado \u2014 pega en QuickBooks";
+    this.style.background="var(--c-success-strong,#16a34a)";
+    try{ if(window.db&&tid){ db.collection("tickets").doc(tid).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}); } }catch(_qe){}
+    try{ if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount(); }catch(_b){}
+    try{ if(typeof celebrate==="function")celebrate({count:60}); }catch(_c){}
+  };
+  document.getElementById("qbMarkSent").onclick=async function(){
+    try{ if(typeof markReportSent==="function"&&tid)await markReportSent(tid,"copied"); }catch(_e){}
+    this.textContent="\u2713 Marcado como enviado";
+    this.disabled=true;this.style.opacity=".7";
+  };
+}
+
 async function copyReportText(){
   const t=_repCurrentTicket;if(!t)return;
   const editedNotes=(document.getElementById("repNotesEdit")||{}).value||"";
   const rep=buildCustomerReport(t,editedNotes);
   // Copy the QuickBooks-friendly version (no greeting / address / footer).
   const textToCopy=rep.textQB||rep.textPlain;
+  _showQBCopyView(textToCopy,t.id);return;
   try{
     await navigator.clipboard.writeText(textToCopy);
     toast("Copied for QuickBooks ✓");
@@ -13842,6 +13892,190 @@ function _chgRefresh(id,t){
   if(sec){ var wrap=document.createElement("div"); wrap.innerHTML=_chargeTrailHTML(t); sec.parentNode.replaceChild(wrap.firstChild,sec); }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// CUSTOMER 360 — rich service-history timeline + part-warranty control
+// (Nela, Jun 2026). Additive. Reuses _billingFor, _svcWarranty,
+// _spaUnderWarranty, _custGroupKey, esc, active[], done[]. Surfaces:
+//   • a full visit timeline inside the Service History tab
+//   • a Warranties / installed-equipment panel (spa + part 1-yr + service 90-day)
+//   • a "repeated work" flag (historial de la parte)
+//   • a top-of-ticket alert when the customer has a part still under warranty
+//   • a "Customer 360" button on the ticket detail (access from Daily)
+// ═══════════════════════════════════════════════════════════════════════
+function _c360VisitType(t){
+  var v=Number(t.visitNum||1);
+  if(v===5)return{label:"Delivery",col:"var(--c-info-strong)",bg:"var(--c-info-bg)"};
+  if(v===4)return{label:"Repeat \u00b7 no charge",col:"var(--c-success-strong)",bg:"var(--c-success-bg)"};
+  if(v===3)return{label:"Chemical Maint.",col:"var(--ac)",bg:"var(--acl)"};
+  if(v===2)return{label:"2nd Visit \u00b7 additional labor",col:"var(--c-warning-strong)",bg:"var(--c-warning-bg)"};
+  return{label:"1st Visit",col:"var(--br)",bg:"var(--acl)"};
+}
+function _c360PartLabel(t){
+  var wt=(t.workTypes||[]).join(", ");
+  if(/pump/i.test(wt))return "Pump";
+  if(/heater/i.test(wt))return "Heater";
+  if(/board|pack|control/i.test(wt))return "Control / Pack";
+  if(/cover/i.test(wt))return "Cover";
+  var p=(Array.isArray(t.parts)&&t.parts.length)?(t.parts[0].n||t.parts[0].d||""):"";
+  if(p)return String(p).slice(0,30);
+  if(wt)return wt.slice(0,30);
+  return "Replaced part";
+}
+function _c360Warranties(tkts){
+  var out=[];var now=Date.now();
+  (tkts||[]).forEach(function(t){
+    var st=t.status||"";
+    if(t.partWarranty90&&t.partWarranty90Start){
+      var ps=new Date(t.partWarranty90Start+"T12:00:00");
+      if(!isNaN(ps.getTime())){
+        var partUntil=new Date(ps.getTime()+365*86400000);
+        var laborUntil=new Date(ps.getTime()+90*86400000);
+        var pDays=Math.ceil((partUntil.getTime()-now)/86400000);
+        var lDays=Math.ceil((laborUntil.getTime()-now)/86400000);
+        out.push({kind:"part",label:"Part \u2014 "+_c360PartLabel(t),detail:"1-yr part warranty \u00b7 installed "+t.partWarranty90Start,
+          until:partUntil,daysLeft:pDays,active:pDays>=0,labor:{daysLeft:lDays,active:lDays>=0},tid:t.id});
+      }
+    }
+    if((st==="complete"||st==="done")&&!(typeof _spaUnderWarranty==="function"&&_spaUnderWarranty(t))){
+      var sw=(typeof _svcWarranty==="function")?_svcWarranty(t.date||""):null;
+      if(sw&&sw.until&&sw.active){
+        out.push({kind:"service",label:"Service warranty",detail:"90-day callback cover \u00b7 "+(t.date||""),
+          until:sw.until,daysLeft:sw.daysLeft,active:sw.active,tid:t.id});
+      }
+    }
+  });
+  var spaT=null;
+  (tkts||[]).forEach(function(t){ if(t.warranty&&t.warranty.has===true&&(!spaT||((t.date||"")>(spaT.date||""))))spaT=t; });
+  if(spaT&&typeof _spaUnderWarranty==="function"&&_spaUnderWarranty(spaT)){
+    var w=spaT.warranty||{};
+    out.push({kind:"spa",label:"Spa warranty"+(w.label?(" \u00b7 "+w.label):""),
+      detail:((w.model?w.model+" ":"")+(w.year?("Yr "+w.year):""))||"Manufacturer coverage",until:null,daysLeft:99999,active:true});
+  }
+  out.sort(function(a,b){return a.daysLeft-b.daysLeft});
+  return out;
+}
+function _c360ActivePart(tkts){
+  var ws=_c360Warranties(tkts).filter(function(w){return w.kind==="part"&&w.active});
+  return ws.length?ws[0]:null;
+}
+function _c360RepeatFlags(tkts){
+  var counts={};
+  (tkts||[]).forEach(function(t){
+    if(t.status==="canceled")return;
+    (t.workTypes||[]).forEach(function(w){var k=String(w).trim();if(!k)return;counts[k]=counts[k]||{n:0,dates:[]};counts[k].n++;counts[k].dates.push(t.date||"");});
+  });
+  var flags=[];
+  Object.keys(counts).forEach(function(k){ if(counts[k].n>=2)flags.push({work:k,n:counts[k].n,dates:counts[k].dates.filter(Boolean).sort()}); });
+  flags.sort(function(a,b){return b.n-a.n});
+  return flags;
+}
+function _c360Kpi(label,val){
+  return '<div style="flex:1;min-width:90px;background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:9px 11px"><div style="font-size:var(--fs-xs);color:var(--i3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">'+esc(label)+'</div><div style="font-size:var(--fs-md);font-weight:800;color:var(--br)">'+esc(val)+'</div></div>';
+}
+function _c360VisitCard(t){
+  var vt=_c360VisitType(t);
+  var techs=(t.techs||[]).join(", ")||"\u2014";
+  var wt=(t.workTypes||[]).join(", ");
+  var parts=Array.isArray(t.parts)?t.parts:[];
+  var bill=(typeof _billingFor==="function")?_billingFor(t):null;
+  var photoN=((t.photoUrls||[]).length)||((Array.isArray(t.media)?t.media.filter(function(m){return m&&(m.url||m.dataUrl)}).length:0))||0;
+  var inv=t.invoice||t.invoiceNum||"";
+  var h='';
+  h+='<div style="border:1px solid var(--ln);border-left:4px solid '+vt.col+';border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--cd);cursor:pointer" onclick="openTktDetail(\''+t.id+'\')">';
+  h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">';
+  h+='<span style="font-weight:800;color:var(--ink);font-size:var(--fs-md)">'+esc(t.date||"\u2014")+'</span>';
+  h+='<span style="background:'+vt.bg+';color:'+vt.col+';font-size:var(--fs-xs);font-weight:800;border-radius:999px;padding:2px 10px">'+vt.label+'</span>';
+  if(t.status==="canceled")h+='<span style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700;border-radius:999px;padding:2px 9px">CANCELED</span>';
+  h+='<span style="margin-left:auto;font-size:var(--fs-sm);color:var(--i3)">'+esc(techs)+'</span>';
+  h+='</div>';
+  if(wt)h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:6px">\uD83D\uDD27 '+esc(wt)+'</div>';
+  if(parts.length){
+    h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:6px">';
+    parts.slice(0,6).forEach(function(p){ h+='<div>\u2022 '+esc((p.qty||1)+'\u00d7 '+(p.n||p.d||"part"))+'</div>'; });
+    if(parts.length>6)h+='<div style="color:var(--i3)">+ '+(parts.length-6)+' more\u2026</div>';
+    h+='</div>';
+  }
+  if(bill&&bill.bottom){
+    var chgCol=(bill.partsFree&&bill.laborFree)?"var(--c-success-strong)":(bill.verify?"var(--c-warning-strong)":"var(--ink)");
+    h+='<div style="font-size:var(--fs-sm);font-weight:700;color:'+chgCol+'">\uD83D\uDCB5 '+esc(bill.bottom)+'</div>';
+  }else if(t.total){
+    h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--ink)">\uD83D\uDCB5 $'+esc(t.total)+'</div>';
+  }
+  if(t.notes)h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-top:5px">'+esc(String(t.notes).substring(0,220))+(String(t.notes).length>220?"\u2026":"")+'</div>';
+  var chips=[];
+  if(photoN)chips.push("\uD83D\uDCF7 "+photoN+" photo"+(photoN>1?"s":""));
+  if(inv)chips.push("\uD83E\uDDFE "+esc(String(inv)));
+  if(chips.length)h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:var(--fs-xs);color:var(--i3)">'+chips.map(function(c){return '<span>'+c+'</span>'}).join("")+'</div>';
+  h+='</div>';
+  return h;
+}
+function _c360Render(tkts){
+  tkts=tkts||[];
+  if(!tkts.length)return '<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:var(--fs-base)">No service history yet.</div>';
+  var h='';
+  var visits=tkts.filter(function(t){return t.status!=="canceled"}).length;
+  var repeats=tkts.filter(function(t){return Number(t.visitNum)===4}).length;
+  var lastDate=tkts.map(function(t){return t.date||""}).filter(Boolean).sort().pop()||"\u2014";
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
+  h+=_c360Kpi("Visits",visits)+_c360Kpi("Repeats ($0)",repeats)+_c360Kpi("Last visit",lastDate);
+  h+='</div>';
+  var ws=_c360Warranties(tkts);
+  if(ws.length){
+    h+='<div style="font-size:var(--fs-sm);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 8px">\uD83D\uDEE1\uFE0F Warranties / installed equipment</div>';
+    ws.forEach(function(w){
+      var soon=w.until&&w.active&&w.daysLeft<=30;
+      var col=!w.active?"var(--i3)":(soon?"var(--c-warning-strong)":"var(--c-success-strong)");
+      var bg=!w.active?"var(--c-ash-2)":(soon?"var(--c-warning-bg)":"var(--c-success-bg)");
+      var rightTxt=w.until?(w.active?(w.daysLeft+"d left \u00b7 until "+w.until.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})):"expired"):"active";
+      h+='<div style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--ln);border-left:3px solid '+col+';border-radius:9px;padding:9px 11px;margin-bottom:7px;background:var(--cd)">';
+      h+='<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">'+esc(w.label)+'</div>';
+      h+='<div style="font-size:var(--fs-xs);color:var(--i3)">'+esc(w.detail||"")+'</div>';
+      if(w.kind==="part"&&w.labor)h+='<div style="font-size:var(--fs-xs);color:var(--i3)">Labor (90d): '+(w.labor.active?(w.labor.daysLeft+"d left"):"expired \u2014 labor is chargeable")+'</div>';
+      h+='</div>';
+      h+='<span style="background:'+bg+';color:'+col+';font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:2px 8px;white-space:nowrap">'+rightTxt+'</span>';
+      h+='</div>';
+    });
+  }
+  var flags=_c360RepeatFlags(tkts);
+  if(flags.length){
+    h+='<div style="font-size:var(--fs-sm);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">\uD83D\uDD01 Repeated work \u2014 part history</div>';
+    flags.forEach(function(f){
+      h+='<div style="border:1px solid var(--c-warning-strong);background:var(--c-warning-bg);border-radius:9px;padding:8px 11px;margin-bottom:7px;font-size:var(--fs-sm);color:var(--c-warning-fg)"><b>'+esc(f.work)+'</b> \u00b7 '+f.n+' visits ('+esc(f.dates.join(", "))+')</div>';
+    });
+  }
+  h+='<div style="font-size:var(--fs-sm);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">\uD83D\uDCCB Visit timeline</div>';
+  tkts.forEach(function(t){h+=_c360VisitCard(t)});
+  return h;
+}
+function _c360PartWarrantyAlert(t){
+  if(!t||!t.customer)return"";
+  var key=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").toLowerCase();
+  var tkts=[].concat(active||[],done||[]).filter(function(x){
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").toLowerCase();
+    return k===key;
+  });
+  var ap=_c360ActivePart(tkts);
+  if(!ap)return"";
+  var untilStr=ap.until?ap.until.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";
+  var laborTxt=ap.labor?(ap.labor.active?("labor also covered \u2014 "+ap.labor.daysLeft+"d left"):"labor IS chargeable (90 days passed)"):"";
+  return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--c-warning-bg);border:1px solid var(--c-warning-strong);border-radius:10px;padding:11px 13px;margin-bottom:12px">'
+    +'<span style="font-size:18px">\uD83D\uDEE1\uFE0F</span>'
+    +'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);font-weight:600"><b>'+esc(ap.label)+'</b> under warranty until <b>'+esc(untilStr)+'</b> ('+ap.daysLeft+'d left).'
+    +(laborTxt?'<br>'+esc(laborTxt)+'.':'')
+    +'<br>Verify coverage before charging this customer.</div></div>';
+}
+function _c360Btn(t){
+  if(!t||!t.id)return"";
+  return '<button onclick="openCustomer360ByTicket(\''+t.id+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--br);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:var(--fs-base);cursor:pointer;margin:4px 0 10px">\uD83D\uDC64 Customer 360 \u2014 full history & warranties</button>';
+}
+function openCustomer360ByTicket(id){
+  var t=[].concat(active||[],done||[]).find(function(x){return x.id===id});
+  if(!t)return;
+  try{ if(typeof closeTktDetail==="function")closeTktDetail(); }catch(_e){}
+  try{ openCustomerByName(t.customer); }catch(_e){}
+  setTimeout(function(){ try{ qbCustTab="history"; if(typeof rndrCust==="function")rndrCust(); }catch(_e){} },60);
+}
+
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -13880,6 +14114,7 @@ function openTktDetail(id){
   try{if(typeof _callbackBannerHTML==="function")h+=_callbackBannerHTML(t)}catch(_e){}
   try{if(typeof _recurrentBannerHTML==="function")h+=_recurrentBannerHTML(t)}catch(_e){}
   try{if(typeof _paymentAlertBannerHTML==="function")h+=_paymentAlertBannerHTML(t)}catch(_e){}
+  try{if(typeof _c360PartWarrantyAlert==="function")h+=_c360PartWarrantyAlert(t)}catch(_e){}
   try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
   try{if(typeof _dtSummaryChips==="function")h+=_dtSummaryChips(t)}catch(_e){}
   try{if(typeof _reportedFoundHTML==="function")h+=_reportedFoundHTML(t)}catch(_e){}
@@ -14179,6 +14414,7 @@ function openTktDetail(id){
     h+='</div></div>';
   }
   h+='</div>';
+  try{if(typeof _c360Btn==="function")h+=_c360Btn(t)}catch(_e){}
   h+=_chargeTrailHTML(t);
   document.getElementById("tktDetailBody").innerHTML=h;
   // Populate the attachments section (rendered separately so we can re-render in place)
@@ -15405,27 +15641,7 @@ function qbCustRenderDetail(customers){
     // tickets marked N/W when the spa is clearly still under coverage.
     h+=_buildAutoWarrantyPanelHTML(spaDesc);
   }else if(qbCustTab==="history"){
-    if(!sorted.length){
-      h+='<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:var(--fs-base)">No service history yet.</div>';
-    }else{
-      h+='<div class="qb-notes-tbl-hdr"><span>DATE</span><span style="flex:1">VISIT</span></div>';
-      sorted.forEach(t=>{
-        const isCanceled=t.status==="canceled";
-        const isDone=t.status==="done";
-        const cls=isCanceled?"canceled":(isDone?"done":"");
-        const status=isCanceled?'<span class="qb-note-status" style="background:var(--c-warning-bg);color:var(--c-warning-fg)">CANCELED</span>':(isDone?'<span class="qb-note-status" style="background:var(--c-success-bg);color:var(--c-success-fg)">DONE</span>':'<span class="qb-note-status" style="background:var(--acl);color:var(--acd)">ACTIVE</span>');
-        const techs=(t.techs||[]).join(", ")||"—";
-        const wt=(t.workTypes||[]).join(", ");
-        h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
-        h+='<span class="qb-note-pin"></span>';
-        h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
-        h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+status+_qbHistBadge(t)+_part90Badge(t)+_svcWarrantyBadge(t)+'</div>';
-        if(wt)h+='<div style="color:var(--i3);font-size:11.5px;margin-bottom:3px">'+esc(wt)+'</div>';
-        if(t.notes)h+='<div>'+esc(t.notes.substring(0,200))+(t.notes.length>200?"...":"")+'</div>';
-        h+='</div>';
-        h+='</div>';
-      });
-    }
+    h+=_c360Render(sorted);
   }
   h+='</div>';
 
