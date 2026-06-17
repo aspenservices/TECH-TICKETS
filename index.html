@@ -556,7 +556,7 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .tkt-h{padding:16px;display:flex;justify-content:space-between;align-items:flex-start;min-height:56px;user-select:none}.tkt-h:active{background:var(--bg)}
 .tkt-left h4{user-select:text;-webkit-user-select:text}
 .tkt-left{flex:1;min-width:0}.tkt-left h4{font-size:var(--fs-md);font-weight:700;color:var(--br)}.tkt-left p{font-size:var(--fs-sm);color:#888;margin-top:3px}
-.tkt-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.tkt-tag{font-size:var(--fs-xs);padding:2px 8px;border-radius:var(--r-sm);background:var(--c-ash-2);color:var(--i2);font-weight:600}.tkt-tag.tw{background:var(--acl);color:var(--acd)}
+.tkt-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.tkt-tag{font-size:var(--fs-xs);padding:2px 8px;border-radius:var(--r-sm);background:var(--c-ash-2);color:var(--i2);font-weight:600}.tkt-tag.tw{background:var(--acl);color:var(--acd)}.tkt-tiers{display:flex;flex-direction:column;gap:6px;margin-top:7px}.tt-row,.tt-cov,.tt-svc,.tt-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}.tt-cov{background:var(--bg);border:1px solid var(--ln);border-radius:9px;padding:6px 8px}.tt-meta{margin-top:1px;padding-top:6px;border-top:1px dashed var(--ln)}.tkt-svc-chip{background:var(--c-ash)!important;color:var(--i3)!important;font-weight:600}
 /* Warranty tag inherits series color when the spa model is known. */
 .tkt-tag.tw.series-vs{background:var(--series-vs-bg);color:var(--series-vs-fg);border:1px solid var(--series-vs-bd)}
 .tkt-tag.tw.series-gs{background:var(--series-gs-bg);color:var(--series-gs-fg);border:1px solid var(--series-gs-bd)}
@@ -10097,6 +10097,63 @@ async function dlZip(ticketIdx,list,ev){
 // ═══ RENDER TICKETS ═══
 function fmtTime(mins){const h=Math.floor(mins/60),m=mins%60;return h>0?(m>0?`${h}hr ${m}min`:`${h}hr`):`${m}min`}
 
+// ── Daily card badge hierarchy (Nela, Jun 2026). Regroups the existing badges
+//    into tiers + a visit-type color rail. Reuses the app's badge helpers as-is.
+function _dailyRail(t){
+  var v=Number(t.visitNum||1);
+  if(t.isUrgent)return "var(--c-danger-strong)";
+  if(v===4)return "var(--c-success-strong)";   // Repeat · no charge
+  if(v===2)return "var(--c-warning-strong)";    // 2nd visit · labor
+  if(v===5)return "var(--c-info-strong)";        // Delivery
+  if(v===3)return "var(--brl)";                  // CM
+  return "var(--ln)";                            // 1st visit · neutral
+}
+function _dailyTags3(t,w,warMismatch){
+  w=w||{};warMismatch=warMismatch||"";
+  var ic=(typeof icon==="function")?icon:function(){return""};
+  // Tier 1 — visit type + critical operational alerts
+  var t1=[];
+  var ae=(typeof _approvedEstBadge==="function")?_approvedEstBadge(t):""; if(ae)t1.push(ae);
+  if(t.visitNum===2)t1.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800">2nd Visit \u00b7 labor</span>');
+  if(t.visitNum===3)t1.push('<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>');
+  if(t.visitNum===4)t1.push('<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">'+ic("repeat",11,{color:"var(--c-danger-fg)"})+'Repeat \u00b7 no charge</span>');
+  if(t.visitNum===5)t1.push('<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">'+ic("package",11,{color:"var(--c-info-fg)"})+'Delivery</span>');
+  if(t.isUrgent)t1.push('<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">\uD83D\uDD25 URGENT</span>');
+  if(t.isNewSpa)t1.push('<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">\u2728 NEW SPA</span>');
+  if(t.needsOtherTech)t1.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="'+esc(t.needsOtherTechReason||'Needs an extra technician \u2014 2-person job')+'">\uD83D\uDC65 Needs 2nd tech</span>');
+  if(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer))){
+    t1.push(t.paidBeforeServiceOK
+      ?'<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service">\uD83D\uDCB3 Paid 1st \u2713</span>'
+      :'<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">\uD83D\uDCB3 PAY FIRST</span>');
+  }
+  // Tier 2 — coverage (spa warranty + part + service warranty + mismatch + chem WC)
+  var cov=[];
+  if(w.label)cov.push('<span class="tkt-tag tw'+(w.model?(" series-"+String(w.model).toLowerCase()):"")+'">'+esc(w.label)+'</span>');
+  else cov.push('<span class="tkt-tag" style="background:var(--c-ash-2);color:var(--i3);font-weight:700">N/W</span>');
+  var p90=(typeof _part90Badge==="function")?_part90Badge(t):""; if(p90)cov.push(p90);
+  var sw=(typeof _svcWarrantyBadge==="function")?_svcWarrantyBadge(t):""; if(sw)cov.push(sw);
+  if(warMismatch)cov.push(warMismatch);
+  if(t.wcType==='chem')cov.push('<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Water Change covered under Chemical Maintenance plan \u2014 no charge.">\uD83E\uDDEA WC \u00b7 Chem plan</span>');
+  // Tier 3 — service (muted)
+  var svcChips=(t.workTypes||[]).map(function(x){return '<span class="tkt-tag tkt-svc-chip">'+esc(x)+'</span>'}).join("");
+  // Tier 3b — meta (quiet, grouped, separated)
+  var meta=[];
+  var rec=(typeof _recurrentBadge==="function")?_recurrentBadge(t):""; if(rec)meta.push(rec);
+  var fu=(typeof _followUpBadge==="function")?_followUpBadge(t):""; if(fu)meta.push(fu);
+  var pp=(typeof _paymentPendingBadge==="function")?_paymentPendingBadge(t):""; if(pp)meta.push(pp);
+  var cr=(typeof _customerRiskBadge==="function")?_customerRiskBadge(t):""; if(cr)meta.push(cr);
+  if((t.videoLinks||[]).length)meta.push('<span class="tkt-tag" style="background:#e8e8e8">\uD83D\uDCF9 '+t.videoLinks.length+'</span>');
+  if(t.reportImproved)meta.push('<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">\u2728 AI ready</span>');
+  if(t.qbCopied)meta.push('<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">\u2192 QB \u2713</span>');
+  if(t.reportSent)meta.push('<span class="report-sent-tag">\uD83D\uDCE4 Report sent</span>');
+  var h="";
+  if(t1.length)h+='<div class="tt-row">'+t1.join("")+'</div>';
+  if(cov.length)h+='<div class="tt-cov">'+cov.join("")+'</div>';
+  if(svcChips)h+='<div class="tt-svc">'+svcChips+'</div>';
+  if(meta.length)h+='<div class="tt-meta">'+meta.join("")+'</div>';
+  return h;
+}
+
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
   const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w),t.noLabor||false);
@@ -10129,7 +10186,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tags">${_approvedEstBadge(t)}${w.label?`<span class="tkt-tag tw${w.model?" series-"+w.model.toLowerCase():""}">${esc(w.label)}</span>`:""}${t.visitNum===2?`<span class="tkt-tag" style="background:var(--al);color:var(--c-warning-fg)">2nd Visit</span>`:""}${t.visitNum===3?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>`:""}${t.visitNum===4?`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("repeat",11,{color:"var(--c-danger-fg)"})}Repeat</span>`:""}${t.visitNum===5?`<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">${icon("package",11,{color:"var(--c-info-fg)"})}Delivery</span>`:""}${t.isUrgent?`<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">🔥 URGENT</span>`:""}${t.isNewSpa?`<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">✨ NEW SPA</span>`:""}${(t.workTypes||[]).map(x=>`<span class="tkt-tag">${esc(x)}</span>`).join("")}${(t.videoLinks||[]).length?`<span class="tkt-tag" style="background:#e8e8e8">📹 ${t.videoLinks.length}</span>`:""}${(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer)))?(t.paidBeforeServiceOK?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Paid before service ✓">💳 Paid 1st ✓</span>`:`<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:800" title="Customer must pay before service">💳 PAY FIRST</span>`):""}${t.reportImproved?`<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">✨ AI ready</span>`:""}${t.needsOtherTech?`<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="${esc(t.needsOtherTechReason||'Needs an extra technician — 2-person job')}">👥 Needs 2nd tech</span>`:""}${_part90Badge(t)}${_svcWarrantyBadge(t)}${_followUpBadge(t)}${_recurrentBadge(t)}${_paymentPendingBadge(t)}${_customerRiskBadge(t)}${_warMismatchBadge}${t.wcType==='chem'?`<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:800" title="Water Change is covered under this customer's Chemical Maintenance plan — no charge. In QuickBooks just enter the service; nothing else to bill for the water change.">🧪 WC · Chem plan (no charge)</span>`:''}${t.qbCopied?`<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">→ QB ✓</span>`:""}${t.reportSent?`<span class="report-sent-tag">📤 Report sent</span>`:""}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}" style="border-left:4px solid ${_dailyRail(t)}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tiers">${_dailyTags3(t,w,_warMismatchBadge)}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:8px;color:var(--c-info-strong);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:8px">⏱ Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})<span style="padding:2px 9px;border-radius:6px;background:var(--c-money-bg,#dcfce7);color:var(--c-money-fg,#166534);font-weight:800;font-size:var(--fs-sm)" title="Time on site rounded to the nearest 15 min — bill the customer this many hours">💵 Bill: ${billLabel}</span></div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
