@@ -14147,7 +14147,7 @@ function _chargeTrailHTML(t){
 
   // add form (admin/organizer only)
   if(admin){
-    h+='<div style="margin-top:10px;padding:12px;border:1.5px dashed var(--ac);border-radius:11px;background:var(--acl)">';
+    h+='<div data-chgform="'+t.id+'" style="margin-top:10px;padding:12px;border:1.5px dashed var(--ac);border-radius:11px;background:var(--acl)">';
     h+='<div style="font-weight:800;color:var(--acd);font-size:12px;margin-bottom:9px">Log a charge</div>';
     h+='<div style="display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap">';
     h+='<input id="chgAmt_'+t.id+'" type="number" inputmode="decimal" placeholder="Amount" value="'+(t.total&&!charges.length?esc(t.total):"")+'" style="flex:1;min-width:110px;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:14px;background:var(--cd);color:var(--ink)">';
@@ -14155,7 +14155,7 @@ function _chargeTrailHTML(t){
     h+='</div>';
     h+='<input id="chgTxn_'+t.id+'" placeholder="Authorize.Net Transaction ID" style="width:100%;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:var(--fmono,ui-monospace),monospace;font-size:13px;background:var(--cd);color:var(--ink);margin-bottom:8px;box-sizing:border-box">';
     h+='<input id="chgNote_'+t.id+'" placeholder="Note (optional) — e.g. card declined, retrying Friday" style="width:100%;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:13px;background:var(--cd);color:var(--ink);margin-bottom:10px;box-sizing:border-box">';
-    h+='<button onclick="chgAdd(\''+t.id+'\')" style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--ac);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">Log charge</button>';
+    h+='<button onclick="chgAdd(\''+t.id+'\',this)" style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--ac);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">Log charge</button>';
     h+='<div style="font-size:10.5px;color:var(--i3);margin-top:8px;line-height:1.5">Each entry is stamped with date, time and your name automatically — your proof the charge was handled.</div>';
     h+='</div>';
   }
@@ -14163,13 +14163,20 @@ function _chargeTrailHTML(t){
   return h;
 }
 
-function chgAdd(id){
+function chgAdd(id,btnEl){
   if(!db){toast("Offline","err");return;}
   if(!_chgIsAdmin())return;
-  var amtEl=document.getElementById("chgAmt_"+id),
-      txnEl=document.getElementById("chgTxn_"+id),
-      resEl=document.getElementById("chgResult_"+id),
-      noteEl=document.getElementById("chgNote_"+id);
+  // The charge form can exist multiple times in the DOM at once (the Daily card's
+  // inline Charge Log + the slide-panel detail), so the ids chgAmt_/chgTxn_/etc.
+  // are duplicated. A plain getElementById grabs the FIRST (often hidden/empty)
+  // copy and wrongly reports "Enter a valid amount". Resolve fields relative to
+  // the form the user actually clicked.
+  var scope=(btnEl&&btnEl.closest&&btnEl.closest('[data-chgform="'+id+'"]'))||document;
+  function _pick(pfx){return scope.querySelector('[id="'+pfx+id+'"]')||document.getElementById(pfx+id);}
+  var amtEl=_pick("chgAmt_"),
+      txnEl=_pick("chgTxn_"),
+      resEl=_pick("chgResult_"),
+      noteEl=_pick("chgNote_");
   var amount=parseFloat((amtEl&&amtEl.value||"").replace(/[^0-9.\-]/g,""));
   if(isNaN(amount)||amount<=0){toast("Enter a valid amount","warn");return;}
   var entry={
