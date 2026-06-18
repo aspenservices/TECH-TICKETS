@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Aspen Spas — How did we do?</title>
+<link rel="icon" href="data:,">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+:root{
+  --deep:#3D2B1F;--teal:#A85C1F;--aqua:#D4772C;--copper:#B5733A;
+  --charcoal:#1f1a15;--slate:#574E45;--mist:#EBE4DA;--off:#F8F5F0;--white:#fff;
+  --success:#2E8B57;--warning:#D99A2B;--danger:#C0492F;
+  --head:'Poppins',system-ui,sans-serif;--body:'Source Sans 3',system-ui,-apple-system,sans-serif;
+  --r:14px;--sh:0 4px 18px rgba(19,74,99,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);color:var(--charcoal);background:var(--off);line-height:1.6;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 40px}
+.brand{display:flex;align-items:center;gap:10px;justify-content:center;padding:18px 0 6px}
+.brand svg{width:30px;height:34px}
+.brand .name{font-family:var(--head);font-weight:700;font-size:21px;color:var(--deep);letter-spacing:-.01em}
+.brand .name b{color:var(--teal);font-weight:600}
+.hero{background:linear-gradient(135deg,#3D2B1F,#211712);color:#fff;border-radius:var(--r);
+  padding:22px 20px;text-align:center;box-shadow:var(--sh);margin-top:6px}
+.hero h1{font-family:var(--head);font-weight:700;font-size:22px;margin:0 0 4px;color:#fff;letter-spacing:-.01em}
+.hero p{margin:0;color:#e8dccb;font-size:14px}
+.ctx{margin-top:10px;font-size:13px;color:var(--slate);text-align:center}
+.card{background:var(--white);border:1px solid var(--mist);border-radius:var(--r);box-shadow:var(--sh);
+  padding:18px;margin-top:16px}
+.lbl{font-family:var(--head);font-weight:600;font-size:15px;color:var(--deep);margin:0 0 4px}
+.sub{font-size:12.5px;color:var(--slate);margin:0 0 12px}
+.stars{display:flex;justify-content:space-between;gap:6px;max-width:360px;margin:6px auto 0}
+.star{flex:1;background:none;border:none;cursor:pointer;font-size:42px;line-height:1;color:#d9e2e6;
+  padding:4px 0;transition:transform .08s,color .12s;-webkit-tap-highlight-color:transparent}
+.star:active{transform:scale(.9)}
+.star.on{color:var(--warning)}
+.ratelabel{text-align:center;font-family:var(--head);font-weight:600;color:var(--deep);height:20px;margin-top:8px;font-size:15px}
+textarea{width:100%;min-height:96px;border:1.5px solid var(--mist);border-radius:12px;padding:12px;
+  font-family:var(--body);font-size:15px;color:var(--charcoal);resize:vertical}
+textarea:focus{outline:none;border-color:var(--teal)}
+.sigwrap{border:1.5px dashed #c4d3d9;border-radius:12px;background:#fbfdfe;position:relative;overflow:hidden}
+#sig{display:block;width:100%;height:170px;touch-action:none}
+.sigph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#b6c4ca;
+  font-size:14px;pointer-events:none}
+.sigph.hide{display:none}
+.rowbtns{display:flex;justify-content:flex-end;margin-top:8px}
+.linkbtn{background:none;border:none;color:var(--teal);font-family:var(--head);font-weight:600;
+  font-size:13px;cursor:pointer;padding:4px 6px}
+.photo-add{display:flex;align-items:center;gap:10px;border:1.5px solid var(--mist);border-radius:12px;
+  padding:13px;cursor:pointer;color:var(--slate);font-size:14px;font-weight:600}
+.photo-add:hover{border-color:var(--teal);color:var(--deep)}
+.photo-add svg{flex:0 0 auto}
+#photoInput{display:none}
+.photo-prev{margin-top:10px;position:relative;display:none}
+.photo-prev img{width:100%;border-radius:12px;display:block}
+.photo-prev button{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:none;
+  border-radius:999px;width:30px;height:30px;font-size:18px;cursor:pointer}
+.submit{width:100%;margin-top:18px;background:var(--deep);color:#fff;border:none;border-radius:12px;
+  padding:15px;font-family:var(--head);font-weight:600;font-size:16px;cursor:pointer;box-shadow:var(--sh)}
+.submit:hover{background:var(--teal)}
+.submit:disabled{opacity:.55;cursor:default}
+.status{text-align:center;font-size:13.5px;margin-top:10px;min-height:18px}
+.status.err{color:var(--danger)}
+.foot{text-align:center;font-size:11.5px;color:var(--slate);margin-top:22px;line-height:1.5}
+/* thank you */
+.thanks{display:none;text-align:center;padding:30px 16px}
+.thanks .chk{width:74px;height:74px;border-radius:50%;background:var(--success);margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:center}
+.thanks h2{font-family:var(--head);color:var(--deep);font-size:24px;margin:0 0 8px}
+.thanks p{color:var(--slate);font-size:15px;margin:0 auto;max-width:340px}
+</style>
+</head>
+<body>
+<div class="wrap" id="formView">
+  <div class="brand">
+    <svg viewBox="0 0 30 34" aria-hidden="true"><path d="M15 0C9 6 4 13 15 33C26 13 21 6 15 0Z" fill="#E0A050"/><path d="M15 6C12 11 10 16 15 28C20 16 18 11 15 6Z" fill="#C57A2E"/></svg>
+    <div class="name">ASPEN <b>SPAS</b></div>
+  </div>
+
+  <div class="hero">
+    <h1>How did we do?</h1>
+    <p>Your feedback helps us treat every customer like family.</p>
+  </div>
+  <div class="ctx" id="ctx"></div>
+
+  <div class="card">
+    <div class="lbl">Your rating</div>
+    <div class="sub">Tap a star — 1 (poor) to 5 (excellent).</div>
+    <div class="stars" id="stars"></div>
+    <div class="ratelabel" id="ratelabel"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">Tell us more <span style="color:var(--slate);font-weight:400">(optional)</span></div>
+    <textarea id="comment" placeholder="What went well? Anything we could do better?"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="lbl">Signature <span style="color:var(--slate);font-weight:400">(optional)</span></div>
+    <div class="sub">Sign below to confirm the work was completed to your satisfaction.</div>
+    <div class="sigwrap">
+      <canvas id="sig" width="600" height="340"></canvas>
+      <div class="sigph" id="sigph">✍️ Sign here</div>
+    </div>
+    <div class="rowbtns"><button type="button" class="linkbtn" id="sigClear">Clear</button></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">Add a photo <span style="color:var(--slate);font-weight:400">(optional)</span></div>
+    <div class="sub">A picture of the finished work, if you'd like.</div>
+    <label class="photo-add" for="photoInput">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A85C1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      <span>Tap to add a photo</span>
+    </label>
+    <input type="file" id="photoInput" accept="image/*" capture="environment">
+    <div class="photo-prev" id="photoPrev"><img id="photoImg" alt="preview"><button type="button" id="photoRemove">×</button></div>
+  </div>
+
+  <button class="submit" id="submitBtn">Submit feedback</button>
+  <div class="status" id="status"></div>
+
+  <div class="foot">
+    Aspen Spas · 4609 McRee Ave, St. Louis, MO 63110<br>Thank you for choosing a family-owned business since 1991.
+  </div>
+</div>
+
+<div class="wrap thanks" id="thanksView">
+  <div class="chk"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+  <h2>Thank you!</h2>
+  <p id="thanksMsg">We really appreciate you taking the time. Your feedback has been sent to our team.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // ---- URL context ----
+  var qs=new URLSearchParams(location.search);
+  var ticketId=qs.get("t")||"";
+  var customer=qs.get("c")||"";
+  var svcDate=qs.get("d")||"";
+  var ctxEl=document.getElementById("ctx");
+  var bits=[];
+  if(customer)bits.push(customer);
+  if(svcDate)bits.push("service on "+svcDate);
+  if(bits.length)ctxEl.textContent=bits.join(" · ");
+
+  // ---- Firebase ----
+  var db=null,storage=null;
+  try{
+    if(typeof FIREBASE_CONFIG!=="undefined"){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db=firebase.firestore();
+      try{storage=firebase.storage();}catch(_se){}
+      try{firebase.auth().signInAnonymously().catch(function(){});}catch(_ae){}
+    }
+  }catch(e){console.warn("Firebase init:",e);}
+
+  // ---- Star rating ----
+  var rating=0;
+  var LABELS=["","Poor","Fair","Good","Great","Excellent"];
+  var starsEl=document.getElementById("stars");
+  var rateLabel=document.getElementById("ratelabel");
+  for(var i=1;i<=5;i++){
+    (function(n){
+      var b=document.createElement("button");
+      b.type="button";b.className="star";b.textContent="★";b.setAttribute("aria-label",n+" star");
+      b.onclick=function(){setRating(n);};
+      starsEl.appendChild(b);
+    })(i);
+  }
+  function setRating(n){
+    rating=n;
+    var kids=starsEl.children;
+    for(var j=0;j<kids.length;j++)kids[j].classList.toggle("on",j<n);
+    rateLabel.textContent=LABELS[n]||"";
+  }
+
+  // ---- Signature pad ----
+  var canvas=document.getElementById("sig"),sctx=canvas.getContext("2d");
+  sctx.strokeStyle="#1F2A30";sctx.lineWidth=2.5;sctx.lineJoin="round";sctx.lineCap="round";
+  var drawing=false,hasSig=false,ph=document.getElementById("sigph");
+  function pos(e){
+    var r=canvas.getBoundingClientRect();
+    var src=(e.touches&&e.touches[0])?e.touches[0]:e;
+    return {x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};
+  }
+  function start(e){drawing=true;var p=pos(e);sctx.beginPath();sctx.moveTo(p.x,p.y);ph.classList.add("hide");if(e.cancelable)e.preventDefault();}
+  function move(e){if(!drawing)return;var p=pos(e);sctx.lineTo(p.x,p.y);sctx.stroke();hasSig=true;if(e.cancelable)e.preventDefault();}
+  function end(){drawing=false;}
+  canvas.addEventListener("mousedown",start);canvas.addEventListener("mousemove",move);
+  window.addEventListener("mouseup",end);
+  canvas.addEventListener("touchstart",start,{passive:false});
+  canvas.addEventListener("touchmove",move,{passive:false});
+  canvas.addEventListener("touchend",end);
+  document.getElementById("sigClear").onclick=function(){sctx.clearRect(0,0,canvas.width,canvas.height);hasSig=false;ph.classList.remove("hide");};
+
+  // ---- Photo ----
+  var photoDataUrl="";
+  document.getElementById("photoInput").onchange=function(ev){
+    var f=ev.target.files&&ev.target.files[0];if(!f)return;
+    var img=new Image(),url=URL.createObjectURL(f);
+    img.onload=function(){
+      var max=1200,w=img.width,h=img.height;
+      if(w>max||h>max){var s=Math.min(max/w,max/h);w=Math.round(w*s);h=Math.round(h*s);}
+      var c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      photoDataUrl=c.toDataURL("image/jpeg",0.82);
+      document.getElementById("photoImg").src=photoDataUrl;
+      document.getElementById("photoPrev").style.display="block";
+      URL.revokeObjectURL(url);
+    };
+    img.src=url;
+  };
+  document.getElementById("photoRemove").onclick=function(){
+    photoDataUrl="";document.getElementById("photoInput").value="";
+    document.getElementById("photoPrev").style.display="none";
+  };
+
+  // ---- Submit ----
+  var btn=document.getElementById("submitBtn"),statusEl=document.getElementById("status");
+  function setStatus(msg,err){statusEl.textContent=msg||"";statusEl.className="status"+(err?" err":"");}
+  btn.onclick=async function(){
+    if(!rating){setStatus("Please tap a star rating first.",true);return;}
+    if(!db){setStatus("Connection problem — please try again in a moment.",true);return;}
+    btn.disabled=true;setStatus("Sending…");
+    try{
+      var sig=hasSig?canvas.toDataURL("image/png"):"";
+      var photoUrl="";
+      if(photoDataUrl&&storage){
+        try{
+          var blob=await (await fetch(photoDataUrl)).blob();
+          var ref=storage.ref().child("feedback/"+(ticketId||"na")+"/"+Date.now()+".jpg");
+          await ref.put(blob);photoUrl=await ref.getDownloadURL();
+        }catch(_pe){photoUrl="";}
+      }
+      var doc={
+        ticketId:ticketId,customer:customer,serviceDate:svcDate,
+        rating:rating,comment:(document.getElementById("comment").value||"").trim(),
+        signature:sig,photoUrl:photoUrl,photoData:(photoUrl?"":photoDataUrl),
+        source:"customer-link",ua:navigator.userAgent,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await db.collection("feedback").add(doc);
+      document.getElementById("formView").style.display="none";
+      var tv=document.getElementById("thanksView");tv.style.display="block";
+      if(rating>=4)document.getElementById("thanksMsg").textContent="We're so glad you had a great experience! Thank you for trusting Aspen Spas.";
+      window.scrollTo(0,0);
+    }catch(e){
+      setStatus("Sorry, something went wrong. Please try again. ("+(e.message||e)+")",true);
+      btn.disabled=false;
+    }
+  };
+})();
+</script>
+</body>
+</html>

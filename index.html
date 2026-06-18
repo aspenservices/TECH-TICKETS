@@ -2127,7 +2127,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
              from the first phone call, not re-guessed in the field. -->
         <!-- Identical to the Field Report's Visit Type + Type of Work blocks, so the
              office sets billing at CALL time exactly the way the tech sees it later. -->
-        <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes on-y" id="slVisitBtn1" onclick="slSetVisit(1)">1st Visit</button><button class="wb no" id="slVisitBtn2" onclick="slSetVisit(2)">2nd Visit</button><button class="wb" id="slVisitBtn3" onclick="slSetVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="slVisitBtn4" onclick="slSetVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="slVisitBtn5" onclick="slSetVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button></div><div class="w-result rda-cov" id="slVisitInfo" style="margin-top:8px"><b>1st Visit</b> — TC $150 + $100/hr additional</div></div>
+        <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes on-y" id="slVisitBtn1" onclick="slSetVisit(1)">1st Visit</button><button class="wb no" id="slVisitBtn2" onclick="slSetVisit(2)">2nd Visit</button><button class="wb" id="slVisitBtn3" onclick="slSetVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="slVisitBtn4" onclick="slSetVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="slVisitBtn5" onclick="slSetVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button><button class="wb" id="slVisitBtn6" onclick="slSetVisit(6);_slSpaMoveLabel()" style="flex:1 1 100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px">🚚 Spa Move</button></div><div class="w-result rda-cov" id="slVisitInfo" style="margin-top:8px"><b>1st Visit</b> — TC $150 + $100/hr additional</div></div>
         <div class="card"><div class="lbl">Type of Work <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="wt-row" id="slWtRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddWT();setTimeout(_slRenderWT,700)" title="Add a new work type"><span class="qadd-plus">+</span><span>Add type</span></button></div></div>
         <div class="form-section-card" style="margin-bottom:16px;background:var(--c-info-bg);border:1.5px solid var(--c-info-border);border-radius:14px;padding:16px 18px">
           <div class="form-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--c-info-fg);font-weight:800;font-size:14px;letter-spacing:.3px">🛁 SPA DESCRIPTION <span style="font-weight:500;font-size:12px;color:var(--i3);text-transform:none;letter-spacing:0">— model, serial number, equipment</span></div>
@@ -10214,6 +10214,7 @@ function _dailyRail(t){
   if(v===4)return "var(--c-success-strong)";   // Repeat · no charge
   if(v===2)return "var(--c-warning-strong)";    // 2nd visit · labor
   if(v===5)return "var(--c-info-strong)";        // Delivery
+  if(v===6)return "var(--acd,#A85C1F)";          // Spa Move
   if(v===3)return "var(--brl)";                  // CM
   return "var(--ln)";                            // 1st visit · neutral
 }
@@ -10227,6 +10228,7 @@ function _dailyTags3(t,w,warMismatch){
   if(t.visitNum===3)t1.push('<span class="tkt-tag" style="background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700">CM</span>');
   if(t.visitNum===4)t1.push('<span class="tkt-tag" style="background:var(--c-danger-bg);color:var(--c-danger-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">'+ic("repeat",11,{color:"var(--c-danger-fg)"})+'Repeat \u00b7 no charge</span>');
   if(t.visitNum===5)t1.push('<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">'+ic("package",11,{color:"var(--c-info-fg)"})+'Delivery</span>');
+  if(t.visitNum===6)t1.push('<span class="tkt-tag" style="background:var(--acl,#FDF0E3);color:var(--acd,#A85C1F);font-weight:800">\uD83D\uDE9A Spa Move</span>');
   if(t.isUrgent)t1.push('<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">\uD83D\uDD25 URGENT</span>');
   if(t.isNewSpa)t1.push('<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">\u2728 NEW SPA</span>');
   if(t.needsOtherTech)t1.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="'+esc(t.needsOtherTechReason||'Needs an extra technician \u2014 2-person job')+'">\uD83D\uDC65 Needs 2nd tech</span>');
@@ -19389,12 +19391,14 @@ function _slRenderWT(){
 }
 // Visit toggle for the Service Log — mirrors the Field Report's setVisit()
 // visuals and billing hints exactly (same wb classes, same texts).
+function _slSpaMoveLabel(){var i=document.getElementById("slVisitInfo");if(i){i.className="w-result";i.style.background="var(--acl,#FDF0E3)";i.style.borderColor="var(--ac,#D4772C)";i.style.color="var(--acd,#A85C1F)";i.innerHTML="<b>Spa Move</b> \u2014 relocation job \u00b7 labor quoted (no warranty)";}}
 function slSetVisit(v){slVisitNum=v;
   var b1=document.getElementById("slVisitBtn1");if(b1)b1.className="wb yes"+(v===1?" on-y":"");
   var b2=document.getElementById("slVisitBtn2");if(b2)b2.className="wb no"+(v===2?" on-n":"");
   var b3=document.getElementById("slVisitBtn3");if(b3){b3.className="wb"+(v===3?" on-y":"");b3.style.cssText=v===3?"flex:1;background:var(--c-success-strong);border-color:var(--c-success-strong);color:#fff":"flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)";}
   var b4=document.getElementById("slVisitBtn4");if(b4){b4.className="wb"+(v===4?" on-y":"");b4.style.cssText=v===4?"flex:1;background:var(--c-danger-strong);border-color:var(--c-danger-strong);color:#fff":"flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)";}
   var b5=document.getElementById("slVisitBtn5");if(b5){b5.className="wb"+(v===5?" on-y":"");b5.style.cssText=v===5?"flex:1;background:var(--c-info-fg);border-color:var(--c-info-fg);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px":"flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px";}
+  var b6=document.getElementById("slVisitBtn6");if(b6)b6.className="wb"+(v===6?" on-y":"");
   var info=document.getElementById("slVisitInfo");
   if(info){info.style.display="block";info.style.background="";info.style.borderColor="";info.style.color="";
     if(v===1){info.className="w-result rda-cov";info.innerHTML="<b>1st Visit</b> — TC $150 + $100/hr additional"}
