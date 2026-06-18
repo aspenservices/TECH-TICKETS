@@ -14893,10 +14893,26 @@ function _c360Btn(t){
 }
 function openCustomer360ByTicket(id){
   var t=[].concat(active||[],done||[]).find(function(x){return x.id===id});
-  if(!t)return;
+  // Fix (Jun 2026): land on the customer PROFILE, not the empty "Select a customer"
+  // state. Root issue was a render-order race + a possible stale search filter that
+  // dropped the selected customer out of the (filtered) list. We now (1) resolve the
+  // SAME group key custMap uses, (2) assert selectedCustKey BEFORE navigating, and
+  // (3) re-assert + clear the search AFTER the tab's own render, twice for safety.
+  if(!t||!t.customer){ try{ if(typeof showTab==="function")showTab(6); }catch(_e){} return; }
   try{ if(typeof closeTktDetail==="function")closeTktDetail(); }catch(_e){}
-  try{ openCustomerByName(t.customer); }catch(_e){}
-  setTimeout(function(){ try{ qbCustTab="history"; if(typeof rndrCust==="function")rndrCust(); }catch(_e){} },60);
+  var _key=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||(t.customer||"").trim().toLowerCase();
+  try{ selectedCustKey=_key; qbCustTab="info"; }catch(_e){}
+  try{ if(typeof showTab==="function")showTab(6); }catch(_e){}
+  var _open=function(){
+    try{
+      var s=document.getElementById("searchCust"); if(s&&s.value)s.value="";
+      selectedCustKey=_key; qbCustTab="info";
+      if(typeof qbCustSelect==="function")qbCustSelect(_key);
+      else if(typeof rndrCust==="function")rndrCust();
+    }catch(_e){}
+  };
+  setTimeout(_open,0);
+  setTimeout(_open,140);
 }
 
 function openTktDetail(id){
@@ -14918,12 +14934,14 @@ function openTktDetail(id){
   if(_zT)_subT.push('<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:'+_zcT.text+';display:inline-block;flex-shrink:0"></span>'+esc(_zT)+'</span>');
   if(_dT)_subT.push('<span>'+(t.arrival?esc(t.arrival)+' \u00b7 ':'')+esc(_dT)+'</span>');
   document.getElementById("tktDetailTitle").innerHTML=
-    '<span style="display:inline-flex;align-items:center;gap:12px;min-width:0">'
+    '<span onclick="try{openCustomer360ByTicket(_curOpenTktId)}catch(_e){}" title="'+L2("Abrir Customer 360","Open Customer 360")+'" style="display:inline-flex;align-items:center;gap:12px;min-width:0;cursor:pointer">'
     +_avatarHTML(t.customer,46)
     +'<span style="display:flex;flex-direction:column;min-width:0;gap:2px">'
       +'<span style="font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--br);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.customer||"Ticket")+'</span>'
       +(_subT.length?'<span style="font-size:11.5px;font-weight:600;color:var(--i2);display:flex;flex-wrap:wrap;gap:3px 10px">'+_subT.join("")+'</span>':'')
-    +'</span></span>';
+    +'</span>'
+    +'<span aria-hidden="true" style="margin-left:6px;color:var(--ac);font-size:13px;font-weight:800;flex:none;white-space:nowrap">\uD83D\uDC64 360 \u203a</span>'
+    +'</span>';
   const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
   const _city=effectiveCity(t);
   const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");
