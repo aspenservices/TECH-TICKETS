@@ -1579,6 +1579,28 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 .sl-ai-pill.pay{background:var(--acl);color:var(--acd)}
 .sl-ai-pill.ash{background:var(--c-ash,#eef2f7);color:var(--i2)}
 .sl-ai-flag{padding:9px 14px;background:var(--c-warning-bg);color:var(--c-warning-fg);font-size:12px;font-weight:700;border-top:1px solid var(--ln)}
+
+/* ===== DAILY FILTERS + COLLECTION ALERTS ===== */
+#dailyFilters{display:flex;flex-wrap:wrap;gap:7px}
+#dailyFilters:empty{display:none}
+.df-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid var(--ln);background:var(--cd);color:var(--i2);border-radius:999px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.df-chip:hover{border-color:var(--ac);color:var(--acd)}
+.df-chip.on{background:var(--br);border-color:var(--br);color:#fff}
+.df-chip .df-n{font-size:11px;font-weight:800;background:rgba(0,0,0,.08);border-radius:999px;padding:1px 7px}
+.df-chip.on .df-n{background:rgba(255,255,255,.22);color:#fff}
+.ca-block{border-radius:14px;padding:12px 14px;margin-bottom:12px;border:1px solid var(--ln)}
+.ca-danger{background:var(--c-danger-bg);border-color:var(--c-danger-strong)}
+.ca-warn{background:var(--c-warning-bg);border-color:var(--c-warning-strong)}
+.ca-head{font-weight:800;font-size:13.5px;margin-bottom:8px}
+.ca-danger .ca-head{color:var(--c-danger-fg)}
+.ca-warn .ca-head{color:var(--c-warning-fg)}
+.ca-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid rgba(0,0,0,.06)}
+.ca-cust{font-weight:700;color:var(--ink);font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ca-meta{font-size:12px;color:var(--i2);font-weight:600;white-space:nowrap}
+.ca-btn{padding:4px 12px;border:1.5px solid currentColor;background:transparent;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;color:var(--br)}
+.ca-btn:hover{background:var(--br);color:#fff;border-color:var(--br)}
+.ca-all{margin-top:10px;width:100%;padding:9px;border:none;background:var(--c-danger-strong);color:#fff;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.ca-more{font-size:11.5px;color:var(--i3);padding:6px 0 0;font-weight:600}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1997,7 +2019,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
 </div>
 
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div><div id="ticketDetailBack" onclick="closeTicketDetail()" aria-hidden="true"></div><div id="ticketDetail" class="tkt-detail" aria-live="polite"></div></div></div>
+<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="dailyFilters" style="margin:0 0 8px"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div><div id="ticketDetailBack" onclick="closeTicketDetail()" aria-hidden="true"></div><div id="ticketDetail" class="tkt-detail" aria-live="polite"></div></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -2599,6 +2621,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
       <span id="alertsTabCount" style="background:#dc2626;color:white;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;display:none"></span>
     </div>
     <p style="margin:0 0 16px;font-size:12px;color:var(--i3)">Payment issues and other alerts published from Invoice Tracker, Chemical Maintenance, or other Aspen apps. Click a customer to see their full record. Click <b>Resolve</b> to dismiss an alert.</p>
+    <div id="collAlertTop" style="margin:0 0 14px"></div>
     <div id="alertsTabBody">
       <div style="text-align:center;padding:40px;color:var(--i3)">Loading…</div>
     </div>
@@ -7277,6 +7300,7 @@ function rndrAlerts(){
   const body=document.getElementById('alertsTabBody');
   const cntEl=document.getElementById('alertsTabCount');
   if(!body)return;
+  try{_renderCollAlertTop()}catch(_e){}
   // Exclude system sentinel events from the Alerts tab — they're surfaced elsewhere
   // (the QB Backlog snapshot is included in the weekly summary email, not as a row here).
   const allEvents=(crossAppEvents||[]).filter(function(ev){return ev&&ev.eventType!=="qb_backlog_snapshot"});
@@ -10634,6 +10658,112 @@ function _slVerdictHTML(v){
   return h;
 }
 
+
+/* ===== DAILY FILTERS + COLLECTION ALERTS (injected) ===== */
+/* ===== DAILY QUICK FILTERS + COLLECTIONS/RESCHEDULE ALERTS ===== */
+
+/* ---------- Daily quick-filter chips ---------- */
+var _dailyFilter="all";
+function _dailySetFilter(k){_dailyFilter=k;try{rndrA()}catch(_e){}}
+function _applyDailyFilter(pool){
+  if(!_dailyFilter||_dailyFilter==="all")return pool;
+  if(_dailyFilter==="qbpending")return pool.filter(function(t){return !t.qbCopied&&(t.status==="complete"||t.status==="done");});
+  if(_dailyFilter==="porcobrar"){
+    var ids={};try{_porCobrarData().items.forEach(function(it){ids[it.id]=1;});}catch(_e){}
+    return pool.filter(function(t){return t.id&&ids[t.id];});
+  }
+  if(_dailyFilter==="repeat")return pool.filter(function(t){return t.visitNum===4;});
+  if(_dailyFilter==="cm")return pool.filter(function(t){return t.visitNum===3;});
+  return pool;
+}
+function _renderDailyFilters(){
+  var bar=document.getElementById("dailyFilters");if(!bar)return;
+  if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
+  if(typeof _dataLoaded!=="undefined"&&!_dataLoaded){bar.innerHTML="";return;}
+  var qp=0,rp=0,cm=0,pc=0;
+  try{
+    var pool=(Array.isArray(active)?active:[]).filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});
+    qp=pool.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
+    rp=pool.filter(function(t){return t.visitNum===4;}).length;
+    cm=pool.filter(function(t){return t.visitNum===3;}).length;
+  }catch(_e){}
+  try{pc=_porCobrarData().count;}catch(_e){}
+  var chips=[["all",L2("Todos","All"),-1],
+    ["qbpending",L2("Pendiente QB","Pending QB"),qp],
+    ["porcobrar",L2("Por cobrar","Receivable"),pc],
+    ["repeat","Repeat",rp],
+    ["cm","CM",cm]];
+  var h="";
+  chips.forEach(function(c){
+    if(c[2]===0&&c[0]!=="all")return;                       // hide empty filters (keep "All")
+    var on=(_dailyFilter===c[0]);
+    h+='<button class="df-chip'+(on?" on":"")+'" type="button" onclick="_dailySetFilter(\''+c[0]+'\')">'
+      +esc(c[1])+(c[2]>=0?' <span class="df-n">'+c[2]+'</span>':'')+'</button>';
+  });
+  // if the active filter became empty, fall back to All
+  if(_dailyFilter!=="all"){var found=chips.some(function(c){return c[0]===_dailyFilter&&(c[2]>0||c[2]<0);});if(!found){_dailyFilter="all";return _renderDailyFilters();}}
+  bar.innerHTML=h;
+}
+
+/* ---------- Collections + Reschedule alerts (Alerts tab top block) ---------- */
+function _reschedStale(){
+  var out=[],N=3;                                            // reschedule older than 3 days = needs rebooking
+  try{
+    (Array.isArray(active)?active:[]).forEach(function(t){
+      if(!t||t.status!=="reschedule")return;
+      var days=(typeof _pcDays==="function")?_pcDays(t):0;
+      out.push({id:t.id,customer:t.customer||"?",days:days,tech:(t.techs&&t.techs[0])||"",stale:days>=N});
+    });
+  }catch(_e){}
+  out.sort(function(a,b){return b.days-a.days;});
+  return out;
+}
+function _renderCollAlertTop(){
+  var bar=document.getElementById("collAlertTop");if(!bar)return;
+  if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
+  var h="";
+  // 1) collections criticals (+30 days)
+  var crit=[];try{crit=(_porCobrarData().bands.critical.items)||[];}catch(_e){}
+  if(crit.length){
+    var sum=crit.reduce(function(s,x){return s+(x.saldo||0);},0);
+    h+='<div class="ca-block ca-danger"><div class="ca-head">🔔 '+crit.length+' '
+      +L2("cobro(s) crítico(s) +30 días","critical receivable(s) +30 days")+' · '+_pcMoney(sum)+'</div>';
+    crit.slice(0,8).forEach(function(it){
+      h+='<div class="ca-row"><span class="ca-cust">'+esc(it.customer)+'</span>'
+        +'<span class="ca-meta">'+_pcMoney(it.saldo)+' · '+it.days+'d</span>'
+        +'<button class="ca-btn" type="button" onclick="_pcGoTicket(\''+esc(it.id)+'\')">'+L2("Ver","Open")+'</button></div>';
+    });
+    if(crit.length>8)h+='<div class="ca-more">+'+(crit.length-8)+' '+L2("más","more")+'</div>';
+    h+='<button class="ca-all" type="button" onclick="_pcOpen()">'+L2("Abrir panel Por cobrar","Open Receivables panel")+'</button></div>';
+  }
+  // 2) reschedule not rebooked
+  var rs=_reschedStale().filter(function(x){return x.stale;});
+  if(rs.length){
+    h+='<div class="ca-block ca-warn"><div class="ca-head">📅 '+rs.length+' '
+      +L2("sin reagendar (3+ días)","not rebooked (3+ days)")+'</div>';
+    rs.slice(0,8).forEach(function(it){
+      h+='<div class="ca-row"><span class="ca-cust">'+esc(it.customer)+'</span>'
+        +'<span class="ca-meta">'+(it.tech?esc(it.tech)+' · ':'')+it.days+'d</span>'
+        +'<button class="ca-btn" type="button" onclick="_pcGoTicket(\''+esc(it.id)+'\')">'+L2("Ver","Open")+'</button></div>';
+    });
+    if(rs.length>8)h+='<div class="ca-more">+'+(rs.length-8)+' '+L2("más","more")+'</div>';
+    h+='</div>';
+  }
+  bar.innerHTML=h;
+  // also surface the combined count on the Alerts tab badge (additive, non-destructive)
+  try{
+    var extra=crit.length+rs.length;
+    var cntEl=document.getElementById("alertsTabCount");
+    if(cntEl&&extra>0){
+      var cur=parseInt(cntEl.getAttribute("data-xa-base")||cntEl.textContent||"0",10)||0;
+      // store the cross-app base once so we don't double-count on re-render
+      if(!cntEl.getAttribute("data-xa-base"))cntEl.setAttribute("data-xa-base",String(cur));
+      var base=parseInt(cntEl.getAttribute("data-xa-base")||"0",10)||0;
+      cntEl.textContent=String(base+extra);cntEl.style.display="inline-block";
+    }
+  }catch(_e){}
+}
+
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
   const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w),t.noLabor||false);
@@ -11316,6 +11446,7 @@ function rndrA(){
   try{_renderWelcomeKPIs()}catch(_e){}
   try{_renderPresenceCluster()}catch(_e){}
   try{_pcRenderDailyBar()}catch(_e){}
+  try{_renderDailyFilters()}catch(_e){}
   // Show skeleton placeholders during initial data load (before Firestore's
   // first snapshot arrives). Prevents the empty-list flash on cold open.
   if(!_dataLoaded&&!active.length&&!done.length){el.innerHTML=_skeletonHTML(4);return}
@@ -11324,6 +11455,7 @@ function rndrA(){
   // Only show field tickets (tech submitted work or reschedule), not dispatch
   let pool=active.filter(t=>t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule"));
   if(q)pool=pool.filter(t=>tktMatchesSearch(t,q));
+  try{pool=_applyDailyFilter(pool)}catch(_e){}
   
   if(isTech){
     pool=pool.filter(t=>(t.techs||[]).includes(currentUser.name));
