@@ -1552,6 +1552,33 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 .pc-acts button{font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 10px;border:1px solid var(--ln);background:var(--cd);color:var(--br);cursor:pointer;font-family:inherit}
 .pc-acts button:hover{border-color:var(--ac);background:var(--acl)}
 .pc-note{background:var(--c-danger-bg);border:1px solid var(--c-danger-strong);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--c-danger-fg);margin-top:14px}
+
+/* ===== SERVICE LOG · AI INTERPRETER ===== */
+.sl-ai-btn{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:9px 14px;border:1.5px solid var(--ac);background:var(--acl);color:var(--acd);border-radius:10px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.sl-ai-btn:hover{background:var(--ac);color:#fff}
+.sl-ai-btn:disabled{opacity:.6;cursor:default}
+.sl-ai-load{margin-top:10px;color:var(--i3);font-size:13px;font-weight:600}
+.sl-ai-err{margin-top:10px;background:var(--c-danger-bg);color:var(--c-danger-fg);border:1px solid var(--c-danger-strong);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.sl-ai-card{margin-top:10px;border:1px solid var(--ln);border-radius:14px;overflow:hidden;background:var(--cd)}
+.sl-ai-head{background:var(--hdr-bg,#211712);color:#f3e9dc;padding:9px 14px;font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px}
+.sl-ai-head .sl-ai-sub{margin-left:auto;font-weight:500;font-size:10.5px;color:#cbb9a6}
+.sl-ai-charge{display:flex;align-items:center;gap:10px;padding:11px 14px}
+.sl-ai-charge .sl-ai-q{font-size:12px;font-weight:700;color:var(--i2)}
+.sl-ai-charge .sl-ai-ans{margin-left:auto;font-family:var(--font-display,'Fraunces',Georgia,serif);font-weight:700;font-size:16px;padding:3px 13px;border-radius:999px}
+.sl-ai-charge.ok .sl-ai-ans{background:var(--c-success-bg);color:var(--c-success-fg)}
+.sl-ai-charge.pay .sl-ai-ans{background:var(--acl);color:var(--acd)}
+.sl-ai-charge.warn .sl-ai-ans{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.sl-ai-reason{padding:0 14px 9px;font-size:12px;color:var(--i3)}
+.sl-ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--ln);border-top:1px solid var(--ln)}
+.sl-ai-cell{background:var(--cd);padding:9px 12px}
+.sl-ai-k{font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--i3)}
+.sl-ai-v{font-size:13px;font-weight:700;color:var(--br);margin-top:3px}
+.sl-ai-pill{display:inline-block;font-size:11px;font-weight:800;border-radius:6px;padding:2px 8px}
+.sl-ai-pill.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
+.sl-ai-pill.warn{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.sl-ai-pill.pay{background:var(--acl);color:var(--acd)}
+.sl-ai-pill.ash{background:var(--c-ash,#eef2f7);color:var(--i2)}
+.sl-ai-flag{padding:9px 14px;background:var(--c-warning-bg);color:var(--c-warning-fg);font-size:12px;font-weight:700;border-top:1px solid var(--ln)}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2104,7 +2131,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
             <button type="button" onclick="_slShowWarrantyModal()" title="Add a part with warranty tracking — appears in customer history as parseable line" style="padding:5px 10px;border:1.5px solid #10b981;border-radius:999px;background:#d1fae5;color:#065f46;font-size:var(--fs-xs);font-weight:700;cursor:pointer;font-family:inherit">🛡 Warranty Part</button>
             <button type="button" onclick="_slClearTpl()" title="Clear comments" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:transparent;color:var(--i3);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">✕ Clear</button>
           </div>
-          <textarea id="slNotes" rows="6" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;min-height:140px;padding:14px 16px;border:2px solid #e6d399;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea>
+          <textarea id="slNotes" rows="6" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;min-height:140px;padding:14px 16px;border:2px solid #e6d399;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea><div style="margin-top:8px"><button type="button" id="slAIBtn" class="sl-ai-btn" onclick="slAIInterpret(this)">🔎 <span data-i18n-es="Interpretar con AI" data-i18n-en="Interpret with AI">Interpretar con AI</span></button><div id="slAIVerdict"></div></div>
           <div style="font-size:11.5px;color:var(--i3);margin-top:7px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
         </div>
         <!-- Photos / PDFs for technicians -->
@@ -10465,6 +10492,146 @@ function _pcRenderDailyBar(){
     +'<span class="pc-daily-amt">'+_pcMoney(d.total)+'</span>'
     +'<span class="pc-daily-cnt">'+d.count+'</span>'
     +(crit?'<span class="pc-daily-crit">'+crit+' '+L2("crít.","crit")+'</span>':'')+'</button>';
+}
+
+
+/* ===== SERVICE LOG AI INTERPRETER (injected) ===== */
+/* ===== SERVICE LOG · AI CHARGE INTERPRETER (Phase 1) =====================
+   Reads what the customer says (slNotes) + the warranty context already set in
+   the New Service Call form (slWHas / slWMod / slWYr) and asks the AI to
+   classify the job and whether it is chargeable. Reuses getAIKey() + the same
+   browser-side Anthropic pattern as improveNotesWithAI(). Output is a
+   SUGGESTION — the PM reviews and decides. */
+
+var AI_INTERPRET_SYS =
+"You are a billing assistant for Aspen Spas, a hot tub / swim spa service company in St. Louis, MO. "
++"Given what a customer says on a call (plus any warranty context), decide how the job should be classified and whether it is chargeable. "
++"Aspen rules:\n"
++"- TC (Service Call) = $150 flat (trip + first hour). Extra labor = $100 per additional hour.\n"
++"- REPEAT: we returned because a TECHNICIAN MADE A MISTAKE and we fixed the SAME problem again -> NO charge (our error). Usually the same issue within Aspen's 90-day service warranty.\n"
++"- NEW FAULT on that return: if the tech finds a DIFFERENT / new fault, it is reported as a new fault and charged as a SECOND VISIT.\n"
++"- RESCHEDULE: the job could not be finished, or the tech must return to the house for some reason -> counts as a SECOND VISIT (charged).\n"
++"- SECOND VISIT (labor billed = Service Call $150 + overage; parts follow warranty): installing a part diagnosed earlier, OR a reschedule, OR a new fault found during a repeat visit.\n"
++"- WARRANTY: spa within manufacturer warranty (series ES/GS/VS/SS + year) AND the failing part is covered -> parts $0, labor per tier (full / TC-only / 50%).\n"
++"- NO WARRANTY: out of warranty or part not covered -> customer pays parts retail + Service Call $150 + overage.\n"
++"If warranty model/year is not provided, set part_warranty to \"unknown\" and add a flag to verify the spa's series + year. "
++"Be conservative: if it sounds like a callback on recent Aspen work, lean REPEAT. "
++"Return ONLY a JSON object (no prose, no markdown fences):\n"
++"{\"charge\":\"yes|no|partial\",\"charge_reason\":\"<=12 words\",\"visit_type\":\"first|second|repeat|warranty\",\"part_warranty\":\"covered|not_covered|half|unknown\",\"estimated_charge\":\"short text e.g. Service Call $150 or $0 (warranty)\",\"flag\":\"short text or empty\"}";
+
+async function slAICall(userText){
+  var key=(typeof getAIKey==="function"&&getAIKey())||"";
+  if(!key)throw new Error(L2("Configura tu API key en Admin","Configure your AI key in the Admin tab"));
+  var r=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":key,
+      "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:500,
+      system:AI_INTERPRET_SYS,messages:[{role:"user",content:userText}]})
+  });
+  if(!r.ok){var m="AI "+r.status;try{var e=await r.json();if(e&&e.error&&e.error.message)m+=": "+e.error.message;}catch(_e){}
+    if(r.status===401)m+=" "+L2("(revisa tu API key en Admin)","(check your API key in Admin)");throw new Error(m);}
+  var d=await r.json();
+  return (d.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("").trim();
+}
+
+function _slParseVerdict(raw){
+  var s=String(raw||"").replace(/```json/gi,"").replace(/```/g,"").trim();
+  var a=s.indexOf("{"),b=s.lastIndexOf("}");
+  if(a>=0&&b>a)s=s.slice(a,b+1);
+  return JSON.parse(s);
+}
+
+function _slCtx(){
+  var notes=((document.getElementById("slNotes")||{}).value)||"";
+  var name=((document.getElementById("slCustName")||{}).value)||"";
+  var w;
+  try{
+    if(typeof slWHas!=="undefined"&&slWHas===true){
+      w="Warranty context (PM-set): spa UNDER manufacturer warranty";
+      if(typeof slWMod!=="undefined"&&slWMod)w+=", series "+String(slWMod).toUpperCase();
+      if(typeof slWYr!=="undefined"&&slWYr)w+=", year "+slWYr;
+      w+=".";
+    }else if(typeof slWHas!=="undefined"&&slWHas===false){
+      w="Warranty context (PM-set): spa is OUT of warranty (N/W).";
+    }else{w="Warranty context: not specified by PM.";}
+  }catch(_e){w="Warranty context: not specified by PM.";}
+  // PHASE 2 — auto-enrich from the matched customer record (no manual entry needed)
+  var extra="";
+  try{
+    var c=(typeof getCustData==="function")?getCustData(name):null;
+    if(c&&c.spaDesc)extra+="\nSpa on file: "+String(c.spaDesc).slice(0,220);
+    if(typeof _slLastSvcDate!=="undefined"&&_slLastSvcDate){
+      extra+="\nLast Aspen service: "+_slLastSvcDate;
+      if(typeof _slLastParts!=="undefined"&&_slLastParts)extra+=" (part replaced: "+String(_slLastParts).slice(0,120)+")";
+      var sw=(typeof _svcWarranty==="function")?_svcWarranty(_slLastSvcDate):null;
+      if(sw&&typeof sw.since==="number"){
+        extra+=" \u2014 "+sw.since+" days ago";
+        if(sw.since<=90)extra+=" [WITHIN Aspen 90-day service warranty: if the SAME issue, this is a REPEAT (no charge). If a DIFFERENT/new fault, it is a SECOND VISIT (charged).]";
+        else if(sw.since<=365)extra+=" [part-only window]";
+      }
+    }
+  }catch(_e){}
+  return {notes:notes,name:name,war:w,extra:extra};
+}
+
+async function slAIInterpret(btn){
+  var c=_slCtx();
+  if(!c.notes.trim()){toast(L2("Escribe primero lo que dice el cliente","Type what the customer says first"),"warn");return;}
+  var box=document.getElementById("slAIVerdict");
+  if(box)box.innerHTML='<div class="sl-ai-load">⏳ '+L2("Interpretando…","Interpreting…")+'</div>';
+  if(btn)btn.disabled=true;
+  try{
+    var prompt='Customer call (verbatim): "'+c.notes.trim()+'"\n'+c.war+(c.extra||"")+(c.name?("\nCustomer: "+c.name):"")+"\n\nClassify the job and decide the charge.";
+    var raw=await slAICall(prompt);
+    var v=_slParseVerdict(raw);
+    if(box)box.innerHTML=_slVerdictHTML(v);
+  }catch(e){
+    if(box)box.innerHTML='<div class="sl-ai-err">⚠️ '+esc(e.message||String(e))+'</div>';
+  }finally{if(btn)btn.disabled=false;}
+}
+
+function _slChargeMeta(ch){
+  ch=String(ch||"").toLowerCase();
+  if(ch==="no")return {cls:"ok",es:"No se cobra",en:"No charge"};
+  if(ch==="partial")return {cls:"warn",es:"Cobro parcial",en:"Partial charge"};
+  return {cls:"pay",es:"Sí, se cobra",en:"Yes, billable"};
+}
+function _slVisitLabel(v){
+  v=String(v||"").toLowerCase();
+  if(v==="second")return L2("2ª visita","2nd visit");
+  if(v==="repeat")return "Repeat";
+  if(v==="warranty")return L2("Garantía","Warranty");
+  if(v==="first")return L2("1ª visita","1st visit");
+  return L2("—","—");
+}
+function _slPartMeta(p){
+  p=String(p||"").toLowerCase();
+  if(p==="covered")return {cls:"ok",es:"Cubierta","en":"Covered"};
+  if(p==="half")return {cls:"warn",es:"50%",en:"50%"};
+  if(p==="not_covered")return {cls:"pay",es:"No cubierta",en:"Not covered"};
+  return {cls:"ash",es:"Revisar serie+año",en:"Verify series+year"};
+}
+
+function _slVerdictHTML(v){
+  v=v||{};
+  var ch=_slChargeMeta(v.charge);
+  var pm=_slPartMeta(v.part_warranty);
+  var h='<div class="sl-ai-card">';
+  h+='<div class="sl-ai-head">🔎 '+L2("Sugerencia de AI","AI suggestion")+'<span class="sl-ai-sub">'+L2("el PM revisa y decide","the PM reviews & decides")+'</span></div>';
+  // charge headline
+  h+='<div class="sl-ai-charge '+ch.cls+'"><span class="sl-ai-q">'+L2("¿Se cobra?","Chargeable?")+'</span>'
+    +'<span class="sl-ai-ans">'+L2(ch.es,ch.en)+'</span></div>';
+  if(v.charge_reason)h+='<div class="sl-ai-reason">'+esc(v.charge_reason)+'</div>';
+  // grid
+  h+='<div class="sl-ai-grid">';
+  h+='<div class="sl-ai-cell"><div class="sl-ai-k">'+L2("Tipo de visita","Visit type")+'</div><div class="sl-ai-v">'+esc(_slVisitLabel(v.visit_type))+'</div></div>';
+  h+='<div class="sl-ai-cell"><div class="sl-ai-k">'+L2("Garantía de la parte","Part warranty")+'</div><div class="sl-ai-v"><span class="sl-ai-pill '+pm.cls+'">'+esc(L2(pm.es,pm.en))+'</span></div></div>';
+  h+='<div class="sl-ai-cell"><div class="sl-ai-k">'+L2("Cobro estimado","Estimated charge")+'</div><div class="sl-ai-v">'+esc(v.estimated_charge||"—")+'</div></div>';
+  h+='</div>';
+  if(v.flag&&String(v.flag).trim())h+='<div class="sl-ai-flag">⚑ '+esc(v.flag)+'</div>';
+  h+='</div>';
+  return h;
 }
 
 function tktHTML(list,i,isDone){
