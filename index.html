@@ -10927,6 +10927,46 @@ function _pcEmRenderModeBar(){
 }
 function _pcEmSetMode(m){_pcEmMode=m;if(_pcEmLastId)_pcDraftEmail(_pcEmLastId);}
 
+
+/* ===== SATISFACTION LINK (injected) ===== */
+/* ===== SATISFACTION LINK (copy/share the customer feedback form link) ===== */
+function _satisfBase(){
+  // current app directory + feedback.html  (works for .../TECH-TICKETS/ or /index.html)
+  return location.href.replace(/[#?].*$/,"").replace(/[^/]*$/,"")+"feedback.html";
+}
+function _satisfLinkFor(name,date){
+  var q=[];
+  if(name)q.push("c="+encodeURIComponent(name));
+  if(date)q.push("d="+encodeURIComponent(date));
+  return _satisfBase()+(q.length?("?"+q.join("&")):"");
+}
+function _satisfCopy(){
+  var i=document.getElementById("satLinkInput");if(!i)return;
+  try{navigator.clipboard.writeText(i.value);toast(L2("Link copiado","Link copied"));return;}catch(_e){}
+  try{i.select();document.execCommand("copy");toast(L2("Link copiado","Link copied"));}catch(__e){toast(L2("No se pudo copiar","Copy failed"),"warn");}
+}
+function _satisfLinkModal(name,date){
+  var url=_satisfLinkFor(name,date);
+  var bg=document.getElementById("satLinkBg");
+  if(!bg){
+    bg=document.createElement("div");bg.id="satLinkBg";bg.className="mbg";bg.style.zIndex="100002";
+    document.body.appendChild(bg);
+    bg.addEventListener("click",function(e){if(e.target===bg)bg.classList.remove("open");});
+  }
+  bg.innerHTML='<div class="modal" style="max-width:520px;width:94%">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+    +'<div style="font-weight:800;font-size:16px;color:var(--br)">\uD83D\uDCCB '+L2("Link de satisfacci\u00f3n","Satisfaction link")+'</div>'
+    +'<button onclick="var b=document.getElementById(\'satLinkBg\');if(b)b.classList.remove(\'open\')" style="margin-left:auto;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--i3)">\u00d7</button></div>'
+    +(name?'<div style="font-size:12px;color:var(--i3);margin-bottom:8px">'+L2("Para","For")+": "+esc(name)+'</div>':'')
+    +'<input id="satLinkInput" readonly value="'+esc(url)+'" onclick="this.select()" style="width:100%;padding:11px;border:1.5px solid var(--ln);border-radius:9px;font-family:monospace;font-size:12.5px;box-sizing:border-box;margin-bottom:10px">'
+    +'<div style="display:flex;gap:8px">'
+    +'<button onclick="_satisfCopy()" style="flex:1;padding:11px;background:var(--br);color:#fff;border:none;border-radius:9px;font-family:inherit;font-weight:800;cursor:pointer">\uD83D\uDCCB '+L2("Copiar","Copy")+'</button>'
+    +'<button onclick="window.open(document.getElementById(\'satLinkInput\').value,\'_blank\')" style="flex:1;padding:11px;background:var(--ac);color:#fff;border:none;border-radius:9px;font-family:inherit;font-weight:800;cursor:pointer">\u2197 '+L2("Abrir","Open")+'</button>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--i3);margin-top:8px">'+L2("Comparte este link con el cliente (texto o correo). El formulario debe estar publicado (feedback.html).","Share this link with the customer (text or email). The feedback.html page must be published.")+'</div></div>';
+  bg.classList.add("open");
+}
+
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
   const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w),t.noLabor||false);
@@ -16378,6 +16418,7 @@ function qbCustRenderDetail(customers){
     h+='<div id="custMergePanel"></div>';
   }
   h+='<button class="qb-cust-btn brand" onclick="custCreateTicket()">+ Schedule Service Call</button>';
+  h+='<button class="qb-cust-btn" data-n="'+escH(c.name)+'" data-d="'+escH(c.lastDate||"")+'" onclick="_satisfLinkModal(this.dataset.n,this.dataset.d)">\uD83D\uDCCB Satisfaction link</button>';
   if(c.phone)h+='<a class="qb-cust-btn" href="tel:'+esc(c.phone)+'">📞 Call</a>';
   if(fullAddr)h+='<a class="qb-cust-btn" href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank">📍 Map</a>';
   h+='<span class="qb-saved-flash" id="qbSavedFlash">✓ Saved</span>';
