@@ -1579,6 +1579,9 @@ body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd)
 .sl-ai-pill.pay{background:var(--acl);color:var(--acd)}
 .sl-ai-pill.ash{background:var(--c-ash,#eef2f7);color:var(--i2)}
 .sl-ai-flag{padding:9px 14px;background:var(--c-warning-bg);color:var(--c-warning-fg);font-size:12px;font-weight:700;border-top:1px solid var(--ln)}
+.sl-ai-apply{border-top:1px solid var(--ln)}
+.sl-ai-applybtn{width:100%;padding:11px;background:var(--ac);color:#fff;border:none;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.sl-ai-applybtn:hover{background:var(--acd)}
 
 /* ===== DAILY FILTERS + COLLECTION ALERTS ===== */
 #dailyFilters{display:flex;flex-wrap:wrap;gap:7px}
@@ -10443,7 +10446,8 @@ function _pcRowHTML(it){
   if(it.reason==="part")sub+=" · "+L2("cobrado","collected")+" "+_pcMoney(it.collected)+" / "+_pcMoney(it.total);
   else if(it.reason==="nocc")sub+=" · "+L2("tarjeta no registrada","no card on file");
   var acts='<button onclick="_pcGoTicket(\''+esc(it.id)+'\')">'+L2("Ver ticket","View ticket")+'</button>'
-          +'<button onclick="_pcGo360(\''+esc(it.id)+'\')">👤 '+L2("Cliente 360","Customer 360")+'</button>';
+          +'<button onclick="_pcGo360(\''+esc(it.id)+'\')">👤 '+L2("Cliente 360","Customer 360")+'</button>'
+          +'<button onclick="_pcDraftEmail(\''+esc(it.id)+'\')">\u2709\ufe0f '+L2("Correo AI","AI email")+'</button>';
   return '<div class="pc-row '+rail+'" data-b="'+it.band+'">'
     +'<div class="pc-main"><div class="pc-cust">'+esc(it.customer)+'</div>'
     +'<div class="pc-meta">'+sub+'</div>'
@@ -10609,12 +10613,31 @@ async function slAIInterpret(btn){
     var prompt='Customer call (verbatim): "'+c.notes.trim()+'"\n'+c.war+(c.extra||"")+(c.name?("\nCustomer: "+c.name):"")+"\n\nClassify the job and decide the charge.";
     var raw=await slAICall(prompt);
     var v=_slParseVerdict(raw);
+    _slLastVerdict=v;
     if(box)box.innerHTML=_slVerdictHTML(v);
   }catch(e){
     if(box)box.innerHTML='<div class="sl-ai-err">⚠️ '+esc(e.message||String(e))+'</div>';
   }finally{if(btn)btn.disabled=false;}
 }
 
+var _slLastVerdict=null;
+function _slVisitNumFromType(t){t=String(t||"").toLowerCase();if(t==="second")return 2;if(t==="repeat")return 4;return 1;}
+function _slApplyVerdict(){
+  var v=_slLastVerdict;
+  if(!v){toast(L2("Primero interpreta con AI","Interpret with AI first"),"warn");return;}
+  var n=_slVisitNumFromType(v.visit_type);
+  if(typeof slSetVisit==="function"){try{slSetVisit(n);}catch(_e){}}
+  try{
+    var ta=document.getElementById("slNotes");
+    if(ta){
+      var ch=_slChargeMeta(v.charge);
+      var line="[AI: "+L2(ch.es,ch.en)+" \u00b7 "+_slVisitLabel(v.visit_type)+(v.estimated_charge?(" \u00b7 "+v.estimated_charge):"")+"]";
+      if(ta.value.indexOf(line)<0)ta.value=(ta.value?ta.value.replace(/\s+$/,"")+"\n":"")+line;
+    }
+  }catch(_e){}
+  toast(L2("Aplicado al ticket \u2014 revisa y crea la llamada","Applied \u2014 review and create the call"));
+  try{var el=document.getElementById("slVisitInfo");if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"center"});}catch(_e){}
+}
 function _slChargeMeta(ch){
   ch=String(ch||"").toLowerCase();
   if(ch==="no")return {cls:"ok",es:"No se cobra",en:"No charge"};
@@ -10654,6 +10677,7 @@ function _slVerdictHTML(v){
   h+='<div class="sl-ai-cell"><div class="sl-ai-k">'+L2("Cobro estimado","Estimated charge")+'</div><div class="sl-ai-v">'+esc(v.estimated_charge||"—")+'</div></div>';
   h+='</div>';
   if(v.flag&&String(v.flag).trim())h+='<div class="sl-ai-flag">⚑ '+esc(v.flag)+'</div>';
+  h+='<div class="sl-ai-apply"><button type="button" class="sl-ai-applybtn" onclick="_slApplyVerdict()">➕ '+L2("Aplicar al ticket","Apply to call")+'</button></div>';
   h+='</div>';
   return h;
 }
@@ -10763,6 +10787,143 @@ function _renderCollAlertTop(){
     }
   }catch(_e){}
 }
+
+
+/* ===== POR COBRAR AI EMAIL (injected) ===== */
+/* ===== POR COBRAR · AI COLLECTIONS EMAIL =====================================
+   Per-receivable "draft email with AI" — generates a polite, professional
+   English payment-reminder the customer receives. Reuses getAIKey() + the same
+   browser-side Anthropic pattern. Output is editable; the PM reviews & sends. */
+
+var PC_EMAIL_SYS =
+"You write short, polite, professional payment-reminder (collections) emails for Aspen Spas, a hot tub and swim spa service company in St. Louis, MO. "
++"The recipient is a customer with an outstanding balance for a service visit we ALREADY completed. Guidelines:\n"
++"- Warm and respectful tone; never aggressive or threatening.\n"
++"- Greet the customer by first name when possible (names may be given as 'Last, First').\n"
++"- Briefly remind them of the balance due for their recent service and state the amount.\n"
++"- If a card payment was declined, mention it gently (it may have been an oversight).\n"
++"- Offer an easy way to pay: reply to this email or call the Aspen Spas office.\n"
++"- Keep it to 4-6 short sentences. Sign as 'Aspen Spas Service Team'.\n"
++"- Do NOT invent invoice numbers, phone numbers, dates, or amounts you were not given.\n"
++"- Write in English (our customers are English-speaking).\n"
++"Return ONLY a JSON object: {\"subject\":\"...\",\"body\":\"...\"}";
+
+var PC_INTERNAL_SYS =
+"You write a short INTERNAL collections note for the Aspen Spas office team (NOT sent to the customer). "
++"Summarize factually: customer, amount due, days overdue, the reason (declined card / no card on file / partial / pending), and a suggested next step (e.g., call to update the card on file, request payment before the next service). "
++"Keep it to 2-4 short lines, plain and professional. Do NOT address the customer. "
++"Return ONLY a JSON object: {\"subject\":\"short title\",\"body\":\"the note\"}";
+var _pcEmMode="client";
+
+async function _pcEmAICall(sys,userText){
+  var key=(typeof getAIKey==="function"&&getAIKey())||"";
+  if(!key)throw new Error(L2("Configura tu API key en Admin","Configure your AI key in the Admin tab"));
+  var r=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":key,
+      "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:700,system:sys,messages:[{role:"user",content:userText}]})
+  });
+  if(!r.ok){var m="AI "+r.status;try{var e=await r.json();if(e&&e.error&&e.error.message)m+=": "+e.error.message;}catch(_e){}
+    if(r.status===401)m+=" "+L2("(revisa tu API key en Admin)","(check your API key in Admin)");throw new Error(m);}
+  var d=await r.json();
+  return (d.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("").trim();
+}
+function _pcEmParse(raw){
+  var s=String(raw||"").replace(/```json/gi,"").replace(/```/g,"").trim();
+  var a=s.indexOf("{"),b=s.lastIndexOf("}");if(a>=0&&b>a)s=s.slice(a,b+1);
+  return JSON.parse(s);
+}
+
+function _pcEmEnsure(){
+  var bg=document.getElementById("pcEmailBg");
+  if(bg)return bg;
+  bg=document.createElement("div");
+  bg.id="pcEmailBg";bg.className="mbg";bg.style.zIndex="100001";
+  bg.innerHTML='<div class="modal" style="max-width:580px;width:94%">'
+   +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+   +'<div style="font-weight:800;font-size:16px;color:var(--br)">\u2709\ufe0f '+L2("Correo de cobranza (AI)","Collections email (AI)")+'</div>'
+   +'<button onclick="_pcEmClose()" style="margin-left:auto;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--i3)">\u00d7</button></div>'
+   +'<div id="pcEmModeBar" style="display:flex;gap:6px;margin-bottom:10px"></div>'
+   +'<div id="pcEmTo" style="font-size:12px;color:var(--i3);margin-bottom:10px"></div>'
+   +'<div id="pcEmContent"></div></div>';
+  document.body.appendChild(bg);
+  bg.addEventListener("click",function(e){if(e.target===bg)_pcEmClose();});
+  return bg;
+}
+function _pcEmOpen(){_pcEmEnsure().classList.add("open");}
+function _pcEmClose(){var bg=document.getElementById("pcEmailBg");if(bg)bg.classList.remove("open");}
+
+var _pcEmLastId=null;
+async function _pcDraftEmail(id){
+  _pcEmLastId=id;
+  var item=null;try{item=_porCobrarData().items.filter(function(x){return x.id===id;})[0];}catch(_e){}
+  if(!item){toast(L2("No encontré el cobro","Receivable not found"),"warn");return;}
+  var email="";try{var c=getCustData(item.customer);if(c&&c.email)email=c.email;}catch(_e){}
+  _pcEmOpen();
+  _pcEmRenderModeBar();
+  var internal=(_pcEmMode==="internal");
+  var toEl=document.getElementById("pcEmTo");
+  if(toEl)toEl.innerHTML=internal?('<span style="color:var(--i2);font-weight:700">'+L2("Nota interna para el equipo","Internal note for the team")+'</span>'):(L2("Para","To")+": "+(email?esc(email):'<span style="color:var(--c-warning-fg)">'+L2("sin correo en archivo","no email on file")+'</span>'));
+  var box=document.getElementById("pcEmContent");
+  if(box)box.innerHTML='<div style="padding:22px;text-align:center;color:var(--i3)">\u23f3 '+L2("Redactando\u2026","Drafting\u2026")+'</div>';
+  try{
+    var ctx="Customer: "+item.customer+"\nAmount due: "+_pcMoney(item.saldo)
+      +"\nDays since service: "+item.days+(item.date?("\nService date: "+item.date):"")
+      +(item.tech?("\nTechnician: "+item.tech):"");
+    if(item.reason==="decl")ctx+="\nNote: a recent card payment was declined.";
+    else if(item.reason==="nocc")ctx+="\nNote: no card on file.";
+    else if(item.reason==="part")ctx+="\nNote: partially paid ("+_pcMoney(item.collected)+" of "+_pcMoney(item.total)+" so far).";
+    else if(item.reason==="pend")ctx+="\nNote: a payment is pending.";
+    var sys=internal?PC_INTERNAL_SYS:PC_EMAIL_SYS;
+    var instr=internal?"\n\nWrite the internal note now.":"\n\nWrite the reminder email now.";
+    var raw=await _pcEmAICall(sys,ctx+instr);
+    _pcEmRender(_pcEmParse(raw),email,internal);
+  }catch(e){
+    if(box)box.innerHTML='<div style="background:var(--c-danger-bg);color:var(--c-danger-fg);border-radius:10px;padding:12px;font-size:12.5px">\u26a0\ufe0f '+esc(e.message||String(e))+'</div>';
+  }
+}
+
+function _pcEmRender(v,email,internal){
+  var box=document.getElementById("pcEmContent");if(!box)return;
+  var subj=(v&&v.subject)||"Your Aspen Spas service balance";
+  var body=(v&&v.body)||"";
+  var lbl='font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--i3)';
+  var fld='width:100%;padding:10px 12px;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-size:13px;margin:4px 0 12px;box-sizing:border-box';
+  box.innerHTML=''
+   +'<label style="'+lbl+'">'+L2("Asunto","Subject")+'</label>'
+   +'<input id="pcEmSubj" style="'+fld+'">'
+   +'<label style="'+lbl+'">'+L2("Mensaje","Message")+'</label>'
+   +'<textarea id="pcEmBody" rows="11" style="'+fld+';resize:vertical;line-height:1.5"></textarea>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+   +'<button onclick="_pcEmCopy()" style="flex:1;min-width:120px;padding:11px;background:var(--br);color:#fff;border:none;border-radius:9px;font-family:inherit;font-weight:700;cursor:pointer">\ud83d\udccb '+L2("Copiar","Copy")+'</button>'
+   +((email&&!internal)?'<button onclick="_pcEmMailto(\''+esc(email)+'\')" style="flex:1;min-width:120px;padding:11px;background:var(--ac);color:#fff;border:none;border-radius:9px;font-family:inherit;font-weight:700;cursor:pointer">\u2709\ufe0f '+L2("Abrir en correo","Open in email")+'</button>':'')
+   +'<button onclick="_pcEmRegen()" style="padding:11px 14px;background:none;border:1.5px solid var(--ln);border-radius:9px;font-family:inherit;font-weight:700;cursor:pointer;color:var(--i2)">\u21bb '+L2("Regenerar","Regenerate")+'</button>'
+   +'</div>'
+   +'<div style="font-size:11px;color:var(--i3);margin-top:8px">'+L2("Revisa y edita antes de enviar.","Review and edit before sending.")+'</div>';
+  var si=document.getElementById("pcEmSubj"); if(si)si.value=subj;
+  var bi=document.getElementById("pcEmBody"); if(bi)bi.value=body;
+}
+function _pcEmCopy(){
+  var s=((document.getElementById("pcEmSubj")||{}).value)||"";
+  var b=((document.getElementById("pcEmBody")||{}).value)||"";
+  var txt="Subject: "+s+"\n\n"+b;
+  try{navigator.clipboard.writeText(txt);toast(L2("Copiado","Copied"));return;}catch(_e){}
+  try{var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);toast(L2("Copiado","Copied"));}catch(__e){toast(L2("No se pudo copiar","Copy failed"),"warn");}
+}
+function _pcEmMailto(email){
+  var s=((document.getElementById("pcEmSubj")||{}).value)||"";
+  var b=((document.getElementById("pcEmBody")||{}).value)||"";
+  window.location.href="mailto:"+encodeURIComponent(email)+"?subject="+encodeURIComponent(s)+"&body="+encodeURIComponent(b);
+}
+function _pcEmRegen(){if(_pcEmLastId)_pcDraftEmail(_pcEmLastId);}
+function _pcEmRenderModeBar(){
+  var bar=document.getElementById("pcEmModeBar");if(!bar)return;
+  function btn(m,lbl){var on=(_pcEmMode===m);
+    return '<button type="button" onclick="_pcEmSetMode(\''+m+'\')" style="flex:1;padding:7px;border:1.5px solid '+(on?'var(--br)':'var(--ln)')+';background:'+(on?'var(--br)':'#fff')+';color:'+(on?'#fff':'var(--i2)')+';border-radius:8px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer">'+lbl+'</button>';}
+  bar.innerHTML=btn("client","\u2709\ufe0f "+L2("Para cliente","To customer"))+btn("internal","\ud83d\udcdd "+L2("Nota interna","Internal note"));
+}
+function _pcEmSetMode(m){_pcEmMode=m;if(_pcEmLastId)_pcDraftEmail(_pcEmLastId);}
 
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
@@ -15976,13 +16137,14 @@ function rndrCust(){
       // Use the LONGEST name variant as the canonical display name (it
       // typically carries the most info — "Ruck, Linda & Jim" beats just
       // "Ruck, Linda"). We may upgrade this as we see more tickets below.
-      custMap[key]={name:t.customer,phone:"",phone2:"",address:"",city:"",zip:"",zone:"",tickets:[],lastDate:""};
+      custMap[key]={name:t.customer,phone:"",phone2:"",email:"",address:"",city:"",zip:"",zone:"",tickets:[],lastDate:""};
     } else if(t.customer.length>custMap[key].name.length){
       custMap[key].name=t.customer;
     }
     custMap[key].tickets.push(t);
     if(t.phone&&!custMap[key].phone)custMap[key].phone=t.phone;
     if(t.phone2&&!custMap[key].phone2)custMap[key].phone2=t.phone2;
+    if(t.email&&!custMap[key].email)custMap[key].email=t.email;
     if(t.address&&!custMap[key].address)custMap[key].address=t.address;
     var _ec=effectiveCity(t);
     if(_ec&&!custMap[key].city)custMap[key].city=_ec;
