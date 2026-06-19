@@ -8744,6 +8744,13 @@ function closeAttPreview(){
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"&&document.getElementById("attPreviewBg")&&document.getElementById("attPreviewBg").classList.contains("open"))closeAttPreview();
 });
+// Ticket-card thumbnails: open the same fullscreen viewer on tap. Reads the
+// element's own src so there is zero URL-escaping to get wrong, and the card's
+// open handler is suppressed by event.stopPropagation() at the call site.
+function _previewTktImg(img){
+  if(!img)return;
+  try{previewAttachment(img.getAttribute("src")||img.src,"photo","Photo")}catch(_e){}
+}
 
 // ═══════════════════════════════════════════════════════════════
 // TICKET-DETAIL ATTACHMENTS — admin-only upload/delete on existing tickets
@@ -10121,6 +10128,43 @@ async function askDelete(docId){
 }
 async function delTicket(docId){if(!db)return;try{await db.collection("tickets").doc(docId).delete();toast("Ticket deleted ✓")}catch(e){toast("Error deleting","err")}}
 
+// ── ROBUST MEDIA FETCH (Jun 2026) ────────────────────────────────────────
+// Both the ZIP download and the iCloud-folder save need the raw bytes of each
+// photo. Thumbnails display through <img>, which NEVER needs CORS — but pulling
+// the bytes with fetch() DOES. Two things commonly break that fetch:
+//   1. The download token stored on the ticket has expired/rotated  → 403.
+//   2. The Storage bucket has no CORS rule for this origin           → blocked.
+// This helper fixes (1) by minting a fresh download URL from the photo's Storage
+// path and retrying. (2) can only be fixed on the bucket itself (cors.json);
+// if every photo still fails after this, that is the cause.
+async function _fetchMediaBlob(m){
+  async function _tryFetch(u){
+    const r=await fetch(u);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const b=await r.blob();
+    if(!b||!b.size)throw new Error("empty response");
+    return b;
+  }
+  // Legacy base64-on-document tickets — no network needed.
+  if(m.data){
+    const raw=(m.data.indexOf(",")>=0)?m.data.split(",")[1]:m.data;
+    if(!raw)throw new Error("empty base64");
+    const bin=atob(raw);const arr=new Uint8Array(bin.length);
+    for(let j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);
+    return new Blob([arr],{type:(m.type==="pdf")?"application/pdf":"image/jpeg"});
+  }
+  let lastErr=null;
+  if(m.url){try{return await _tryFetch(m.url)}catch(e){lastErr=e}}
+  // Stored URL failed → request a fresh one from the Storage path and retry.
+  if(m.path&&typeof storage!=="undefined"&&storage){
+    try{
+      const fresh=await storage.ref().child(m.path).getDownloadURL();
+      return await _tryFetch(fresh);
+    }catch(e){lastErr=e}
+  }
+  throw lastErr||new Error("no url/data");
+}
+
 // ═══ DOWNLOAD ═══
 async function dlZip(ticketIdx,list,ev){
   const t=list[ticketIdx];if(!t||!t.media||!t.media.length)return;
@@ -10147,20 +10191,9 @@ async function dlZip(ticketIdx,list,ev){
       const m=t.media[i];
       const ext=(m.type==="pdf")?"pdf":"jpg";
       try{
-        if(m.url){
-          const resp=await fetch(m.url);
-          if(!resp.ok)throw new Error("HTTP "+resp.status);
-          const blob=await resp.blob();
-          if(!blob||!blob.size)throw new Error("empty response");
-          folder.file((i+1)+"_"+(m.type||"photo")+"."+ext,blob);
-          okCount++;
-        }else if(m.data){
-          // Base64 fallback (legacy tickets) — tolerate raw base64 without the data: prefix
-          const b64=(m.data.indexOf(",")>=0)?m.data.split(",")[1]:m.data;
-          if(!b64)throw new Error("empty base64");
-          folder.file((i+1)+"_"+(m.type||"photo")+"."+ext,b64,{base64:true});
-          okCount++;
-        }else{throw new Error("no url/data")}
+        const blob=await _fetchMediaBlob(m); // stored URL → refreshed URL → base64
+        folder.file((i+1)+"_"+(m.type||"photo")+"."+ext,blob);
+        okCount++;
       }catch(fetchErr){failed.push(i+1);console.warn("Photo "+(i+1)+" failed:",fetchErr)}
     }
     if(!okCount){
@@ -11008,7 +11041,7 @@ ${lb&&lb.free?`<div style="display:flex;justify-content:space-between;font-size:
 ${w.type&&w.type!=="rda"&&t.totalRda?`<div style="font-size:var(--fs-sm);color:var(--i3);margin-top:4px">Internal RDA: $${t.totalRda.toFixed(2)}</div>`:""}
 ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--ac);margin-bottom:4px">📹 Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:var(--fs-sm);color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
-${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"},event)">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
+${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"},event)">⬇ Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">☁️ Save to iCloud folder (${t.media.length})</button>`:""}
 ${_dailyQuickRow(t,isDone,i)}<div style="display:flex;gap:8px;margin-top:10px">
 <button onclick="event.stopPropagation();copyTkt(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">📋 Copy Text</button>
 <button onclick="event.stopPropagation();shareTracking(${isDone?1:0},${i})" style="flex:1;padding:10px;background:#f5f5f0;border:1.5px solid #ddd;border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i2)">🔗 Share</button>
@@ -19702,31 +19735,38 @@ async function saveTktToICloud(ticketIdx,list,ev){
     if(!dir){if(btn){btn.textContent=orig;btn.disabled=false}return} // canceled
     var folderName=((t.customer||"Customer").replace(/[\\\/:*?"<>|]/g,"").trim()||"Customer")+" \u2014 "+(t.date||fmtD(new Date()));
     var sub=await dir.getDirectoryHandle(folderName,{create:true});
-    var okCount=0;
+    var okCount=0;var failed=[];
     for(var i=0;i<t.media.length;i++){
       var m=t.media[i];
       try{
-        var blob=null;
-        if(m.url){
-          var resp=await fetch(m.url);
-          if(!resp.ok)throw new Error("HTTP "+resp.status); // PHOTO-LOSS FIX: a 403/404 error body is NOT a photo
-          blob=await resp.blob();
-          if(!blob||!blob.size)throw new Error("empty response");
-        }
-        else if(m.data){var _raw=(m.data.indexOf(",")>=0)?m.data.split(",")[1]:m.data;if(!_raw)throw new Error("empty base64");var bin=atob(_raw);var arr=new Uint8Array(bin.length);for(var j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);blob=new Blob([arr],{type:(m.type==="pdf")?"application/pdf":"image/jpeg"})}
-        if(!blob)continue;
+        var blob=await _fetchMediaBlob(m); // stored URL → refreshed URL → base64
+        if(!blob||!blob.size)throw new Error("empty");
         var ext=(m.type==="pdf")?"pdf":"jpg";
         var fh=await sub.getFileHandle((i+1)+"_"+(m.type||"photo")+"."+ext,{create:true});
         var w=await fh.createWritable();await w.write(blob);await w.close();
         okCount++;
-      }catch(fe){console.warn("photo "+(i+1)+" failed:",fe)}
+      }catch(fe){failed.push(i+1);console.warn("photo "+(i+1)+" failed:",fe)}
     }
-    // Work summary alongside the photos
+    // HONESTY FIX (Jun 2026): if NOTHING downloaded, do not write a summary and
+    // do not claim success — a folder containing only "Work Summary.txt" is
+    // exactly what Alberto saw when every photo fetch failed. Remove the empty
+    // folder we just created and report the real reason.
+    if(!okCount){
+      try{await dir.removeEntry(folderName,{recursive:true})}catch(_re){}
+      toast("Could not download any of the "+t.media.length+" photo"+(t.media.length!==1?"s":"")+" \u2014 nothing was saved. This is a Storage permissions (CORS) issue, not iCloud. See chat to fix it.","err");
+      if(btn){btn.textContent=orig;btn.disabled=false}
+      return;
+    }
+    // Work summary alongside the photos that DID save.
     try{
       var sfh=await sub.getFileHandle("Work Summary.txt",{create:true});
       var sw=await sfh.createWritable();await sw.write(_icloudSummaryText(t));await sw.close();
     }catch(se){console.warn("summary failed:",se)}
-    toast("\u2601\uFE0F Saved "+okCount+" photo"+(okCount!==1?"s":"")+" + summary to \u201C"+folderName+"\u201D \u2014 iCloud is syncing");
+    if(failed.length){
+      toast("Saved "+okCount+" of "+t.media.length+" photos to \u201C"+folderName+"\u201D \u2014 #"+failed.join(", #")+" failed. Nothing was deleted from Firebase.","warn");
+    }else{
+      toast("\u2601\uFE0F Saved "+okCount+" photo"+(okCount!==1?"s":"")+" + summary to \u201C"+folderName+"\u201D \u2014 iCloud is syncing");
+    }
     // Same admin cleanup offer as the ZIP flow: free Firebase storage.
     if(db&&t.id&&isAdmin&&okCount===t.media.length){
       setTimeout(async function(){
