@@ -16450,7 +16450,7 @@ function qbCustRenderDetail(customers){
     h+='<div id="custMergePanel"></div>';
   }
   h+='<button class="qb-cust-btn brand" onclick="custCreateTicket()">+ Schedule Service Call</button>';
-  h+='<button class="qb-cust-btn" data-n="'+escH(c.name)+'" data-d="'+escH(c.lastDate||"")+'" onclick="_satisfLinkModal(this.dataset.n,this.dataset.d)">\uD83D\uDCCB Satisfaction link</button>';
+  h+='<button class="qb-cust-btn" data-n="'+esc(c.name)+'" data-d="'+esc(c.lastDate||"")+'" onclick="_satisfLinkModal(this.dataset.n,this.dataset.d)">\uD83D\uDCCB Satisfaction link</button>';
   if(c.phone)h+='<a class="qb-cust-btn" href="tel:'+esc(c.phone)+'">📞 Call</a>';
   if(fullAddr)h+='<a class="qb-cust-btn" href="https://maps.apple.com/?q='+encodeURIComponent(fullAddr)+'" target="_blank">📍 Map</a>';
   h+='<span class="qb-saved-flash" id="qbSavedFlash">✓ Saved</span>';
