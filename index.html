@@ -14891,28 +14891,42 @@ function _c360Btn(t){
   if(!t||!t.id)return"";
   return '<button onclick="openCustomer360ByTicket(\''+t.id+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--br);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:var(--fs-base);cursor:pointer;margin:4px 0 10px">\uD83D\uDC64 Customer 360 \u2014 full history & warranties</button>';
 }
+// Open Customer 360 BY NAME — the robust path. Name-based so it never depends on
+// a ticket id / _curOpenTktId (which can be stale on mobile and was the real cause
+// of the empty "Select a customer" screen, confirmed by simulation Jun 2026).
+function open360ByName(name){
+  if(!name||!String(name).trim())return;
+  try{ if(typeof closeTktDetail==="function")closeTktDetail(); }catch(_e){}
+  // Resolve the SAME key the sidebar uses: direct group key first, then _custKeys
+  // identity matching (handles "Last, First" vs "First Last" formats).
+  var matchedKey=(typeof _custGroupKey==="function"?_custGroupKey(name):"")||String(name).trim().toLowerCase();
+  try{
+    var pool=[].concat(active||[],done||[]), custMap={};
+    pool.forEach(function(t){ if(!t.customer||!t.customer.trim())return;
+      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+      if(k&&!custMap[k])custMap[k]={key:k,name:t.customer}; });
+    if(!custMap[matchedKey]&&typeof _custKeys==="function"){
+      var want=_custKeys(name);
+      Object.keys(custMap).forEach(function(k){ if(custMap[matchedKey])return;
+        if(_custKeys(custMap[k].name).some(function(x){return want.indexOf(x)>=0}))matchedKey=k; });
+    }
+  }catch(_e){}
+  try{ selectedCustKey=matchedKey; qbCustTab="info"; }catch(_e){}
+  try{ if(typeof showTab==="function")showTab(6); }catch(_e){}
+  var go=function(){ try{
+    var s=document.getElementById("searchCust"); if(s&&s.value)s.value="";
+    selectedCustKey=matchedKey; qbCustTab="info";
+    if(typeof qbCustSelect==="function")qbCustSelect(matchedKey);
+    else if(typeof rndrCust==="function")rndrCust();
+  }catch(_e){} };
+  setTimeout(go,20);
+  setTimeout(go,170);
+}
+// Ticket-id entry (Daily card, Por cobrar row): resolve the name, then delegate.
 function openCustomer360ByTicket(id){
   var t=[].concat(active||[],done||[]).find(function(x){return x.id===id});
-  // Fix (Jun 2026): land on the customer PROFILE, not the empty "Select a customer"
-  // state. Root issue was a render-order race + a possible stale search filter that
-  // dropped the selected customer out of the (filtered) list. We now (1) resolve the
-  // SAME group key custMap uses, (2) assert selectedCustKey BEFORE navigating, and
-  // (3) re-assert + clear the search AFTER the tab's own render, twice for safety.
-  if(!t||!t.customer){ try{ if(typeof showTab==="function")showTab(6); }catch(_e){} return; }
-  try{ if(typeof closeTktDetail==="function")closeTktDetail(); }catch(_e){}
-  var _key=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||(t.customer||"").trim().toLowerCase();
-  try{ selectedCustKey=_key; qbCustTab="info"; }catch(_e){}
+  if(t&&t.customer){ open360ByName(t.customer); return; }
   try{ if(typeof showTab==="function")showTab(6); }catch(_e){}
-  var _open=function(){
-    try{
-      var s=document.getElementById("searchCust"); if(s&&s.value)s.value="";
-      selectedCustKey=_key; qbCustTab="info";
-      if(typeof qbCustSelect==="function")qbCustSelect(_key);
-      else if(typeof rndrCust==="function")rndrCust();
-    }catch(_e){}
-  };
-  setTimeout(_open,0);
-  setTimeout(_open,140);
 }
 
 function openTktDetail(id){
@@ -14934,7 +14948,7 @@ function openTktDetail(id){
   if(_zT)_subT.push('<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:'+_zcT.text+';display:inline-block;flex-shrink:0"></span>'+esc(_zT)+'</span>');
   if(_dT)_subT.push('<span>'+(t.arrival?esc(t.arrival)+' \u00b7 ':'')+esc(_dT)+'</span>');
   document.getElementById("tktDetailTitle").innerHTML=
-    '<span onclick="try{openCustomer360ByTicket(_curOpenTktId)}catch(_e){}" title="'+L2("Abrir Customer 360","Open Customer 360")+'" style="display:inline-flex;align-items:center;gap:12px;min-width:0;cursor:pointer">'
+    '<span data-cust360="'+esc(t.customer||"")+'" onclick="open360ByName(this.dataset.cust360)" title="'+L2("Abrir Customer 360","Open Customer 360")+'" style="display:inline-flex;align-items:center;gap:12px;min-width:0;cursor:pointer">'
     +_avatarHTML(t.customer,46)
     +'<span style="display:flex;flex-direction:column;min-width:0;gap:2px">'
       +'<span style="font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--br);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.customer||"Ticket")+'</span>'
