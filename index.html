@@ -10255,8 +10255,8 @@ function _dailyTags3(t,w,warMismatch){
   var cr=(typeof _customerRiskBadge==="function")?_customerRiskBadge(t):""; if(cr)meta.push(cr);
   if((t.videoLinks||[]).length)meta.push('<span class="tkt-tag" style="background:#e8e8e8">\uD83D\uDCF9 '+t.videoLinks.length+'</span>');
   if(t.reportImproved)meta.push('<span class="tkt-tag" style="background:var(--c-purple-bg);color:var(--c-purple-fg);font-weight:700">\u2728 AI ready</span>');
-  if(t.qbCopied)meta.push('<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">\u2192 QB \u2713</span>');
-  if(!t.qbCopied&&(t.status==='complete'||t.status==='done'))meta.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:700">'+L2("Pendiente QB","Pending QB")+'</span>');
+  if(isAdmin&&t.qbCopied)meta.push('<span class="tkt-tag" style="background:var(--c-money-bg);color:var(--c-money-fg);font-weight:700">\u2192 QB \u2713</span>');
+  if(isAdmin&&!t.qbCopied&&(t.status==='complete'||t.status==='done'))meta.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:700">'+L2("Pendiente QB","Pending QB")+'</span>');
   if(t.reportSent)meta.push('<span class="report-sent-tag">\uD83D\uDCE4 Report sent</span>');
   var h="";
   if(t1.length)h+='<div class="tt-row">'+t1.join("")+'</div>';
@@ -14929,6 +14929,38 @@ function openCustomer360ByTicket(id){
   try{ if(typeof showTab==="function")showTab(6); }catch(_e){}
 }
 
+// Money-free spa service history for the TECH view (last visits + what was done).
+// Deliberately omits ALL $ / billing / QB info — techs only need job context.
+function _techSpaHistoryHTML(t){
+  if(!t||!t.customer)return"";
+  var key=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+  var pool=[].concat(active||[],done||[]);
+  var rows=pool.filter(function(x){
+    if(!x||!x.customer||x.id===t.id)return false;
+    var k=(typeof _custGroupKey==="function"?_custGroupKey(x.customer):"")||x.customer.trim().toLowerCase();
+    return k===key;
+  }).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""))}).slice(0,3);
+  if(!rows.length)return"";
+  var items=rows.map(function(x){
+    var vt=(Number(x.visitNum)===6)?"Spa Move":((typeof _c360VisitType==="function")?_c360VisitType(x).label:"Visit");
+    var d=x.date?(function(){var dd=new Date(x.date+"T00:00:00");return isNaN(dd.getTime())?x.date:((dd.getMonth()+1)+"/"+dd.getDate())})():"\u2014";
+    var who=(Array.isArray(x.techs)&&x.techs.length)?x.techs.join(", "):"";
+    var wt=(Array.isArray(x.workTypes)&&x.workTypes.length)?x.workTypes.filter(function(w){return w&&w!=="Service Call"}).join(" \u00b7 "):"";
+    var note=String(x.notes||"").split("\n")[0].trim();if(note.length>70)note=note.slice(0,70)+"\u2026";
+    var sub=[wt,note].filter(Boolean).join(" \u2014 ");
+    return '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--ln)">'
+      +'<div style="font-weight:800;font-size:var(--fs-sm);color:var(--ac);flex:none;width:44px">'+esc(d)+'</div>'
+      +'<div style="min-width:0"><div style="font-size:var(--fs-base);color:var(--i1);font-weight:600">'+esc(vt)+(who?' \u2014 '+esc(who):'')+'</div>'
+      +(sub?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.4">'+esc(sub)+'</div>':'')+'</div></div>';
+  }).join("");
+  return '<div class="dt-sec"><div class="dt-sec-t">\uD83E\uDDF0 '+L2("Historial del spa","Spa history")+'</div>'
+    +'<div style="background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:2px 12px">'+items+'</div></div>';
+}
+// Office one-tap: open the satisfaction-link modal straight from a ticket (no Customer 360 needed).
+function _satisfLinkFromTicket(id){
+  var t=[].concat(active||[],done||[]).find(function(x){return x.id===id});
+  if(t&&typeof _satisfLinkModal==="function")_satisfLinkModal(t.customer||"",t.date||"");
+}
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -15134,11 +15166,14 @@ function openTktDetail(id){
   // Spa Description
   var _spa=t.spaDesc||"";
   if(_isTechView){
-    if(_spa){
-      h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
-      h+='<div class="notes" style="min-height:60px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap">'+esc(_spa)+'</div>';
-      h+='</div>';
-    }
+    var _wl=(t.warranty&&t.warranty.label)?String(t.warranty.label):"";
+    var _wCov=_wl&&_wl!=="N/W"&&!/no\s*warranty/i.test(_wl);
+    h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
+    if(_spa)h+='<div class="notes" style="min-height:60px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap">'+esc(_spa)+'</div>';
+    if(_wl)h+='<div style="margin-top:8px"><span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:9px;font-weight:800;font-size:var(--fs-sm);'+(_wCov?'background:var(--c-success-bg);color:var(--c-success-fg)':'background:var(--c-ash);color:var(--i2)')+'">\uD83D\uDEE1\uFE0F '+esc(_wl)+'</span></div>';
+    h+='<button onclick="showTab(10)" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;color:var(--c-info-strong);font-weight:800;font-size:var(--fs-sm);border:1.5px dashed var(--c-info-strong);border-radius:9px;padding:7px 11px;background:#fff;cursor:pointer">\uD83D\uDCD6 '+L2("Guía de diagnóstico","Diagnostic guide")+'</button>';
+    h+='</div>';
+    try{if(typeof _techSpaHistoryHTML==="function")h+=_techSpaHistoryHTML(t)}catch(_e){}
   }else{
     h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
     h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(_spa)+'</textarea>';
@@ -15178,6 +15213,8 @@ function openTktDetail(id){
     if(_txtPhone&&t.techs&&t.techs.length&&t.date){
       h+='<button onclick="_textCustomerFromModal(\''+t.id+'\')" title="Open Messages with the appointment notification pre-filled" style="padding:12px 18px;background:var(--c-success-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-base);font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">📱 Text Customer</button>';
     }
+    // 📋 Office one-tap: send the satisfaction link straight from the ticket (no Customer 360 hunt)
+    h+='<button onclick="_satisfLinkFromTicket(\''+t.id+'\')" title="Copy/open the customer satisfaction link" style="padding:12px 18px;background:var(--c-info-bg);color:var(--c-info-strong);border:2px solid var(--c-info-strong);border-radius:10px;font-size:var(--fs-base);font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer">📋 '+L2("Enviar link de satisfacción","Send satisfaction link")+'</button>';
   }
   // Field Report — for techs, render as GIANT prominent button (their main action).
   // For admins, keep regular size since it's one of many things they do.
@@ -15269,8 +15306,8 @@ function openTktDetail(id){
     h+='</div></div>';
   }
   h+='</div>';
-  try{if(typeof _c360Btn==="function")h+=_c360Btn(t)}catch(_e){}
-  h+=_chargeTrailHTML(t);
+  try{if(typeof _c360Btn==="function"){if(isAdmin)h+=_c360Btn(t)}}catch(_e){}
+  if(isAdmin)h+=_chargeTrailHTML(t);
   document.getElementById("tktDetailBody").innerHTML=h;
   // Populate the attachments section (rendered separately so we can re-render in place)
   if(typeof renderTdAttachments==="function")renderTdAttachments(t.id);
