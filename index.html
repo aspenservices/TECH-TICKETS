@@ -1949,7 +1949,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   <div class="card" id="cardTech"><div class="card-summary"></div><div class="lbl">Technician<span class="req">*</span> <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="pill-row" id="techRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddTech()" title="Add a new technician"><span class="qadd-plus">+</span><span>Add tech</span></button></div><div class="g2" style="margin-top:14px"><div class="field"><div class="lbl">Arrival<span class="req">*</span></div><input type="time" id="fArr" onchange="_timeSanity()"></div><div class="field"><div class="lbl">Departure<span class="req">*</span></div><input type="time" id="fDep" onchange="_timeSanity()"></div></div><div id="timeSanity"></div></div>
   <div id="gateHint" style="text-align:center;padding:20px;color:var(--i3);font-size:var(--fs-base);font-weight:500">⏱ Enter <b>Arrival</b> time to continue</div>
   <div id="formGate" style="display:none">
-  <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes" id="visitBtn1" onclick="setVisit(1)">1st Visit</button><button class="wb no" id="visitBtn2" onclick="setVisit(2)">2nd Visit</button><button class="wb" id="visitBtn3" onclick="setVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="visitBtn4" onclick="setVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="visitBtn5" onclick="setVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button></div><div class="w-result rda-cov" id="visitInfo" style="margin-top:8px;display:none"></div></div>
+  <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes" id="visitBtn1" onclick="setVisit(1)">1st Visit</button><button class="wb no" id="visitBtn2" onclick="setVisit(2)">2nd Visit</button><button class="wb" id="visitBtn3" onclick="setVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="visitBtn4" onclick="setVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="visitBtn5" onclick="setVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button><button class="wb" id="visitBtn6" onclick="setVisit(6)" style="flex:1 1 100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px">🚚 Spa Move</button></div><div class="w-result rda-cov" id="visitInfo" style="margin-top:8px;display:none"></div></div>
   <div class="card"><div class="lbl">Type of Work <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="wt-row" id="wtRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddWT()" title="Add a new work type"><span class="qadd-plus">+</span><span>Add type</span></button></div>
   <div id="wcSubPanel" class="w-step"><div class="lbl" style="margin-top:4px">Water Change Type</div><div class="w-row"><button class="wb yes" id="wcChemBtn" onclick="setWCType('chem')">🧪 Chemical Maint.</button><button class="wb no" id="wcNoChemBtn" onclick="setWCType('nochem')">✕ No Chemical M</button></div><div class="w-result" id="wcInfo" style="display:none"></div></div></div>
   <div class="card" id="warrantyCard" style="position:relative">
@@ -3919,13 +3919,14 @@ document.getElementById("visitBtn2").className="wb no"+(v===2?" on-n":"");
 var b3=document.getElementById("visitBtn3");if(b3){b3.className="wb"+(v===3?" on-y":"");if(v!==3)b3.style.cssText="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)";else b3.style.cssText="flex:1;background:var(--c-success-strong);border-color:var(--c-success-strong);color:#fff"}
 var b4=document.getElementById("visitBtn4");if(b4){b4.className="wb"+(v===4?" on-y":"");if(v!==4)b4.style.cssText="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)";else b4.style.cssText="flex:1;background:var(--c-danger-strong);border-color:var(--c-danger-strong);color:#fff"}
 var b5=document.getElementById("visitBtn5");if(b5){b5.className="wb"+(v===5?" on-y":"");if(v!==5)b5.style.cssText="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)";else b5.style.cssText="flex:1;background:var(--c-info-fg);border-color:var(--c-info-fg);color:#fff"}
+var b6=document.getElementById("visitBtn6");if(b6){b6.className="wb"+(v===6?" on-y":"");if(v===6)b6.style.cssText="flex:1 1 100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--acd,#A85C1F);border-color:var(--acd,#A85C1F);color:#fff";else b6.style.cssText="flex:1 1 100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px"}
 // Block/unblock the Spa Warranty card for CM (3), Repeat (4) and Delivery (5)
 var wCard=document.getElementById("warrantyCard");
 var wBlk=document.getElementById("warrantyBlocker");
 var wMsg=document.getElementById("warrantyBlockerMsg");
 if(wCard&&wBlk){
-  if(v===3||v===4||v===5){
-    // Lock the warranty section — it's not applicable for CM/Repeat/Delivery
+  if(v===3||v===4||v===5||v===6){
+    // Lock the warranty section — it's not applicable for CM/Repeat/Delivery/Spa Move
     wHas=null;wMod="";wYr=0;
     document.getElementById("warYes").className="wb yes";
     document.getElementById("warNo").className="wb no";
@@ -3938,7 +3939,7 @@ if(wCard&&wBlk){
     wCard.style.pointerEvents="none";
     wBlk.style.display="flex";
     var _wlbHide=document.getElementById("frWarLockBar");if(_wlbHide)_wlbHide.style.display="none";
-    if(wMsg)wMsg.innerHTML=v===3?'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for CM (no labor charged)</span>':v===4?'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for Repeat (all as warranty)</span>':'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for Delivery (no labor charged)</span>';
+    if(wMsg)wMsg.innerHTML=v===3?'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for CM (no labor charged)</span>':v===4?'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for Repeat (all as warranty)</span>':v===6?'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for Spa Move (relocation — labor quoted)</span>':'<span style="display:inline-flex;align-items:center;gap:4px">'+icon("lock",13)+'Not applicable for Delivery (no labor charged)</span>';
   }else{
     // Unlock
     wCard.style.opacity="";
@@ -3953,6 +3954,7 @@ else if(v===2){info.className="w-result rda-cov";info.innerHTML="<b>2nd Visit</b
 else if(v===3){info.className="w-result full-cov";info.innerHTML="<b>CM (Chemicals Maintenance / Courtesy)</b> — No labor charge. Parts charged normally."}
 else if(v===4){info.className="w-result full-cov";info.innerHTML="<b>Repeat Visit</b> — Warranty (our fix). Parts and labor free (chemicals &amp; supplies still charged)."}
 else if(v===5){info.className="w-result rda-cov";info.style.background="var(--c-info-bg)";info.style.borderColor="var(--c-info-border)";info.style.color="var(--c-info-fg)";info.innerHTML="<b>📦 Delivery</b> — No labor charge. Parts charged normally."}
+else if(v===6){info.className="w-result rda-cov";info.style.background="var(--acl,#FDF0E3)";info.style.borderColor="var(--ac,#D4772C)";info.style.color="var(--acd,#A85C1F)";info.innerHTML="<b>🚚 Spa Move</b> — relocation job · labor quoted (no warranty)"}
 rndr();upWR()}
 
 // Quick add tech from form
@@ -9431,6 +9433,8 @@ function resetForm(){
   if(_vb4){_vb4.className="wb";_vb4.style.cssText="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)"}
   const _vb5=document.getElementById("visitBtn5");
   if(_vb5){_vb5.className="wb";_vb5.style.cssText="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)"}
+  const _vb6=document.getElementById("visitBtn6");
+  if(_vb6){_vb6.className="wb";_vb6.style.cssText="flex:1 1 100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px"}
 
   // Warranty card unblock
   const _wCard=document.getElementById("warrantyCard");
