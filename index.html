@@ -11064,7 +11064,7 @@ function copyTkt(isDone,i){
   txt+=`Technician: ${(t.techs||[]).join(", ")}\n`;
   if(t.arrival&&t.departure)txt+=`Arrival: ${t.arrival} - Departure: ${t.departure} (${fmtTime(timeMin)})\n`;
   if((t.workTypes||[]).length)txt+=`Work Type: ${t.workTypes.join(", ")}\n`;
-  txt+=`Visit: ${t.visitNum===5?"📦 Delivery":t.visitNum===4?"Repeat":t.visitNum===3?"CM":t.visitNum===2?"2nd":"1st"}\n`;
+  txt+=`Visit: ${t.visitNum===6?"🚚 Spa Move":t.visitNum===5?"📦 Delivery":t.visitNum===4?"Repeat":t.visitNum===3?"CM":t.visitNum===2?"2nd":"1st"}\n`;
   if(w.label)txt+=`Warranty: ${w.label}\n`;
   txt+=`\nParts:\n`;
   if(t.parts&&t.parts.length){
@@ -14782,6 +14782,7 @@ function _chgRefresh(id,t){
 // ═══════════════════════════════════════════════════════════════════════
 function _c360VisitType(t){
   var v=Number(t.visitNum||1);
+  if(v===6)return{label:"Move Spa",col:"var(--acd,#A85C1F)",bg:"var(--acl,#FDF0E3)"};
   if(v===5)return{label:"Delivery",col:"var(--c-info-strong)",bg:"var(--c-info-bg)"};
   if(v===4)return{label:"Repeat \u00b7 no charge",col:"var(--c-success-strong)",bg:"var(--c-success-bg)"};
   if(v===3)return{label:"Chemical Maint.",col:"var(--ac)",bg:"var(--acl)"};
@@ -15016,6 +15017,18 @@ function _satisfLinkFromTicket(id){
   var t=[].concat(active||[],done||[]).find(function(x){return x.id===id});
   if(t&&typeof _satisfLinkModal==="function")_satisfLinkModal(t.customer||"",t.date||"");
 }
+// Spa Move (visitNum 6) office reminder: a Spa Move always has a matching QB
+// estimate ready — surface a one-line nudge so Nela invoices straight from the
+// customer's estimate. Admin/organizer only (techs don't handle billing).
+function _spaMoveEstHTML(t){
+  if(!t||Number(t.visitNum)!==6)return"";
+  if(typeof isAdmin!=="undefined"&&!isAdmin)return"";
+  return '<div style="background:var(--acl,#FDF0E3);border:1px solid var(--ac,#D4772C);border-left:4px solid var(--ac,#D4772C);border-radius:10px;padding:11px 13px;margin-bottom:12px">'
+    +'<div style="font-weight:800;color:var(--acd,#A85C1F);font-size:var(--fs-base);display:flex;align-items:center;gap:6px">\uD83D\uDE9A '+L2("Spa Move","Spa Move")+'</div>'
+    +'<div style="font-size:var(--fs-sm);color:var(--i2);margin-top:3px;line-height:1.45">\uD83D\uDCA1 '
+    +L2("En QuickBooks ya hay un estimado listo. Crea la factura desde el estimado del cliente y cobra directamente.","A QuickBooks estimate is ready. Create the invoice from the customer\u2019s estimate and charge directly.")
+    +'</div></div>';
+}
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -15052,6 +15065,7 @@ function openTktDetail(id){
   // module). Renders as: big check-in button / ongoing visit / completed.
   let h="";
   try{if(typeof _payBeforeServiceBannerHTML==="function")h+=_payBeforeServiceBannerHTML(t)}catch(_e){}
+  try{if(typeof _spaMoveEstHTML==="function")h+=_spaMoveEstHTML(t)}catch(_e){}
   try{if(typeof _needs2techBannerHTML==="function")h+=_needs2techBannerHTML(t)}catch(_e){}
   try{if(typeof _callbackBannerHTML==="function")h+=_callbackBannerHTML(t)}catch(_e){}
   try{if(typeof _recurrentBannerHTML==="function")h+=_recurrentBannerHTML(t)}catch(_e){}
