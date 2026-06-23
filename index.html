@@ -10876,6 +10876,9 @@ function _applyDailyFilter(pool){
   if(_dailyFilter==="cm")return pool.filter(function(t){return t.visitNum===3;});
   if(_dailyFilter==="urgent")return pool.filter(function(t){return t.isUrgent;});
   if(_dailyFilter==="warranty")return pool.filter(function(t){return t.warranty&&t.warranty.has===true;});
+  if(_dailyFilter==="warfull")return pool.filter(function(t){return _warSeg(t)==="full";});
+  if(_dailyFilter==="warpartial")return pool.filter(function(t){return _warSeg(t)==="partial";});
+  if(_dailyFilter==="nowarranty")return pool.filter(function(t){return _warSeg(t)==="none";});
   return pool;
 }
 function _renderDailyFilters(){
@@ -10903,8 +10906,22 @@ function _renderDailyFilters(){
       +esc(c[1])+(c[2]>=0?' <span class="df-n">'+c[2]+'</span>':'')+'</button>';
   });
   // if the active filter became empty, fall back to All
-  if(_dailyFilter!=="all"){var found=chips.some(function(c){return c[0]===_dailyFilter&&(c[2]>0||c[2]<0);})||_dailyFilter==="urgent"||_dailyFilter==="warranty";if(!found){_dailyFilter="all";return _renderDailyFilters();}}
+  if(_dailyFilter!=="all"){var found=chips.some(function(c){return c[0]===_dailyFilter&&(c[2]>0||c[2]<0);})||_dailyFilter==="urgent"||_dailyFilter==="warranty"||_dailyFilter==="warfull"||_dailyFilter==="warpartial"||_dailyFilter==="nowarranty";if(!found){_dailyFilter="all";return _renderDailyFilters();}}
   bar.innerHTML=h;
+}
+
+/* Warranty segmentation for a ticket: "full" (100%) · "partial" (50%) · "none".
+   Uses the authoritative billing (_billingFor) and falls back to the badge label,
+   so the buckets match exactly what the warranty pill shows on the card. */
+function _warSeg(t){
+  var w=(t&&t.warranty)||{};
+  if(w.has!==true)return"none";                 // out of factory warranty / not set → No Warranty
+  var b=null;try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(_e){}
+  if(b&&/50%/.test(b.parts||""))return"partial";
+  if(b&&b.partsFree===true)return"full";
+  var lbl=String(w.label||"");
+  if(/50%/.test(lbl))return"partial";
+  return"full";                                  // under warranty, default to full coverage
 }
 
 /* ─── Daily Summary Bar (#1) — clickable metric cards that filter the board ───
@@ -10921,13 +10938,16 @@ function _renderDailySummary(){
   var urg=pool.filter(function(t){return t.isUrgent;}).length;
   var rep=pool.filter(function(t){return t.visitNum===4;}).length;
   var qb=pool.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
-  var war=pool.filter(function(t){return t.warranty&&t.warranty.has===true;}).length;
+  var full=0,part=0,none=0;
+  pool.forEach(function(t){var s=_warSeg(t);if(s==="full")full++;else if(s==="partial")part++;else none++;});
   var cards=[
-    ["all",      L2("Tickets","Open Tickets"), open, "var(--ac)"],
-    ["urgent",   L2("Urgentes","Urgent"),      urg,  "var(--c-danger-strong)"],
-    ["repeat",   L2("Repetidos","Repeats"),    rep,  "var(--c-info-fg)"],
-    ["qbpending",L2("Pend. QB","Pending QB"),  qb,   "var(--c-warning-fg)"],
-    ["warranty", L2("Garantía","Warranty"),    war,  "var(--c-success-strong)"]
+    ["all",       L2("Tickets","Open Tickets"), open, "var(--ac)"],
+    ["urgent",    L2("Urgentes","Urgent"),      urg,  "var(--c-danger-strong)"],
+    ["repeat",    L2("Repetidos","Repeats"),    rep,  "var(--c-info-fg)"],
+    ["qbpending", L2("Pend. QB","Pending QB"),  qb,   "var(--c-warning-fg)"],
+    ["warfull",   L2("Gar 100%","Full 100%"),   full, "var(--c-success-strong)"],
+    ["warpartial",L2("Gar 50%","Part 50%"),     part, "var(--c-purple-strong)"],
+    ["nowarranty",L2("Sin gar.","No Warr."),    none, "var(--i3)"]
   ];
   var h="";
   cards.forEach(function(c){
