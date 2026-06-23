@@ -14635,6 +14635,96 @@ function _billingSummaryHTML(t){
     _coreFree+
     '</div></div>';
 }
+// ─── ADMIN: edit Visit Type + Warranty straight from the ticket modal ───────
+// For scheduled / service-log tickets the office can now set the billing inputs
+// (1st/2nd/CM/Repeat/Delivery/Spa Move + warranty series/year) right here, and
+// the Billing card below recomputes live. Writes the SAME warranty object shape
+// the Field Report saves, and BORROWS gWT()/gWL() so coverage rules stay 1:1
+// with the rest of the app. (Alberto, Jun 2026.) Admin/organizer only; shown on
+// scheduled AND service-log tickets, hidden only on canceled ones.
+function _warMeta(has,model,year){
+  var _h=wHas,_m=wMod,_y=wYr;            // snapshot the Field Report globals
+  wHas=has;wMod=model||"";wYr=year||0;   // borrow them to reuse the exact rules
+  var meta={type:gWT(),label:gWL()};
+  wHas=_h;wMod=_m;wYr=_y;                 // restore — never disturb an open form
+  return meta;
+}
+function _vwBtn(on,label,onclick,extra){
+  return '<button type="button" onclick="event.stopPropagation();'+onclick+'" style="flex:1;min-width:0;padding:8px 6px;border-radius:8px;border:1.5px solid '+(on?'var(--ac)':'var(--ln)')+';background:'+(on?'var(--ac)':'var(--cd)')+';color:'+(on?'#fff':'var(--i2)')+';font-weight:700;font-size:var(--fs-sm);cursor:pointer;'+(extra||'')+'">'+label+'</button>';
+}
+function _visitWarrantyEditorHTML(t){
+  if(!isAdmin||!t||t.status==="canceled")return"";
+  var v=Number(t.visitNum)||1;
+  var w=t.warranty||{};
+  var labels={1:"<b>1st Visit</b> \u2014 TC $150 + $100/hr additional",2:"<b>2nd Visit</b> \u2014 $100/hr only (no TC)",3:"<b>CM</b> \u2014 chemical maintenance \u00b7 labor free (courtesy), parts &amp; chemicals charged",4:"<b>Repeat</b> \u2014 our fix \u00b7 parts &amp; labor free (chemicals/supplies still charged)",5:"<b>Delivery</b>",6:"<b>\uD83D\uDE9A Spa Move</b>"};
+  var idJS=String(t.id||"").replace(/'/g,"\\'");
+  var h='<div class="dt-sec"><div class="dt-sec-t">\uD83E\uDDFE Visit &amp; Warranty <span style="font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">(billing inputs)</span></div>';
+  // Visit Type
+  h+='<div class="lbl" style="font-size:var(--fs-xs);margin-bottom:5px">Visit Type</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
+  h+=_vwBtn(v===1,"1st","dtSetVisit('"+idJS+"',1)");
+  h+=_vwBtn(v===2,"2nd","dtSetVisit('"+idJS+"',2)");
+  h+=_vwBtn(v===3,"CM","dtSetVisit('"+idJS+"',3)");
+  h+=_vwBtn(v===4,"Repeat","dtSetVisit('"+idJS+"',4)");
+  h+=_vwBtn(v===5,"Delivery","dtSetVisit('"+idJS+"',5)");
+  h+=_vwBtn(v===6,"\uD83D\uDE9A Spa Move","dtSetVisit('"+idJS+"',6)","flex:1 1 100%");
+  h+='</div>';
+  h+='<div class="w-result rda-cov" style="margin:0 0 12px">'+(labels[v]||labels[1])+'</div>';
+  // Warranty
+  h+='<div class="lbl" style="font-size:var(--fs-xs);margin-bottom:5px">Warranty</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:6px">';
+  h+=_vwBtn(w.has===true,"Under warranty","dtSetWarrantyHas('"+idJS+"',true)");
+  h+=_vwBtn(w.has===false,"No warranty (N/W)","dtSetWarrantyHas('"+idJS+"',false)");
+  h+='</div>';
+  if(w.has===true){
+    h+='<div style="display:flex;gap:6px;margin-bottom:6px">';
+    ["vs","gs","es"].forEach(function(m){h+=_vwBtn((w.model||"")===m,m.toUpperCase(),"dtSetWarrantyModel('"+idJS+"','"+m+"')");});
+    h+='</div>';
+    h+='<div style="display:flex;gap:6px;margin-bottom:6px">';
+    [1,2,3,4,5].forEach(function(y){h+=_vwBtn(Number(w.year)===y,"Yr "+y,"dtSetWarrantyYear('"+idJS+"',"+y+")");});
+    h+='</div>';
+    if(!w.model||!w.year){
+      h+='<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);background:var(--c-warning-bg);border:1px solid var(--c-warning-border);border-radius:8px;padding:7px 9px">Pick series + year for exact coverage.</div>';
+    }
+  }
+  h+='<div style="font-size:10.5px;color:var(--i3);margin-top:7px;line-height:1.4">Changing these updates the Billing card below. <a onclick="event.stopPropagation();_showWarrantyRules()" style="color:var(--ac);font-weight:700;cursor:pointer">View warranty rules</a></div>';
+  h+='</div>';
+  return h;
+}
+function _dtIsOffice(){return !!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"));}
+async function dtSetVisit(id,n){
+  if(!_dtIsOffice()){toast("Only admins can edit billing inputs","err");return}
+  if(!db)return;
+  var t=[...active,...done].find(function(x){return x.id===id});if(!t)return;
+  t.visitNum=n;
+  try{await db.collection("tickets").doc(id).update({visitNum:n});toast("Visit type updated \u2713");}
+  catch(e){toast("Error: "+e.message,"err")}
+  if(typeof openTktDetail==="function")openTktDetail(id);
+}
+async function _dtSaveWarranty(id,has,model,year){
+  if(!_dtIsOffice()){toast("Only admins can edit billing inputs","err");return}
+  if(!db)return;
+  var t=[...active,...done].find(function(x){return x.id===id});if(!t)return;
+  var meta=_warMeta(has,model,year);
+  var w={has:(has===true?true:has===false?false:null),model:model||"",year:year||0,type:meta.type,label:meta.label};
+  t.warranty=w;
+  try{await db.collection("tickets").doc(id).update({warranty:w});toast("Warranty updated \u2713");}
+  catch(e){toast("Error: "+e.message,"err")}
+  if(typeof openTktDetail==="function")openTktDetail(id);
+}
+function dtSetWarrantyHas(id,has){
+  var t=[...active,...done].find(function(x){return x.id===id});var w=(t&&t.warranty)||{};
+  if(has===false)return _dtSaveWarranty(id,false,"",0);
+  return _dtSaveWarranty(id,true,w.model||"",w.year||0);
+}
+function dtSetWarrantyModel(id,model){
+  var t=[...active,...done].find(function(x){return x.id===id});var w=(t&&t.warranty)||{};
+  return _dtSaveWarranty(id,true,model,w.year||0);
+}
+function dtSetWarrantyYear(id,year){
+  var t=[...active,...done].find(function(x){return x.id===id});var w=(t&&t.warranty)||{};
+  return _dtSaveWarranty(id,true,w.model||"",year);
+}
 // "Reported vs Found" — separates the customer's complaint from what the tech
 // actually diagnosed, so misleading descriptions don't confuse billing.
 function _reportedFoundHTML(t){
@@ -14855,6 +14945,51 @@ function _c360RepeatFlags(tkts){
 function _c360Kpi(label,val){
   return '<div style="flex:1;min-width:90px;background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:9px 11px"><div style="font-size:var(--fs-xs);color:var(--i3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">'+esc(label)+'</div><div style="font-size:var(--fs-md);font-weight:800;color:var(--br)">'+esc(val)+'</div></div>';
 }
+// Shared expandable body for Customer 360 — reused by BOTH the Service History
+// cards and the Notes tab so they look/behave identically: technician report +
+// photos + PDFs + parts + an explicit "Open full ticket" button. No modal.
+function _c360ExpandBodyHTML(t){
+  var media=Array.isArray(t.media)?t.media:[];
+  var photoSrcs=[];
+  (t.photoUrls||[]).forEach(function(u){if(u)photoSrcs.push(u)});
+  media.filter(function(m){return m&&m.type!=="pdf"}).forEach(function(m){var s=m.url||m.data||m.dataUrl;if(s)photoSrcs.push(s)});
+  var pdfs=media.filter(function(m){return m&&m.type==="pdf"});
+  var parts=Array.isArray(t.parts)?t.parts:[];
+  var fullNote=String(t.notes||"");
+  var idJS=String(t.id||"").replace(/'/g,"\\'");
+  var h='';
+  if(fullNote){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDCDD Technician report</div>';
+    h+='<div style="font-size:var(--fs-sm);color:var(--i2);white-space:pre-wrap;line-height:1.5;margin-bottom:10px">'+esc(fullNote)+'</div>';
+  }
+  if(photoSrcs.length){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDCF7 Photos</div>';
+    h+='<div class="tkt-media" style="margin-top:0;margin-bottom:10px">'+photoSrcs.map(function(s){return '<img src="'+esc(s)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">'}).join("")+'</div>';
+  }
+  if(pdfs.length){
+    h+='<div class="tkt-att" style="margin-bottom:10px">'+pdfs.map(function(m){return '<a class="tkt-att-pdf" href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">\uD83D\uDCC4 '+esc(m.name||"PDF")+'</a>'}).join("")+'</div>';
+  }
+  if(parts.length){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDD27 Parts</div>';
+    h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:10px">';
+    parts.forEach(function(p){h+='<div>\u2022 '+esc((p.qty||1)+'\u00d7 '+(p.n||p.d||"part"))+'</div>'});
+    h+='</div>';
+  }
+  if(!fullNote&&!photoSrcs.length&&!pdfs.length&&!parts.length){
+    h+='<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:10px">No report, photos or parts recorded on this visit.</div>';
+  }
+  h+='<button onclick="event.stopPropagation();openTktDetail(\''+idJS+'\')" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:9px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">\u270F\uFE0F Open full ticket</button>';
+  return h;
+}
+// Toggle a Notes-tab row open/closed IN PLACE (same UX as Service History).
+function _custNoteToggle(id){
+  var b=document.getElementById("cnb_"+id);
+  if(!b)return;
+  var willOpen=(b.style.display==="none"||!b.style.display);
+  b.style.display=willOpen?"block":"none";
+  var row=b.closest(".qb-note-row");
+  if(row){var ch=row.querySelector("[data-cnchev]");if(ch)ch.style.transform=willOpen?"rotate(90deg)":"";}
+}
 // Toggle a Customer 360 visit card open/closed IN PLACE (no modal). Reveals the
 // technician's report + photos + parts right inside the timeline. Alberto's
 // request: "hago un click y veo dentro de customers lo que mando el técnico".
@@ -14908,29 +15043,7 @@ function _c360VisitCard(t){
   if(chips.length)h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:var(--fs-xs);color:var(--i3)">'+chips.map(function(c){return '<span>'+c+'</span>'}).join("")+'</div>';
 
   // ── expandable body — opens IN PLACE (tech report + photos + parts), no modal ──
-  h+='<div id="c360b_'+esc(t.id||"")+'" style="display:none;margin-top:10px;border-top:1px dashed var(--ln);padding-top:10px">';
-  if(fullNote){
-    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDCDD Technician report</div>';
-    h+='<div style="font-size:var(--fs-sm);color:var(--i2);white-space:pre-wrap;line-height:1.5;margin-bottom:10px">'+esc(fullNote)+'</div>';
-  }
-  if(photoN){
-    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDCF7 Photos</div>';
-    h+='<div class="tkt-media" style="margin-top:0;margin-bottom:10px">'+photoSrcs.map(function(s){return '<img src="'+esc(s)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">'}).join("")+'</div>';
-  }
-  if(pdfs.length){
-    h+='<div class="tkt-att" style="margin-bottom:10px">'+pdfs.map(function(m){return '<a class="tkt-att-pdf" href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">\uD83D\uDCC4 '+esc(m.name||"PDF")+'</a>'}).join("")+'</div>';
-  }
-  if(parts.length){
-    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDD27 Parts</div>';
-    h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:10px">';
-    parts.forEach(function(p){h+='<div>\u2022 '+esc((p.qty||1)+'\u00d7 '+(p.n||p.d||"part"))+'</div>'});
-    h+='</div>';
-  }
-  if(!fullNote&&!photoN&&!pdfs.length&&!parts.length){
-    h+='<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:10px">No report, photos or parts recorded on this visit.</div>';
-  }
-  h+='<button onclick="event.stopPropagation();openTktDetail(\''+idJS+'\')" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:9px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">\u270F\uFE0F Open full ticket</button>';
-  h+='</div>';
+  h+='<div id="c360b_'+esc(t.id||"")+'" style="display:none;margin-top:10px;border-top:1px dashed var(--ln);padding-top:10px">'+_c360ExpandBodyHTML(t)+'</div>';
 
   h+='</div>';
   return h;
@@ -15121,6 +15234,7 @@ function openTktDetail(id){
   try{if(typeof _checkInPanelHTML==="function")h+=_checkInPanelHTML(t)}catch(_e){}
   try{if(typeof _dtSummaryChips==="function")h+=_dtSummaryChips(t)}catch(_e){}
   try{if(typeof _reportedFoundHTML==="function")h+=_reportedFoundHTML(t)}catch(_e){}
+  try{if(typeof _visitWarrantyEditorHTML==="function")h+=_visitWarrantyEditorHTML(t)}catch(_e){}
   try{if(typeof _billingSummaryHTML==="function")h+=_billingSummaryHTML(t)}catch(_e){}
   try{if(typeof _followUpHTML==="function")h+=_followUpHTML(t)}catch(_e){}
   h+='<div style="margin-bottom:16px">';
@@ -16633,12 +16747,15 @@ function qbCustRenderDetail(customers){
         const techs=(t.techs||[]).join(", ")||"—";
         const wt=(t.workTypes||[]).join(", ");
         const noteTxt=(t.notes||"").substring(0,260)+((t.notes||"").length>260?"...":"");
-        h+='<div class="qb-note-row '+cls+'" onclick="openTktDetail(\''+t.id+'\')">';
+        const idJS=String(t.id||"").replace(/'/g,"\\'");
+        h+='<div class="qb-note-row '+cls+'" onclick="_custNoteToggle(\''+idJS+'\')">';
         h+=pin;
         h+='<span class="qb-note-date">'+(t.date||"—")+'</span>';
         h+='<div class="qb-note-text"><div style="font-weight:600;color:var(--ink);margin-bottom:2px">'+_techAvatars(t,16)+'<span style="margin-left:'+((((t.techs)||[]).length)?'5px':'0')+'">'+esc(techs)+'</span>'+(wt?' · <span style="font-weight:500;color:var(--i3)">'+esc(wt)+'</span>':'')+status+_qbHistBadge(t)+_part90Badge(t)+_svcWarrantyBadge(t)+'</div>';
         if(noteTxt)h+='<div>'+esc(noteTxt)+'</div>';
+        h+='<div id="cnb_'+esc(t.id||"")+'" style="display:none;margin-top:10px;border-top:1px dashed var(--ln);padding-top:10px">'+_c360ExpandBodyHTML(t)+'</div>';
         h+='</div>';
+        h+='<span data-cnchev aria-hidden="true" style="color:var(--ac);font-weight:800;font-size:15px;line-height:1.4;flex-shrink:0;transition:transform .18s">\u203a</span>';
         h+='</div>';
       });
     }
