@@ -1901,6 +1901,56 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
 .leaflet-container{ isolation:isolate; }
 
 </style>
+<style id="aspenLoginLux">
+/* ───────────────────────────────────────────────────────────────
+   LOGIN — luxury walnut + gold restyle (VISUAL ONLY, scoped to
+   #loginScreen). Re-themes via local CSS-token overrides (Ember
+   palette) so every profile card / pill / carousel / PIN field
+   inherits the dark warm look. Nothing outside #loginScreen is
+   touched. Reuses the already-loaded Fraunces serif. Fully
+   reversible — delete this single block to revert.
+   ─────────────────────────────────────────────────────────────── */
+#loginScreen{
+  /* local token overrides → cascade to every login child */
+  --bg:#14100c; --cd:#1d1812;
+  --ink:#F4EDE2; --i2:#C9BCA9; --i3:#9F9281;
+  --ln:rgba(229,205,160,.16);
+  --ac:#D9B45B; --acd:#C79A3F; --br:#E9D9B0; --brl:#EBCE86; --acl:#2a2114;
+  /* warm walnut room */
+  background:
+    radial-gradient(70% 55% at 18% 12%, rgba(196,140,64,.22), transparent 60%),
+    radial-gradient(80% 70% at 86% 96%, rgba(120,76,30,.20), transparent 62%),
+    linear-gradient(160deg,#241a0f 0%,#160f09 46%,#0d0905 100%);
+}
+#loginScreen::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+#loginScreen::after{content:"";position:absolute;left:0;right:0;bottom:0;height:42%;pointer-events:none;
+  background:radial-gradient(60% 100% at 50% 100%, rgba(224,170,90,.16), transparent 70%)}
+
+#loginScreen .login-box{position:relative;z-index:1;border-radius:24px;
+  background:linear-gradient(165deg, rgba(38,29,18,.94), rgba(15,10,6,.97));
+  border:1px solid rgba(217,180,91,.20);
+  box-shadow:0 50px 100px -34px rgba(0,0,0,.85), inset 0 1px 0 rgba(235,206,134,.14)}
+#loginScreen .login-box::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 60% at 50% 0%, rgba(217,180,91,.12), transparent 55%)}
+#loginScreen .login-box > *{position:relative}
+
+#loginScreen .login-box h2{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:.12em;color:#EBDCB6}
+#loginScreen .login-sub{color:var(--ac);letter-spacing:2px}
+#loginScreen #loginHeading{color:var(--i2)}
+
+/* profile-selection accents → warm gold focus rings */
+#loginScreen .login-card.on{box-shadow:0 0 0 3px rgba(217,180,91,.22)}
+#loginScreen .lc-card.on .lc-av{box-shadow:0 0 0 4px rgba(217,180,91,.28)}
+
+/* PIN field + actions */
+#loginScreen .pin-input{background:rgba(244,237,226,.05);border:1.5px solid rgba(217,180,91,.20);color:#F4EDE2;border-radius:14px}
+#loginScreen .pin-input::placeholder{color:rgba(159,146,129,.55)}
+#loginScreen .pin-input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(217,180,91,.18)}
+#loginScreen .pin-ok{background:linear-gradient(120deg,#E3C275,#C79A3F);color:#241a0c;font-weight:700;box-shadow:0 8px 22px -8px rgba(217,180,91,.5)}
+#loginScreen .pin-cancel{background:rgba(244,237,226,.06);color:var(--i2);border:1px solid var(--ln)}
+#loginScreen .pin-err{color:#E8956B}
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
