@@ -1958,7 +1958,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
 
 /* Profile-selection focus rings → warm gold */
 #loginScreen .login-card.on{box-shadow:0 0 0 3px rgba(217,180,91,.22)}
-#loginScreen .lc-card.on .lc-av{box-shadow:0 0 0 4px rgba(217,180,91,.30)}
+#loginScreen .lc-card.on .lc-av{border-color:rgba(217,180,91,.85);box-shadow:0 0 0 3px rgba(217,180,91,.5),0 0 28px -2px rgba(217,180,91,.5)}
 
 /* ── Premium, Apple-like PIN ── */
 #loginScreen .login-hello{color:var(--i2);font-size:14px;letter-spacing:.2px}
@@ -1971,6 +1971,45 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
 #loginScreen .pin-ok{background:linear-gradient(135deg,#CBA24E,#9E7530);color:#241a0c;font-weight:700;box-shadow:0 10px 24px -10px rgba(203,162,78,.55)}
 #loginScreen .pin-cancel{background:rgba(244,237,226,.06);color:var(--i2);border:1px solid var(--ln)}
 #loginScreen .pin-err{color:#E2926A}
+
+/* ── Elegant "Switch Profile" pill (monochrome swap icon, no emoji) ── */
+#loginScreen .lwb-switch{display:inline-flex;align-items:center;gap:8px;margin-top:16px;
+  padding:9px 17px 9px 14px;border-radius:999px;font-size:13px;font-weight:600;letter-spacing:.2px;
+  color:var(--i2);background:rgba(244,237,226,.05);border:1px solid var(--ln);
+  transition:background .22s ease,color .22s ease,border-color .22s ease,transform .14s ease,box-shadow .22s ease}
+#loginScreen .lwb-switch::before{content:"";width:15px;height:15px;flex:none;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8h13l-3-3'/><path d='M20 16H7l3 3'/></svg>") center/contain no-repeat;
+          mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8h13l-3-3'/><path d='M20 16H7l3 3'/></svg>") center/contain no-repeat}
+#loginScreen .lwb-switch:hover{color:var(--ac);border-color:rgba(217,180,91,.5);background:rgba(217,180,91,.10);transform:translateY(-1px);box-shadow:0 6px 18px -8px rgba(217,180,91,.4)}
+#loginScreen .lwb-switch:active{transform:scale(.97)}
+
+/* the post-tap "Switch profile" caption → quiet, centered */
+#loginScreen #loginOr{color:var(--i3);letter-spacing:1.2px;text-align:center}
+
+/* ── Refined micro-motion (no flashy effects) ── */
+#loginScreen .lc-card{transition:transform .26s cubic-bezier(.22,1,.36,1)}
+#loginScreen .lc-card:hover{transform:translateY(-4px)}
+#loginScreen .lc-av{transition:transform .26s cubic-bezier(.22,1,.36,1),box-shadow .3s ease,border-color .2s ease}
+#loginScreen .lc-card:hover .lc-av{box-shadow:0 16px 34px -12px rgba(0,0,0,.6),0 0 22px -4px rgba(217,180,91,.4)}
+
+/* hero avatar — soft golden presence + gentle hover */
+#loginScreen .lwb-av{box-shadow:0 12px 34px -10px rgba(0,0,0,.55),0 0 26px -6px rgba(217,180,91,.32),inset 0 -3px 0 rgba(0,0,0,.12);
+  transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s ease,border-color .2s ease}
+#loginScreen .lwb-av:hover{transform:translateY(-3px) scale(1.03);border-color:rgba(217,180,91,.6);
+  box-shadow:0 20px 44px -12px rgba(0,0,0,.6),0 0 32px -4px rgba(217,180,91,.45),inset 0 -3px 0 rgba(0,0,0,.12)}
+
+/* gentle staggered entrance on the profile avatars (opacity+rise only) */
+@keyframes aspAvIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+#loginScreen .lc-av{animation:aspAvIn .42s cubic-bezier(.22,1,.36,1) both}
+#loginScreen .lc-card:nth-child(2) .lc-av{animation-delay:.05s}
+#loginScreen .lc-card:nth-child(3) .lc-av{animation-delay:.10s}
+#loginScreen .lc-card:nth-child(4) .lc-av{animation-delay:.15s}
+#loginScreen .lc-card:nth-child(5) .lc-av{animation-delay:.20s}
+#loginScreen .lc-card:nth-child(6) .lc-av{animation-delay:.25s}
+@media(prefers-reduced-motion:reduce){
+  #loginScreen .lc-av{animation:none}
+  #loginScreen .lc-card:hover,#loginScreen .lwb-av:hover{transform:none}
+}
 </style>
 </head>
 <body>
@@ -4297,9 +4336,9 @@ function renderLoginScreen(){
     wb.innerHTML=
       `<div class="lwb-av av-c${ci} ${roleClsOf(lastUser.role)}" data-uname="${(lastUser.name||"").replace(/"/g,"")}" role="button" tabindex="0">`+
         `${initials(lastUser.name)}<span class="lwb-dot" style="display:none"></span></div>`+
-      `<div class="lwb-name">Welcome back, ${(lastUser.name||"").replace(/</g,"&lt;")}</div>`+
+      `<div class="lwb-name">Welcome, ${(lastUser.name||"").replace(/</g,"&lt;")}</div>`+
       `<div class="lwb-hint">Tap your photo to enter your PIN</div>`+
-      `<button type="button" class="lwb-switch" id="lwbSwitch">Not you? Switch profile ▾</button>`;
+      `<button type="button" class="lwb-switch" id="lwbSwitch">Switch Profile</button>`;
     c.appendChild(wb);
     wb.querySelector(".lwb-av").onclick=function(){selectLoginUser(lastUser,null)};
     wb.querySelector(".lwb-av").onkeydown=function(e){if(e.key==="Enter"||e.key===" ")selectLoginUser(lastUser,null)};
