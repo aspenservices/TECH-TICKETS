@@ -1510,13 +1510,16 @@ body.dark-mode .mt{background:rgba(44,37,32,.82)}
 body.dark-mode .welcome-hero{background:linear-gradient(135deg,#3a2818,var(--cd))}
 /* ===== PANEL POR COBRAR ===== */
 #pcDailyBar:empty{display:none}
-.pc-daily-btn{display:inline-flex;align-items:center;gap:9px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border:1.5px solid var(--c-success-strong,#16a34a);border-radius:12px;padding:9px 14px;font-family:inherit;font-weight:800;font-size:var(--fs-sm,13px);cursor:pointer;transition:transform .12s,box-shadow .12s}
-.pc-daily-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
-.pc-daily-btn.crit{border-color:var(--c-danger-strong,#dc2626)}
-.pc-daily-ico{font-size:16px}
-.pc-daily-amt{font-weight:800}
-.pc-daily-cnt{background:var(--br);color:#fff;border-radius:999px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 6px}
-.pc-daily-crit{background:var(--c-danger-bg);color:var(--c-danger-fg);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800}
+/* Receivable bar — discreet premium chip (amount lives in the _pcOpen modal). */
+#pcDailyBar{display:flex;justify-content:flex-end}
+#pcDailyBar:empty{display:none}
+.pc-daily-btn{display:inline-flex;align-items:center;gap:7px;background:transparent;color:var(--i2);border:1px solid var(--ln);border-radius:999px;padding:5px 11px;font-family:inherit;font-weight:700;font-size:12px;letter-spacing:.2px;cursor:pointer;opacity:.82;transition:opacity .15s,border-color .15s,background .15s,transform .12s}
+.pc-daily-btn:hover{opacity:1;border-color:var(--c-money-fg,#065f46);background:var(--c-money-bg,#ecfdf5);transform:translateY(-1px)}
+.pc-daily-btn.crit{border-color:color-mix(in srgb,var(--c-danger-strong,#dc2626) 32%,var(--ln))}
+.pc-daily-ico{font-size:12px;filter:grayscale(.25)}
+.pc-daily-txt{text-transform:uppercase;font-size:10.5px;letter-spacing:.6px;color:var(--i3);font-weight:800}
+.pc-daily-cnt{background:var(--c-ash-2,var(--bg));color:var(--i2);border:1px solid var(--ln);border-radius:999px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;padding:0 5px}
+.pc-daily-crit{background:var(--c-danger-bg);color:var(--c-danger-fg);border-radius:999px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;padding:0 5px}
 .pc-hero{background:var(--hdr-bg,#211712);border-radius:16px;padding:18px 20px;color:#f3e9dc;margin-bottom:16px}
 .pc-hero-lbl{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#E8B96B;margin-bottom:4px}
 .pc-hero-amt{font-family:var(--font-display,'Fraunces',Georgia,serif);font-weight:600;font-size:34px;line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
@@ -2011,6 +2014,31 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   #loginScreen .lc-card:hover,#loginScreen .lwb-av:hover{transform:none}
 }
 </style>
+<style id="aspenDailySummary">
+/* ── Daily Summary Bar — clickable metric cards above the Daily board.
+   Uses the app's own tokens + semantic status colors, so it adapts to every
+   theme (Light / Dark / Ember / Aspen) automatically. ── */
+#dailySummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(98px,1fr));gap:8px}
+#dailySummary:empty{display:none}
+.dsum-card{position:relative;display:flex;flex-direction:column;gap:3px;padding:11px 12px 11px 15px;
+  border-radius:var(--r-lg);background:var(--cd);border:1.5px solid var(--ln);cursor:pointer;
+  text-align:left;font-family:inherit;overflow:hidden;
+  transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .2s ease,border-color .2s ease,background .2s ease}
+.dsum-card::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;
+  background:var(--dsum-c,var(--ac));opacity:.9}
+.dsum-card:hover{transform:translateY(-2px);border-color:var(--dsum-c,var(--ac));
+  box-shadow:0 8px 18px -10px rgba(0,0,0,.35)}
+.dsum-card:active{transform:scale(.98)}
+.dsum-card.on{border-color:var(--dsum-c,var(--ac));
+  background:color-mix(in srgb,var(--dsum-c,var(--ac)) 12%,var(--cd));
+  box-shadow:0 0 0 1px var(--dsum-c,var(--ac)) inset}
+.dsum-card.dead{cursor:default;opacity:.5}
+.dsum-card.dead:hover{transform:none;border-color:var(--ln);box-shadow:none}
+.dsum-n{font-size:23px;font-weight:800;line-height:1;letter-spacing:-.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.dsum-card.on .dsum-n{color:var(--dsum-c,var(--ink))}
+.dsum-l{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--i3);line-height:1.1}
+@media(prefers-reduced-motion:reduce){.dsum-card:hover{transform:none}}
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -2132,7 +2160,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
 </div>
 
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="dailyFilters" style="margin:0 0 8px"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div></div></div>
+<div class="wrap" id="pg1" style="max-width:none"><div id="dailySummary" style="margin:0 0 12px"></div><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="dailyFilters" style="margin:0 0 8px"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -10663,12 +10691,11 @@ function _pcRenderDailyBar(){
   var d=_porCobrarData();
   if(!d.count){bar.innerHTML="";return;}
   var crit=d.bands.critical.count;
-  bar.innerHTML='<button class="pc-daily-btn'+(crit?" crit":"")+'" onclick="_pcOpen()" type="button">'
+  bar.innerHTML='<button class="pc-daily-btn'+(crit?" crit":"")+'" onclick="_pcOpen()" type="button" title="'+L2("Ver cuentas por cobrar","View receivables")+'">'
     +'<span class="pc-daily-ico">💰</span>'
     +'<span class="pc-daily-txt">'+L2("Por cobrar","Receivable")+'</span>'
-    +'<span class="pc-daily-amt">'+_pcMoney(d.total)+'</span>'
     +'<span class="pc-daily-cnt">'+d.count+'</span>'
-    +(crit?'<span class="pc-daily-crit">'+crit+' '+L2("crít.","crit")+'</span>':'')+'</button>';
+    +(crit?'<span class="pc-daily-crit" title="'+L2("crítico","critical")+'">'+crit+'</span>':'')+'</button>';
 }
 
 
@@ -10847,6 +10874,8 @@ function _applyDailyFilter(pool){
   }
   if(_dailyFilter==="repeat")return pool.filter(function(t){return t.visitNum===4;});
   if(_dailyFilter==="cm")return pool.filter(function(t){return t.visitNum===3;});
+  if(_dailyFilter==="urgent")return pool.filter(function(t){return t.isUrgent;});
+  if(_dailyFilter==="warranty")return pool.filter(function(t){return t.warranty&&t.warranty.has===true;});
   return pool;
 }
 function _renderDailyFilters(){
@@ -10874,9 +10903,45 @@ function _renderDailyFilters(){
       +esc(c[1])+(c[2]>=0?' <span class="df-n">'+c[2]+'</span>':'')+'</button>';
   });
   // if the active filter became empty, fall back to All
-  if(_dailyFilter!=="all"){var found=chips.some(function(c){return c[0]===_dailyFilter&&(c[2]>0||c[2]<0);});if(!found){_dailyFilter="all";return _renderDailyFilters();}}
+  if(_dailyFilter!=="all"){var found=chips.some(function(c){return c[0]===_dailyFilter&&(c[2]>0||c[2]<0);})||_dailyFilter==="urgent"||_dailyFilter==="warranty";if(!found){_dailyFilter="all";return _renderDailyFilters();}}
   bar.innerHTML=h;
 }
+
+/* ─── Daily Summary Bar (#1) — clickable metric cards that filter the board ───
+   Reuses the existing _dailyFilter machinery (_dailySetFilter / _applyDailyFilter).
+   Counts come from the SAME pool rndrA() renders, so they always match the board.
+   Admin/organizer only (techs see "My Tickets"); hidden until data is loaded. */
+function _renderDailySummary(){
+  var bar=document.getElementById("dailySummary");if(!bar)return;
+  if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
+  if(typeof _dataLoaded!=="undefined"&&!_dataLoaded){bar.innerHTML="";return;}
+  var pool=[];
+  try{pool=(Array.isArray(active)?active:[]).filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});}catch(_e){}
+  var open=pool.length;
+  var urg=pool.filter(function(t){return t.isUrgent;}).length;
+  var rep=pool.filter(function(t){return t.visitNum===4;}).length;
+  var qb=pool.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
+  var war=pool.filter(function(t){return t.warranty&&t.warranty.has===true;}).length;
+  var cards=[
+    ["all",      L2("Tickets","Open Tickets"), open, "var(--ac)"],
+    ["urgent",   L2("Urgentes","Urgent"),      urg,  "var(--c-danger-strong)"],
+    ["repeat",   L2("Repetidos","Repeats"),    rep,  "var(--c-info-fg)"],
+    ["qbpending",L2("Pend. QB","Pending QB"),  qb,   "var(--c-warning-fg)"],
+    ["warranty", L2("Garantía","Warranty"),    war,  "var(--c-success-strong)"]
+  ];
+  var h="";
+  cards.forEach(function(c){
+    var key=c[0],label=c[1],n=c[2],col=c[3];
+    var on=(key==="all")?(_dailyFilter==="all"):(_dailyFilter===key);
+    var dead=(n===0&&key!=="all");                          // nothing to filter → non-interactive
+    h+='<button type="button" class="dsum-card'+(on?" on":"")+(dead?" dead":"")+'" style="--dsum-c:'+col+'"'
+      +(dead?"":' onclick="_dailySummaryClick(\''+key+'\')"')+'>'
+      +'<span class="dsum-n">'+n+'</span><span class="dsum-l">'+esc(label)+'</span></button>';
+  });
+  bar.innerHTML=h;
+}
+// Toggle: tapping the active filter again returns to "All".
+function _dailySummaryClick(k){ _dailySetFilter((k!=="all"&&_dailyFilter===k)?"all":k); }
 
 /* ---------- Collections + Reschedule alerts (Alerts tab top block) ---------- */
 function _reschedStale(){
@@ -11797,6 +11862,7 @@ function rndrA(){
   try{_renderPresenceCluster()}catch(_e){}
   try{_pcRenderDailyBar()}catch(_e){}
   try{_renderDailyFilters()}catch(_e){}
+  try{_renderDailySummary()}catch(_e){}
   // Show skeleton placeholders during initial data load (before Firestore's
   // first snapshot arrives). Prevents the empty-list flash on cold open.
   if(!_dataLoaded&&!active.length&&!done.length){el.innerHTML=_skeletonHTML(4);return}
