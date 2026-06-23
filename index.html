@@ -1935,21 +1935,42 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   background:radial-gradient(120% 60% at 50% 0%, rgba(217,180,91,.12), transparent 55%)}
 #loginScreen .login-box > *{position:relative}
 
-#loginScreen .login-box h2{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:.12em;color:#EBDCB6}
-#loginScreen .login-sub{color:var(--ac);letter-spacing:2px}
+#loginScreen .login-box h2{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:.14em;color:#EBDCB6;font-size:25px}
+#loginScreen .login-sub{color:var(--ac);letter-spacing:2.5px}
 #loginScreen #loginHeading{color:var(--i2)}
 
-/* profile-selection accents → warm gold focus rings */
-#loginScreen .login-card.on{box-shadow:0 0 0 3px rgba(217,180,91,.22)}
-#loginScreen .lc-card.on .lc-av{box-shadow:0 0 0 4px rgba(217,180,91,.28)}
+/* Remove duplicate branding: hide the bitmap logo, keep the refined serif wordmark.
+   (To keep the leaf logo instead, set #loginLogo to display:block!important and add
+    #loginScreen .login-box h2{display:none}.) */
+#loginScreen #loginLogo{display:none!important}
 
-/* PIN field + actions */
-#loginScreen .pin-input{background:rgba(244,237,226,.05);border:1.5px solid rgba(217,180,91,.20);color:#F4EDE2;border-radius:14px}
-#loginScreen .pin-input::placeholder{color:rgba(159,146,129,.55)}
-#loginScreen .pin-input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(217,180,91,.18)}
-#loginScreen .pin-ok{background:linear-gradient(120deg,#E3C275,#C79A3F);color:#241a0c;font-weight:700;box-shadow:0 8px 22px -8px rgba(217,180,91,.5)}
+/* Simplify the welcome message: drop the instructional hint line under the avatar */
+#loginScreen .lwb-hint{display:none}
+
+/* ── Refined ROLE-BASED avatar palette (no playful colors) ──
+   admin → champagne gold · organizer → antique bronze · tech → graphite.
+   Overrides the hash-based av-c* gradients; role class is added in the JS render. */
+#loginScreen .lwb-av.r-admin,#loginScreen .lc-av.r-admin{background:linear-gradient(150deg,#DCB75E,#A57C36)}
+#loginScreen .lwb-av.r-organizer,#loginScreen .lc-av.r-organizer{background:linear-gradient(150deg,#B17646,#7B4A29)}
+#loginScreen .lwb-av.r-tech,#loginScreen .lc-av.r-tech{background:linear-gradient(150deg,#727680,#4B4F57)}
+#loginScreen .lc-role.r-organizer{color:#C79A6A}
+#loginScreen .lc-role.r-tech{color:#9AA0A8}
+
+/* Profile-selection focus rings → warm gold */
+#loginScreen .login-card.on{box-shadow:0 0 0 3px rgba(217,180,91,.22)}
+#loginScreen .lc-card.on .lc-av{box-shadow:0 0 0 4px rgba(217,180,91,.30)}
+
+/* ── Premium, Apple-like PIN ── */
+#loginScreen .login-hello{color:var(--i2);font-size:14px;letter-spacing:.2px}
+#loginScreen .pin-input{display:block;max-width:230px;margin:0 auto;
+  background:rgba(244,237,226,.045);border:1.5px solid rgba(217,180,91,.22);border-radius:16px;color:#F4EDE2;
+  font-size:24px;letter-spacing:12px;text-indent:12px;padding:15px 12px}
+#loginScreen .pin-input::placeholder{color:rgba(159,146,129,.5)}
+#loginScreen .pin-input:focus{border-color:rgba(217,180,91,.7);box-shadow:0 0 0 3px rgba(217,180,91,.15)}
+#loginScreen .pin-btns{max-width:300px;margin-left:auto;margin-right:auto}
+#loginScreen .pin-ok{background:linear-gradient(135deg,#CBA24E,#9E7530);color:#241a0c;font-weight:700;box-shadow:0 10px 24px -10px rgba(203,162,78,.55)}
 #loginScreen .pin-cancel{background:rgba(244,237,226,.06);color:var(--i2);border:1px solid var(--ln)}
-#loginScreen .pin-err{color:#E8956B}
+#loginScreen .pin-err{color:#E2926A}
 </style>
 </head>
 <body>
@@ -4274,7 +4295,7 @@ function renderLoginScreen(){
     const wb=document.createElement("div");
     wb.className="lwb";
     wb.innerHTML=
-      `<div class="lwb-av av-c${ci}" data-uname="${(lastUser.name||"").replace(/"/g,"")}" role="button" tabindex="0">`+
+      `<div class="lwb-av av-c${ci} ${roleClsOf(lastUser.role)}" data-uname="${(lastUser.name||"").replace(/"/g,"")}" role="button" tabindex="0">`+
         `${initials(lastUser.name)}<span class="lwb-dot" style="display:none"></span></div>`+
       `<div class="lwb-name">Welcome back, ${(lastUser.name||"").replace(/</g,"&lt;")}</div>`+
       `<div class="lwb-hint">Tap your photo to enter your PIN</div>`+
@@ -4300,7 +4321,7 @@ function renderLoginScreen(){
     card.type="button";card.className="lc-card";
     card.setAttribute("data-uname",u.name||"");
     card.innerHTML=
-      `<span class="lc-av av-c${ci}">${initials(u.name)}<span class="lc-dot"></span></span>`+
+      `<span class="lc-av av-c${ci} ${roleClsOf(u.role)}">${initials(u.name)}<span class="lc-dot"></span></span>`+
       `<span class="lc-name">${(u.name||"").replace(/</g,"&lt;")}</span>`+
       `<span class="lc-role ${roleClsOf(u.role)}">${roleLabelOf(u.role)}</span>`;
     card.onclick=function(){
