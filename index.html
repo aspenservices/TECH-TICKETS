@@ -2372,6 +2372,68 @@ body:not(.theme-ember) #pg1 .tkt:hover{
   .cust-page .qb-cust-stat:hover,.cust-page .qb-cust-btn:hover{transform:none}
 }
 </style>
+<style id="aspenDrawerSkin">
+/* ─────────────────────────────────────────────────────────────────────────
+   Aspen — Enterprise drawer skin.  CSS-ONLY · scoped to #tktDetailBg.
+   No markup, IDs, functions, events, or logic are touched anywhere.
+   Mirrors the "Daily enterprise" prototype: fewer hard borders, soft
+   shadows, calmer card hierarchy, gentle open animation.  Theme-token safe
+   (light / dark / ember / lux).  Delete this <style> block to fully revert.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Floatier modal shell */
+#tktDetailBg .modal{box-shadow:var(--sh-lg)}
+
+/* Section cards: drop the hard 1px border, lift with a soft shadow instead.
+   This is the main visual upgrade — every .dt-sec becomes an elevated card. */
+#tktDetailBg .dt-sec{
+  border:none;
+  box-shadow:var(--sh-sm);
+  border-radius:18px;
+  padding:16px 17px;
+  margin-bottom:14px;
+}
+body.dark-mode #tktDetailBg .dt-sec{box-shadow:0 1px 2px rgba(0,0,0,.32),0 8px 22px rgba(0,0,0,.38)}
+
+/* Eyebrow header: a hairline divider gives the card a clear top concept */
+#tktDetailBg .dt-sec-t{
+  color:var(--i2);
+  padding-bottom:10px;
+  margin-bottom:12px;
+  border-bottom:1px solid var(--ln);
+}
+
+/* Contact rows: soft hairline separators instead of cramped, weightless rows */
+#tktDetailBg .tp-row{padding:9px 0;border-top:1px solid var(--ln)}
+#tktDetailBg .tp-row:first-child{border-top:none}
+
+/* Notes / textareas: replace the 1.5px outline with an inset hairline;
+   copper inset on focus (keeps the affordance, loses the hard border) */
+#tktDetailBg .notes{
+  border:none;
+  border-radius:14px;
+  box-shadow:inset 0 0 0 1px var(--ln),var(--sh-xs);
+}
+#tktDetailBg .notes:focus{box-shadow:inset 0 0 0 1.5px var(--ac),var(--sh-xs)}
+
+/* Chips lighter, pills get a soft lift */
+#tktDetailBg .dt-chip{border-width:1px}
+#tktDetailBg .pill{box-shadow:var(--sh-xs)}
+
+/* Actions: swap the heavy 2px top divider for a hairline + breathing room */
+#tktDetailBg #tktDetailActionsWrap{
+  border-top:1px solid var(--ln)!important;
+  margin-top:20px!important;
+  padding-top:18px!important;
+}
+#tktDetailBg #tktDetailActions button,
+#tktDetailBg #tktDetailActions a{border-radius:12px}
+
+/* Micro-animation: gentle fade + rise on the section cards when the drawer opens */
+@keyframes aspenDtIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#tktDetailBg.open .dt-sec{animation:aspenDtIn .26s cubic-bezier(.4,0,.2,1) both}
+@media(prefers-reduced-motion:reduce){#tktDetailBg.open .dt-sec{animation:none}}
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
