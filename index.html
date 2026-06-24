@@ -719,6 +719,14 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 
 /* Tech Columns */
 .tech-cols{display:flex;gap:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:none}.tech-cols::-webkit-scrollbar{display:none}
+/* #8 drag-to-reassign feedback (admin board, desktop) */
+.tech-col.drop-over{outline:2.5px dashed var(--ac);outline-offset:-3px;background:#fff7ed;border-radius:12px}
+.tkt-dragging{opacity:.4}
+/* bulk-select (admin board, desktop) */
+.tkt-check{position:absolute;top:8px;right:8px;width:22px;height:22px;border:2px solid var(--ac);border-radius:6px;background:#fff;display:none;place-items:center;cursor:pointer;z-index:3;box-shadow:var(--sh-xs)}
+.tkt-check.on{background:var(--ac)}
+.tkt-check.on::after{content:"✓";color:#fff;font-size:13px;font-weight:800;line-height:1}
+.tkt.tkt-selected{outline:2px solid var(--ac);outline-offset:-1px;background:#fff7ed}
 .cal-day.drop-over{outline:3px dashed var(--ac);outline-offset:-3px;background:#fff7ed}
 .cal-tkt-mini.dragging{opacity:.4}
 .tech-col{width:380px;min-width:380px;max-width:380px;flex-shrink:0;flex-grow:0;scroll-snap-align:start;box-sizing:border-box}
@@ -803,6 +811,17 @@ body.density-compact .tkt-techline .tkt-techtxt{font-size:var(--fs-xs)}
 #pg4 .cal-day{padding:8px 8px 6px}
 #pg4 .cal-events{gap:3px}
 #pg4 .cal-event{padding:2px 8px}
+/* ── Enriched calendar card (Month + Week): tech-color bar + zone/warranty chips + alert icons ── */
+#pg4 .cal-event{white-space:normal;background:var(--cd);color:var(--ink);border:1px solid var(--ln);border-left-width:3px;border-radius:var(--r-sm);padding:4px 7px 5px;line-height:1.2;box-shadow:0 1px 2px rgba(40,28,18,.05)}
+#pg4 .cal-event.ev-urgent{background:#fff5f3;border-color:#f1c9bf}
+#pg4 .cal-event .ev-top{display:flex;align-items:baseline;gap:4px}
+#pg4 .cal-event .ev-time{font-weight:800;color:var(--ink);flex:0 0 auto}
+#pg4 .cal-event .ev-name{font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+#pg4 .cal-event .ev-flags{flex:0 0 auto;font-size:10px;line-height:1;letter-spacing:1px}
+#pg4 .cal-event .ev-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px;margin-top:3px}
+#pg4 .cal-event .ev-zone{font-size:9.5px;font-weight:800;border-radius:4px;padding:1px 5px;line-height:1.35;white-space:nowrap}
+#pg4 .cal-event .ev-meta span{font-size:9.5px!important;padding:1px 5px!important}
+#pg4 .cal-event.done{opacity:.55;text-decoration:none}
 /* Service Log (#pg5) */
 #pg5 .card{margin-bottom:16px}
 #pg5 .tkt{margin-bottom:14px}
@@ -1066,6 +1085,117 @@ body.dark-mode .qb-cust-hero .app-av{border-color:rgba(255,255,255,.18)}
 .mt-col-body{display:flex;flex-direction:column;background:var(--bg)}
 .mt-col.drop-over-col{outline:3px dashed var(--ac);outline-offset:-3px;background:#fff7ed}
 .mt-col-toggle{display:none;font-size:var(--fs-md);line-height:1;transition:transform .2s;flex-shrink:0}
+/* ── Team view: command-center strip + per-tech capacity bar ── */
+.cal-cmd{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cal-cmd-stat{flex:1;min-width:114px;background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:9px 12px;position:relative;overflow:hidden}
+.cal-cmd-stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--sc,var(--ac))}
+.cal-cmd-stat .cc-l{font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--i3)}
+.cal-cmd-stat .cc-v{font-size:22px;font-weight:800;color:var(--br);line-height:1.1;margin-top:1px}
+.mt-col-hdr{flex-wrap:wrap}
+.mt-cap{flex-basis:100%;height:5px;border-radius:3px;background:rgba(255,255,255,.28);overflow:hidden;margin-top:7px}
+.mt-cap i{display:block;height:100%;border-radius:3px;background:#fff;transition:width .3s}
+.mt-cap i.full{background:#ffd9d9}
+/* ── Service Log map (St. Louis) ── */
+.slog-map-panel{margin:0 0 14px;background:var(--cd);border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+.slog-map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--ln)}
+.slog-map-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.slog-map-tabs .smt{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:700;color:var(--i2);background:var(--bg);border:1px solid var(--ln);border-radius:999px;padding:5px 11px;cursor:pointer;transition:.15s}
+.slog-map-tabs .smt:hover{border-color:var(--ac)}
+.slog-map-tabs .smt.on{background:var(--br);color:#fff;border-color:var(--br)}
+.slog-map-tabs .smt-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px rgba(255,255,255,.55)}
+.slog-map-tabs .smt-n{font-weight:800;opacity:.85}
+.slog-map-status{font-size:var(--fs-xs);color:var(--i3);font-weight:600;white-space:nowrap}
+.slog-map{height:380px;width:100%;background:#eef2f0}
+.slog-map-msg{padding:30px;text-align:center;color:var(--i3);font-size:var(--fs-base)}
+@media(max-width:600px){.slog-map{height:300px}}
+/* Service Log sub-tab modes: list group vs map+stats group (both inside .cal-main) */
+.slog-mapgroup{display:none}
+#pg5 .cal-wrap.slog-mode-map .cal-main{display:block!important;width:100%;max-width:100%}
+#pg5 .cal-wrap.slog-mode-map .cal-side{display:none}
+#pg5 .cal-wrap.slog-mode-map .slog-loggroup{display:none}
+#pg5 .cal-wrap.slog-mode-map .slog-mapgroup{display:block}
+/* zone statistics */
+.slog-stats{margin-top:14px;background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:14px 16px}
+.slog-stats-title{font-size:var(--fs-sm);font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--acd);margin-bottom:12px}
+.slog-stats-empty{color:var(--i3);font-size:var(--fs-base);padding:6px 0}
+/* ── Technician time off ── */
+.cal-to-trigger{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;background:var(--cd);border:1px solid var(--ln);border-radius:9px;font-size:var(--fs-sm);font-weight:800;color:var(--br);cursor:pointer;white-space:nowrap}
+.cal-to-trigger:hover{border-color:var(--ac);color:var(--ac)}
+.to-form{background:var(--bg);border:1px solid var(--ln);border-radius:12px;padding:14px;margin-bottom:16px}
+.to-row{margin-bottom:10px}
+.to-row2{display:flex;gap:10px;margin-bottom:10px}
+.to-row2>div{flex:1}
+.to-form label{display:block;font-size:var(--fs-xs);font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--i2);margin-bottom:4px}
+.to-form select,.to-form input{width:100%;padding:9px 11px;border:1px solid var(--ln);border-radius:8px;font-size:var(--fs-base);background:var(--cd);color:var(--ink);box-sizing:border-box}
+.to-add{width:100%;margin-top:4px;padding:10px;background:var(--ac);color:#fff;border:none;border-radius:9px;font-size:var(--fs-md);font-weight:800;cursor:pointer}
+.to-add:hover{background:var(--acd)}
+.to-list-title{font-size:var(--fs-sm);font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--acd);margin-bottom:10px}
+.to-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cd);border:1px solid var(--ln);border-radius:10px;margin-bottom:8px}
+.to-it-main{flex:1;min-width:0}
+.to-it-tech{font-size:var(--fs-base);font-weight:800;color:var(--ink)}
+.to-it-dates{font-size:var(--fs-sm);color:var(--i2);margin-top:2px}
+.to-it-note{font-size:var(--fs-xs);color:var(--i3);font-style:italic;margin-top:1px}
+.to-del{flex:0 0 auto;background:var(--c-danger-bg);color:var(--c-danger-fg);border:none;border-radius:7px;padding:6px 11px;font-size:var(--fs-sm);font-weight:700;cursor:pointer}
+.to-empty{color:var(--i3);font-size:var(--fs-base);text-align:center;padding:14px}
+.cal-off{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:3px}
+.cal-off-chip{display:inline-flex;align-items:center;font-size:9.5px;font-weight:800;background:#FCE9D6;color:#92400E;border-radius:4px;padding:1px 5px}
+.cal-day-off{background:#FCE9D6;color:#92400E;border:1px solid #F0C99A;border-radius:9px;padding:9px 13px;font-size:var(--fs-sm);font-weight:800;margin-bottom:12px}
+.mt-col.mt-col-off .mt-col-hdr{opacity:.82;background-image:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(0,0,0,.06) 6px,rgba(0,0,0,.06) 12px)}
+.mt-off-badge{display:inline-block;background:rgba(255,255,255,.88);color:#92400E;font-size:9.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+/* warranty-year drill-through */
+.wy-item{margin-bottom:5px}
+.wy-sum{list-style:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:3px 2px;border-radius:5px}
+.wy-sum::-webkit-details-marker{display:none}
+.wy-sum::marker{content:""}
+.wy-sum:hover{background:rgba(6,95,70,.06)}
+.wy-chev{display:inline-flex;align-items:center;transition:transform .2s;flex-shrink:0}
+.wy-item[open] .wy-chev{transform:rotate(90deg)}
+.wy-bar-wrap{flex:1;min-width:0;display:block}
+.wy-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.wy-lbl{font-size:var(--fs-sm);font-weight:700;color:var(--ink)}
+.wy-n{font-size:var(--fs-sm);font-weight:800;color:var(--c-success-strong)}
+.wy-bar{display:block;height:6px;background:rgba(255,255,255,.7);border-radius:3px;overflow:hidden}
+.wy-bar i{display:block;height:100%;background:var(--c-success-strong);border-radius:3px}
+.wy-clients{padding:6px 0 6px 4px;display:flex;flex-direction:column;gap:4px}
+.wy-client{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;background:#fff;border:1px solid var(--ln);border-radius:7px;cursor:pointer}
+.wy-client:hover{border-color:var(--c-success-strong);background:var(--c-success-bg)}
+.wy-cust{font-size:var(--fs-sm);font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wy-meta{font-size:var(--fs-xs);color:var(--i3);white-space:nowrap;flex-shrink:0}
+/* per-year category breakdown */
+.wy-body{padding:8px 0 6px 18px}
+.wy-cats-title{font-size:9.5px;font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.wy-cats{display:flex;flex-direction:column;gap:7px;margin-bottom:6px}
+.wy-cat-sum{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:5px;padding:2px 0;border-radius:5px}
+.wy-cat-sum::-webkit-details-marker{display:none}
+.wy-cat-sum::marker{content:""}
+.wy-cat-sum:hover{background:rgba(0,0,0,.03)}
+.wy-cat-chev{display:inline-flex;align-items:center;margin-top:2px;transition:transform .2s;flex-shrink:0;width:10px}
+.wy-cat[open] .wy-cat-chev{transform:rotate(90deg)}
+.wy-cat-main{flex:1;min-width:0}
+.wy-cat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.wy-cat-lbl{display:flex;align-items:center;gap:5px;font-size:var(--fs-xs);font-weight:600;color:var(--ink)}
+.wy-cat-n{font-size:var(--fs-xs);font-weight:800}
+.wy-cat-bar{height:5px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden}
+.wy-cat-bar i{display:block;height:100%;border-radius:3px}
+.wy-parts{padding:5px 0 6px 17px;display:flex;flex-direction:column;gap:5px}
+.wy-part-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.wy-part-lbl{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--i2)}
+.wy-part-n{font-size:11px;font-weight:700}
+.wy-part-bar{height:4px;background:rgba(0,0,0,.05);border-radius:2px;overflow:hidden}
+.wy-part-bar i{display:block;height:100%;border-radius:2px}
+.wy-cli{margin-top:2px}
+.wy-cli-sum{list-style:none;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:var(--fs-xs);font-weight:700;color:var(--i2);padding:4px 0}
+.wy-cli-sum::-webkit-details-marker{display:none}
+.wy-cli-sum::marker{content:""}
+.wy-chev2{display:inline-flex;align-items:center;transition:transform .2s}
+.wy-cli[open] .wy-chev2{transform:rotate(90deg)}
+.slog-stat-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.slog-stat-row .ssr-zone{flex:0 0 150px;font-size:var(--fs-xs);font-weight:800;overflow:hidden}
+.slog-stat-row .ssr-zone b{display:inline-block;padding:2px 9px;border-radius:7px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.slog-stat-row .ssr-bar{flex:1;height:18px;background:var(--bg);border-radius:5px;overflow:hidden}
+.slog-stat-row .ssr-bar i{display:block;height:100%;border-radius:5px;transition:width .4s}
+.slog-stat-row .ssr-n{flex:0 0 auto;font-size:var(--fs-sm);font-weight:800;color:var(--i2);min-width:26px;text-align:right}
+@media(max-width:600px){.slog-stat-row .ssr-zone{flex-basis:96px}}
 
 /* Desktop wide: give each tech column more breathing room */
 @media(min-width:1400px){
@@ -1857,6 +1987,74 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   #bottomNav, .more-sheet, .more-sheet-back{ display:none !important; }
 }
 
+/* ═══════════ OPTION C — grouped sidebar (sections · left-bar active · always-on colour counts) ═══════════
+   DOM order of the tabs is intentionally LEFT UNCHANGED so mobile is identical;
+   on desktop, flex `order` arranges the rail into 3 sections. Pure-additive. */
+.nav-grp{ display:none; }   /* mobile hides the section labels entirely */
+@media (min-width:1024px){
+  /* section labels: a thin divider when the rail is collapsed, an uppercase
+     caption once it expands on hover */
+  #tabBar.tabs .nav-grp{
+    display:block; flex:0 0 auto; pointer-events:none; overflow:hidden;
+    height:1px; margin:10px 9px 6px; background:rgba(255,255,255,.10); border-radius:1px;
+    font-size:0; color:transparent;
+  }
+  #tabBar.tabs:hover .nav-grp, #tabBar.tabs:focus-within .nav-grp{
+    height:auto; background:transparent; margin:14px 13px 4px;
+    font-size:9px; font-weight:800; letter-spacing:.9px; text-transform:uppercase;
+    color:rgba(243,233,223,.42);
+  }
+
+  /* ordering — brand "A" (::before) keeps its default order:0 and stays on top */
+  #tabBar.tabs .nav-grp[data-g="work"]  { order:1; }
+  #tabBar.tabs #tab0 { order:2; }   /* Field Report */
+  #tabBar.tabs #tab5 { order:3; }   /* Service Log  */
+  #tabBar.tabs #tab1 { order:4; }   /* Daily        */
+  #tabBar.tabs #tab2 { order:5; }   /* Completed    */
+  #tabBar.tabs .nav-grp[data-g="manage"]{ order:10; }
+  #tabBar.tabs #tab4 { order:11; }  /* Calendar  */
+  #tabBar.tabs #tab6 { order:12; }  /* Customers */
+  #tabBar.tabs #tab7 { order:13; }  /* Maps      */
+  #tabBar.tabs #tab3 { order:14; }  /* Admin     */
+  #tabBar.tabs .nav-grp[data-g="tools"] { order:20; }
+  #tabBar.tabs #tab8 { order:21; }  /* Alerts     */
+  #tabBar.tabs #tab9 { order:22; }  /* My Apps    */
+  #tabBar.tabs #tab10{ order:23; }  /* Tech Tools */
+  #tabBar.tabs #tab11{ order:24; }  /* Journal    */
+
+  /* active item: copper left bar + soft tint (replaces the solid copper fill) */
+  #tabBar.tabs .tab.on{
+    background:rgba(212,119,44,.18); color:#fff; font-weight:700;
+    box-shadow:inset 3px 0 0 var(--ac);
+  }
+  body.theme-ember #tabBar.tabs .tab.on{ color:#fff; }
+
+  /* count chips: ALWAYS show the number (even collapsed), colour-coded by type */
+  #tabBar.tabs .tab .badge{
+    position:absolute; top:5px; right:10px;
+    width:auto; min-width:16px; height:auto; padding:2px 5px;
+    font-size:9px; line-height:1; font-weight:800; border-radius:999px;
+    box-shadow:0 0 0 2px var(--hdr-bg);
+  }
+  #tabBar.tabs:hover .tab .badge, #tabBar.tabs:focus-within .tab .badge{
+    position:static; top:auto; right:auto; margin-left:auto;
+    padding:2px 7px; font-size:10px; box-shadow:none;
+  }
+  #tabBar.tabs #bdg1, #tabBar.tabs #bdg5{ background:var(--ac); color:#fff; }  /* Daily / Service Log — copper */
+  #tabBar.tabs #bdg2{ background:#1E7A45; color:#fff; }                        /* Completed — green */
+
+  /* Alerts uses .crossapp-tab-badge (inline-styled, already red) — force it to
+     match the others' corner placement when collapsed, right-aligned when expanded */
+  #tabBar.tabs #tab8 .crossapp-tab-badge{
+    position:absolute !important; top:5px !important; right:8px !important; margin:0 !important;
+    padding:2px 5px !important; min-width:16px !important; height:auto !important;
+    font-size:9px !important; box-shadow:0 0 0 2px var(--hdr-bg) !important;
+  }
+  #tabBar.tabs:hover #tab8 .crossapp-tab-badge, #tabBar.tabs:focus-within #tab8 .crossapp-tab-badge{
+    position:static !important; top:auto !important; right:auto !important; margin-left:auto !important;
+  }
+}
+
 
 /* == #5 DESKTOP REDESIGN . STAGE B: TICKETS MASTER-DETAIL ====================
    Desktop (>=1024px): the active list (#aList) is the master column; the selected
@@ -2201,7 +2399,7 @@ body:not(.theme-ember) #pg1 .tkt:hover{
 </div>
 <div class="hdr"><img src="data:image/png;base64,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" alt="Aspen Spas" class="hdr-logo"><button class="lock-btn" id="lockBtn" onclick="toggleAdmin()"><span class="lucide-mount" data-lucide="lock" data-size="20" data-color="currentColor"></span></button></div>
 <div class="hdr-sub" data-i18n-es="Sistema de Tickets de Servicio" data-i18n-en="Service Ticket System">Sistema de Tickets de Servicio</div>
-<div class="tabs" id="tabBar"><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log</div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab8" onclick="showTab(8)">Alerts</div><div class="tab hidden" id="tab10" onclick="showTab(10)">🧰 Tech Tools</div><div class="tab hidden" id="tab9" onclick="showTab(9)">💼 My Apps</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div><div class="tab hidden" id="tab7" onclick="showTab(7)">Maps</div><div class="tab hidden" id="tab11" onclick="showTab(11)">📓 Journal</div></div>
+<div class="tabs" id="tabBar"><span class="nav-grp" data-g="work">Trabajo</span><span class="nav-grp" data-g="manage">Gestión</span><span class="nav-grp" data-g="tools">Herramientas</span><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log <span class="badge" id="bdg5" style="display:none">0</span></div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab8" onclick="showTab(8)">Alerts</div><div class="tab hidden" id="tab10" onclick="showTab(10)">🧰 Tech Tools</div><div class="tab hidden" id="tab9" onclick="showTab(9)">💼 My Apps</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div><div class="tab hidden" id="tab7" onclick="showTab(7)">Maps</div><div class="tab hidden" id="tab11" onclick="showTab(11)">📓 Journal</div></div>
 <div id="presenceStrip" class="pres-strip pres-strip--global" style="display:none"></div>
 
 <div id="cfgErr" style="display:none"></div>
@@ -2304,6 +2502,7 @@ body:not(.theme-ember) #pg1 .tkt:hover{
   <div id="slogSubTabs" class="slog-subtabs">
     <button type="button" class="slog-stab on" data-sub="log" onclick="slogSwitchSub('log')">📋 Service Log</button>
     <button type="button" class="slog-stab" data-sub="new" onclick="slogSwitchSub('new')">📞 New Service Call</button>
+    <button type="button" class="slog-stab" data-sub="map" onclick="slogSwitchSub('map')">🗺️ Map &amp; Stats</button>
   </div>
   <!-- Billing rounding rule — surfaced here so organizers (who don't see the Admin tab) can manage it too -->
   <details id="billingRuleCardOrg" class="card" style="margin:0 0 12px;border-left:4px solid var(--c-money-fg,#166534)">
@@ -2317,10 +2516,27 @@ body:not(.theme-ember) #pg1 .tkt:hover{
   </details>
   <div class="cal-wrap slog-mode-log">
     <div class="cal-main">
-      <div class="lbl" style="font-size:var(--fs-md);margin-bottom:4px">📋 Service Log</div>
-      <div class="search-wrap"><input class="search-bar" id="searchSlog" placeholder="Search by name, phone, address, ZIP, zone..." oninput="rndrSlog()"></div>
-      <div class="slog-filter" id="slogFilter"></div>
-      <div id="slogList"></div>
+      <div class="slog-loggroup">
+        <div class="lbl" style="font-size:var(--fs-md);margin-bottom:4px">📋 Service Log</div>
+        <div class="search-wrap"><input class="search-bar" id="searchSlog" placeholder="Search by name, phone, address, ZIP, zone..." oninput="rndrSlog()"></div>
+        <div class="slog-filter" id="slogFilter"></div>
+        <div id="slogList"></div>
+      </div>
+      <div class="slog-mapgroup">
+        <div class="lbl" style="font-size:var(--fs-md);margin-bottom:4px">🗺️ Map &amp; Statistics</div>
+        <div class="slog-map-panel">
+          <div class="slog-map-head">
+            <div class="slog-map-tabs">
+              <button type="button" class="smt on" data-cat="unassigned" onclick="setSlogMapCat('unassigned')">Unassigned <span class="smt-n" id="smcUn">0</span></button>
+              <button type="button" class="smt" data-cat="assigned" onclick="setSlogMapCat('assigned')">Assigned · no report <span class="smt-n" id="smcAs">0</span></button>
+              <button type="button" class="smt" data-cat="reported" onclick="setSlogMapCat('reported')">Reported <span class="smt-n" id="smcRp">0</span></button>
+            </div>
+            <span id="slogMapStatus" class="slog-map-status"></span>
+          </div>
+          <div id="slogMap" class="slog-map"></div>
+        </div>
+        <div class="slog-stats" id="slogStats"></div>
+      </div>
     </div>
     <div class="cal-side" style="display:none">
       <div class="cal-call-form">
@@ -2764,7 +2980,7 @@ body:not(.theme-ember) #pg1 .tkt:hover{
       <div class="cal-hdr">
         <div style="display:flex;align-items:center;gap:12px">
           <h3 id="calTitle">April 2026</h3>
-          <div class="cal-views"><button class="cal-vb on" id="cvMonth" onclick="setCalView('month')">Month</button><button class="cal-vb" id="cvWeek" onclick="setCalView('week')">Week</button><button class="cal-vb" id="cvDay" onclick="setCalView('day')">Day</button><button class="cal-vb" id="cvList" onclick="setCalView('list')">List</button><button class="cal-vb" id="cvTeam" onclick="setCalView('team')">Team</button></div>
+          <div class="cal-views"><button class="cal-vb on" id="cvMonth" onclick="setCalView('month')">Month</button><button class="cal-vb" id="cvWeek" onclick="setCalView('week')">Week</button><button class="cal-vb" id="cvDay" onclick="setCalView('day')">Day</button><button class="cal-vb" id="cvList" onclick="setCalView('list')">List</button><button class="cal-vb" id="cvTeam" onclick="setCalView('team')">Team</button></div><button class="cal-to-trigger" onclick="openTimeOffMgr()" title="Technician time off / vacation">🌴 Time Off</button>
         </div>
         <div style="display:flex;gap:10px;align-items:center;position:relative">
           <button id="todoTriggerBtn" onclick="toggleTodoCollapse()" style="display:inline-flex;align-items:center;gap:6px;padding:0 12px;height:36px;background:#fff;border:1px solid var(--ln);border-radius:8px;font-size:var(--fs-base);font-weight:600;color:var(--br);cursor:pointer;font-family:inherit" title="Open To-Do list">
@@ -2958,6 +3174,23 @@ body:not(.theme-ember) #pg1 .tkt:hover{
 </div>
 
 <!-- ══ ROUTE MAP MODAL ══ -->
+<div class="mbg" id="timeOffBg" onclick="if(event.target===this)closeTimeOffMgr()">
+  <div class="modal" style="max-width:560px;width:96vw;height:auto;max-height:88dvh;display:flex;flex-direction:column">
+    <div class="mt"><div class="mt-bar"></div>
+      <div class="mt-t"><h3>🌴 Technician Time Off</h3><button class="mcl" onclick="closeTimeOffMgr()">×</button></div>
+    </div>
+    <div style="padding:14px 16px;overflow:auto">
+      <div class="to-form">
+        <div class="to-row"><label>Technician</label><select id="toTech"></select></div>
+        <div class="to-row2"><div><label>From</label><input type="date" id="toStart"></div><div><label>To</label><input type="date" id="toEnd"></div></div>
+        <div class="to-row"><label>Note (optional)</label><input type="text" id="toNote" placeholder="Vacation, PTO, sick day…" maxlength="60"></div>
+        <button class="to-add" onclick="addTimeOff()">+ Add time off</button>
+      </div>
+      <div class="to-list-title">Scheduled time off</div>
+      <div id="toList"></div>
+    </div>
+  </div>
+</div>
 <div class="mbg" id="routeMapBg" onclick="if(event.target===this)closeRouteMap()">
   <div class="modal" style="height:90dvh">
     <div class="mt"><div class="mt-bar"></div>
@@ -4242,6 +4475,65 @@ TECHS.push(n);saveTechs();buildTechPills();toast(n+" added ✓");
 // Work type management
 async function loadWT(){if(!db)return;try{const doc=await db.collection("config").doc("workTypes").get();if(doc.exists&&doc.data().list){WT=doc.data().list;buildWTPills()}}catch(e){}}
 async function saveWT(){if(!db)return;try{await db.collection("config").doc("workTypes").set({list:WT})}catch(e){console.warn("[saveWT]",e);if(typeof toast==="function")toast("Could not save work types","err")}}
+// ═══════════ Technician time off (vacation / PTO) ═══════════
+let TIMEOFF=[];
+async function loadTimeOff(){if(!db)return;try{const doc=await db.collection("config").doc("timeOff").get();if(doc.exists&&Array.isArray((doc.data()||{}).entries)){TIMEOFF=doc.data().entries;try{if(document.getElementById("pg4")&&document.getElementById("pg4").classList.contains("show"))rndrCal();}catch(_e){}}}catch(e){}}
+async function saveTimeOff(){if(!db)return;try{await db.collection("config").doc("timeOff").set({entries:TIMEOFF})}catch(e){console.warn("[saveTimeOff]",e);if(typeof toast==="function")toast("Could not save time off","err")}}
+function _techsOffOn(ds){
+  if(!ds||!TIMEOFF.length)return [];
+  var out=[];
+  TIMEOFF.forEach(function(e){if(e&&e.tech&&e.start&&e.end&&ds>=e.start&&ds<=e.end)out.push({tech:e.tech,note:e.note||""});});
+  return out;
+}
+function _isTechOff(tech,ds){
+  if(!tech||!ds)return false;
+  for(var i=0;i<TIMEOFF.length;i++){var e=TIMEOFF[i];if(e&&e.tech===tech&&e.start&&e.end&&ds>=e.start&&ds<=e.end)return true;}
+  return false;
+}
+function openTimeOffMgr(){
+  var sel=document.getElementById("toTech");
+  if(sel)sel.innerHTML=TECHS.filter(function(t){return !(typeof HIDDEN_TECHS!=="undefined"&&HIDDEN_TECHS.has(t))}).map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>'}).join("");
+  var s=document.getElementById("toStart"),en=document.getElementById("toEnd"),today=fmtD(new Date());
+  if(s&&!s.value)s.value=today;if(en&&!en.value)en.value=today;
+  rndrTimeOffList();
+  var bg=document.getElementById("timeOffBg");if(bg)bg.classList.add("open");
+}
+function closeTimeOffMgr(){var bg=document.getElementById("timeOffBg");if(bg)bg.classList.remove("open")}
+function addTimeOff(){
+  var tech=(document.getElementById("toTech")||{}).value||"";
+  var start=(document.getElementById("toStart")||{}).value||"";
+  var end=(document.getElementById("toEnd")||{}).value||"";
+  var note=((document.getElementById("toNote")||{}).value||"").trim();
+  if(!tech||!start||!end){toast("Pick a technician and both dates","warn");return}
+  if(end<start){toast("End date is before start date","warn");return}
+  TIMEOFF.push({id:"to_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),tech:tech,start:start,end:end,note:note});
+  TIMEOFF.sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
+  saveTimeOff();
+  var nt=document.getElementById("toNote");if(nt)nt.value="";
+  rndrTimeOffList();
+  try{rndrCal()}catch(_e){}
+  toast("Time off added","ok");
+}
+function delTimeOff(id){
+  TIMEOFF=TIMEOFF.filter(function(e){return e.id!==id});
+  saveTimeOff();
+  rndrTimeOffList();
+  try{rndrCal()}catch(_e){}
+}
+function rndrTimeOffList(){
+  var el=document.getElementById("toList");if(!el)return;
+  var today=fmtD(new Date());
+  var list=TIMEOFF.slice().sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
+  if(!list.length){el.innerHTML='<div class="to-empty">No time off scheduled yet.</div>';return}
+  var fmt=function(d){try{return new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}catch(_e){return d}};
+  var h="";
+  list.forEach(function(e){
+    var past=e.end<today;
+    var range=e.start===e.end?fmt(e.start):fmt(e.start)+" – "+fmt(e.end);
+    h+='<div class="to-item"'+(past?' style="opacity:.55"':'')+'><div class="to-it-main"><div class="to-it-tech">🌴 '+esc(e.tech)+(past?' <span style="font-size:9.5px;color:var(--i3)">(past)</span>':'')+'</div><div class="to-it-dates">'+range+'</div>'+(e.note?'<div class="to-it-note">'+esc(e.note)+'</div>':'')+'</div><button class="to-del" onclick="delTimeOff(\''+e.id+'\')">Remove</button></div>';
+  });
+  el.innerHTML=h;
+}
 function buildWTPills(){const wr=document.getElementById("wtRow");wr.innerHTML="";WT.forEach(w=>{const b=document.createElement("button");b.className="wt"+(wTypes.includes(w)?" on":"");b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{
 if(wTypes.includes(w)){wTypes=wTypes.filter(x=>x!==w);onWTRemove(w)}else{wTypes.push(w);onWTAdd(w)}
 wr.querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)));rndr()};wr.appendChild(b)})}
@@ -5171,10 +5463,12 @@ function rndrAdminStats(){
   // the group (under the same hybrid rule). For COVERS group, this means only
   // tickets whose primary classification falls in the group (spacover or coverlift).
   var wGroupAll={electronics:0,pumps:0,plumbing:0,environment:0,covers:0,cabinet:0};
+  var wAllTickets=[];
   pool.forEach(function(t){
     var c=classifyVisit(t);
     stats[c]++;
     if(c==="warranty"){
+      wAllTickets.push(t);
       var primary=classifyWarrantyType(t);
       var b=getWarrantyBuckets(t);
       var groupsCounted={};
@@ -5381,6 +5675,50 @@ function rndrAdminStats(){
         vh+='<div style="background:rgba(14,116,144,.04);border:1px solid '+r.color+'22;border-left:3px solid #0e7490;border-radius:6px;padding:10px 11px">';
         vh+=_wRenderSection(null,null,'Warranty issues by category','A ticket lights up <b>every</b> category it hit · <b>covers &amp; lifts</b> only count when they were the <b style="font-style:normal">main reason</b> for the visit (so incidental cover swaps don\'t inflate the count) · <b style="font-style:normal">click ▸ to see linked tickets</b>',wStats,wGroupAll,true);
         vh+='<div style="margin-top:8px;padding-top:7px;border-top:1px dashed '+r.color+'33;font-size:var(--fs-xs);color:var(--i3);text-align:center">'+r.val+' warranty ticket'+(r.val===1?'':'s')+' total · click any sub-category to see which tickets are linked to it</div>';
+        // ─── Warranty issues by warranty year (Yr 1–5) · drill-through to clients ───
+        (function(){
+          var _grpMeta=[{g:"electronics",label:"Electronics",color:"#15803d",icon:"zap"},{g:"pumps",label:"Pumps",color:"#0e7490",icon:"fan"},{g:"plumbing",label:"Plumbing",color:"#7c2d12",icon:"wrench"},{g:"environment",label:"Environment",color:"#d97706",icon:"sparkles"},{g:"covers",label:"Covers",color:"#475569",icon:"package"},{g:"cabinet",label:"Pillows & Cabinet",color:"#78716c",icon:"armchair"}];
+          function _emptyGrp(){return {electronics:0,pumps:0,plumbing:0,environment:0,covers:0,cabinet:0};}
+          var byYear={},grpByYear={},subByYear={};
+          wAllTickets.forEach(function(t){
+            var y=(t.warranty&&+t.warranty.year)||0;
+            var k=y?("Yr "+y):"Unknown";
+            (byYear[k]=byYear[k]||[]).push(t);
+            if(!grpByYear[k]){grpByYear[k]=_emptyGrp();subByYear[k]={};}
+            var b=getWarrantyBuckets(t),primary=classifyWarrantyType(t),gc={};
+            _wKeys.forEach(function(kk){var should=(kk==='spacover'||kk==='coverlift')?(primary===kk):!!b[kk];if(should){gc[_wKeyToGroup[kk]]=true;subByYear[k][kk]=(subByYear[k][kk]||0)+1;}});
+            Object.keys(gc).forEach(function(g){grpByYear[k][g]++;});
+          });
+          var yrows=Object.keys(byYear).map(function(k){return {yr:k,tkts:byYear[k],n:byYear[k].length};});
+          yrows.sort(function(a,b){if(a.yr==="Unknown")return 1;if(b.yr==="Unknown")return -1;return b.n-a.n;});
+          if(yrows.length){
+            var ymax=yrows.reduce(function(m,x){return Math.max(m,x.n);},1);
+            vh+='<div style="margin-top:10px;background:rgba(6,95,70,.04);border:1px solid '+r.color+'22;border-left:3px solid var(--c-success-strong);border-radius:6px;padding:10px 12px">';
+            vh+='<div style="font-size:11px;font-weight:800;color:var(--c-success-strong);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;display:flex;align-items:center;gap:5px">'+icon("calendar",13,{color:"var(--c-success-strong)"})+'Warranty issues by year · tap a year for issue types &amp; clients</div>';
+            yrows.forEach(function(yr){
+              var pct=Math.round(yr.n/ymax*100);
+              var ypc=r.val?Math.round(yr.n/r.val*100):0;
+              var _tk=yr.tkts.slice().sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
+              var gg=grpByYear[yr.yr]||_emptyGrp(),gmax=_grpMeta.reduce(function(m,x){return Math.max(m,gg[x.g]);},0)||1;
+              vh+='<details class="wy-item"><summary class="wy-sum"><span class="wy-chev">'+icon("chevron-right",12,{color:"var(--c-success-strong)"})+'</span><span class="wy-bar-wrap"><span class="wy-row"><span class="wy-lbl">'+esc(yr.yr)+'</span><span class="wy-n">'+yr.n+' <span style="font-size:9.5px;font-weight:600;color:var(--i3)">('+ypc+'%)</span></span></span><span class="wy-bar"><i style="width:'+pct+'%"></i></span></span></summary><div class="wy-body">';
+              vh+='<div class="wy-cats-title">Issue types in '+esc(yr.yr)+'</div><div class="wy-cats">';
+              _grpMeta.forEach(function(gm){var gv=gg[gm.g]||0;if(!gv)return;var gp=Math.round(gv/gmax*100);
+                var subs=catMeta.filter(function(c){return c.group===gm.g;});var ss=subByYear[yr.yr]||{};var smax=subs.reduce(function(m,c){return Math.max(m,ss[c.key]||0);},0)||1;
+                vh+='<details class="wy-cat"><summary class="wy-cat-sum"><span class="wy-cat-chev">'+icon("chevron-right",10,{color:gm.color})+'</span><span class="wy-cat-main"><span class="wy-cat-top"><span class="wy-cat-lbl">'+icon(gm.icon,11,{color:gm.color})+'<span>'+esc(gm.label)+'</span></span><span class="wy-cat-n" style="color:'+gm.color+'">'+gv+'</span></span><span class="wy-cat-bar"><i style="width:'+gp+'%;background:'+gm.color+'"></i></span></span></summary><div class="wy-parts">';
+                subs.forEach(function(c){var sv=ss[c.key]||0;if(!sv)return;var sp=Math.round(sv/smax*100);vh+='<div class="wy-part"><div class="wy-part-top"><span class="wy-part-lbl">'+icon(c.iconName,10,{color:c.color})+'<span>'+esc(c.label)+'</span></span><span class="wy-part-n" style="color:'+c.color+'">'+sv+'</span></div><div class="wy-part-bar"><i style="width:'+sp+'%;background:'+c.color+'"></i></div></div>';});
+                vh+='</div></details>';});
+              vh+='</div>';
+              vh+='<details class="wy-cli"><summary class="wy-cli-sum"><span class="wy-chev2">'+icon("chevron-right",11,{color:"var(--i3)"})+'</span>View '+yr.n+' client'+(yr.n!==1?"s":"")+'</summary><div class="wy-clients">';
+              _tk.forEach(function(t){
+                vh+='<div class="wy-client" onclick="event.stopPropagation();openTktDetail(\''+t.id+'\')"><span class="wy-cust">'+esc(t.customer||"—")+'</span><span class="wy-meta">'+(t.date?esc(t.date):"—")+' · '+esc((t.techs||[]).join(", ")||"Unassigned")+'</span></div>';
+              });
+              vh+='</div></details>';
+              vh+='</div></details>';
+            });
+            vh+='<div style="margin-top:6px;padding-top:6px;border-top:1px dashed '+r.color+'33;font-size:var(--fs-xs);color:var(--i3);text-align:center">"Yr" = warranty-coverage year (Yr 1–5) · each year shows its issue-type breakdown</div>';
+            vh+='</div>';
+          }
+        })();
         vh+='</div>';
         vh+='</div>';
       }
@@ -6709,6 +7047,11 @@ function initFirebase(){
     const dailyCount=isTechNow?dailyPool.filter(t=>(t.techs||[]).includes(currentUser.name)).length:dailyPool.length;
     if(b1){if(dailyCount){b1.style.display="inline";b1.textContent=dailyCount}else b1.style.display="none"}
     if(b2){if(done.length){b2.style.display="inline";b2.textContent=done.length}else b2.style.display="none"}
+    // Service Log badge — open service calls (unassigned dispatch, not served/canceled).
+    // Uses the SAME helper as rndrSlog so the badge always matches the page's Total.
+    const b5=document.getElementById("bdg5");
+    let slCount=0;try{slCount=_slogOpenCalls().length}catch(_e){}
+    if(b5){if(slCount){b5.style.display="inline";b5.textContent=slCount}else b5.style.display="none"}
     // Re-render ALL visible tabs.
     // AUDIT FIX: the previous version of this block listed pg4/pg5/pg6 twice
     // (a clear typo/duplication) and had no try/catch wrappers — so a single
@@ -6730,6 +7073,7 @@ function initFirebase(){
     _safeRender("pg3",rndrAdmin,"admin");
   },err=>{console.error("Firestore error:",err);toast("Sync error - check console","err")});
   // Listen for to-do list updates
+  db.collection("config").doc("timeOff").onSnapshot(function(doc){if(doc.exists&&Array.isArray((doc.data()||{}).entries)){TIMEOFF=doc.data().entries;try{if(document.getElementById("toList"))rndrTimeOffList();}catch(_e){}try{if(document.getElementById("pg4")&&document.getElementById("pg4").classList.contains("show"))rndrCal();}catch(_e){}}},function(_err){});
   db.collection("todos").onSnapshot(snap=>{
     todos=[];
     snap.forEach(doc=>{todos.push({id:doc.id,...doc.data()})});
@@ -8594,7 +8938,7 @@ async function init(){
   await loadTechs();
   buildTechPills();
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
-  _activityStart();mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();updateOnlineStatus();
+  _activityStart();mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();loadTimeOff();updateOnlineStatus();
   // Load persisted Maps distance cache early so Admin's "Drive" badge appears immediately
   // (without requiring user to open Maps tab first). Firestore sync still happens lazily on Maps load.
   if(typeof _mapsLoadLocalCache==="function")_mapsLoadLocalCache();
@@ -9924,7 +10268,21 @@ async function promptDialog(message, opts){
 // ═══ MARK DONE ═══
 // Short haptic pulse on supported devices — used on confirm actions. No-op elsewhere.
 function _haptic(ms){try{if(navigator.vibrate)navigator.vibrate(ms||15)}catch(_e){}}
-async function markDone(docId){if(!db)return;_haptic(22);try{await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});toast("Ticket completed ✓");if(typeof celebrate==="function")celebrate({count:90});setTimeout(refreshAll,500)}catch(e){toast("Error","err")}}
+async function markDone(docId){
+  if(!db)return;_haptic(22);
+  var _prev=[].concat(active,done).find(function(x){return x.id===docId;});
+  var _pStatus=_prev?(_prev.status||"complete"):"complete";   // snapshot for Undo
+  var _pCompleted=_prev?(_prev.completedAt||null):null;
+  try{
+    await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});
+    if(typeof celebrate==="function")celebrate({count:90});
+    _undoBar("Completed ✓","Undo",function(){
+      db.collection("tickets").doc(docId).update({status:_pStatus,completedAt:_pCompleted})
+        .then(function(){toast("Marked active again");}).catch(function(){toast("Undo failed","err");});
+    });
+    setTimeout(refreshAll,500);
+  }catch(e){toast("Error","err")}
+}
 // ═══ RESCHEDULE REASON PICKER ═══
 // Quick-pick modal shown when a tech reschedules a visit. Returns a Promise
 // that resolves to {reason, note} or null if canceled. Structured reasons let
@@ -11014,25 +11372,32 @@ function _applyDailyFilter(pool){
   if(_dailyFilter==="warfull")return pool.filter(function(t){return _warSeg(t)==="full";});
   if(_dailyFilter==="warpartial")return pool.filter(function(t){return _warSeg(t)==="partial";});
   if(_dailyFilter==="nowarranty")return pool.filter(function(t){return _warSeg(t)==="none";});
+  if(_dailyFilter==="unassigned")return pool.filter(function(t){return !(t.techs&&t.techs.length);});
+  if(_dailyFilter.indexOf("zone:")===0){var _z=_dailyFilter.slice(5);return pool.filter(function(t){return ((typeof effectiveZone==="function"&&effectiveZone(t))||"")===_z;});}
   return pool;
 }
 function _renderDailyFilters(){
   var bar=document.getElementById("dailyFilters");if(!bar)return;
   if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
   if(typeof _dataLoaded!=="undefined"&&!_dataLoaded){bar.innerHTML="";return;}
-  var qp=0,rp=0,cm=0,pc=0;
+  var qp=0,rp=0,cm=0,pc=0,un=0,_zoneCounts={};
   try{
     var pool=(Array.isArray(active)?active:[]).filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});
     qp=pool.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
     rp=pool.filter(function(t){return t.visitNum===4;}).length;
     cm=pool.filter(function(t){return t.visitNum===3;}).length;
+    un=pool.filter(function(t){return !(t.techs&&t.techs.length);}).length;
+    pool.forEach(function(t){var z=(typeof effectiveZone==="function"&&effectiveZone(t))||"";if(z){_zoneCounts[z]=(_zoneCounts[z]||0)+1;}});
   }catch(_e){}
   try{pc=_porCobrarData().count;}catch(_e){}
   var chips=[["all",L2("Todos","All"),-1],
+    ["unassigned",L2("Sin asignar","Unassigned"),un],
     ["qbpending",L2("Pendiente QB","Pending QB"),qp],
     ["porcobrar",L2("Por cobrar","Receivable"),pc],
     ["repeat","Repeat",rp],
     ["cm","CM",cm]];
+  // Dynamic per-zone chips (sorted), appended after the category chips. Render-only.
+  Object.keys(_zoneCounts).sort().forEach(function(z){chips.push(["zone:"+z,"📍 "+z,_zoneCounts[z]]);});
   var h="";
   chips.forEach(function(c){
     if(c[2]===0&&c[0]!=="all")return;                       // hide empty filters (keep "All")
@@ -11042,6 +11407,11 @@ function _renderDailyFilters(){
   });
   // if the active filter became empty, fall back to All
   if(_dailyFilter!=="all"){var found=chips.some(function(c){return c[0]===_dailyFilter&&(c[2]>0||c[2]<0);})||_dailyFilter==="urgent"||_dailyFilter==="warranty"||_dailyFilter==="warfull"||_dailyFilter==="warpartial"||_dailyFilter==="nowarranty";if(!found){_dailyFilter="all";return _renderDailyFilters();}}
+  // Bulk-select toggle — admin + desktop only (techs/phones never see it)
+  if(isAdmin&&typeof _boardIsDesktopDrag==="function"&&_boardIsDesktopDrag()){
+    h+='<button class="df-chip'+(_boardSelMode?" on":"")+'" type="button" onclick="_boardToggleSel()" style="margin-left:auto">'+(_boardSelMode?"✓ ":"☑ ")+L2("Seleccionar","Select")+'</button>';
+    if(_boardSelMode)h+='<button class="df-chip" type="button" onclick="_boardSelectAllVisible()">'+L2("Todos los visibles","Select all")+'</button>';
+  }
   bar.innerHTML=h;
 }
 
@@ -12072,6 +12442,247 @@ function rndrA(){
   let h='<div class="tech-cols">';
   techNames.forEach(tn=>{const items=techMap[tn];const dayMap={};items.forEach(t=>{const k=t.date||"0000-00-00";if(!dayMap[k])dayMap[k]=[];dayMap[k].push(t)});const days=Object.keys(dayMap).sort((a,b)=>b.localeCompare(a));h+=`<div class="tech-col"><div class="tech-col-hdr">${tn==="Unassigned"?'':_avatarHTML(tn,26,null,true)}<span class="tech-col-name">${esc(tn)}</span><span class="tech-col-cnt">${items.length}</span></div>`;days.forEach(d=>{h+=daySepHTML(fmtDayLabel(d));dayMap[d].forEach(t=>{h+=tktHTML(active,active.indexOf(t),false)})});h+='</div>'});
   h+='</div>';el.innerHTML=canceledHTML+h;
+  try{_boardDragSetup();_boardDragBind();_boardSelSetup();}catch(_e){}
+}
+/* ═══ UNDO SNACKBAR ═══ Self-contained bottom toast with an Undo button (the
+   app's toast() is text-only). Used by markDone + drag-reassign so a wrong tap
+   is reversible. The undo action just writes the PREVIOUS value back through the
+   same Firestore update the app already uses — fully reversible, no new paths.
+   Fully inline-styled so it touches no CSS block. ════════════════════════════ */
+function _undoBar(msg,undoLabel,undoFn,ms){
+  ms=ms||6000;
+  var b=document.getElementById("undoBar");
+  if(!b){
+    b=document.createElement("div");b.id="undoBar";
+    b.style.cssText="position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(160%);z-index:99999;display:flex;align-items:center;gap:14px;background:#2b2018;color:#f3e9df;padding:11px 14px 11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.32);font:600 13.5px/1.25 Manrope,system-ui,sans-serif;max-width:92vw;transition:transform .28s cubic-bezier(.16,1,.3,1)";
+    var m=document.createElement("span");m.id="undoBarMsg";
+    var btn=document.createElement("button");btn.id="undoBarBtn";
+    btn.style.cssText="background:#D4772C;color:#fff;border:none;border-radius:8px;padding:7px 13px;font:700 13px Manrope,system-ui,sans-serif;cursor:pointer;white-space:nowrap";
+    b.appendChild(m);b.appendChild(btn);(document.body||document.documentElement).appendChild(b);
+  }
+  var m=document.getElementById("undoBarMsg");var btn=document.getElementById("undoBarBtn");
+  m.textContent=msg;btn.textContent=undoLabel||"Undo";
+  var fresh=btn.cloneNode(true);btn.parentNode.replaceChild(fresh,btn);btn=fresh; // reset handlers
+  clearTimeout(b.__t);
+  function hide(){b.style.transform="translateX(-50%) translateY(160%)";}
+  btn.onclick=function(){clearTimeout(b.__t);hide();try{undoFn();}catch(e){console.warn("undo error:",e);}};
+  requestAnimationFrame(function(){b.style.transform="translateX(-50%) translateY(0)";});
+  b.__t=setTimeout(hide,ms);
+}
+var _boardDragId=null;
+function _boardIsDesktopDrag(){return !!(window.matchMedia&&matchMedia("(min-width:1024px)").matches);}
+async function _boardReassign(id,newTech){
+  if(!isAdmin)return;                                  // admin-only (defense in depth)
+  newTech=(newTech||"").trim();
+  if(!newTech||newTech==="Unassigned"){toast("Drop on a technician column","warn");return;}
+  var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});
+  if(!t){toast("Ticket not found","warn");return;}
+  var cur=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";
+  if(cur===newTech)return;                             // dropped on its own column — no change
+  var extra=(t.techs&&t.techs.length>1)?(" (replaces "+t.techs.length+" technicians)"):"";
+  if(!window.confirm("Reassign “"+(t.customer||"this ticket")+"” from "+cur+" to "+newTech+"?"+extra))return;
+  if(!db){toast("Firebase not configured","err");return;}
+  var prevTechs=(t.techs||[]).slice();                 // snapshot for Undo
+  try{
+    await db.collection("tickets").doc(id).update({techs:[newTech]});
+    if(typeof _haptic==="function")_haptic(18);
+    _undoBar((t.customer||"Ticket")+" → "+newTech,"Undo",function(){
+      db.collection("tickets").doc(id).update({techs:prevTechs})
+        .then(function(){toast("Reassign undone");}).catch(function(){toast("Undo failed","err");});
+    });
+  }catch(e){toast("Reassign failed","err");console.warn("reassign error:",e);}
+}
+function _boardDragSetup(){
+  // Mark admin-board tiles draggable. Desktop + admin only, so techs/phones never
+  // get draggable tiles (no touch-scroll interference, no tech reassigning).
+  if(!isAdmin||!_boardIsDesktopDrag())return;
+  var aList=document.getElementById("aList");if(!aList)return;
+  aList.querySelectorAll(".tech-col .tkt").forEach(function(tile){
+    var hh=tile.querySelector(".tkt-h");if(!hh){tile.removeAttribute("draggable");return;}
+    var m=(hh.getAttribute("onclick")||"").match(/tog\('a',(\d+)\)/);
+    if(!m){tile.removeAttribute("draggable");return;}
+    var t=active[+m[1]];
+    if(!t||t.id==null){tile.removeAttribute("draggable");return;}
+    tile.setAttribute("draggable","true");
+    tile.setAttribute("data-tkt-id",String(t.id));
+    tile.style.cursor="grab";
+  });
+}
+function _boardDragBind(){
+  var aList=document.getElementById("aList");
+  if(!aList||aList.__boardDragBound)return;            // bind exactly once (handlers delegated)
+  aList.__boardDragBound=true;
+  aList.addEventListener("dragstart",function(e){
+    var tile=e.target&&e.target.closest?e.target.closest('.tkt[draggable="true"]'):null;
+    if(!tile||!aList.contains(tile))return;
+    var id=tile.getAttribute("data-tkt-id");if(!id)return;
+    _boardDragId=id;
+    try{e.dataTransfer.setData("text/plain",id);e.dataTransfer.effectAllowed="move";}catch(_e){}
+    tile.classList.add("tkt-dragging");
+  });
+  aList.addEventListener("dragend",function(e){
+    var tile=e.target&&e.target.closest?e.target.closest(".tkt"):null;
+    if(tile)tile.classList.remove("tkt-dragging");
+    aList.querySelectorAll(".tech-col.drop-over").forEach(function(c){c.classList.remove("drop-over");});
+    _boardDragId=null;
+  });
+  aList.addEventListener("dragover",function(e){
+    if(!_boardDragId)return;                           // only react during a board drag
+    var col=e.target&&e.target.closest?e.target.closest(".tech-col"):null;
+    if(!col)return;
+    e.preventDefault();try{e.dataTransfer.dropEffect="move";}catch(_e){}
+    if(!col.classList.contains("drop-over")){
+      aList.querySelectorAll(".tech-col.drop-over").forEach(function(c){c.classList.remove("drop-over");});
+      col.classList.add("drop-over");
+    }
+  });
+  aList.addEventListener("dragleave",function(e){
+    var col=e.target&&e.target.closest?e.target.closest(".tech-col"):null;
+    if(col&&!col.contains(e.relatedTarget))col.classList.remove("drop-over");
+  });
+  aList.addEventListener("drop",function(e){
+    var col=e.target&&e.target.closest?e.target.closest(".tech-col"):null;
+    if(!col)return;
+    e.preventDefault();
+    col.classList.remove("drop-over");
+    var id=_boardDragId;
+    try{var dt=e.dataTransfer&&e.dataTransfer.getData("text/plain");if(dt)id=dt;}catch(_e){}
+    if(!id)return;
+    var nameEl=col.querySelector(".tech-col-name");
+    _boardReassign(id,nameEl?nameEl.textContent:"");
+  });
+}
+/* ═══ BULK ACTIONS (admin board, desktop only) ═══════════════════════════════
+   Select multiple tickets on the board, then assign them all to one tech or mark
+   them all done. Every batch is gated by isAdmin + desktop, asks confirm() with
+   the exact count, and writes ticket-by-ticket through the SAME single-ticket
+   update the app already uses (assign = {techs:[t]} with no status change; done =
+   {status:"done",completedAt}). Each batch snapshots the PREVIOUS value of every
+   ticket and offers "Undo all" — so even a wrong bulk tap is fully reversible.
+   100% additive; checkboxes injected post-render, handlers delegated once. ═══ */
+var _boardSelMode=false;
+var _boardSel=new Set();
+function _boardSelSetup(){
+  if(!isAdmin||!_boardIsDesktopDrag())return;
+  var aList=document.getElementById("aList");if(!aList)return;
+  if(!aList.__boardSelBound){
+    aList.__boardSelBound=true;
+    aList.addEventListener("click",function(e){
+      var chk=e.target&&e.target.closest?e.target.closest(".tkt-check"):null;
+      if(!chk)return;
+      e.stopPropagation();e.preventDefault();              // don't open the detail
+      var id=chk.getAttribute("data-tkt-id");if(!id)return;
+      if(_boardSel.has(id))_boardSel.delete(id);else _boardSel.add(id);
+      var tile=chk.closest(".tkt");
+      var on=_boardSel.has(id);
+      chk.classList.toggle("on",on);
+      if(tile)tile.classList.toggle("tkt-selected",on);
+      _boardSelBar();
+    },true);
+  }
+  aList.querySelectorAll(".tech-col .tkt").forEach(function(tile){
+    var id=tile.getAttribute("data-tkt-id");
+    if(!id){var hh=tile.querySelector(".tkt-h");var m=hh&&(hh.getAttribute("onclick")||"").match(/tog\('a',(\d+)\)/);var t=m&&active[+m[1]];if(t&&t.id!=null){id=String(t.id);tile.setAttribute("data-tkt-id",id);}}
+    if(!id)return;
+    var chk=tile.querySelector(".tkt-check");
+    if(!chk){chk=document.createElement("span");chk.className="tkt-check";tile.style.position="relative";tile.insertBefore(chk,tile.firstChild);}
+    chk.setAttribute("data-tkt-id",id);
+    chk.style.display=_boardSelMode?"grid":"none";
+    var on=_boardSel.has(id);
+    chk.classList.toggle("on",on);
+    tile.classList.toggle("tkt-selected",_boardSelMode&&on);
+  });
+}
+function _boardToggleSel(){
+  if(!isAdmin)return;
+  _boardSelMode=!_boardSelMode;
+  if(!_boardSelMode)_boardSel.clear();
+  try{rndrA();}catch(_e){}
+  _boardSelBar();
+  try{_renderDailyFilters();}catch(_e){}
+}
+function _boardClearSel(){
+  _boardSel.clear();_boardSelMode=false;
+  _boardSelBar();
+  try{rndrA();}catch(_e){}
+  try{_renderDailyFilters();}catch(_e){}
+}
+function _boardSelectAllVisible(){
+  // Select (or, if all already selected, deselect) every visible board tile.
+  // Pure selection state — no Firestore writes here; the batch still goes through
+  // the simulated _boardBulkAssign/_boardBulkDone with their confirm + undo gates.
+  if(!isAdmin)return;
+  _boardSelMode=true;
+  var aList=document.getElementById("aList");if(!aList)return;
+  var ids=[];aList.querySelectorAll(".tech-col .tkt[data-tkt-id]").forEach(function(t){var id=t.getAttribute("data-tkt-id");if(id)ids.push(id);});
+  var allOn=ids.length>0&&ids.every(function(id){return _boardSel.has(id);});
+  if(allOn)ids.forEach(function(id){_boardSel.delete(id);});
+  else ids.forEach(function(id){_boardSel.add(id);});
+  try{_boardSelSetup();}catch(_e){}
+  _boardSelBar();
+  try{_renderDailyFilters();}catch(_e){}
+}
+function _boardSelBar(){
+  var bar=document.getElementById("boardSelBar");
+  var n=_boardSel.size;
+  if(!_boardSelMode||n===0){if(bar)bar.style.transform="translateX(-50%) translateY(160%)";return;}
+  if(!bar){
+    bar=document.createElement("div");bar.id="boardSelBar";
+    bar.style.cssText="position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(160%);z-index:99998;display:flex;align-items:center;gap:9px;background:#33261B;color:#f3e9df;padding:10px 12px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.32);font:600 13px Manrope,system-ui,sans-serif;max-width:94vw;flex-wrap:wrap;transition:transform .26s cubic-bezier(.16,1,.3,1)";
+    (document.body||document.documentElement).appendChild(bar);
+  }
+  bar.innerHTML='<span style="font-weight:800">'+n+' selected</span>'
+    +'<button id="bsbAssign" style="background:#D4772C;color:#fff;border:none;border-radius:9px;padding:7px 12px;font:700 12.5px Manrope;cursor:pointer">Assign to ▾</button>'
+    +'<button id="bsbDone" style="background:#1E7A45;color:#fff;border:none;border-radius:9px;padding:7px 12px;font:700 12.5px Manrope;cursor:pointer">Mark done</button>'
+    +'<button id="bsbClear" style="background:transparent;color:#e6d8c8;border:1px solid #6B4C3B;border-radius:9px;padding:7px 12px;font:700 12.5px Manrope;cursor:pointer">Cancel</button>';
+  bar.querySelector("#bsbAssign").onclick=_boardSelAssignMenu;
+  bar.querySelector("#bsbDone").onclick=function(){_boardBulkDone();};
+  bar.querySelector("#bsbClear").onclick=function(){_boardClearSel();};
+  requestAnimationFrame(function(){bar.style.transform="translateX(-50%) translateY(0)";});
+}
+function _boardSelAssignMenu(){
+  var bar=document.getElementById("boardSelBar");if(!bar)return;
+  var list=(typeof visibleTechs==="function"&&visibleTechs())||TECHS||[];
+  var btns=list.map(function(tn){return '<button class="bsb-tech" data-tech="'+esc(tn)+'" style="background:#D4772C;color:#fff;border:none;border-radius:9px;padding:7px 11px;font:700 12.5px Manrope;cursor:pointer;margin:2px">'+esc(tn)+'</button>';}).join("");
+  bar.innerHTML='<span style="font-weight:800;margin-right:2px">Assign '+_boardSel.size+' to:</span>'+btns
+    +'<button id="bsbBack" style="background:transparent;color:#e6d8c8;border:1px solid #6B4C3B;border-radius:9px;padding:7px 11px;font:700 12.5px Manrope;cursor:pointer;margin:2px">←</button>';
+  bar.querySelectorAll(".bsb-tech").forEach(function(b){b.onclick=function(){_boardBulkAssign(b.getAttribute("data-tech"));};});
+  bar.querySelector("#bsbBack").onclick=function(){_boardSelBar();};
+}
+async function _boardBulkAssign(tech){
+  if(!isAdmin)return;
+  tech=(tech||"").trim();
+  var ids=Array.from(_boardSel);
+  if(!ids.length||!tech){toast("Nothing selected","warn");return;}
+  if(!window.confirm("Assign "+ids.length+" ticket(s) to "+tech+"?"))return;
+  if(!db){toast("Firebase not configured","err");return;}
+  var prev=[];
+  ids.forEach(function(id){var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});if(t)prev.push({id:id,techs:(t.techs||[]).slice()});});
+  var ok=0;
+  for(var i=0;i<prev.length;i++){try{await db.collection("tickets").doc(prev[i].id).update({techs:[tech]});ok++;}catch(e){console.warn("bulk assign error:",e);}}
+  _boardClearSel();
+  if(typeof _haptic==="function")_haptic(18);
+  _undoBar(ok+" assigned to "+tech,"Undo all",function(){
+    prev.forEach(function(p){db.collection("tickets").doc(p.id).update({techs:p.techs}).catch(function(){});});
+    toast("Reverted");
+  });
+}
+async function _boardBulkDone(){
+  if(!isAdmin)return;
+  var ids=Array.from(_boardSel);
+  if(!ids.length){toast("Nothing selected","warn");return;}
+  if(!window.confirm("Mark "+ids.length+" ticket(s) as done?"))return;
+  if(!db){toast("Firebase not configured","err");return;}
+  var prev=[];
+  ids.forEach(function(id){var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});if(t)prev.push({id:id,status:(t.status||"complete"),completedAt:(t.completedAt||null)});});
+  var ok=0,now=new Date().toLocaleString();
+  for(var i=0;i<prev.length;i++){try{await db.collection("tickets").doc(prev[i].id).update({status:"done",completedAt:now});ok++;}catch(e){console.warn("bulk done error:",e);}}
+  _boardClearSel();
+  if(typeof _haptic==="function")_haptic(22);
+  _undoBar(ok+" marked done","Undo all",function(){
+    prev.forEach(function(p){db.collection("tickets").doc(p.id).update({status:p.status,completedAt:p.completedAt}).catch(function(){});});
+    toast("Reverted");
+  });
 }
 let slogZone="all";
 function rndrD(){
@@ -12103,17 +12714,31 @@ function slogSwitchSub(which){
   if(!wrap)return;
   wrap.classList.toggle("slog-mode-log",which==="log");
   wrap.classList.toggle("slog-mode-new",which==="new");
+  wrap.classList.toggle("slog-mode-map",which==="map");
   document.querySelectorAll("#pg5 .slog-stab").forEach(function(b){
     b.classList.toggle("on",b.dataset.sub===which);
   });
   try{sessionStorage.setItem("aspSlogSub",which)}catch(_e){}
   // Re-rendering the list keeps counts/filters in sync when returning to log
   if(which==="log"&&typeof rndrSlog==="function")rndrSlog();
+  if(which==="map"&&typeof renderSlogMap==="function"){if(typeof _updateSlogMapCounts==="function")_updateSlogMapCounts();setTimeout(renderSlogMap,90)}
 }
 function _restoreSlogSub(){
   var saved="log";try{saved=sessionStorage.getItem("aspSlogSub")||"log"}catch(_e){}
   slogSwitchSub(saved);
 }
+// Open service calls = UNASSIGNED dispatch tickets that haven't been served or
+// canceled. Single source of truth for both the Service Log list and the sidebar
+// badge so the two can never disagree. Pass an existing field-report index to
+// avoid rebuilding it; otherwise one is built on demand.
+function _slogOpenCalls(idx){
+  idx=idx||_buildFieldReportIndex();
+  return [...active,...done].filter(function(t){
+    return t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted
+      &&t.status!=="canceled"&&!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id));
+  });
+}
+
 function rndrSlog(){
   try{rndrBillingCard()}catch(_e){}
   try{rndrWarrantyLog()}catch(_e){}
@@ -12128,6 +12753,7 @@ function rndrSlog(){
     if(!slDt.value||(slDt.value<_todayStr&&!slDt.dataset.userTouched))slDt.value=_todayStr;
   }
   const el=document.getElementById("slogList");const sf=document.getElementById("slogFilter");
+  if(typeof _updateSlogMapCounts==="function"){try{_updateSlogMapCounts()}catch(_e){}}
   const q=(document.getElementById("searchSlog")||{}).value||"";
   // BUG FIX (audit): use the canonical _buildFieldReportIndex so Service Log
   // agrees with Calendar/Maps about what counts as "already done". Previously the
@@ -12140,7 +12766,7 @@ function rndrSlog(){
     // AUDIT FIX (Jun 2026): pairing membership — see _buildFieldReportIndex.
     return !!(_slIdx.servedDispatchIds&&_slIdx.servedDispatchIds.has(t.id));
   }
-  const all=[...active,...done].filter(t=>t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&t.status!=="canceled"&&!_slServed(t)).filter(t=>tktMatchesSearch(t,q));
+  const all=_slogOpenCalls(_slIdx).filter(t=>tktMatchesSearch(t,q));
   // AUDIT FIX (May 2026 — Alberto's report): chemical-maintenance dispatch
   // tickets come in with ONLY the customer name. Enrich each one with the
   // matching existing-customer record (by family-name match) so the Service
@@ -14080,6 +14706,10 @@ function _ticketBelongsToCurrentTech(t){
 const techCounts={};
 allTkts.forEach(t=>{
   if(isTech&&!_ticketBelongsToCurrentTech(t))return;
+  // Pill counts show OPEN work only — tickets not yet reported/visited. Skip the
+  // green "✓ Reported" cards (visit done + field report filed) so each chip reflects
+  // what the tech still has to do, not their lifetime total.
+  if(t.source==="dispatch"&&t.fieldReportSubmitted===true)return;
   const techs=(t.techs&&t.techs.length)?t.techs:[CAL_UNASSIGNED];
   // Resolve to pill name so "Fernando" tickets count toward "Fernando/Fabian" pill
   const seenPills=new Set();
@@ -14119,6 +14749,8 @@ function calDayCell(d,ds,tkts,today,isOther){
   const isSel=ds===calSelectedDate;
   const maxShow=3;
   let events="";
+  var _offDay=(typeof _techsOffOn==="function")?_techsOffOn(ds):[];
+  if(_offDay.length)events+='<div class="cal-off">'+_offDay.map(function(o){return '<span class="cal-off-chip" title="Off'+(o.note?(": "+esc(o.note)):"")+'">🌴 '+esc(o.tech)+'</span>'}).join("")+'</div>';
   if(tkts.length){
     const sorted=tkts.slice().sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));
     const shown=sorted.slice(0,maxShow);
@@ -14128,11 +14760,18 @@ function calDayCell(d,ds,tkts,today,isOther){
       const col=TECH_COLORS[ci>=0?ci:0];
       const isDone=t.status==="done";
       const name=esc(t.customer||"—");
-      const _wp=(typeof _spaUnderWarranty==="function"&&_spaUnderWarranty(t))?'🛡️ ':'';
       const techs=esc((t.techs||[]).join(", ")||"Unassigned");
       const title=name+" · "+techs+(t.arrival?" · "+t.arrival:"");
       const timeStr=t.arrival?'<span class="ev-time">'+t.arrival.slice(0,5)+'</span>':"";
-      events+='<div class="cal-event'+(isDone?" done":"")+'" onclick="event.stopPropagation();openTktDetail(\''+t.id+'\')" style="background:'+col+'22;color:'+col+';border-left:3px solid '+col+'" title="'+title.replace(/"/g,'&quot;')+'">'+timeStr+_wp+name+'</div>';
+      // Combined card (matches Day/Team): zone chip + warranty chip + alert icons.
+      const _z=effectiveZone(t);
+      const _zc=ZONE_COLORS[_z]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
+      const _zoneChip=_z?'<span class="ev-zone" style="background:'+_zc.bg+';color:'+_zc.text+'">'+esc(_z)+'</span>':'';
+      const _warChip=(typeof _warrantyMiniChip==="function")?(_warrantyMiniChip(t)||""):"";
+      let _fl="";if(t.isUrgent)_fl+="🔥";if(t.isNewSpa)_fl+="✨";if(t.isRepeat)_fl+="🔄";
+      const _flags=_fl?'<span class="ev-flags">'+_fl+'</span>':'';
+      const _meta=(_zoneChip||_warChip)?'<div class="ev-meta">'+_zoneChip+_warChip+'</div>':'';
+      events+='<div class="cal-event'+(isDone?" done":"")+(t.isUrgent?" ev-urgent":"")+'" onclick="event.stopPropagation();openTktDetail(\''+t.id+'\')" style="border-left:3px solid '+col+'" title="'+title.replace(/"/g,'&quot;')+'"><div class="ev-top">'+timeStr+'<span class="ev-name">'+name+'</span>'+_flags+'</div>'+_meta+'</div>';
     });
     if(sorted.length>maxShow){
       events+='<div class="cal-more" onclick="event.stopPropagation();calSelectDay(\''+ds+'\')">+'+(sorted.length-maxShow)+' more</div>';
@@ -14174,7 +14813,7 @@ function dayProgressHTML(tkts){
   if(canceled)stats+='<span class="dp-sep">·</span><span class="dp-stat">'+canceled+' canceled</span>';
   return '<div class="day-progress">'+stats+'<div class="dp-bar"><div class="dp-fill" style="width:'+pct+'%"></div></div></div>';
 }
-function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';h+=dayProgressHTML(tkts);if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),var(--ac));color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div class="empty-state"><div class="es-ico">'+icon("calendar-days",28,{color:"var(--i3)"})+'</div><h3>No tickets for this day</h3><p>Drop a ticket here to schedule it, or pick another day from the calendar.</p></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
+function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';h+=dayProgressHTML(tkts);if(typeof _techsOffOn==="function"){var _offDD=_techsOffOn(sel);if(_offDD.length)h+='<div class="cal-day-off">🌴 Off today: '+_offDD.map(function(o){return esc(o.tech)+(o.note?" ("+esc(o.note)+")":"")}).join(", ")+'</div>';}if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),var(--ac));color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div class="empty-state"><div class="es-ico">'+icon("calendar-days",28,{color:"var(--i3)"})+'</div><h3>No tickets for this day</h3><p>Drop a ticket here to schedule it, or pick another day from the calendar.</p></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
 // Collapsed-state per-tech for the mobile accordion layout. Persists across
 // re-renders within the session so toggling one section doesn't reset others.
 let _calTeamCollapsed=new Set();
@@ -14329,23 +14968,37 @@ function heatmapHTML(allTkts,centerDate){
 function rndrCalTeam(sel,allTkts){
   const tkts=allTkts.filter(t=>t.date===sel);
   const isTech=currentUser&&currentUser.role==="tech";
-  let h='<div class="mt-cal">';
+  // Command-center strip (admin/organizer only): the day's load at a glance.
+  let h="";
+  if(!isTech){
+    const _live=tkts.filter(t=>t.status!=="canceled");
+    const _asg=_live.filter(t=>t.techs&&t.techs.length).length;
+    const _urg=_live.filter(t=>t.isUrgent).length;
+    h+='<div class="cal-cmd">'
+      +'<div class="cal-cmd-stat" style="--sc:var(--ac)"><div class="cc-l">Today</div><div class="cc-v">'+_live.length+'</div></div>'
+      +'<div class="cal-cmd-stat" style="--sc:#1E7A45"><div class="cc-l">Assigned</div><div class="cc-v">'+_asg+'</div></div>'
+      +'<div class="cal-cmd-stat" style="--sc:#D64545"><div class="cc-l">Unassigned</div><div class="cc-v">'+(_live.length-_asg)+'</div></div>'
+      +'<div class="cal-cmd-stat" style="--sc:#b45309"><div class="cc-l">Urgent</div><div class="cc-v">'+_urg+'</div></div>'
+      +'</div>';
+  }
+  h+='<div class="mt-cal">';
   // Helper to render one column (tech or unassigned). Same HTML structure on
   // desktop and mobile — CSS media queries change the layout. Header is always
   // tappable; on desktop the toggle arrow is hidden via CSS.
-  function buildCol(tnLabel,tnKey,bgColor,colTickets){
+  function buildCol(tnLabel,tnKey,bgColor,colTickets,isOff){
     const safeKey=tnKey.replace(/[^a-zA-Z0-9_-]/g,"_");
     const collapsed=_calTeamCollapsed.has(tnKey);
     const dropTarget=tnKey===CAL_UNASSIGNED?"":tnKey.replace(/'/g,"\\'");
-    let inner='<div id="mtCol_'+safeKey+'" class="mt-col'+(collapsed?" collapsed":"")+'"';
+    let inner='<div id="mtCol_'+safeKey+'" class="mt-col'+(collapsed?" collapsed":"")+(isOff?" mt-col-off":"")+'"';
     inner+=' ondragover="event.preventDefault();this.classList.add(\'drop-over-col\')"';
     inner+=' ondragleave="this.classList.remove(\'drop-over-col\')"';
     inner+=' ondrop="calDropOnTech(event,\''+dropTarget+'\',\''+sel+'\')">';
     inner+='<div class="mt-col-hdr" style="background:'+bgColor+'" onclick="calToggleTeamSection(\''+tnKey.replace(/'/g,"\\'")+'\')">';
     var _usedSlots=colTickets.reduce(function(a,t){return a+((t&&t.status!=="canceled")?_tSlots(t):0)},0);
     var _slotTag=_usedSlots>=4?' \u00B7 \u23F1 FULL ('+_usedSlots+'/4)':(_usedSlots>colTickets.length?' \u00B7 \u23F1 '+_usedSlots+'/4':'');
-    inner+='<span>'+esc(tnLabel)+' ('+colTickets.length+')'+_slotTag+'</span>';
+    inner+='<span>'+esc(tnLabel)+' ('+colTickets.length+')'+_slotTag+(isOff?' <span class="mt-off-badge">🌴 OFF</span>':'')+'</span>';
     inner+='<span class="mt-col-toggle">▼</span>';
+    inner+='<div class="mt-cap"><i class="'+(_usedSlots>=4?'full':'')+'" style="width:'+(Math.min(_usedSlots/4,1)*100)+'%"></i></div>';
     inner+='</div>';
     inner+='<div class="mt-col-body">';
     if(!colTickets.length)inner+='<div style="padding:16px;text-align:center;color:var(--i3);font-size:var(--fs-sm)">— No tickets —</div>';
@@ -14360,11 +15013,11 @@ function rndrCalTeam(sel,allTkts){
     const col=TECH_COLORS[ti%TECH_COLORS.length];
     const my=tkts.filter(t=>(t.techs||[]).some(tt=>_resolveTechPill(tt)===tn))
                  .sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));
-    h+=buildCol(tn,tn,col,my);
+    h+=buildCol(tn,tn,col,my,(typeof _isTechOff==="function")&&_isTechOff(tn,sel));
   });
   if(!isTech&&!calHiddenTechs.has(CAL_UNASSIGNED)){
     const un=tkts.filter(t=>!t.techs||!t.techs.length);
-    h+=buildCol("Unassigned",CAL_UNASSIGNED,"var(--r)",un);
+    h+=buildCol("Unassigned",CAL_UNASSIGNED,"var(--r)",un,false);
   }
   h+='</div>';
   document.getElementById("calGrid").innerHTML=h;
@@ -16346,6 +16999,119 @@ async function geocodeAddress(addr){
   if(!result){await new Promise(r=>setTimeout(r,400));result=await _geocodeNominatim(addr)}
   if(result&&_isInSTL(result)){cache[key]=result;_setGeoCache(cache);return result}
   return null;
+}
+
+// ═══════════ Service Log map (St. Louis) — 3 views ═══════════
+// Markers for dispatch tickets, split into: unassigned (waiting), assigned-no-report,
+// and reported. Reuses geocodeTicket() (localStorage-cached) and the Leaflet stack.
+let _slogMapCat="unassigned",_slogMapInstance=null,_slogMapMarkers=[],_slogMapToken=0;
+function _slogMapTickets(cat,idx){
+  idx=idx||_buildFieldReportIndex();
+  var served=function(t){return !!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id))};
+  var pool=[].concat(active,done).filter(function(t){return t&&t.source==="dispatch"&&t.status!=="canceled"});
+  if(cat==="unassigned")return pool.filter(function(t){return(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&!served(t)});
+  if(cat==="assigned")return pool.filter(function(t){return t.techs&&t.techs.length&&!t.fieldReportSubmitted&&!served(t)});
+  if(cat==="reported")return pool.filter(function(t){return t.fieldReportSubmitted===true||served(t)});
+  return [];
+}
+function _updateSlogMapCounts(idx){
+  try{
+    idx=idx||_buildFieldReportIndex();
+    var un=document.getElementById("smcUn"),as=document.getElementById("smcAs"),rp=document.getElementById("smcRp");
+    if(un)un.textContent=_slogMapTickets("unassigned",idx).length;
+    if(as)as.textContent=_slogMapTickets("assigned",idx).length;
+    if(rp)rp.textContent=_slogMapTickets("reported",idx).length;
+  }catch(e){}
+}
+function _geoCacheHas(t){
+  try{var cache=_getGeoCache();var street=String((t&&t.address)||"").trim().toLowerCase();if(!street)return false;var keys=Object.keys(cache);for(var i=0;i<keys.length;i++){if(keys[i].indexOf(street)>=0)return true}return false}catch(e){return false}
+}
+function setSlogMapCat(cat){
+  _slogMapCat=cat;
+  var btns=document.querySelectorAll(".slog-map-tabs .smt");
+  btns.forEach(function(b){b.classList.toggle("on",b.dataset.cat===cat)});
+  renderSlogMap();
+}
+async function renderSlogMap(){
+  var cat=_slogMapCat;
+  if(typeof _renderSlogStats==="function")_renderSlogStats(cat);
+  var mapEl=document.getElementById("slogMap");if(!mapEl)return;
+  if(typeof L==="undefined"){mapEl.innerHTML='<div class="slog-map-msg">Map library unavailable (offline?)</div>';return}
+  var token=++_slogMapToken;
+  var statusEl=document.getElementById("slogMapStatus");
+  if(!_slogMapInstance){
+    _slogMapInstance=L.map("slogMap",{zoomControl:true,attributionControl:true}).setView([STL_CENTER.lat,STL_CENTER.lng],10);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_slogMapInstance);
+  }
+  setTimeout(function(){if(_slogMapInstance)_slogMapInstance.invalidateSize()},60);
+  _slogMapMarkers.forEach(function(m){try{_slogMapInstance.removeLayer(m)}catch(e){}});
+  _slogMapMarkers=[];
+  var tkts=_slogMapTickets(cat);
+  var totalInCat=tkts.length;
+  if(cat==="reported"){tkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});if(tkts.length>100)tkts=tkts.slice(0,100)}
+  else tkts.sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
+  if(!tkts.length){if(statusEl)statusEl.textContent="No tickets in this view";return}
+  var bounds=[],located=0;
+  for(var i=0;i<tkts.length;i++){
+    if(token!==_slogMapToken)return;
+    var t=tkts[i];
+    if(statusEl)statusEl.textContent="Locating "+(i+1)+" of "+tkts.length+"…";
+    var cached=_geoCacheHas(t);
+    var coords=await geocodeTicket(t);
+    if(token!==_slogMapToken)return;
+    // Sanity-check against the ZIP centroid: if the street match landed far from
+    // where the ZIP says it should be, the geocoder mis-matched — snap to the ZIP area.
+    if(coords){
+      var _z5=String(t.zip||"").replace(/[^\d]/g,"").substring(0,5);
+      if(_z5){
+        var _stF=_z5.indexOf("62")===0?"Illinois":"Missouri";
+        var _zc=await _zipCentroidCoords(_z5,_stF);
+        if(token!==_slogMapToken)return;
+        if(_zc&&_haversineMi(coords.lat,coords.lng,_zc.lat,_zc.lng)>18){coords=_zc;}
+      }
+    }
+    if(coords&&_isInSTL(coords)){
+      var _zn=effectiveZone(t)||"No Zone";
+      var _zc=ZONE_COLORS[_zn]||{bg:"#ECE7E0",text:"#7a7066"};
+      var mk=L.circleMarker([coords.lat,coords.lng],{radius:7,weight:2,color:"#fff",fillColor:_zc.text,fillOpacity:.95}).addTo(_slogMapInstance);
+      mk.bindPopup('<b>'+esc(t.customer||"—")+'</b><br><span style="display:inline-block;background:'+_zc.bg+';color:'+_zc.text+';font-weight:700;font-size:11px;padding:1px 8px;border-radius:999px;margin:3px 0">'+esc(_zn)+'</span><br>'+(t.arrival?esc(t.arrival)+" · ":"")+esc((t.techs||[]).join(", ")||"Unassigned")+(t.date?'<br><small>'+esc(t.date)+'</small>':"")+'<br><small>'+esc(_cleanDisplayAddr(t))+'</small>');
+      _slogMapMarkers.push(mk);bounds.push([coords.lat,coords.lng]);located++;
+    }
+    if(!cached&&i<tkts.length-1)await new Promise(function(r){setTimeout(r,150)});
+  }
+  if(token!==_slogMapToken)return;
+  if(statusEl)statusEl.textContent=located+" of "+tkts.length+" located"+(cat==="reported"&&totalInCat>100?" · 100 most recent":"");
+  if(bounds.length)_slogMapInstance.fitBounds(bounds,{padding:[28,28],maxZoom:13});
+}
+
+// ZIP centroid cache — used to validate street geocodes (catch gross mis-matches).
+var _zipCentroidCache={};
+async function _zipCentroidCoords(zip,stateFull){
+  if(!zip)return null;
+  var key=zip+"|"+stateFull;
+  if(_zipCentroidCache[key]!==undefined)return _zipCentroidCache[key];
+  var c=null;
+  try{c=await geocodeAddress(zip+", "+stateFull)}catch(e){}
+  _zipCentroidCache[key]=(c&&_isInSTL(c))?c:null;
+  return _zipCentroidCache[key];
+}
+// Zone statistics for the Service Log — which zones have the most calls, per filter.
+function _renderSlogStats(cat){
+  var el=document.getElementById("slogStats");if(!el)return;
+  var tkts=_slogMapTickets(cat);
+  var byZone={};
+  tkts.forEach(function(t){var z=effectiveZone(t)||"No Zone";byZone[z]=(byZone[z]||0)+1});
+  var rows=Object.keys(byZone).map(function(z){return {zone:z,n:byZone[z]}}).sort(function(a,b){return b.n-a.n});
+  var max=rows.length?rows[0].n:1;
+  var catLbl=cat==="unassigned"?"unassigned":(cat==="assigned"?"assigned · no report":"reported");
+  var h='<div class="slog-stats-title">Calls by zone — '+catLbl+' ('+tkts.length+')</div>';
+  if(!rows.length){el.innerHTML=h+'<div class="slog-stats-empty">No tickets in this view.</div>';return}
+  rows.forEach(function(r){
+    var pct=Math.round(r.n/max*100);
+    var zc=ZONE_COLORS[r.zone]||{bg:"#ECE7E0",text:"#7a7066"};
+    h+='<div class="slog-stat-row"><span class="ssr-zone"><b style="background:'+zc.bg+';color:'+zc.text+'">'+esc(r.zone)+'</b></span><span class="ssr-bar"><i style="width:'+pct+'%;background:'+zc.text+'"></i></span><span class="ssr-n" style="color:'+zc.text+'">'+r.n+'</span></div>';
+  });
+  el.innerHTML=h;
 }
 
 async function openRouteMap(dateStr){
