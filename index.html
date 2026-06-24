@@ -2489,6 +2489,63 @@ body.dark-mode:not(.theme-ember) #pg1 .tkt.qb-pending{box-shadow:inset 3px 0 0 v
 
 @media(prefers-reduced-motion:reduce){body:not(.theme-ember) #pg1 .tkt:hover{transform:none}}
 </style>
+<style id="aspenEntStyle">
+/* Aspen — Daily "Enterprise" view (Monday-style). ADDITIVE · scoped to #aspenEntView.
+   Pairs with <script id="aspenEntScript">. Delete both to fully revert. */
+#aspenEntView{display:none;margin-top:2px}
+#aspenEntView.on{display:block;animation:entFade .2s ease}
+@keyframes entFade{from{opacity:0}to{opacity:1}}
+.ent-toolbar{display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
+.ent-seg{display:inline-flex;background:var(--c-ash,#f4f1ec);border-radius:12px;padding:4px}
+.ent-seg button{border:none;background:transparent;font-weight:700;font-size:var(--fs-sm);color:var(--i3);padding:8px 15px;border-radius:9px;cursor:pointer;font-family:inherit;transition:all .18s}
+.ent-seg button.on{background:var(--cd);color:var(--br);box-shadow:var(--sh-sm)}
+.ent-board{background:var(--cd);border-radius:18px;box-shadow:var(--sh-md);overflow:hidden}
+.ent-scroll{overflow-x:auto}.ent-inner{min-width:880px}
+.ent-head,.ent-row{display:grid;grid-template-columns:22px minmax(220px,1.6fr) 116px 1.4fr 132px 110px;align-items:center}
+.ent-head{position:sticky;top:0;background:#fcfbf9;z-index:2}
+body.dark-mode .ent-head{background:var(--c-ash)}
+.ent-head>div{font-size:var(--fs-xs);font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--i3);padding:13px 8px}
+.ent-head .r{text-align:right;padding-right:14px}
+.ent-grp{display:flex;align-items:center;gap:10px;padding:15px 12px 8px}
+.ent-grp .gnm{font-weight:800;font-size:var(--fs-md);color:var(--br);text-transform:uppercase;letter-spacing:.5px}
+.ent-grp .gct{font-size:var(--fs-xs);background:var(--c-ash,#f0f0f0);color:var(--i2);font-weight:700;border-radius:999px;padding:1px 9px}
+.ent-grp .gsum{margin-left:auto;font-size:var(--fs-sm);color:var(--i3);font-weight:600;padding-right:8px}
+.ent-grp .gsum b{color:var(--br)}
+.ent-row{min-height:54px;cursor:pointer;border-top:1px solid var(--ln);transition:background .15s}
+.ent-row:hover{background:#fdfbf8}
+body.dark-mode .ent-row:hover{background:rgba(255,255,255,.03)}
+.ent-row .cv{justify-self:center;color:var(--ac);font-weight:800;transition:transform .2s}
+.ent-row.open .cv{transform:rotate(90deg)}
+.ent-cust h4{margin:0;font-size:var(--fs-md);font-weight:800;color:var(--br);line-height:1.2}
+.ent-cust .sub{font-size:var(--fs-sm);color:var(--i3);display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap}
+.ent-vchip{font-size:var(--fs-xs);font-weight:700;color:var(--i2);background:var(--c-ash,#f4f1ec);border-radius:7px;padding:3px 9px;white-space:nowrap}
+.ent-warr{display:flex;flex-wrap:wrap;gap:4px}
+.ent-qb{font-weight:700;font-size:var(--fs-sm);border-radius:8px;padding:5px 10px;text-align:center;display:inline-block;white-space:nowrap}
+.ent-qb.pend{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.ent-qb.done{background:var(--c-success-bg);color:var(--c-success-fg)}
+.ent-qb.res{background:var(--c-ash,#eee);color:var(--i2)}
+.ent-amt{justify-self:end;font-weight:800;color:var(--br);padding-right:14px;font-variant-numeric:tabular-nums}
+.ent-amt.zero{color:var(--i3);font-weight:600}
+.ent-detail{grid-column:1/-1;display:none;padding:6px 16px 18px 40px;background:linear-gradient(180deg,#fdfcfa,#fbf8f3);border-top:1px solid var(--ln)}
+body.dark-mode .ent-detail{background:var(--c-ash)}
+.ent-detail.open{display:block;animation:entIn .22s ease}
+@keyframes entIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.ent-health{background:linear-gradient(135deg,#fff,var(--acl));border-radius:16px;padding:14px 15px;box-shadow:var(--sh-sm);margin-bottom:12px}
+body.dark-mode .ent-health{background:var(--cd)}
+.ent-hh{font-weight:800;color:var(--br);font-size:var(--fs-md);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ent-hg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.ent-hs{background:var(--cd);border-radius:12px;padding:11px 12px;box-shadow:var(--sh-xs)}
+.ent-hs .v{font-weight:800;font-size:var(--fs-lg);color:var(--br);line-height:1.05}
+.ent-hs .l{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-top:3px}
+.ent-hs .v.warr{color:var(--c-success-strong)}.ent-hs .v.bal{color:var(--acd)}
+.ent-acts{display:flex;gap:8px;flex-wrap:wrap}
+.ent-acts button{border:none;border-radius:10px;padding:10px 15px;font-weight:700;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.ent-acts .open{background:var(--br);color:#fff}
+.ent-acts .c360{background:var(--acl);color:var(--acd)}
+.ent-empty{padding:40px;text-align:center;color:var(--i3)}
+@media(max-width:980px){.ent-hg{grid-template-columns:repeat(3,1fr)}}
+@media(prefers-reduced-motion:reduce){.ent-detail.open,#aspenEntView.on{animation:none}}
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -21752,5 +21809,205 @@ function showTicketDetail(p,i){
      drawer slides in instead. -->
 <div id="ticketDetailBack" onclick="closeTicketDetail()" aria-hidden="true"></div>
 <div id="ticketDetail" class="tkt-detail" aria-live="polite"></div>
+<script id="aspenEntScript">
+/* ════════════════════════════════════════════════════════════════════════
+   ASPEN — DAILY "ENTERPRISE" VIEW  (Monday.com-style)   ADDITIVE · OPT-IN
+   100% additive. Adds a NEW optional view next to Alberto's board (rndrA),
+   reusing the SAME data + functions. Nothing existing is modified:
+     • Same ticket pool as rndrA (active complete/reschedule, search,
+       _applyDailyFilter, tech-role filter, group by techs[0]).
+     • Real fields only — t.visitNum, t.warranty, t.qbCopied, t.total,
+       _svcWarrantyBadge/_part90Badge, _porCobrarData (open balance),
+       _custGroupKey (aggregates), openTktDetail / open360ByName (actions).
+   A segmented toggle (Board | Enterprise) switches views; choice persists.
+   Delete this <script id="aspenEntScript"> + the <style id="aspenEntStyle">
+   to fully revert. No rating/preferred-tech fabricated (pref tech derived
+   from history; rating omitted — not in schema).
+   ════════════════════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+  function $(id){return document.getElementById(id);}
+  function entMode(){try{return localStorage.getItem("aspenEntMode")==="1";}catch(e){return false;}}
+  function setMode(on){try{localStorage.setItem("aspenEntMode",on?"1":"0");}catch(e){}}
+  function money(n){n=Number(n)||0;return "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function money0(n){n=Number(n)||0;return "$"+Math.round(n).toLocaleString("en-US");}
+  function key(name){try{return (typeof _custGroupKey==="function"?_custGroupKey(name):"")||(name||"").trim().toLowerCase();}catch(e){return (name||"").trim().toLowerCase();}}
+  function esc2(s){try{return (typeof esc==="function")?esc(s):String(s==null?"":s);}catch(e){return String(s==null?"":s);}}
+  function av(n,sz){try{return (typeof _avatarHTML==="function")?_avatarHTML(n,sz||22):"";}catch(e){return "";}}
+
+  var VLABEL={1:"1st",2:"2nd \u00b7 labor",3:"CM",4:"Repeat",5:"Delivery",6:"Spa Move"};
+
+  // Same pool rndrA renders — mirror exactly so tickets always match the board.
+  function pool(){
+    var out=[];
+    try{
+      var isTech=currentUser&&currentUser.role==="tech";
+      var q=($("searchActive")||{}).value||"";
+      out=active.filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});
+      if(q&&typeof tktMatchesSearch==="function")out=out.filter(function(t){return tktMatchesSearch(t,q);});
+      try{out=_applyDailyFilter(out);}catch(_e){}
+      if(isTech)out=out.filter(function(t){return (t.techs||[]).includes(currentUser.name);});
+    }catch(e){out=[];}
+    return out;
+  }
+
+  // Per-customer aggregates from history (active+done) — all real fields.
+  function aggAll(){
+    var map={},all=[],seen={};
+    try{all=(Array.isArray(active)?active:[]).concat(Array.isArray(done)?done:[]);}catch(e){all=[];}
+    all.forEach(function(t){
+      if(!t)return; if(t.id&&seen[t.id])return; if(t.id)seen[t.id]=1;
+      if(t.source==="dispatch")return;
+      var k=key(t.customer); if(!k)return;
+      var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},warr:"",openBal:0});
+      m.visits++;
+      if(Number(t.visitNum)===4)m.repeats++;
+      if((t.status==="complete"||t.status==="done"))m.lifetime+=Number(t.total)||0;
+      if(t.date&&(!m.since||t.date<m.since))m.since=t.date;
+      var tech=(t.techs&&t.techs[0])||""; if(tech)m.techs[tech]=(m.techs[tech]||0)+1;
+      if(t.warranty&&t.warranty.label&&!m.warr)m.warr=t.warranty.label;
+    });
+    try{var pc=_porCobrarData();(pc.items||[]).forEach(function(it){var k=key(it.customer);if(!k)return;var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},warr:"",openBal:0});m.openBal+=Number(it.saldo)||0;});}catch(e){}
+    return map;
+  }
+  function prefTech(m){var best="",n=-1;for(var k in (m.techs||{})){if(m.techs[k]>n){n=m.techs[k];best=k;}}return best||"\u2014";}
+
+  function qbCell(t){
+    if(t.status==="reschedule")return '<span class="ent-qb res">Reschedule</span>';
+    if(t.qbCopied)return '<span class="ent-qb done">In QuickBooks \u2713</span>';
+    return '<span class="ent-qb pend">Pending QB</span>';
+  }
+  function warrCell(t){
+    var w=(t&&t.warranty)||{},chips="";
+    chips+=w.label?'<span class="ent-vchip" style="background:var(--acl);color:var(--acd)">'+esc2(w.label)+'</span>'
+                  :'<span class="ent-vchip">N/W</span>';
+    try{if(typeof _svcWarrantyBadge==="function"){var s=_svcWarrantyBadge(t);if(s)chips+=s;}}catch(e){}
+    try{if(typeof _part90Badge==="function"){var p=_part90Badge(t);if(p)chips+=p;}}catch(e){}
+    return '<div class="ent-warr">'+chips+'</div>';
+  }
+
+  function healthHTML(t){
+    var m=aggAll()[key(t.customer)]||{visits:0,repeats:0,lifetime:0,since:"",warr:"",openBal:0};
+    var since=m.since?String(m.since).slice(0,4):"\u2014";
+    var warr=(t.warranty&&t.warranty.label)?t.warranty.label:((t.warranty&&t.warranty.has===false)?"N/W":(m.warr||"\u2014"));
+    var warrActive=/y(r)?\s*\d|100%|50%|active/i.test(warr)&&!/^n\/w$/i.test(warr);
+    function cell(ic,v,l,cls){return '<div class="ent-hs"><div class="v '+(cls||"")+'">'+v+'</div><div class="l">'+ic+' '+l+'</div></div>';}
+    return '<div class="ent-health"><div class="ent-hh">\uD83D\uDCC7 '+esc2(t.customer)+'</div><div class="ent-hg">'
+      + cell("\uD83D\uDCC5",since,"Since")
+      + cell("\uD83D\uDCB0",money0(m.lifetime),"Lifetime")
+      + cell("\uD83D\uDD01",m.visits||0,"Visits")
+      + cell("\u21A9\uFE0F",m.repeats||0,"Repeats")
+      + cell("\uD83D\uDC77",esc2(prefTech(m)),"Pref. Tech")
+      + cell("\uD83E\uDDFE",money0(m.openBal||0),"Open Bal",(m.openBal>0?"bal":""))
+      + '</div></div>';
+  }
+
+  function rowHTML(t){
+    var idx=-1; try{idx=active.indexOf(t);}catch(e){}
+    var id=t.id;
+    var tot=Number(t.total)||0;
+    var amt=tot>0?'<div class="ent-amt">'+money(tot)+'</div>':'<div class="ent-amt zero">\u2014</div>';
+    var vis=VLABEL[Number(t.visitNum)]||"1st";
+    var sub='<span>'+av((t.techs&&t.techs[0])||"",18)+'</span>'+esc2((t.techs||[]).join(", "))+(t.date?' \u00b7 '+esc2(t.date):'')+(t.arrival?' \u00b7 '+esc2(t.arrival):'');
+    return '<div class="ent-row" data-id="'+esc2(id)+'" onclick="_aspenEntExpand(this,\''+esc2(id)+'\')">'
+      + '<div class="cv">\u203a</div>'
+      + '<div class="ent-cust"><h4>'+esc2(t.customer)+'</h4><div class="sub">'+sub+'</div></div>'
+      + '<div><span class="ent-vchip">'+vis+'</span></div>'
+      + '<div>'+warrCell(t)+'</div>'
+      + '<div>'+qbCell(t)+'</div>'
+      + amt
+      + '<div class="ent-detail" id="entD_'+esc2(id)+'"></div>'
+    + '</div>';
+  }
+
+  function render(){
+    var host=$("aspenEntView"); if(!host)return;
+    var P=pool();
+    var head='<div class="ent-head"><div></div><div>Customer \u00b7 Technician</div><div>Visit</div><div>Warranty</div><div>QB Status</div><div class="r">Charge</div></div>';
+    if(!P.length){host.innerHTML='<div class="ent-board"><div class="ent-scroll"><div class="ent-inner">'+head+'<div class="ent-empty">No tickets match this view.</div></div></div></div>';return;}
+    var by={}; P.forEach(function(t){var k=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";(by[k]||(by[k]=[])).push(t);});
+    var names=Object.keys(by).sort(function(a,b){if(a==="Unassigned")return 1;if(b==="Unassigned")return -1;return a.localeCompare(b);});
+    var body="";
+    names.forEach(function(tn){
+      var items=by[tn];
+      var sum=items.reduce(function(s,t){return s+(Number(t.total)||0);},0);
+      var pend=items.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
+      body+='<div class="ent-grp">'+(tn==="Unassigned"?"":'<span>'+av(tn,26)+'</span>')+'<span class="gnm">'+esc2(tn)+'</span><span class="gct">'+items.length+'</span>'
+        +'<span class="gsum"><b>'+money(sum)+'</b>'+(pend?' \u00b7 '+pend+' pending QB':'')+'</span></div>';
+      body+=items.map(rowHTML).join("");
+    });
+    host.innerHTML='<div class="ent-board"><div class="ent-scroll"><div class="ent-inner">'+head+body+'</div></div></div>';
+  }
+
+  // Expand a row → Customer Health widget + real actions (lazy-fill once).
+  window._aspenEntExpand=function(rowEl,id){
+    try{
+      var d=$("entD_"+id); if(!d)return;
+      var openNow=!rowEl.classList.contains("open");
+      rowEl.classList.toggle("open",openNow);
+      d.classList.toggle("open",openNow);
+      if(openNow&&!d.getAttribute("data-filled")){
+        var t=null; try{t=[].concat(active||[],done||[]).filter(function(x){return x&&String(x.id)===String(id);})[0];}catch(e){}
+        if(t){
+          d.innerHTML=healthHTML(t)
+            +'<div class="ent-acts">'
+            +'<button class="open" onclick="event.stopPropagation();openTktDetail(\''+esc2(id)+'\')">\uD83D\uDCCB Open ticket</button>'
+            +'<button class="c360" onclick="event.stopPropagation();(typeof open360ByName===\'function\')&&open360ByName(\''+esc2((t.customer||"")).replace(/'/g,"\\'")+'\')">\uD83D\uDC64 Customer 360</button>'
+            +'</div>';
+          d.setAttribute("data-filled","1");
+        }
+      }
+    }catch(e){console.warn("[aspenEnt expand]",e);}
+  };
+
+  function ensureDom(){
+    var pg=$("pg1"); if(!pg)return;
+    if(!$("aspenEntToolbar")){
+      var tb=document.createElement("div");
+      tb.id="aspenEntToolbar"; tb.className="ent-toolbar";
+      tb.innerHTML='<div class="ent-seg"><button id="entSegBoard" type="button" onclick="aspenEntToggle(false)">\uD83D\uDDC2\uFE0F Board</button>'
+                 +'<button id="entSegEnt" type="button" onclick="aspenEntToggle(true)">\u2728 Enterprise</button></div>'
+                 +'<span style="font-size:var(--fs-xs);color:var(--i3);font-weight:600">Same tickets, premium view \u00b7 preview</span>';
+      var split=$("ticketsSplit");
+      if(split&&split.parentNode)split.parentNode.insertBefore(tb,split);
+      else pg.appendChild(tb);
+    }
+    if(!$("aspenEntView")){
+      var v=document.createElement("div"); v.id="aspenEntView";
+      var split2=$("ticketsSplit");
+      if(split2&&split2.parentNode)split2.parentNode.insertBefore(v,split2.nextSibling);
+      else pg.appendChild(v);
+    }
+  }
+
+  function sync(){
+    ensureDom();
+    var on=entMode();
+    var split=$("ticketsSplit"), view=$("aspenEntView");
+    var bB=$("entSegBoard"), bE=$("entSegEnt");
+    if(bB)bB.classList.toggle("on",!on);
+    if(bE)bE.classList.toggle("on",on);
+    if(view)view.classList.toggle("on",on);
+    if(split)split.style.display=on?"none":"";
+    if(on)render();
+  }
+
+  window.aspenEntToggle=function(on){ setMode(!!on); sync(); };
+
+  // Decorator: keep the Enterprise view in sync on every rndrA() (search,
+  // filters, data updates) WITHOUT modifying the original function.
+  function install(){
+    if(typeof rndrA==="function" && !rndrA.__aspenEntWrapped){
+      var orig=rndrA;
+      rndrA=function(){ var r=orig.apply(this,arguments); try{sync();}catch(e){console.warn("[aspenEnt sync]",e);} return r; };
+      rndrA.__aspenEntWrapped=true;
+    }
+    try{ensureDom();sync();}catch(e){}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(install,0);});
+  else setTimeout(install,0);
+})();
+
+</script>
 </body>
 </html>
