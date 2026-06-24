@@ -2039,6 +2039,141 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
 .dsum-l{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--i3);line-height:1.1}
 @media(prefers-reduced-motion:reduce){.dsum-card:hover{transform:none}}
 </style>
+<!-- ════ Daily board premium polish (#1) — CSS ONLY, fully reversible. Delete this whole
+        <style id="aspenDailyPolish"> block to revert. No markup/logic touched. Skips the
+        Ember theme so its bespoke look is preserved. ════ -->
+<style id="aspenDailyPolish">
+body:not(.theme-ember) #pg1 .tech-col{
+  --cardbg:color-mix(in srgb,var(--ink) 4%,var(--bg));
+  position:relative;
+  background:var(--cardbg);
+  border:1px solid var(--ln);
+  border-radius:14px;
+  padding:0 12px 14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 16px -10px rgba(0,0,0,.25);
+  transition:box-shadow .18s ease;
+}
+body:not(.theme-ember) #pg1 .tech-col:hover{
+  box-shadow:0 2px 4px rgba(0,0,0,.06),0 12px 26px -12px rgba(0,0,0,.35);
+}
+/* Colored accent bar on top of each column (cycles like the mockup) */
+body:not(.theme-ember) #pg1 .tech-col::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  border-radius:14px 14px 0 0;background:var(--accent,var(--ac));
+}
+body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+1){--accent:var(--ac)}
+body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+2){--accent:var(--c-danger-strong)}
+body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+3){--accent:var(--c-purple-strong)}
+body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+4){--accent:var(--c-info-fg)}
+body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+5){--accent:var(--c-success-strong)}
+body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+6){--accent:var(--c-warning-fg)}
+/* Header sits flush inside the card */
+body:not(.theme-ember) #pg1 .tech-col-hdr{
+  background:var(--cardbg);
+  padding:13px 4px 10px;
+  border-radius:14px 14px 0 0;
+}
+/* Ticket cards get a soft, modern lift */
+body:not(.theme-ember) #pg1 .tkt{
+  border-radius:12px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05),0 2px 6px -3px rgba(0,0,0,.12);
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+body:not(.theme-ember) #pg1 .tkt:hover{
+  transform:translateY(-1px);
+  box-shadow:0 2px 4px rgba(0,0,0,.06),0 8px 18px -8px rgba(0,0,0,.28);
+}
+@media(prefers-reduced-motion:reduce){
+  body:not(.theme-ember) #pg1 .tkt:hover{transform:none}
+}
+</style>
+<!-- ════════════════════════════════════════════════════════════════════════
+     CUSTOMER 360 — VISUAL SKIN ONLY (CRM look: Monday / HubSpot / ServiceTitan).
+     100% CSS. No JS, IDs, data-attrs, events, functions, arrays, localStorage,
+     Firebase, routes, state or markup were changed. Everything is scoped under
+     .cust-page and uses your existing design tokens, so it adapts to light / dark
+     / Ember automatically and is fully reversible (delete this <style> to revert).
+     ────────────────────────────────────────────────────────────────────────
+     TODO — each needs ONE safe additive line reusing existing functions; NOT done
+     here to honor "no JS changes":
+       • Hero "Warranty Status" card → reuse the warranty calc already behind
+         _buildAutoWarrantyPanelHTML and append a 4th .qb-cust-stat in the render.
+       • Service-History tab (_c360Render) + Warranty panel (_buildAutoWarrantyPanelHTML)
+         render with INLINE styles (no classes) — a full timeline/widget restyle
+         needs a tiny additive pass in those functions. The Notes tab is already a
+         visual timeline below.
+       • True bottom-pinned sticky action bar → the bar is mid-DOM; pinning it
+         needs it wrapped as a separate element at page end (DOM/JS). Polished
+         inline for now.
+     ════════════════════════════════════════════════════════════════════════ -->
+<style id="aspenCust360Skin">
+/* iPhone: keep content clear of the notch / Dynamic Island */
+.cust-page{padding-top:env(safe-area-inset-top)}
+
+/* ── HERO / SUMMARY (name · zone · phone · address · stats) ─────────── */
+.cust-page .qb-cust-hero{padding:22px 20px 20px;background:linear-gradient(135deg,var(--acl) 0%,var(--cd) 62%,var(--bg) 100%);border-bottom:1px solid var(--ln)}
+.cust-page .qb-cust-hero-name{color:var(--br)}
+.cust-page .qb-cust-hero-sub{gap:7px}
+.cust-page .qb-cust-hero-sub span{background:var(--cd);border:1px solid var(--ln);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--i2);box-shadow:0 1px 2px rgba(60,43,31,.05)}
+.cust-page .qb-cust-hero-stats{gap:10px}
+.cust-page .qb-cust-stat{background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:12px 14px 12px 16px;box-shadow:0 2px 8px rgba(60,43,31,.06);position:relative;overflow:hidden;transition:transform .14s,box-shadow .14s}
+.cust-page .qb-cust-stat:hover{transform:translateY(-2px);box-shadow:0 8px 20px -10px rgba(60,43,31,.4)}
+.cust-page .qb-cust-stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac)}
+.cust-page .qb-cust-stat:nth-child(2)::before{background:var(--i3)}
+.cust-page .qb-cust-stat:nth-child(3)::before{background:var(--c-success-strong)}
+.cust-page .qb-cust-stat .v{font-size:20px;color:var(--br)}
+
+/* ── CUSTOMER INFO → card with modern inputs (still fully editable) ─── */
+.cust-page .qb-cust-info-grid{margin:16px;padding:18px;background:var(--cd);border:1px solid var(--ln);border-radius:16px;box-shadow:0 2px 10px rgba(60,43,31,.05)}
+.cust-page .qb-cust-info-cell input,
+.cust-page .qb-cust-info-cell textarea{border:1.5px solid var(--ln);border-radius:10px;padding:9px 11px;transition:border-color .15s,box-shadow .15s}
+.cust-page .qb-cust-info-cell input:focus,
+.cust-page .qb-cust-info-cell textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(212,119,44,.15)}
+.cust-page .qb-cust-info-cell label{letter-spacing:.4px}
+
+/* ── ACTION BUTTONS → modern toolbar (Aspen-orange primary) ─────────── */
+.cust-page .qb-cust-action-bar{padding:0 16px 14px;border-bottom:none;gap:9px}
+.cust-page .qb-cust-btn{border:1.5px solid var(--ln);background:var(--cd);color:var(--br);border-radius:11px;padding:10px 15px;font-weight:700;font-size:13px;box-shadow:0 1px 2px rgba(60,43,31,.05);display:inline-flex;align-items:center;gap:6px;transition:transform .12s,box-shadow .12s,background .12s,border-color .12s}
+.cust-page .qb-cust-btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px -7px rgba(60,43,31,.5)}
+.cust-page .qb-cust-btn.primary{background:var(--ac);border-color:var(--ac);color:#fff}      /* Save Customer Info */
+.cust-page .qb-cust-btn.primary:hover{background:var(--acd);border-color:var(--acd)}
+.cust-page .qb-cust-btn.brand{background:var(--br);border-color:var(--br);color:#fff}        /* Schedule Service Call */
+
+/* ── TABS → sticky segmented bar (Notes · Spa Description · Service History) ─ */
+.cust-page .qb-cust-tabs{position:sticky;top:0;z-index:6;padding:6px 12px;gap:4px;background:color-mix(in srgb,var(--cd) 92%,transparent);backdrop-filter:saturate(160%) blur(8px);-webkit-backdrop-filter:saturate(160%) blur(8px);border-bottom:1px solid var(--ln)}
+.cust-page .qb-cust-tab{border-radius:10px;padding:9px 14px;border-bottom:none!important;text-transform:none;letter-spacing:.2px;font-size:13px}
+.cust-page .qb-cust-tab:hover{background:var(--bg)}
+.cust-page .qb-cust-tab.on{background:var(--acl);color:var(--acd)}
+
+/* ── NOTES → vertical timeline ─────────────────────────────────────── */
+.cust-page .qb-notes-tbl-hdr{display:none}
+.cust-page .qb-note-row{border:1px solid var(--ln);border-radius:12px;margin:0 0 9px;padding:12px 14px 12px 38px;position:relative;box-shadow:0 1px 2px rgba(60,43,31,.04)}
+.cust-page .qb-note-row .qb-note-pin{display:none}
+.cust-page .qb-note-row::before{content:"";position:absolute;left:16px;top:0;bottom:0;width:2px;background:var(--ln)}
+.cust-page .qb-note-row::after{content:"";position:absolute;left:12px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--ac);border:2px solid var(--cd);box-shadow:0 0 0 2px var(--acl)}
+.cust-page .qb-note-row:first-child::before{top:16px}
+.cust-page .qb-note-row:last-child::before{height:16px}
+.cust-page .qb-note-row.active{border-color:var(--ac)}
+.cust-page .qb-note-row.done::after{background:var(--c-success-strong);box-shadow:0 0 0 2px var(--c-success-bg)}
+.cust-page .qb-note-date{font-weight:700;color:var(--br)}
+
+/* ── SPA → Equipment Center box ────────────────────────────────────── */
+.cust-page .qb-spa-desc-box{border:1.5px solid var(--ln);border-radius:12px;background:var(--cd);min-height:150px}
+
+/* ── MOBILE-FIRST ──────────────────────────────────────────────────── */
+.cust-page .qb-cust-tab-body{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+@media(max-width:640px){
+  .cust-page .qb-cust-hero{padding:16px 14px}
+  .cust-page .qb-cust-hero-name{font-size:21px}
+  .cust-page .qb-cust-info-grid{margin:12px;padding:14px}
+  .cust-page .qb-cust-action-bar{padding:0 12px 12px}
+  .cust-page .qb-cust-btn{flex:1 1 auto;justify-content:center}
+  .cust-page .qb-cust-btn.primary{flex-basis:100%}      /* Save spans full width on phone */
+}
+@media(prefers-reduced-motion:reduce){
+  .cust-page .qb-cust-stat:hover,.cust-page .qb-cust-btn:hover{transform:none}
+}
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
