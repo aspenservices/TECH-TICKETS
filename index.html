@@ -2434,6 +2434,61 @@ body.dark-mode #tktDetailBg .dt-sec{box-shadow:0 1px 2px rgba(0,0,0,.32),0 8px 2
 #tktDetailBg.open .dt-sec{animation:aspenDtIn .26s cubic-bezier(.4,0,.2,1) both}
 @media(prefers-reduced-motion:reduce){#tktDetailBg.open .dt-sec{animation:none}}
 </style>
+<style id="aspenDailyEnterprise">
+/* ─────────────────────────────────────────────────────────────────────────
+   Aspen — Daily board ENTERPRISE skin.  CSS-ONLY · scoped to #pg1 · non-Ember.
+   Layers ON TOP of Alberto's aspenDailyPolish (HIS block is left untouched).
+   Pushes the board to the "Daily enterprise" prototype look: borderless,
+   soft-elevated cards, bigger radius, warm shadows, hairline separators.
+   No markup, IDs, functions, events, data-attrs or logic touched.
+   Delete this <style> block to fully revert.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* More air between columns + below cards */
+body:not(.theme-ember) #pg1 .tech-cols{gap:16px}
+body:not(.theme-ember) #pg1 .tkt{margin-bottom:16px}
+
+/* Columns: drop the hard border, warmer lift, rounder */
+body:not(.theme-ember) #pg1 .tech-col{
+  border:none;
+  border-radius:18px;
+  padding:0 14px 16px;
+  box-shadow:0 1px 2px rgba(60,43,31,.05),0 18px 40px -24px rgba(60,43,31,.30);
+}
+body:not(.theme-ember) #pg1 .tech-col:hover{
+  box-shadow:0 2px 6px rgba(60,43,31,.07),0 26px 54px -26px rgba(60,43,31,.40);
+}
+/* keep Alberto's colored top accent bar, just match the new radius + a touch taller */
+body:not(.theme-ember) #pg1 .tech-col::before{border-radius:18px 18px 0 0;height:4px}
+body:not(.theme-ember) #pg1 .tech-col-hdr{border-radius:18px 18px 0 0}
+
+/* Ticket cards: borderless, soft warm shadow, rounder */
+body:not(.theme-ember) #pg1 .tkt{
+  border:none;
+  border-radius:16px;
+  box-shadow:0 1px 2px rgba(60,43,31,.05),0 10px 24px -16px rgba(60,43,31,.28);
+}
+body:not(.theme-ember) #pg1 .tkt:hover{
+  transform:translateY(-2px);
+  box-shadow:0 2px 6px rgba(60,43,31,.07),0 18px 40px -18px rgba(60,43,31,.36);
+}
+/* Pending-QB flag: keep the signal as a soft copper left accent, not a hard box border */
+body:not(.theme-ember) #pg1 .tkt.qb-pending{
+  box-shadow:inset 3px 0 0 var(--c-warning-strong),0 1px 2px rgba(60,43,31,.05),0 10px 24px -16px rgba(60,43,31,.28);
+}
+
+/* Inner warranty box: lose the border, keep a soft filled chip */
+body:not(.theme-ember) #pg1 .tt-cov{border:none}
+/* Repeat / meta divider: dashed → soft hairline */
+body:not(.theme-ember) #pg1 .tt-meta{border-top:1px solid var(--ln)}
+
+/* Dark mode: shadows that actually read on a dark background */
+body.dark-mode:not(.theme-ember) #pg1 .tech-col,
+body.dark-mode:not(.theme-ember) #pg1 .tkt{box-shadow:0 1px 2px rgba(0,0,0,.35),0 14px 32px -18px rgba(0,0,0,.55)}
+body.dark-mode:not(.theme-ember) #pg1 .tkt.qb-pending{box-shadow:inset 3px 0 0 var(--c-warning-strong),0 1px 2px rgba(0,0,0,.35),0 14px 32px -18px rgba(0,0,0,.55)}
+
+@media(prefers-reduced-motion:reduce){body:not(.theme-ember) #pg1 .tkt:hover{transform:none}}
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
