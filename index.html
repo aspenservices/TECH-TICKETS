@@ -2443,10 +2443,10 @@ body.aspen-ent-on .dsum-card.dead{opacity:.55}
 /* expand detail */
 .ent-detail{grid-column:1/-1;display:none}
 .ent-detail.open{display:block}
-.ent-detail-in{padding:2px 18px 20px;animation:entIn .24s ease}
+.ent-detail-in{padding:2px 18px 14px;animation:entIn .24s ease}
 @keyframes entIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.ent-w{background:var(--cd);border-radius:18px;padding:16px 17px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 12px 24px -18px rgba(61,43,31,.28);margin-bottom:13px}
-.ent-w-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--br);margin-bottom:13px;letter-spacing:-.01em}
+.ent-w{background:var(--cd);border-radius:18px;padding:16px 17px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 12px 24px -18px rgba(61,43,31,.28);margin-bottom:10px}
+.ent-w-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--br);margin-bottom:10px;letter-spacing:-.01em}
 .ent-w-tag{margin-left:auto;font-size:11px;font-weight:800;color:var(--acd);background:var(--acl);border-radius:999px;padding:3px 11px}
 .ent-w-health{background:linear-gradient(135deg,#fff 0%,var(--acl) 120%)}
 .ent-statusbadge{font-size:12px;font-weight:800;border-radius:999px;padding:4px 13px}
@@ -2460,7 +2460,7 @@ body.aspen-ent-on .dsum-card.dead{opacity:.55}
 .ent-stat .st-ic.c-blue{background:#e0f2fe}.ent-stat .st-ic.c-green{background:var(--c-success-bg)}.ent-stat .st-ic.c-amber{background:var(--c-warning-bg)}.ent-stat .st-ic.c-red{background:var(--c-danger-bg)}.ent-stat .st-ic.c-ac{background:var(--acl)}
 .ent-stat .sv{font-size:18px;font-weight:800;color:var(--br);line-height:1.05}
 .ent-stat .sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-top:2px}
-.ent-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.ent-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 @media(max-width:860px){.ent-stats{grid-template-columns:repeat(2,1fr)}.ent-wgrid{grid-template-columns:1fr}}
 /* warranty */
 .ent-prog{margin-bottom:13px}
@@ -2537,6 +2537,40 @@ body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 3
 .ent-verdict.v-done{background:var(--c-success-bg,#dcfce7);color:var(--c-success-fg,#166534)}
 .ent-verdict.v-neutral{background:var(--c-ash,#f1ece4);color:var(--i2,#6b5d4f)}
 @media(max-width:620px){.ent-verdict{flex-wrap:wrap}.ent-verdict .vd-sub{margin-left:0;text-align:left;width:100%;margin-top:2px}}
+/* ── DECISION HEADER (Design B refined) — the decision engine, top of every open ticket ── */
+.vh{display:flex;border-radius:16px;overflow:hidden;margin-bottom:12px;background:var(--cd);box-shadow:0 2px 4px rgba(61,43,31,.05),0 14px 30px -20px rgba(61,43,31,.35)}
+.vh-rail{width:8px;flex:none}
+.vh-body{flex:1;min-width:0;padding:13px 15px}
+.vh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.vh-main{min-width:0}
+.vh-v{font-size:17px;font-weight:900;line-height:1.15;letter-spacing:-.01em}
+.vh-sub{font-size:12px;font-weight:600;color:var(--i2);margin-top:3px}
+.vh-amt{font-weight:900;white-space:nowrap;text-align:right;flex:none}
+.vh-amt.go{font-size:23px;color:var(--c-success-strong);font-variant-numeric:tabular-nums}
+.vh-amt.no{font-size:11.5px;font-weight:800;color:var(--c-danger-fg);background:var(--c-danger-bg);border-radius:8px;padding:5px 9px;letter-spacing:.3px}
+.vh-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.vh-chip{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:20px;white-space:nowrap}
+.vh-chip.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
+.vh-chip.no{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.vh-hint{font-size:10.5px;font-weight:600;color:var(--i3);margin-top:9px}
+.vh.v-yes .vh-rail{background:var(--c-success-strong)}.vh.v-yes .vh-v{color:var(--c-success-fg)}
+.vh.v-no .vh-rail{background:var(--c-danger-strong)}.vh.v-no .vh-v{color:var(--c-danger-fg)}
+.vh.v-info .vh-rail{background:var(--ac)}.vh.v-info .vh-v{color:var(--acd)}
+.vh.v-warn .vh-rail{background:var(--c-warning-strong)}.vh.v-warn .vh-v{color:var(--c-warning-fg)}
+.vh.v-review .vh-rail{background:var(--c-warning-strong)}.vh.v-review .vh-v{color:var(--c-warning-fg)}
+.vh.v-neutral .vh-rail{background:var(--i3)}.vh.v-neutral .vh-v{color:var(--i2)}
+.vh.v-done .vh-rail{background:var(--c-success-strong)}.vh.v-done .vh-v{color:var(--c-success-fg)}
+/* ── Invoice mini-breakdown: Trip Charge · Labor · Parts (above the Total) ── */
+.ent-breakdown{background:var(--bg);border-radius:13px;padding:4px 14px;margin-bottom:11px}
+.ent-bd-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:600;color:var(--i2);border-bottom:1px solid var(--ln)}
+.ent-bd-row:last-child{border-bottom:none}
+.ent-bd-row .bd-v{font-weight:800;color:var(--br);font-variant-numeric:tabular-nums}
+.ent-bd-row.muted{color:var(--i3)}.ent-bd-row.muted .bd-v{color:var(--i3)}
+/* ── Collapsible technician note ── */
+.ent-note-tog{margin-top:8px;background:none;border:none;color:var(--acd);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit;padding:2px 0}
+.ent-note-full{display:none}
+.ent-note-wrap.open .ent-note-clip{display:none}
+.ent-note-wrap.open .ent-note-full{display:block}
 </style>
 <style id="aspenDrawerSkin">
 /* Premium skin for the ticket editor modal (openTktDetail). CSS-ONLY, scoped to
@@ -21997,6 +22031,7 @@ function showTicketDetail(p,i){
       + '</div>';
     var bill=billHrsFull(t);
     return '<div class="ent-w"><div class="ent-w-h">\uD83E\uDDFE Invoice</div>'
+      + invBreakdown(t,c)
       + '<div class="ent-bigtotal '+(c.covered?"covered":"")+'"><div class="bt-l">Service Total</div><div class="bt-v">'+(c.covered?"$0":money(c.amount))+'</div>'+(c.covered?'<div class="bt-tag">Covered \u00b7 warranty</div>':'')+'</div>'
       + (bill?'<div class="ent-billrow"><span class="bill-l">\uD83D\uDCB5 Billable hours</span><span class="bill-v">'+esc2(bill)+'</span></div>':'')
       + (c.rule?'<div class="ent-inv-rule">'+esc2(c.rule)+'</div>':'')
@@ -22005,7 +22040,75 @@ function showTicketDetail(p,i){
   }
   function notesCard(t){
     if(!t.notes)return "";
-    return '<div class="ent-w"><div class="ent-w-h">\uD83D\uDCDD Technician Notes</div><div class="ent-note">\u201c'+esc2(t.notes)+'\u201d</div></div>';
+    var full=String(t.notes),LIM=140;
+    var head='<div class="ent-w-h">\uD83D\uDCDD Last Technician Note</div>';
+    if(full.length<=LIM){
+      return '<div class="ent-w">'+head+'<div class="ent-note">\u201c'+esc2(full)+'\u201d</div></div>';
+    }
+    var cut=full.slice(0,LIM).replace(/\s+\S*$/,"");
+    return '<div class="ent-w ent-note-wrap">'+head
+      + '<div class="ent-note ent-note-clip">\u201c'+esc2(cut)+'\u2026\u201d</div>'
+      + '<div class="ent-note ent-note-full">\u201c'+esc2(full)+'\u201d</div>'
+      + '<button type="button" class="ent-note-tog" onclick="_aspenEntNoteTog(this)">\u25BC Expand</button>'
+      + '</div>';
+  }
+  window._aspenEntNoteTog=function(btn){
+    try{var w=btn.closest(".ent-note-wrap");if(!w)return;var open=w.classList.toggle("open");btn.innerHTML=open?"\u25B2 Collapse":"\u25BC Expand";}catch(e){}
+  };
+  /* ─── DECISION HEADER (Design B refined) — verb-first verdict + adaptive "why" ───
+     Pure synthesis: reuses verdict(), chargeFor(), qbReady(). Shows 1–2 evidence
+     facts that justify the call; degrades to "Needs review" (never guesses). It is
+     a recommendation Nela can override. */
+  function _vhEvidence(t,tone){
+    var rd=qbReady(t),vn=Number(t.visitNum),w=(t&&t.warranty)||{},sw=null;
+    try{if(typeof _svcWarranty==="function")sw=_svcWarranty(t.date);}catch(e){}
+    var nMedia=(Array.isArray(t.media)?t.media.length:0),out=[];
+    function C(ok,l){out.push('<span class="vh-chip '+(ok?"ok":"no")+'">'+(ok?"\u2713 ":"\u2715 ")+esc2(l)+'</span>');}
+    if(tone==="v-yes"){
+      C(true,"Warranty checked");C(true,"Note complete");C(true,"Time logged");
+      C(nMedia>0,nMedia>0?("Photos \u00d7"+nMedia):"No photos");
+    }else if(tone==="v-no"){
+      if(vn===4||t.isRepeat){C(true,"Repeat visit");C(true,(sw&&sw.active)?(sw.daysLeft+"d left on warranty"):"Warranty callback");}
+      else{C(true,"Parts + labor covered");if(w.label)C(true,w.label);}
+    }else if(tone==="v-info"){
+      C(true,vn===3?"Chemical maintenance":"Spa delivery");if(vn===5)C(true,"Parts billed normally");
+    }else if(tone==="v-warn"){
+      C(true,(w.label?w.label:"Warranty")+" on file");C(false,"Confirm coverage");
+    }else if(tone==="v-review"){
+      if(!rd.hasTime)C(false,"Missing arrival/departure");
+      if(!rd.hasNotes)C(false,"Missing tech note");
+      if(!rd.hasWork)C(false,"Missing work type");
+      if(!out.length)C(false,"Incomplete report");
+    }else if(tone==="v-done"){C(true,"Already billed");}
+    else{C(true,"No billing yet");}
+    return out.join("");
+  }
+  function verdictHeader(t){
+    var vd=verdict(t),c=chargeFor(t),tone=vd.cls;
+    var headline=(tone==="v-yes")?"\u2705 Bill this visit":vd.txt;
+    var amtHTML="";
+    if(tone==="v-yes")amtHTML='<div class="vh-amt go">'+(c.amount>0?money(c.amount):"\u2014")+'</div>';
+    else if(tone==="v-no")amtHTML='<div class="vh-amt no">DON\u2019T INVOICE</div>';
+    else if(tone==="v-info")amtHTML='<div class="vh-amt no">NO LABOR</div>';
+    return '<div class="vh '+tone+'"><div class="vh-rail"></div><div class="vh-body">'
+      + '<div class="vh-top"><div class="vh-main"><div class="vh-v">'+esc2(headline)+'</div>'
+      + (vd.sub?'<div class="vh-sub">'+esc2(vd.sub)+'</div>':'')+'</div>'+amtHTML+'</div>'
+      + '<div class="vh-chips">'+_vhEvidence(t,tone)+'</div>'
+      + '<div class="vh-hint">\uD83D\uDCA1 Recommendation \u00b7 you can override</div>'
+      + '</div></div>';
+  }
+  // Invoice mini-breakdown — Trip Charge (lb.tc) + Labor overage (lb.extraAmt) + Parts.
+  // Same two QB line items the office bills by. Shown only when there's a real charge.
+  function invBreakdown(t,c){
+    if(c.covered)return "";
+    var lb=null;
+    try{lb=calcLabor(t.arrival,t.departure,Number(t.visitNum)||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty((t&&t.warranty)||{}):"none"),t.noLabor||false);}catch(e){}
+    var tc=(lb&&!lb.free)?(Number(lb.tc)||0):0;
+    var lab=(lb&&!lb.free)?(Number(lb.extraAmt)||0):0;
+    var parts=0;try{parts=(t.parts||[]).reduce(function(s,p){return s+(((p.ch!=null?p.ch:p.p)||0)*(p.qty||0));},0);}catch(e){}
+    if(!tc&&!lab&&!parts)return "";
+    function row(l,v){return '<div class="ent-bd-row'+(v?"":" muted")+'"><span>'+l+'</span><span class="bd-v">'+money(v)+'</span></div>';}
+    return '<div class="ent-breakdown">'+row("Trip Charge",tc)+row("Labor",lab)+row("Parts",parts)+'</div>';
   }
   function photosCard(t){
     var media=Array.isArray(t.media)?t.media:[];
@@ -22036,6 +22139,7 @@ function showTicketDetail(p,i){
   }
   function detailHTML(t){
     return '<div class="ent-detail-in">'
+      + verdictHeader(t)
       + healthCard(t)
       + '<div class="ent-wgrid">'+warrantyCard(t)+invoiceCard(t)+'</div>'
       + ((notesCard(t)||photosCard(t))?'<div class="ent-wgrid">'+(notesCard(t)||'<div></div>')+(photosCard(t)||'<div></div>')+'</div>':'')
