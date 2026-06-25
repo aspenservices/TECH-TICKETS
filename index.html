@@ -2373,126 +2373,140 @@ body:not(.theme-ember) #pg1 .tkt:hover{
 }
 </style>
 <style id="aspenEntStyle">
-/* Aspen — Daily "Enterprise" premium dashboard. ADDITIVE · scoped to #aspenEntView
-   + injected helpers (toolbar, collapsible collections). Pairs with
+/* Aspen — Daily "Enterprise" premium dashboard v4. ADDITIVE · scoped to
+   #aspenEntView, body.aspen-ent-on, + injected helpers. Pairs with
    <script id="aspenEntScript">. Delete both blocks to fully revert. */
 #aspenEntView{display:none;margin-top:2px}
 #aspenEntView.on{display:block;animation:entFade .22s ease}
 @keyframes entFade{from{opacity:0}to{opacity:1}}
-.ent-toolbar{display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap}
+.ent-toolbar{display:flex;align-items:center;gap:10px;margin:2px 0 16px;flex-wrap:wrap}
 .ent-seg{display:inline-flex;background:var(--c-ash,#f1ece4);border-radius:12px;padding:4px}
-.ent-seg button{border:none;background:transparent;font-weight:700;font-size:13px;color:var(--i3);padding:8px 15px;border-radius:9px;cursor:pointer;font-family:inherit;transition:all .18s}
+.ent-seg button{border:none;background:transparent;font-weight:700;font-size:13px;color:var(--i3);padding:9px 16px;border-radius:9px;cursor:pointer;font-family:inherit;transition:all .18s}
 .ent-seg button.on{background:var(--cd);color:var(--br);box-shadow:var(--sh-sm)}
 .ent-hint{font-size:11px;color:var(--i3);font-weight:600}
 .ent-colltoggle{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;border-radius:12px;padding:10px 15px;margin-bottom:14px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 3px 12px rgba(15,23,42,.18)}
 .ent-colltoggle .cc-x{margin-left:auto;font-size:11px;background:rgba(255,255,255,.16);padding:3px 11px;border-radius:999px;font-weight:700}
-/* KPI cards (large, premium, single row) */
-.ent-kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin:0 0 16px}
-.ent-kpi{position:relative;background:var(--cd);border-radius:18px;padding:15px 16px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 12px 26px -18px rgba(61,43,31,.28);overflow:hidden;transition:transform .18s,box-shadow .18s}
-.ent-kpi::before{content:"";position:absolute;top:0;bottom:0;left:0;width:5px;background:var(--kc,var(--ac))}
-.ent-kpi[style*=pointer]:hover{transform:translateY(-3px);box-shadow:0 8px 16px rgba(61,43,31,.08),0 22px 42px -20px rgba(61,43,31,.42)}
-.ent-kpi .k-ic{font-size:17px;margin-bottom:6px}
-.ent-kpi .k-v{font-size:30px;font-weight:800;color:var(--br);line-height:1;letter-spacing:-.02em}
-.ent-kpi .k-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--i3);margin-top:6px}
-.ent-kpi.k-br{--kc:var(--br)}.ent-kpi.k-red{--kc:var(--c-danger-strong)}.ent-kpi.k-amber{--kc:var(--c-warning-strong)}
-.ent-kpi.k-blue{--kc:var(--c-info-strong)}.ent-kpi.k-green{--kc:var(--c-success-strong)}.ent-kpi.k-orange{--kc:var(--acd)}.ent-kpi.k-gray{--kc:var(--i3)}
-@media(max-width:1100px){.ent-kpis{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:620px){.ent-kpis{grid-template-columns:repeat(2,1fr)}}
+/* ── Reuse Alberto's native KPI cards (#dailySummary .dsum-card) as the premium
+      KPI/filter row — Enterprise only. No duplicate KPI row is rendered. ── */
+body.aspen-ent-on #dailySummary{display:grid!important;grid-template-columns:repeat(7,1fr)!important;gap:12px!important;margin:0 0 18px!important}
+body.aspen-ent-on .dsum-card{padding:16px 16px!important;border-radius:18px!important;gap:7px!important;background:var(--cd)!important;border:1px solid var(--ln)!important;box-shadow:0 1px 2px rgba(61,43,31,.04),0 14px 30px -20px rgba(61,43,31,.3)!important;transition:transform .18s,box-shadow .18s!important}
+body.aspen-ent-on .dsum-card::before{top:0!important;bottom:0!important;left:0!important;width:5px!important;border-radius:0 4px 4px 0!important}
+body.aspen-ent-on .dsum-card:hover{transform:translateY(-3px)!important;box-shadow:0 10px 18px rgba(61,43,31,.08),0 24px 44px -20px rgba(61,43,31,.45)!important}
+body.aspen-ent-on .dsum-card.on{box-shadow:inset 0 0 0 2px var(--dsum-c,var(--ac)),0 14px 30px -18px rgba(61,43,31,.42)!important}
+body.aspen-ent-on .dsum-card .dsum-n{font-size:30px!important;font-weight:800!important;color:var(--br)!important;line-height:1!important;letter-spacing:-.02em}
+body.aspen-ent-on .dsum-card .dsum-l{font-size:11px!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.04em!important;color:var(--i3)!important}
+body.aspen-ent-on .dsum-card.dead{opacity:.55}
+@media(max-width:1100px){body.aspen-ent-on #dailySummary{grid-template-columns:repeat(4,1fr)!important}}
+@media(max-width:620px){body.aspen-ent-on #dailySummary{grid-template-columns:repeat(2,1fr)!important}}
 /* group-by pills */
 .ent-grpseg{display:flex;align-items:center;gap:7px;margin:0 0 16px;flex-wrap:wrap}
 .ent-grpseg .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--i3);margin-right:2px}
-.ent-grpseg button{border:1.5px solid var(--ln);background:var(--cd);color:var(--i2);font-weight:700;font-size:13px;padding:7px 15px;border-radius:10px;cursor:pointer;font-family:inherit;transition:all .15s}
-.ent-grpseg button.on{background:var(--acl);border-color:var(--ac);color:var(--acd)}
+.ent-grpseg button{border:1.5px solid var(--ln);background:var(--cd);color:var(--i2);font-weight:700;font-size:13px;padding:8px 16px;border-radius:10px;cursor:pointer;font-family:inherit;transition:all .15s}
+.ent-grpseg button.on{background:var(--acl);border-color:var(--ac);color:var(--acd);box-shadow:0 2px 8px -2px rgba(212,119,44,.4)}
 /* group + header */
-.ent-group{margin-bottom:22px}
-.ent-ghdr{display:flex;align-items:center;gap:10px;padding:4px 4px 12px}
+.ent-group{margin-bottom:24px}
+.ent-ghdr{display:flex;align-items:center;gap:11px;padding:2px 4px 13px}
 .ent-gav{display:inline-flex}
 .ent-gdot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
 .ent-gname{font-weight:800;font-size:15px;color:var(--br);text-transform:uppercase;letter-spacing:.6px}
-.ent-gcount{font-size:12px;background:var(--acl);color:var(--acd);font-weight:800;border-radius:999px;padding:2px 10px}
+.ent-gcount{font-size:12px;background:var(--acl);color:var(--acd);font-weight:800;border-radius:999px;padding:2px 11px}
 .ent-gspace{flex:1}
 .ent-gsum{font-weight:800;color:var(--br);font-size:15px;font-variant-numeric:tabular-nums}
-.ent-gpend{font-size:11px;font-weight:800;color:var(--c-warning-fg);background:var(--c-warning-bg);border-radius:999px;padding:3px 10px;margin-left:8px}
+.ent-gpend{font-size:11px;font-weight:800;color:var(--c-warning-fg);background:var(--c-warning-bg);border-radius:999px;padding:4px 11px;margin-left:9px}
 /* ticket card */
-.ent-cards{display:flex;flex-direction:column;gap:10px}
-.ent-card{position:relative;display:grid;grid-template-columns:6px 1fr 32px;align-items:stretch;background:var(--cd);border-radius:16px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 10px 24px -18px rgba(61,43,31,.3);cursor:pointer;overflow:hidden;transition:transform .16s,box-shadow .16s}
-.ent-card:hover{transform:translateY(-2px);box-shadow:0 7px 15px rgba(61,43,31,.07),0 20px 38px -20px rgba(61,43,31,.44)}
-.ent-card-rail{border-radius:16px 0 0 16px}
-.ent-card-mid{padding:14px 6px 14px 14px;min-width:0}
+.ent-cards{display:flex;flex-direction:column;gap:11px}
+.ent-card{position:relative;display:grid;grid-template-columns:6px 1fr 34px;align-items:stretch;background:var(--cd);border-radius:18px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 12px 26px -18px rgba(61,43,31,.32);cursor:pointer;overflow:hidden;transition:transform .16s,box-shadow .16s}
+.ent-card:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(61,43,31,.07),0 24px 44px -20px rgba(61,43,31,.48)}
+.ent-card-rail{border-radius:18px 0 0 18px}
+.ent-card-mid{padding:16px 6px 16px 16px;min-width:0}
 .ent-card-row1{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .tc-cust{min-width:0}
-.tc-cust h4{margin:0;font-size:16px;font-weight:800;color:var(--br);line-height:1.2;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.tc-urg{font-size:9.5px;font-weight:800;color:#fff;background:var(--c-danger-strong);border-radius:5px;padding:2px 7px;letter-spacing:.3px}
-.tc-sub{font-size:13px;color:var(--i3);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.tc-charge{font-size:21px;font-weight:800;color:var(--br);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
-.tc-charge.none{color:var(--i3);font-weight:600;font-size:17px}
-.tc-charge.cov{color:var(--c-success-strong);font-size:19px;display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+.tc-cust h4{margin:0;font-size:17px;font-weight:800;color:var(--br);line-height:1.2;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tc-urg{font-size:9.5px;font-weight:800;color:#fff;background:var(--c-danger-strong);border-radius:6px;padding:3px 8px;letter-spacing:.3px}
+.tc-sub{font-size:13px;color:var(--i3);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tc-charge{font-size:22px;font-weight:800;color:var(--br);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;letter-spacing:-.02em}
+.tc-charge.none{color:var(--i3);font-weight:600;font-size:18px}
+.tc-charge.cov{color:var(--c-success-strong);font-size:20px;display:flex;flex-direction:column;align-items:flex-end;line-height:1}
 .tc-charge.cov span{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--c-success-fg);margin-top:3px}
-.ent-card-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;align-items:center}
-.ent-card-exp{display:flex;align-items:center;justify-content:center;color:var(--ac);font-size:20px;font-weight:800;transition:transform .2s}
+.ent-card-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;align-items:center}
+.ent-card-exp{display:flex;align-items:center;justify-content:center;color:var(--ac);font-size:22px;font-weight:800;transition:transform .2s}
+.ent-card.open{box-shadow:0 8px 16px rgba(61,43,31,.08),0 28px 50px -20px rgba(61,43,31,.5)}
 .ent-card.open .ent-card-exp{transform:rotate(90deg)}
-/* chips & pills */
-.ent-chip{font-size:11px;font-weight:700;color:var(--i2);background:var(--c-ash,#f1ece4);border-radius:8px;padding:4px 10px;white-space:nowrap}
+/* chips & rich pills */
+.ent-chip{font-size:11.5px;font-weight:700;color:var(--i2);background:var(--c-ash,#f1ece4);border-radius:8px;padding:5px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 .ent-chip.vis{background:var(--br);color:#fff}
 .ent-chip.warr{background:var(--acl);color:var(--acd)}
-.ent-pill{font-size:12px;font-weight:700;border-radius:999px;padding:4px 11px;white-space:nowrap}
+.ent-pill{font-size:12px;font-weight:800;border-radius:999px;padding:5px 12px;white-space:nowrap}
 .ent-pill.pend{background:var(--c-warning-bg);color:var(--c-warning-fg)}
 .ent-pill.done{background:var(--c-success-bg);color:var(--c-success-fg)}
 .ent-pill.res{background:var(--c-ash,#eee);color:var(--i2)}
 /* expand detail */
 .ent-detail{grid-column:1/-1;display:none}
 .ent-detail.open{display:block}
-.ent-detail-in{padding:2px 16px 18px;animation:entIn .22s ease}
+.ent-detail-in{padding:2px 18px 20px;animation:entIn .24s ease}
 @keyframes entIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.ent-w{background:var(--cd);border-radius:16px;padding:15px 16px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 10px 22px -18px rgba(61,43,31,.26);margin-bottom:12px}
-.ent-w-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--br);margin-bottom:12px}
-.ent-w-tag{margin-left:auto;font-size:11px;font-weight:800;color:var(--acd);background:var(--acl);border-radius:999px;padding:3px 10px}
-.ent-w-health{background:linear-gradient(135deg,#fff 0%,var(--acl) 100%)}
+.ent-w{background:var(--cd);border-radius:18px;padding:16px 17px;box-shadow:0 1px 2px rgba(61,43,31,.04),0 12px 24px -18px rgba(61,43,31,.28);margin-bottom:13px}
+.ent-w-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--br);margin-bottom:13px;letter-spacing:-.01em}
+.ent-w-tag{margin-left:auto;font-size:11px;font-weight:800;color:var(--acd);background:var(--acl);border-radius:999px;padding:3px 11px}
+.ent-w-health{background:linear-gradient(135deg,#fff 0%,var(--acl) 120%)}
+.ent-statusbadge{font-size:12px;font-weight:800;border-radius:999px;padding:4px 13px}
+.ent-statusbadge.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
+.ent-statusbadge.warn{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.ent-statusbadge.muted{background:var(--c-ash,#eee);color:var(--i2)}
+/* health icon tiles */
 .ent-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-.ent-stat{background:var(--cd);border-radius:13px;padding:12px;box-shadow:0 1px 2px rgba(61,43,31,.05)}
-.ent-stat .sv{font-size:20px;font-weight:800;color:var(--br);line-height:1.05}
-.ent-stat .sl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-top:4px}
-.ent-stat.warn .sv{color:var(--acd)}
-.ent-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:860px){.ent-stats{grid-template-columns:repeat(3,1fr)}.ent-wgrid{grid-template-columns:1fr}}
-.ent-prog{margin-bottom:12px}
+.ent-stat{display:flex;align-items:center;gap:10px;background:var(--cd);border-radius:14px;padding:11px 12px;box-shadow:0 1px 2px rgba(61,43,31,.06)}
+.ent-stat .st-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--acl)}
+.ent-stat .st-ic.c-blue{background:#e0f2fe}.ent-stat .st-ic.c-green{background:var(--c-success-bg)}.ent-stat .st-ic.c-amber{background:var(--c-warning-bg)}.ent-stat .st-ic.c-red{background:var(--c-danger-bg)}.ent-stat .st-ic.c-ac{background:var(--acl)}
+.ent-stat .sv{font-size:18px;font-weight:800;color:var(--br);line-height:1.05}
+.ent-stat .sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-top:2px}
+.ent-wgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+@media(max-width:860px){.ent-stats{grid-template-columns:repeat(2,1fr)}.ent-wgrid{grid-template-columns:1fr}}
+/* warranty */
+.ent-prog{margin-bottom:13px}
 .ent-prog-top{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--i2);margin-bottom:6px}
 .ent-progbar{height:10px;border-radius:999px;background:var(--c-ash,#eee);overflow:hidden}
 .ent-progbar i{display:block;height:100%;border-radius:999px;transition:width .5s ease}
 .ent-prog-sub{font-size:11px;color:var(--i3);margin-top:5px}
-.ent-rulebanner{border-radius:11px;padding:10px 12px;font-weight:700;font-size:13px;margin-bottom:10px}
+.ent-rulebanner{border-radius:12px;padding:11px 13px;font-weight:800;font-size:13px;margin-bottom:11px}
 .ent-rulebanner.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
 .ent-rulebanner.warn{background:var(--c-warning-bg);color:var(--c-warning-fg)}
 .ent-rulebanner.muted{background:var(--bg);color:var(--i2)}
-.ent-rulegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.ent-rulegrid>div{background:var(--bg);border-radius:11px;padding:9px 11px}
-.ent-rulegrid span{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-bottom:2px}
-.ent-rulegrid b{font-size:13px;color:var(--br)}
-.ent-bigtotal{position:relative;background:linear-gradient(135deg,var(--br),#5a4231);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:10px}
-.ent-bigtotal.covered{background:linear-gradient(135deg,var(--c-success-strong),#15803d)}
+.ent-covs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ent-cov{border-radius:13px;padding:11px 13px}
+.ent-cov.free{background:var(--c-success-bg);box-shadow:inset 0 0 0 1.5px var(--c-success-strong)}
+.ent-cov.pay{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--ln)}
+.ent-cov .cov-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.ent-cov.free .cov-l{color:var(--c-success-fg)}.ent-cov.pay .cov-l{color:var(--i3)}
+.ent-cov .cov-v{font-size:13px;font-weight:700;color:var(--br)}
+/* invoice */
+.ent-bigtotal{position:relative;background:linear-gradient(135deg,var(--br),#5a4231);color:#fff;border-radius:16px;padding:17px 19px;margin-bottom:11px;box-shadow:0 10px 26px -14px rgba(61,43,31,.5)}
+.ent-bigtotal.covered{background:linear-gradient(135deg,var(--c-success-strong),#15803d);box-shadow:0 10px 26px -14px rgba(22,163,74,.5)}
 .ent-bigtotal .bt-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
-.ent-bigtotal .bt-v{font-size:30px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
-.ent-bigtotal .bt-tag{position:absolute;top:14px;right:16px;font-size:10px;font-weight:800;background:rgba(255,255,255,.2);border-radius:999px;padding:3px 9px;text-transform:uppercase;letter-spacing:.4px}
-.ent-inv-rule{font-size:12.5px;font-weight:700;color:var(--i2);background:var(--bg);border-radius:10px;padding:8px 11px;margin-bottom:8px}
-.ent-inv-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--i3);padding:6px 2px;border-top:1px solid var(--ln)}
-.ent-inv-row b{color:var(--br);font-weight:700;text-align:right}
+.ent-bigtotal .bt-v{font-size:32px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ent-bigtotal .bt-tag{position:absolute;top:15px;right:17px;font-size:10px;font-weight:800;background:rgba(255,255,255,.2);border-radius:999px;padding:4px 10px;text-transform:uppercase;letter-spacing:.4px}
+.ent-inv-rule{font-size:12.5px;font-weight:800;color:var(--i2);background:var(--bg);border-radius:11px;padding:9px 12px;margin-bottom:10px}
+.ent-ichips{display:flex;flex-wrap:wrap;gap:7px}
+.ent-ichip{font-size:12px;font-weight:700;color:var(--i2);background:var(--bg);border-radius:9px;padding:6px 11px}
+/* notes / photos */
 .ent-note{font-size:14px;color:var(--i2);line-height:1.55;font-style:italic;white-space:pre-wrap}
 .ent-photos{display:flex;flex-wrap:wrap;gap:8px}
-.ent-photo{width:78px;height:78px;border-radius:12px;background-size:cover;background-position:center;border:1.5px solid var(--ln);cursor:pointer;transition:transform .15s}
+.ent-photo{width:80px;height:80px;border-radius:13px;background-size:cover;background-position:center;border:1.5px solid var(--ln);cursor:pointer;transition:transform .15s}
 .ent-photo:hover{transform:scale(1.04)}
-.ent-pdf{display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border-radius:10px;background:#fff5f5;color:#b91c1c;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid #fecaca}
-.ent-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
-.ent-actions button{border:none;border-radius:12px;padding:12px 16px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:transform .15s}
-.ent-actions button:hover{transform:translateY(-2px)}
+.ent-pdf{display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border-radius:11px;background:#fff5f5;color:#b91c1c;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid #fecaca}
+/* actions */
+.ent-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:2px}
+.ent-actions button{border:none;border-radius:13px;padding:13px 17px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px -2px rgba(0,0,0,.12);transition:transform .15s,box-shadow .15s}
+.ent-actions button:hover{transform:translateY(-2px);box-shadow:0 6px 14px -4px rgba(0,0,0,.22)}
 .ent-actions .b-done{background:var(--c-success-strong,#16a34a);color:#fff}
 .ent-actions .b-res{background:var(--acl);color:var(--acd);box-shadow:inset 0 0 0 1.5px var(--ac)}
 .ent-actions .b-ai{background:var(--br);color:#fff}
 .ent-actions .b-360{background:var(--acl);color:var(--acd)}
 .ent-actions .b-edit{background:var(--bg);color:var(--i2);box-shadow:inset 0 0 0 1.5px var(--ln)}
-.ent-empty{padding:50px;text-align:center;color:var(--i3);font-size:15px;font-weight:600}
+.ent-empty{padding:54px;text-align:center;color:var(--i3);font-size:15px;font-weight:600}
 body.dark-mode .ent-w-health{background:var(--cd)}
-body.dark-mode .ent-card:hover,body.dark-mode .ent-kpi:hover{box-shadow:0 14px 34px rgba(0,0,0,.55)}
-@media(prefers-reduced-motion:reduce){.ent-card:hover,.ent-kpi:hover,.ent-actions button:hover,.ent-photo:hover{transform:none}.ent-detail-in,#aspenEntView.on{animation:none}}
+body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 38px rgba(0,0,0,.6)}
+@media(prefers-reduced-motion:reduce){.ent-card:hover,.ent-kpi:hover,.ent-actions button:hover,.ent-photo:hover,body.aspen-ent-on .dsum-card:hover{transform:none}.ent-detail-in,#aspenEntView.on{animation:none}}
 </style>
 <style id="aspenDrawerSkin">
 /* Premium skin for the ticket editor modal (openTktDetail). CSS-ONLY, scoped to
@@ -21776,18 +21790,21 @@ function showTicketDetail(p,i){
 <div id="ticketDetail" class="tkt-detail" aria-live="polite"></div>
 <script id="aspenEntScript">
 /* ════════════════════════════════════════════════════════════════════════
-   ASPEN — DAILY "ENTERPRISE" DASHBOARD  (Monday/Linear/Stripe-style)  v3
-   ADDITIVE · OPT-IN. Nothing existing is modified — rndrA + all logic stay
-   byte-identical; this only wraps rndrA at runtime to keep the view in sync.
-   v3 = premium card dashboard (no tables/forms): large colorful KPI cards,
-   grouped ticket CARDS, and rich widget cards on expand (Customer Health,
-   Warranty Center with progress, Invoice). Real data/functions reused:
-   pool = rndrA's selection; markDone/markResched; openReportModal (AI · Copy
-   for QB); open360ByName; openTktDetail; _billingFor (charge rules; full=$0);
-   _svcWarranty/_svcUntilStr; _parseSpaDescription (real "Since" = delivery);
-   _porCobrarData (open balance); _custGroupKey (aggregates); t.total/t.media/
-   t.notes/_visitMins/fmtTime. In Enterprise mode it hides the native daily
-   KPI strip + filter chips so there is a single, clean dashboard header.
+   ASPEN — DAILY "ENTERPRISE" DASHBOARD  v4   ADDITIVE · OPT-IN
+   Premium SaaS dashboard beside Alberto's board. Nothing existing is modified
+   (rndrA + all logic byte-identical; only wrapped at runtime). v4:
+   • NO own KPI row — REUSES Alberto's native KPI cards (#dailySummary .dsum-card,
+     Open/Urgent/Repeats/Pending QB/Full 100%/Part 50%/No Warr — clickable real
+     filters), premium-restyled in Enterprise only. Zero duplication.
+   • In Enterprise it hides redundant chrome (welcome KPIs/greeting/collections,
+     the filter pills #dailyFilters, the receivable bar #pcDailyBar) for ONE
+     clean header.
+   • Premium ticket CARDS + rich, visual detail widgets (Customer Health icon
+     tiles, Warranty Center coverage badges + progress, Invoice big total + chips).
+   Real data/functions reused: pool = rndrA's selection; _warSeg; markDone/
+   markResched; openReportModal (AI · Copy for QB); open360ByName; openTktDetail;
+   _billingFor (charge; full=$0); _svcWarranty/_svcUntilStr; _parseSpaDescription
+   (real "Since"=delivery); _porCobrarData; _custGroupKey; _dailyRail.
    Delete this <script> + <style id="aspenEntStyle"> to fully revert.
    ════════════════════════════════════════════════════════════════════════ */
 (function(){
@@ -21804,6 +21821,7 @@ function showTicketDetail(p,i){
   function jsq(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
   function av(n,sz){try{return (typeof _avatarHTML==="function")?_avatarHTML(n,sz||22):"";}catch(e){return "";}}
   function rail(t){try{return (typeof _dailyRail==="function")?_dailyRail(t):"var(--ac)";}catch(e){return "var(--ac)";}}
+  function warSeg(t){try{if(typeof _warSeg==="function"){var s=_warSeg(t);return s==="partial"?"part":s;}}catch(e){}var w=(t&&t.warranty)||{};if(w.has===false)return "none";return w.has===true?"full":"none";}
   var SWD=(typeof SERVICE_WARRANTY_DAYS!=="undefined")?SERVICE_WARRANTY_DAYS:90;
   var VLABEL={1:"1st visit",2:"2nd · labor",3:"CM",4:"Repeat",5:"Delivery",6:"Spa Move"};
 
@@ -21820,24 +21838,13 @@ function showTicketDetail(p,i){
     return out;
   }
 
-  function classifyWarr(t){
-    var w=(t&&t.warranty)||{};
-    if(w.has===false)return "none";
-    var b=null;try{if(typeof _billingFor==="function")b=_billingFor(t);}catch(e){}
-    if(b){ if(b.partsFree&&b.laborFree)return "full"; if(b.partsFree||/50%/.test(b.parts||"")||/TC only/i.test(b.labor||""))return "part"; }
-    if(w.has===true){ var real=true;try{if(typeof _spaUnderWarranty==="function")real=_spaUnderWarranty(t);}catch(e){} return real?"full":"none"; }
-    return "other";
-  }
-
-  // Charge that respects warranty rules: full coverage → $0, else stored total.
   function chargeFor(t){
     var stored=Number(t.total)||0,b=null;
     try{if(typeof _billingFor==="function")b=_billingFor(t);}catch(e){}
-    if(b&&b.partsFree&&b.laborFree)return {amount:0,covered:true,rule:b.bottom||"Full warranty — no charge"};
-    return {amount:stored,covered:false,rule:(b&&b.bottom)||""};
+    if(b&&b.partsFree&&b.laborFree)return {amount:0,covered:true,rule:b.bottom||"Full warranty — no charge",b:b};
+    return {amount:stored,covered:false,rule:(b&&b.bottom)||"",b:b};
   }
 
-  // Per-customer aggregates (active+done by household key) — matches Customer 360.
   function aggAll(){
     var map={},all=[],seen={};
     try{all=(Array.isArray(active)?active:[]).concat(Array.isArray(done)?done:[]);}catch(e){all=[];}
@@ -21845,20 +21852,18 @@ function showTicketDetail(p,i){
       if(!t)return; if(t.id&&seen[t.id])return; if(t.id)seen[t.id]=1;
       if(t.source==="dispatch")return;
       var k=key(t.customer); if(!k)return;
-      var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},warr:"",openBal:0,spaDesc:""});
+      var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},openBal:0,spaDesc:""});
       m.visits++;
       if(Number(t.visitNum)===4)m.repeats++;
       if((t.status==="complete"||t.status==="done"))m.lifetime+=Number(t.total)||0;
       if(t.date&&(!m.since||t.date<m.since))m.since=t.date;
       var tech=(t.techs&&t.techs[0])||""; if(tech)m.techs[tech]=(m.techs[tech]||0)+1;
-      if(t.warranty&&t.warranty.label&&!m.warr)m.warr=t.warranty.label;
       if(t.spaDesc&&t.spaDesc.length>(m.spaDesc||"").length)m.spaDesc=t.spaDesc;
     });
-    try{var pc=_porCobrarData();(pc.items||[]).forEach(function(it){var k=key(it.customer);if(!k)return;var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},warr:"",openBal:0,spaDesc:""});m.openBal+=Number(it.saldo)||0;});}catch(e){}
+    try{var pc=_porCobrarData();(pc.items||[]).forEach(function(it){var k=key(it.customer);if(!k)return;var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},openBal:0,spaDesc:""});m.openBal+=Number(it.saldo)||0;});}catch(e){}
     return map;
   }
   function prefTech(m){var best="",n=-1;for(var k in (m.techs||{})){if(m.techs[k]>n){n=m.techs[k];best=k;}}return best||"\u2014";}
-  // Real "Since" = delivery year from spa description (matches customer info), else first service year.
   function sinceOf(m){
     try{
       if(m.spaDesc&&typeof _parseSpaDescription==="function"){
@@ -21870,37 +21875,35 @@ function showTicketDetail(p,i){
   }
 
   function qbPill(t){
-    if(t.status==="reschedule")return '<span class="ent-pill res">Reschedule</span>';
-    if(t.qbCopied)return '<span class="ent-pill done">In QuickBooks \u2713</span>';
-    return '<span class="ent-pill pend">Pending QB</span>';
+    if(t.status==="reschedule")return '<span class="ent-pill res">\u21BB Reschedule</span>';
+    if(t.qbCopied)return '<span class="ent-pill done">\u2713 In QuickBooks</span>';
+    return '<span class="ent-pill pend">\u25CB Pending QB</span>';
   }
   function warrChips(t){
     var w=(t&&t.warranty)||{},chips="";
-    chips+=w.label?'<span class="ent-chip warr">'+esc2(w.label)+'</span>':'<span class="ent-chip">N/W</span>';
+    chips+=w.label?'<span class="ent-chip warr">\uD83D\uDEE1\uFE0F '+esc2(w.label)+'</span>':'<span class="ent-chip">\uD83D\uDCB2 N/W</span>';
     try{if(typeof _svcWarrantyBadge==="function"){var s=_svcWarrantyBadge(t);if(s)chips+=s;}}catch(e){}
     try{if(typeof _part90Badge==="function"){var p=_part90Badge(t);if(p)chips+=p;}}catch(e){}
     return chips;
   }
 
-  /* ─── rich detail widget cards (premium, not forms) ─── */
+  /* ─── rich, visual detail widgets ─── */
   function healthCard(t){
     var m=aggAll()[key(t.customer)]||{visits:0,repeats:0,lifetime:0,since:"",openBal:0,techs:{},spaDesc:""};
-    function tile(ic,v,l,cls){return '<div class="ent-stat '+(cls||"")+'"><div class="sv">'+v+'</div><div class="sl">'+ic+' '+l+'</div></div>';}
+    function tile(ic,v,l,cls){return '<div class="ent-stat"><div class="st-ic '+(cls||"")+'">'+ic+'</div><div class="st-tx"><div class="sv">'+v+'</div><div class="sl">'+l+'</div></div></div>';}
     return '<div class="ent-w ent-w-health"><div class="ent-w-h">\uD83D\uDCC7 '+esc2(t.customer)+'<span class="ent-w-tag">Customer Health</span></div><div class="ent-stats">'
-      + tile("\uD83D\uDCC5",sinceOf(m),"Since")
-      + tile("\uD83D\uDCB0",money0(m.lifetime),"Lifetime")
-      + tile("\uD83D\uDD01",m.visits||0,"Visits")
-      + tile("\u21A9\uFE0F",m.repeats||0,"Repeats")
-      + tile("\uD83D\uDC77",esc2(prefTech(m)),"Pref. Tech")
-      + tile("\uD83E\uDDFE",money0(m.openBal||0),"Open Bal",(m.openBal>0?"warn":""))
+      + tile("\uD83D\uDCC5",sinceOf(m),"Since","c-blue")
+      + tile("\uD83D\uDCB0",money0(m.lifetime),"Lifetime","c-green")
+      + tile("\uD83D\uDD01",m.visits||0,"Visits","c-ac")
+      + tile("\u21A9\uFE0F",m.repeats||0,"Repeats","c-amber")
+      + tile("\uD83D\uDC77",esc2(prefTech(m)),"Pref. Tech","c-ac")
+      + tile("\uD83E\uDDFE",money0(m.openBal||0),"Open Bal",(m.openBal>0?"c-red":"c-green"))
       + '</div></div>';
   }
   function warrantyCard(t){
-    var w=(t&&t.warranty)||{},b=null,sw=null;
-    try{if(typeof _billingFor==="function")b=_billingFor(t);}catch(e){}
+    var w=(t&&t.warranty)||{},c=chargeFor(t),b=c.b,sw=null;
     try{if(typeof _svcWarranty==="function")sw=_svcWarranty(t.date);}catch(e){}
-    var cls=classifyWarr(t);
-    var tone=cls==="full"?"ok":cls==="part"?"warn":"muted";
+    var seg=warSeg(t),tone=seg==="full"?"ok":seg==="part"?"warn":"muted";
     var lbl=w.label||((w.has===false)?"No warranty":"\u2014");
     var ring="";
     if(sw){
@@ -21911,20 +21914,25 @@ function showTicketDetail(p,i){
         +'<div class="ent-progbar"><i style="width:'+(sw.daysLeft>=0?pct:0)+'%;background:'+col+'"></i></div>'
         +(until?'<div class="ent-prog-sub">Covered callbacks until '+esc2(until)+'</div>':'')+'</div>';
     }
-    var rule=b?('<div class="ent-rulebanner '+tone+'">'+esc2(b.bottom||"")+'</div>'
-        +'<div class="ent-rulegrid"><div><span>Parts</span><b>'+esc2(b.parts)+'</b></div><div><span>Labor</span><b>'+esc2(b.labor)+'</b></div></div>'):"";
-    return '<div class="ent-w"><div class="ent-w-h">\uD83D\uDEE1\uFE0F Warranty Center<span class="ent-pill '+(tone==="ok"?"done":tone==="warn"?"pend":"res")+'" style="margin-left:auto">'+esc2(lbl)+'</span></div>'
-      + ring + rule + '</div>';
+    function covB(label,val,free){return '<div class="ent-cov '+(free?"free":"pay")+'"><div class="cov-l">'+(free?"\u2713 ":"\u2022 ")+label+'</div><div class="cov-v">'+val+'</div></div>';}
+    var cov=b?('<div class="ent-covs">'+covB("Parts",esc2(b.parts),b.partsFree)+covB("Labor",esc2(b.labor),b.laborFree)+'</div>'):"";
+    var banner=b&&b.bottom?'<div class="ent-rulebanner '+tone+'">'+esc2(b.bottom)+'</div>':"";
+    return '<div class="ent-w"><div class="ent-w-h">\uD83D\uDEE1\uFE0F Warranty Center<span class="ent-statusbadge '+(tone==="ok"?"ok":tone==="warn"?"warn":"muted")+'" style="margin-left:auto">'+esc2(lbl)+'</span></div>'
+      + ring + banner + cov + '</div>';
   }
   function invoiceCard(t){
     var c=chargeFor(t),mins=0;
     try{if(typeof _visitMins==="function")mins=_visitMins(t.arrival,t.departure)||0;}catch(e){}
     var tos=(mins&&typeof fmtTime==="function")?fmtTime(mins):"";
+    var chips='<div class="ent-ichips">'
+      + (tos?'<span class="ent-ichip">\u23F1 '+esc2(tos)+'</span>':'')
+      + ((t.arrival&&t.departure)?'<span class="ent-ichip">\uD83D\uDCCD '+esc2(t.arrival)+'\u2013'+esc2(t.departure)+'</span>':'')
+      + (t.workTypes||[]).map(function(x){return '<span class="ent-ichip">\uD83D\uDD27 '+esc2(x)+'</span>';}).join("")
+      + '</div>';
     return '<div class="ent-w"><div class="ent-w-h">\uD83E\uDDFE Invoice</div>'
-      + '<div class="ent-bigtotal '+(c.covered?"covered":"")+'"><div class="bt-l">Service Total</div><div class="bt-v">'+(c.covered?"$0":money(c.amount))+'</div>'+(c.covered?'<div class="bt-tag">Covered by warranty</div>':'')+'</div>'
+      + '<div class="ent-bigtotal '+(c.covered?"covered":"")+'"><div class="bt-l">Service Total</div><div class="bt-v">'+(c.covered?"$0":money(c.amount))+'</div>'+(c.covered?'<div class="bt-tag">Covered \u00b7 warranty</div>':'')+'</div>'
       + (c.rule?'<div class="ent-inv-rule">'+esc2(c.rule)+'</div>':'')
-      + (tos?'<div class="ent-inv-row">\u23F1 Time on site<b>'+esc2(tos)+((t.arrival&&t.departure)?" ("+esc2(t.arrival)+"\u2013"+esc2(t.departure)+")":"")+'</b></div>':'')
-      + ((t.workTypes||[]).length?'<div class="ent-inv-row">\uD83D\uDD27 Work<b>'+esc2(t.workTypes.join(", "))+'</b></div>':'')
+      + chips
       + '</div>';
   }
   function notesCard(t){
@@ -21962,12 +21970,11 @@ function showTicketDetail(p,i){
     return '<div class="ent-detail-in">'
       + healthCard(t)
       + '<div class="ent-wgrid">'+warrantyCard(t)+invoiceCard(t)+'</div>'
-      + '<div class="ent-wgrid">'+(notesCard(t)||'')+(photosCard(t)||'')+'</div>'
+      + ((notesCard(t)||photosCard(t))?'<div class="ent-wgrid">'+(notesCard(t)||'<div></div>')+(photosCard(t)||'<div></div>')+'</div>':'')
       + actionsRow(t)
       + '</div>';
   }
 
-  /* ─── ticket CARD (not a table row) ─── */
   function ticketCard(t){
     var id=jsq(t.id),c=chargeFor(t);
     var chargeHTML=c.covered?'<div class="tc-charge cov">$0<span>covered</span></div>'
@@ -21998,24 +22005,6 @@ function showTicketDetail(p,i){
     }catch(e){console.warn("[ent expand]",e);}
   };
 
-  /* ─── KPI cards (large, premium, single row — native strip hidden in Ent) ─── */
-  function kpiCards(P){
-    var urgent=P.filter(function(t){return t.isUrgent;}).length;
-    var repeats=P.filter(function(t){return Number(t.visitNum)===4;}).length;
-    var pend=P.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
-    var full=0,part=0,none=0;
-    P.forEach(function(t){var c=classifyWarr(t);if(c==="full")full++;else if(c==="part")part++;else if(c==="none")none++;});
-    function card(ic,v,l,cls,oc){return '<div class="ent-kpi '+(cls||"")+'"'+(oc?' style="cursor:pointer" onclick="'+oc+'"':'')+'><div class="k-ic">'+ic+'</div><div class="k-v">'+v+'</div><div class="k-l">'+l+'</div></div>';}
-    return '<div class="ent-kpis">'
-      + card("\uD83D\uDCCB",P.length,"Open Tickets","k-br","try{_dailySetFilter('all')}catch(e){}")
-      + card("\uD83D\uDD25",urgent,"Urgent","k-red")
-      + card("\u21A9\uFE0F",repeats,"Repeats","k-blue")
-      + card("\uD83D\uDCB5",pend,"Pending QB","k-amber","try{_dailySetFilter('qbpending')}catch(e){}")
-      + card("\uD83D\uDEE1\uFE0F",full,"Full warranty","k-green")
-      + card("\u00BD",part,"Partial","k-orange")
-      + card("\uD83D\uDCB2",none,"No warranty","k-gray")
-      + '</div>';
-  }
   function grpSeg(){
     var g=grpMode();
     function s(m,l){return '<button class="'+(g===m?"on":"")+'" type="button" onclick="aspenEntGroupSet(\''+m+'\')">'+l+'</button>';}
@@ -22023,7 +22012,7 @@ function showTicketDetail(p,i){
   }
   function grpKey(t,g){
     if(g==="status")return t.status==="reschedule"?"Reschedule":"Submitted";
-    if(g==="warranty"){var c=classifyWarr(t);return c==="full"?"Full warranty":c==="part"?"Partial warranty":c==="none"?"No warranty":"Unspecified";}
+    if(g==="warranty"){var c=warSeg(t);return c==="full"?"Full warranty":c==="part"?"Partial warranty":c==="none"?"No warranty":"Unspecified";}
     return (t.techs&&t.techs.length)?t.techs[0]:"Unassigned";
   }
   function grpOrder(names,g){
@@ -22032,7 +22021,7 @@ function showTicketDetail(p,i){
     return names.sort(function(a,b){if(a==="Unassigned")return 1;if(b==="Unassigned")return -1;return a.localeCompare(b);});
   }
   function grpDot(g,nm){
-    if(g==="tech")return nm==="Unassigned"?'':('<span class="ent-gav">'+av(nm,28)+'</span>');
+    if(g==="tech")return nm==="Unassigned"?'<span class="ent-gdot" style="background:var(--i3)"></span>':('<span class="ent-gav">'+av(nm,30)+'</span>');
     var c=/Full/.test(nm)?"var(--c-success-strong)":/Partial/.test(nm)?"var(--c-warning-strong)":/Submitted/.test(nm)?"var(--ac)":/Reschedule/.test(nm)?"var(--c-warning-strong)":"var(--i3)";
     return '<span class="ent-gdot" style="background:'+c+'"></span>';
   }
@@ -22040,8 +22029,7 @@ function showTicketDetail(p,i){
   function render(){
     var host=$("aspenEntView"); if(!host)return;
     var P=pool(),g=grpMode();
-    var top=kpiCards(P)+grpSeg();
-    if(!P.length){host.innerHTML=top+'<div class="ent-empty">\u2728 No tickets match this view.</div>';return;}
+    if(!P.length){host.innerHTML=grpSeg()+'<div class="ent-empty">\u2728 No tickets match this view.</div>';return;}
     var by={};P.forEach(function(t){var k=grpKey(t,g);(by[k]||(by[k]=[])).push(t);});
     var names=grpOrder(Object.keys(by),g);
     var body="";
@@ -22053,10 +22041,9 @@ function showTicketDetail(p,i){
         +'<span class="ent-gspace"></span><span class="ent-gsum">'+money(sum)+'</span>'+(pend?'<span class="ent-gpend">'+pend+' pending QB</span>':'')+'</div>'
         +'<div class="ent-cards">'+items.map(ticketCard).join("")+'</div></div>';
     });
-    host.innerHTML=top+body;
+    host.innerHTML=grpSeg()+body;
   }
 
-  /* ─── collapsible "Today's Collections" navy box (kept) ─── */
   function collapseColl(){
     try{
       var scope=$("pg1"); if(!scope)return;
@@ -22071,7 +22058,7 @@ function showTicketDetail(p,i){
       bar.innerHTML='\uD83D\uDCB0 <b>Today\u2019s Collections</b>'+(mAmt?' \u00b7 '+mAmt[0]+' outstanding':'')+'<span class="cc-x">'+(collapsed?'\u25B8 show':'\u25BE hide')+'</span>';
       bar.onclick=function(e){e.stopPropagation();var c=(localStorage.getItem("aspenCollColl")||"1")==="1";try{localStorage.setItem("aspenCollColl",c?"0":"1");}catch(_e){}collapseColl();};
       box.style.display=collapsed?"none":"";
-    }catch(e){console.warn("[collColl]",e);}
+    }catch(e){}
   }
 
   function ensureDom(){
@@ -22093,6 +22080,7 @@ function showTicketDetail(p,i){
   function sync(){
     ensureDom();
     var on=entMode();
+    try{document.body.classList.toggle("aspen-ent-on",on);}catch(e){}
     var split=$("ticketsSplit"),view=$("aspenEntView");
     var flt=$("dailyFilters"),pcb=$("pcDailyBar"),wk=$("welcomeKPIs");
     var bB=$("entSegBoard"),bE=$("entSegEnt");
@@ -22100,9 +22088,10 @@ function showTicketDetail(p,i){
     if(bE)bE.classList.toggle("on",on);
     if(view)view.classList.toggle("on",on);
     if(split)split.style.display=on?"none":"";
-    if(flt)flt.style.display=on?"none":"";      // chips are redundant with KPI cards
-    if(pcb)pcb.style.display=on?"none":"";
-    if(wk)wk.style.display=on?"none":"";          // hide native KPI strip → single clean header
+    if(flt)flt.style.display=on?"none":"";          // redundant filter pills
+    if(pcb)pcb.style.display=on?"none":"";           // receivable bar
+    if(wk)wk.style.display=on?"none":"";              // greeting + collections + sparklines → clean single header
+    // NOTE: #dailySummary (native .dsum-card KPI cards) is intentionally KEPT — it IS the KPI row (premium-restyled in CSS). No duplicate KPI row is rendered.
     collapseColl();
     if(on)render();
   }
