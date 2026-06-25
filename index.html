@@ -2372,126 +2372,10 @@ body:not(.theme-ember) #pg1 .tkt:hover{
   .cust-page .qb-cust-stat:hover,.cust-page .qb-cust-btn:hover{transform:none}
 }
 </style>
-<style id="aspenDrawerSkin">
-/* ─────────────────────────────────────────────────────────────────────────
-   Aspen — Enterprise drawer skin.  CSS-ONLY · scoped to #tktDetailBg.
-   No markup, IDs, functions, events, or logic are touched anywhere.
-   Mirrors the "Daily enterprise" prototype: fewer hard borders, soft
-   shadows, calmer card hierarchy, gentle open animation.  Theme-token safe
-   (light / dark / ember / lux).  Delete this <style> block to fully revert.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* Floatier modal shell */
-#tktDetailBg .modal{box-shadow:var(--sh-lg)}
-
-/* Section cards: drop the hard 1px border, lift with a soft shadow instead.
-   This is the main visual upgrade — every .dt-sec becomes an elevated card. */
-#tktDetailBg .dt-sec{
-  border:none;
-  box-shadow:var(--sh-sm);
-  border-radius:18px;
-  padding:16px 17px;
-  margin-bottom:14px;
-}
-body.dark-mode #tktDetailBg .dt-sec{box-shadow:0 1px 2px rgba(0,0,0,.32),0 8px 22px rgba(0,0,0,.38)}
-
-/* Eyebrow header: a hairline divider gives the card a clear top concept */
-#tktDetailBg .dt-sec-t{
-  color:var(--i2);
-  padding-bottom:10px;
-  margin-bottom:12px;
-  border-bottom:1px solid var(--ln);
-}
-
-/* Contact rows: soft hairline separators instead of cramped, weightless rows */
-#tktDetailBg .tp-row{padding:9px 0;border-top:1px solid var(--ln)}
-#tktDetailBg .tp-row:first-child{border-top:none}
-
-/* Notes / textareas: replace the 1.5px outline with an inset hairline;
-   copper inset on focus (keeps the affordance, loses the hard border) */
-#tktDetailBg .notes{
-  border:none;
-  border-radius:14px;
-  box-shadow:inset 0 0 0 1px var(--ln),var(--sh-xs);
-}
-#tktDetailBg .notes:focus{box-shadow:inset 0 0 0 1.5px var(--ac),var(--sh-xs)}
-
-/* Chips lighter, pills get a soft lift */
-#tktDetailBg .dt-chip{border-width:1px}
-#tktDetailBg .pill{box-shadow:var(--sh-xs)}
-
-/* Actions: swap the heavy 2px top divider for a hairline + breathing room */
-#tktDetailBg #tktDetailActionsWrap{
-  border-top:1px solid var(--ln)!important;
-  margin-top:20px!important;
-  padding-top:18px!important;
-}
-#tktDetailBg #tktDetailActions button,
-#tktDetailBg #tktDetailActions a{border-radius:12px}
-
-/* Micro-animation: gentle fade + rise on the section cards when the drawer opens */
-@keyframes aspenDtIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-#tktDetailBg.open .dt-sec{animation:aspenDtIn .26s cubic-bezier(.4,0,.2,1) both}
-@media(prefers-reduced-motion:reduce){#tktDetailBg.open .dt-sec{animation:none}}
-</style>
-<style id="aspenDailyEnterprise">
-/* ─────────────────────────────────────────────────────────────────────────
-   Aspen — Daily board ENTERPRISE skin.  CSS-ONLY · scoped to #pg1 · non-Ember.
-   Layers ON TOP of Alberto's aspenDailyPolish (HIS block is left untouched).
-   Pushes the board to the "Daily enterprise" prototype look: borderless,
-   soft-elevated cards, bigger radius, warm shadows, hairline separators.
-   No markup, IDs, functions, events, data-attrs or logic touched.
-   Delete this <style> block to fully revert.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* More air between columns + below cards */
-body:not(.theme-ember) #pg1 .tech-cols{gap:16px}
-body:not(.theme-ember) #pg1 .tkt{margin-bottom:16px}
-
-/* Columns: drop the hard border, warmer lift, rounder */
-body:not(.theme-ember) #pg1 .tech-col{
-  border:none;
-  border-radius:18px;
-  padding:0 14px 16px;
-  box-shadow:0 1px 2px rgba(60,43,31,.05),0 18px 40px -24px rgba(60,43,31,.30);
-}
-body:not(.theme-ember) #pg1 .tech-col:hover{
-  box-shadow:0 2px 6px rgba(60,43,31,.07),0 26px 54px -26px rgba(60,43,31,.40);
-}
-/* keep Alberto's colored top accent bar, just match the new radius + a touch taller */
-body:not(.theme-ember) #pg1 .tech-col::before{border-radius:18px 18px 0 0;height:4px}
-body:not(.theme-ember) #pg1 .tech-col-hdr{border-radius:18px 18px 0 0}
-
-/* Ticket cards: borderless, soft warm shadow, rounder */
-body:not(.theme-ember) #pg1 .tkt{
-  border:none;
-  border-radius:16px;
-  box-shadow:0 1px 2px rgba(60,43,31,.05),0 10px 24px -16px rgba(60,43,31,.28);
-}
-body:not(.theme-ember) #pg1 .tkt:hover{
-  transform:translateY(-2px);
-  box-shadow:0 2px 6px rgba(60,43,31,.07),0 18px 40px -18px rgba(60,43,31,.36);
-}
-/* Pending-QB flag: keep the signal as a soft copper left accent, not a hard box border */
-body:not(.theme-ember) #pg1 .tkt.qb-pending{
-  box-shadow:inset 3px 0 0 var(--c-warning-strong),0 1px 2px rgba(60,43,31,.05),0 10px 24px -16px rgba(60,43,31,.28);
-}
-
-/* Inner warranty box: lose the border, keep a soft filled chip */
-body:not(.theme-ember) #pg1 .tt-cov{border:none}
-/* Repeat / meta divider: dashed → soft hairline */
-body:not(.theme-ember) #pg1 .tt-meta{border-top:1px solid var(--ln)}
-
-/* Dark mode: shadows that actually read on a dark background */
-body.dark-mode:not(.theme-ember) #pg1 .tech-col,
-body.dark-mode:not(.theme-ember) #pg1 .tkt{box-shadow:0 1px 2px rgba(0,0,0,.35),0 14px 32px -18px rgba(0,0,0,.55)}
-body.dark-mode:not(.theme-ember) #pg1 .tkt.qb-pending{box-shadow:inset 3px 0 0 var(--c-warning-strong),0 1px 2px rgba(0,0,0,.35),0 14px 32px -18px rgba(0,0,0,.55)}
-
-@media(prefers-reduced-motion:reduce){body:not(.theme-ember) #pg1 .tkt:hover{transform:none}}
-</style>
 <style id="aspenEntStyle">
-/* Aspen — Daily "Enterprise" view (Monday-style). ADDITIVE · scoped to #aspenEntView.
-   Pairs with <script id="aspenEntScript">. Delete both to fully revert. */
+/* Aspen — Daily "Enterprise" view (Monday-style). ADDITIVE · scoped to #aspenEntView
+   + a few injected helpers (toolbar, collapsible collections). Pairs with
+   <script id="aspenEntScript">. Delete both blocks to fully revert. */
 #aspenEntView{display:none;margin-top:2px}
 #aspenEntView.on{display:block;animation:entFade .2s ease}
 @keyframes entFade{from{opacity:0}to{opacity:1}}
@@ -2537,14 +2421,50 @@ body.dark-mode .ent-health{background:var(--cd)}
 .ent-hs{background:var(--cd);border-radius:12px;padding:11px 12px;box-shadow:var(--sh-xs)}
 .ent-hs .v{font-weight:800;font-size:var(--fs-lg);color:var(--br);line-height:1.05}
 .ent-hs .l{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-top:3px}
-.ent-hs .v.warr{color:var(--c-success-strong)}.ent-hs .v.bal{color:var(--acd)}
-.ent-acts{display:flex;gap:8px;flex-wrap:wrap}
+.ent-hs .v.bal{color:var(--acd)}
+.ent-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .ent-acts button{border:none;border-radius:10px;padding:10px 15px;font-weight:700;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-.ent-acts .open{background:var(--br);color:#fff}
-.ent-acts .c360{background:var(--acl);color:var(--acd)}
 .ent-empty{padding:40px;text-align:center;color:var(--i3)}
-@media(max-width:980px){.ent-hg{grid-template-columns:repeat(3,1fr)}}
 @media(prefers-reduced-motion:reduce){.ent-detail.open,#aspenEntView.on{animation:none}}
+/* ─── v2: KPI row · group-by · rich detail · collapsible collections ─── */
+.ent-kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:0 0 12px}
+.ent-kpi{background:var(--cd);border-radius:14px;padding:11px 12px;box-shadow:var(--sh-xs);border:1px solid var(--ln)}
+.ent-kpi .kv{font-weight:800;font-size:var(--fs-xl);color:var(--br);line-height:1}
+.ent-kpi .kl{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--i3);margin-top:4px}
+.ent-kpi.u .kv{color:var(--c-danger-strong)}.ent-kpi.p .kv{color:var(--c-warning-fg)}
+.ent-kpi.g .kv{color:var(--c-success-strong)}.ent-kpi.y .kv{color:var(--acd)}.ent-kpi.n .kv{color:var(--i2)}
+.ent-kpi[style*=pointer]:hover{box-shadow:var(--sh-sm);border-color:var(--ac)}
+.ent-grpseg{display:flex;align-items:center;gap:6px;margin:0 0 12px;flex-wrap:wrap}
+.ent-grpseg .lbl{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--i3);margin-right:2px}
+.ent-grpseg button{border:1px solid var(--ln);background:var(--cd);color:var(--i2);font-weight:700;font-size:var(--fs-sm);padding:6px 13px;border-radius:9px;cursor:pointer;font-family:inherit}
+.ent-grpseg button.on{background:var(--acl);border-color:var(--ac);color:var(--acd)}
+.ent-colltoggle{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;border-radius:12px;padding:9px 14px;margin-bottom:14px;cursor:pointer;font-size:var(--fs-sm);font-weight:700;box-shadow:0 3px 10px rgba(15,23,42,.16)}
+.ent-colltoggle .cc-x{margin-left:auto;font-size:var(--fs-xs);background:rgba(255,255,255,.16);padding:3px 10px;border-radius:999px;font-weight:700}
+.ent-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:980px){.ent-hg{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:820px){.ent-cols{grid-template-columns:1fr}.ent-kpis{grid-template-columns:repeat(4,1fr)}}
+.ent-sec{background:var(--cd);border-radius:14px;padding:12px 14px;box-shadow:var(--sh-xs);margin-bottom:12px}
+.ent-sec-t{font-weight:800;font-size:var(--fs-sm);color:var(--br);margin-bottom:9px;text-transform:uppercase;letter-spacing:.3px}
+.ent-warrline{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-sm);padding:5px 0;border-bottom:1px solid var(--ln)}
+.ent-warrline:last-child{border-bottom:none}
+.ent-warrline .ent-k{color:var(--i3);font-weight:600;white-space:nowrap}
+.ent-billbottom{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--c-success-bg);color:var(--c-success-fg);font-weight:700;font-size:var(--fs-sm)}
+.ent-billbottom.rda,.ent-billbottom.half{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.ent-svcw{margin-top:10px}
+.ent-svcw-h{display:flex;justify-content:space-between;font-size:var(--fs-xs);font-weight:700;color:var(--i3);margin-bottom:5px}
+.ent-bar{height:8px;border-radius:999px;background:var(--c-ash,#eee);overflow:hidden}
+.ent-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--acd));border-radius:999px}
+.ent-invtotal{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid var(--ln);font-weight:800;font-size:var(--fs-lg);color:var(--br)}
+.ent-notes{font-size:var(--fs-md);color:var(--i2);line-height:1.5;font-style:italic;white-space:pre-wrap}
+.ent-photos{display:flex;flex-wrap:wrap;gap:8px}
+.ent-photo{width:74px;height:74px;border-radius:10px;background-size:cover;background-position:center;border:1.5px solid var(--ln);cursor:pointer}
+.ent-pdf{display:inline-flex;align-items:center;gap:4px;padding:8px 10px;border-radius:8px;background:#fff5f5;color:#b91c1c;font-size:var(--fs-sm);font-weight:700;text-decoration:none;border:1.5px solid #fecaca}
+.ent-acts .a-done{background:var(--c-success-strong,#16a34a);color:#fff}
+.ent-acts .a-res{background:var(--acl);color:var(--acd);border:1.5px solid var(--ac)!important}
+.ent-acts .a-ai{background:var(--br);color:#fff}
+.ent-acts .a-360{background:var(--acl);color:var(--acd)}
+.ent-acts .a-edit{background:#f5f5f0;color:var(--i2);border:1.5px solid var(--ln)!important}
+body.dark-mode .ent-kpi,body.dark-mode .ent-sec,body.dark-mode .ent-grpseg button{background:var(--cd)}
 </style>
 </head>
 <body>
@@ -21811,30 +21731,36 @@ function showTicketDetail(p,i){
 <div id="ticketDetail" class="tkt-detail" aria-live="polite"></div>
 <script id="aspenEntScript">
 /* ════════════════════════════════════════════════════════════════════════
-   ASPEN — DAILY "ENTERPRISE" VIEW  (Monday.com-style)   ADDITIVE · OPT-IN
-   100% additive. Adds a NEW optional view next to Alberto's board (rndrA),
-   reusing the SAME data + functions. Nothing existing is modified:
-     • Same ticket pool as rndrA (active complete/reschedule, search,
-       _applyDailyFilter, tech-role filter, group by techs[0]).
-     • Real fields only — t.visitNum, t.warranty, t.qbCopied, t.total,
-       _svcWarrantyBadge/_part90Badge, _porCobrarData (open balance),
-       _custGroupKey (aggregates), openTktDetail / open360ByName (actions).
-   A segmented toggle (Board | Enterprise) switches views; choice persists.
-   Delete this <script id="aspenEntScript"> + the <style id="aspenEntStyle">
-   to fully revert. No rating/preferred-tech fabricated (pref tech derived
-   from history; rating omitted — not in schema).
+   ASPEN — DAILY "ENTERPRISE" VIEW  (Monday.com-style)   ADDITIVE · OPT-IN  v2
+   100% additive. New optional view beside Alberto's board (rndrA), reusing the
+   SAME data + functions. Nothing existing is modified. v2 adds:
+     • KPI cards row (Open / Urgent / Repeats / Pending QB / Full / Part / NoW)
+     • Group-by segmented: Technician · Status · Warranty
+     • Rich inline row detail (real data + real actions): Customer Health,
+       Warranty Center (_billingFor + _svcWarranty), Invoice/Service Total
+       (_visitMins/fmtTime + t.total), Technician Notes, Photo Center (t.media
+       → previewAttachment), Actions → markDone / markResched / openReportModal
+       (AI Report · Copy for QB) / open360ByName / openTktDetail (full editor).
+     • Collapsible navy "Today's Collections" box (declutter, persisted).
+     • Hides the filter-chip bar (#dailyFilters) in Enterprise mode.
+   No data fabricated: charge=real t.total ("—" if absent), pref-tech derived,
+   AI Report opens the REAL report modal. Delete this <script id="aspenEntScript">
+   + <style id="aspenEntStyle"> to fully revert.
    ════════════════════════════════════════════════════════════════════════ */
 (function(){
   "use strict";
   function $(id){return document.getElementById(id);}
   function entMode(){try{return localStorage.getItem("aspenEntMode")==="1";}catch(e){return false;}}
   function setMode(on){try{localStorage.setItem("aspenEntMode",on?"1":"0");}catch(e){}}
+  function grpMode(){try{return localStorage.getItem("aspenEntGroup")||"tech";}catch(e){return "tech";}}
+  function setGrp(m){try{localStorage.setItem("aspenEntGroup",m);}catch(e){}}
   function money(n){n=Number(n)||0;return "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
   function money0(n){n=Number(n)||0;return "$"+Math.round(n).toLocaleString("en-US");}
   function key(name){try{return (typeof _custGroupKey==="function"?_custGroupKey(name):"")||(name||"").trim().toLowerCase();}catch(e){return (name||"").trim().toLowerCase();}}
   function esc2(s){try{return (typeof esc==="function")?esc(s):String(s==null?"":s);}catch(e){return String(s==null?"":s);}}
+  function jsq(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
   function av(n,sz){try{return (typeof _avatarHTML==="function")?_avatarHTML(n,sz||22):"";}catch(e){return "";}}
-
+  var SWD=(typeof SERVICE_WARRANTY_DAYS!=="undefined")?SERVICE_WARRANTY_DAYS:90;
   var VLABEL={1:"1st",2:"2nd \u00b7 labor",3:"CM",4:"Repeat",5:"Delivery",6:"Spa Move"};
 
   // Same pool rndrA renders — mirror exactly so tickets always match the board.
@@ -21849,6 +21775,15 @@ function showTicketDetail(p,i){
       if(isTech)out=out.filter(function(t){return (t.techs||[]).includes(currentUser.name);});
     }catch(e){out=[];}
     return out;
+  }
+
+  function classifyWarr(t){
+    var w=(t&&t.warranty)||{};
+    if(w.has===false)return "none";
+    var b=null;try{if(typeof _billingFor==="function")b=_billingFor(t);}catch(e){}
+    if(b){ if(b.partsFree&&b.laborFree)return "full"; if(b.partsFree||/50%/.test(b.parts||"")||/TC only/i.test(b.labor||""))return "part"; }
+    if(w.has===true){ var real=true;try{if(typeof _spaUnderWarranty==="function")real=_spaUnderWarranty(t);}catch(e){} return real?"full":"none"; }
+    return "other";
   }
 
   // Per-customer aggregates from history (active+done) — all real fields.
@@ -21879,18 +21814,16 @@ function showTicketDetail(p,i){
   }
   function warrCell(t){
     var w=(t&&t.warranty)||{},chips="";
-    chips+=w.label?'<span class="ent-vchip" style="background:var(--acl);color:var(--acd)">'+esc2(w.label)+'</span>'
-                  :'<span class="ent-vchip">N/W</span>';
+    chips+=w.label?'<span class="ent-vchip" style="background:var(--acl);color:var(--acd)">'+esc2(w.label)+'</span>':'<span class="ent-vchip">N/W</span>';
     try{if(typeof _svcWarrantyBadge==="function"){var s=_svcWarrantyBadge(t);if(s)chips+=s;}}catch(e){}
     try{if(typeof _part90Badge==="function"){var p=_part90Badge(t);if(p)chips+=p;}}catch(e){}
     return '<div class="ent-warr">'+chips+'</div>';
   }
 
+  /* ─── rich inline detail builders (all real data) ─────────────────────── */
   function healthHTML(t){
-    var m=aggAll()[key(t.customer)]||{visits:0,repeats:0,lifetime:0,since:"",warr:"",openBal:0};
+    var m=aggAll()[key(t.customer)]||{visits:0,repeats:0,lifetime:0,since:"",openBal:0,techs:{}};
     var since=m.since?String(m.since).slice(0,4):"\u2014";
-    var warr=(t.warranty&&t.warranty.label)?t.warranty.label:((t.warranty&&t.warranty.has===false)?"N/W":(m.warr||"\u2014"));
-    var warrActive=/y(r)?\s*\d|100%|50%|active/i.test(warr)&&!/^n\/w$/i.test(warr);
     function cell(ic,v,l,cls){return '<div class="ent-hs"><div class="v '+(cls||"")+'">'+v+'</div><div class="l">'+ic+' '+l+'</div></div>';}
     return '<div class="ent-health"><div class="ent-hh">\uD83D\uDCC7 '+esc2(t.customer)+'</div><div class="ent-hg">'
       + cell("\uD83D\uDCC5",since,"Since")
@@ -21901,15 +21834,74 @@ function showTicketDetail(p,i){
       + cell("\uD83E\uDDFE",money0(m.openBal||0),"Open Bal",(m.openBal>0?"bal":""))
       + '</div></div>';
   }
+  function warrCenterHTML(t){
+    var w=(t&&t.warranty)||{},b=null,sw=null;
+    try{if(typeof _billingFor==="function")b=_billingFor(t);}catch(e){}
+    try{if(typeof _svcWarranty==="function")sw=_svcWarranty(t.date);}catch(e){}
+    var lbl=w.label||((w.has===false)?"No warranty":"\u2014");
+    var chip="";try{if(typeof _warrantyMiniChip==="function")chip=_warrantyMiniChip(t);}catch(e){}
+    var h='<div class="ent-sec"><div class="ent-sec-t">\uD83D\uDEE1\uFE0F Warranty Center</div>';
+    h+='<div class="ent-warrline"><span class="ent-k">Factory</span><span>'+esc2(lbl)+' '+chip+'</span></div>';
+    if(b){
+      h+='<div class="ent-warrline"><span class="ent-k">Parts</span><span>'+esc2(b.parts)+'</span></div>';
+      h+='<div class="ent-warrline"><span class="ent-k">Labor</span><span>'+esc2(b.labor)+'</span></div>';
+      if(b.bottom)h+='<div class="ent-billbottom '+(b.cls||"")+'">'+esc2(b.bottom)+'</div>';
+    }
+    if(sw){
+      var pct=Math.max(0,Math.min(100,Math.round((sw.daysLeft/SWD)*100)));
+      var until="";try{if(typeof _svcUntilStr==="function")until=_svcUntilStr(sw);}catch(e){}
+      h+='<div class="ent-svcw"><div class="ent-svcw-h"><span>90-day service warranty</span><span>'+(sw.daysLeft>=0?(sw.daysLeft+" days left"):"expired")+(until?" \u00b7 until "+until:"")+'</span></div><div class="ent-bar"><i style="width:'+(sw.daysLeft>=0?pct:0)+'%"></i></div></div>';
+    }
+    return h+'</div>';
+  }
+  function invoiceHTML(t){
+    var mins=0;try{if(typeof _visitMins==="function")mins=_visitMins(t.arrival,t.departure)||0;}catch(e){}
+    var tos=(mins&&typeof fmtTime==="function")?fmtTime(mins):"";
+    var tot=Number(t.total)||0;
+    var h='<div class="ent-sec"><div class="ent-sec-t">\uD83E\uDDFE Invoice \u00b7 Service Total</div>';
+    if(tos)h+='<div class="ent-warrline"><span class="ent-k">\u23F1 Time on site</span><span>'+esc2(tos)+((t.arrival&&t.departure)?" ("+esc2(t.arrival)+" \u2192 "+esc2(t.departure)+")":"")+'</span></div>';
+    if((t.workTypes||[]).length)h+='<div class="ent-warrline"><span class="ent-k">Work</span><span>'+esc2(t.workTypes.join(", "))+'</span></div>';
+    h+='<div class="ent-invtotal"><span>Service Total</span><span>'+(tot>0?money(tot):"\u2014")+'</span></div>';
+    return h+'</div>';
+  }
+  function notesHTML(t){
+    if(!t.notes)return "";
+    return '<div class="ent-sec"><div class="ent-sec-t">\uD83D\uDCDD Technician Notes</div><div class="ent-notes">\u201c'+esc2(t.notes)+'\u201d</div></div>';
+  }
+  function photosHTML(t){
+    var media=Array.isArray(t.media)?t.media:[];
+    if(!media.length)return "";
+    var h='<div class="ent-sec"><div class="ent-sec-t">\uD83D\uDCF7 Photos ('+media.length+')</div><div class="ent-photos">';
+    media.filter(function(m){return m.type!=="pdf";}).forEach(function(m){
+      var u=String(m.url||m.data||"");var nm=String(m.name||"Photo");
+      h+='<div class="ent-photo" style="background-image:url(\''+esc2(u)+'\')" onclick="event.stopPropagation();(typeof previewAttachment===\'function\')&&previewAttachment(\''+jsq(u)+'\',\'photo\',\''+jsq(nm)+'\')"></div>';
+    });
+    media.filter(function(m){return m.type==="pdf";}).forEach(function(m){
+      h+='<a class="ent-pdf" href="'+esc2(m.url||"#")+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">\uD83D\uDCC4 '+esc2(m.name||"PDF")+'</a>';
+    });
+    return h+'</div></div>';
+  }
+  function actionsHTML(t){
+    var id=jsq(t.id),idx=-1,isDone=false;
+    try{idx=active.indexOf(t);if(idx<0){idx=done.indexOf(t);if(idx>=0)isDone=true;}}catch(e){}
+    var canReport=false;try{canReport=(typeof _canSendCustomerReport==="function")&&_canSendCustomerReport();}catch(e){}
+    var h='<div class="ent-acts">';
+    if(!isDone){
+      h+='<button class="a-done" onclick="event.stopPropagation();markDone(\''+id+'\')">\u2713 Complete</button>';
+      h+='<button class="a-res" onclick="event.stopPropagation();markResched(\''+id+'\')">\u21BB Reschedule</button>';
+    }
+    if(canReport&&idx>=0)h+='<button class="a-ai" onclick="event.stopPropagation();openReportModal('+(isDone?"true":"false")+','+idx+')">'+(isDone?"\uD83D\uDCE4 Customer Report":"\u2728 AI Report \u00b7 Copy for QB")+'</button>';
+    h+='<button class="a-360" onclick="event.stopPropagation();(typeof open360ByName===\'function\')&&open360ByName(\''+jsq(t.customer)+'\')">\uD83D\uDC64 Customer 360</button>';
+    h+='<button class="a-edit" onclick="event.stopPropagation();openTktDetail(\''+id+'\')">\u270E Full editor</button>';
+    return h+'</div>';
+  }
 
   function rowHTML(t){
-    var idx=-1; try{idx=active.indexOf(t);}catch(e){}
-    var id=t.id;
-    var tot=Number(t.total)||0;
+    var id=t.id,tot=Number(t.total)||0;
     var amt=tot>0?'<div class="ent-amt">'+money(tot)+'</div>':'<div class="ent-amt zero">\u2014</div>';
     var vis=VLABEL[Number(t.visitNum)]||"1st";
     var sub='<span>'+av((t.techs&&t.techs[0])||"",18)+'</span>'+esc2((t.techs||[]).join(", "))+(t.date?' \u00b7 '+esc2(t.date):'')+(t.arrival?' \u00b7 '+esc2(t.arrival):'');
-    return '<div class="ent-row" data-id="'+esc2(id)+'" onclick="_aspenEntExpand(this,\''+esc2(id)+'\')">'
+    return '<div class="ent-row" onclick="_aspenEntExpand(this,\''+jsq(id)+'\')">'
       + '<div class="cv">\u203a</div>'
       + '<div class="ent-cust"><h4>'+esc2(t.customer)+'</h4><div class="sub">'+sub+'</div></div>'
       + '<div><span class="ent-vchip">'+vis+'</span></div>'
@@ -21920,26 +21912,6 @@ function showTicketDetail(p,i){
     + '</div>';
   }
 
-  function render(){
-    var host=$("aspenEntView"); if(!host)return;
-    var P=pool();
-    var head='<div class="ent-head"><div></div><div>Customer \u00b7 Technician</div><div>Visit</div><div>Warranty</div><div>QB Status</div><div class="r">Charge</div></div>';
-    if(!P.length){host.innerHTML='<div class="ent-board"><div class="ent-scroll"><div class="ent-inner">'+head+'<div class="ent-empty">No tickets match this view.</div></div></div></div>';return;}
-    var by={}; P.forEach(function(t){var k=(t.techs&&t.techs.length)?t.techs[0]:"Unassigned";(by[k]||(by[k]=[])).push(t);});
-    var names=Object.keys(by).sort(function(a,b){if(a==="Unassigned")return 1;if(b==="Unassigned")return -1;return a.localeCompare(b);});
-    var body="";
-    names.forEach(function(tn){
-      var items=by[tn];
-      var sum=items.reduce(function(s,t){return s+(Number(t.total)||0);},0);
-      var pend=items.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
-      body+='<div class="ent-grp">'+(tn==="Unassigned"?"":'<span>'+av(tn,26)+'</span>')+'<span class="gnm">'+esc2(tn)+'</span><span class="gct">'+items.length+'</span>'
-        +'<span class="gsum"><b>'+money(sum)+'</b>'+(pend?' \u00b7 '+pend+' pending QB':'')+'</span></div>';
-      body+=items.map(rowHTML).join("");
-    });
-    host.innerHTML='<div class="ent-board"><div class="ent-scroll"><div class="ent-inner">'+head+body+'</div></div></div>';
-  }
-
-  // Expand a row → Customer Health widget + real actions (lazy-fill once).
   window._aspenEntExpand=function(rowEl,id){
     try{
       var d=$("entD_"+id); if(!d)return;
@@ -21947,59 +21919,132 @@ function showTicketDetail(p,i){
       rowEl.classList.toggle("open",openNow);
       d.classList.toggle("open",openNow);
       if(openNow&&!d.getAttribute("data-filled")){
-        var t=null; try{t=[].concat(active||[],done||[]).filter(function(x){return x&&String(x.id)===String(id);})[0];}catch(e){}
+        var t=null;try{t=[].concat(active||[],done||[]).filter(function(x){return x&&String(x.id)===String(id);})[0];}catch(e){}
         if(t){
           d.innerHTML=healthHTML(t)
-            +'<div class="ent-acts">'
-            +'<button class="open" onclick="event.stopPropagation();openTktDetail(\''+esc2(id)+'\')">\uD83D\uDCCB Open ticket</button>'
-            +'<button class="c360" onclick="event.stopPropagation();(typeof open360ByName===\'function\')&&open360ByName(\''+esc2((t.customer||"")).replace(/'/g,"\\'")+'\')">\uD83D\uDC64 Customer 360</button>'
-            +'</div>';
+            +'<div class="ent-cols"><div class="ent-col">'+warrCenterHTML(t)+invoiceHTML(t)+'</div>'
+            +'<div class="ent-col">'+notesHTML(t)+photosHTML(t)+'</div></div>'
+            +actionsHTML(t);
           d.setAttribute("data-filled","1");
         }
       }
     }catch(e){console.warn("[aspenEnt expand]",e);}
   };
 
+  /* ─── KPI row + group-by ──────────────────────────────────────────────── */
+  function kpiHTML(P){
+    var urgent=P.filter(function(t){return t.isUrgent;}).length;
+    var repeats=P.filter(function(t){return Number(t.visitNum)===4;}).length;
+    var pend=P.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
+    var full=0,part=0,none=0;
+    P.forEach(function(t){var c=classifyWarr(t);if(c==="full")full++;else if(c==="part")part++;else if(c==="none")none++;});
+    function k(v,l,cls,oc){return '<div class="ent-kpi '+(cls||"")+'"'+(oc?' style="cursor:pointer" onclick="'+oc+'"':'')+'><div class="kv">'+v+'</div><div class="kl">'+l+'</div></div>';}
+    return '<div class="ent-kpis">'
+      + k(P.length,"Open Tickets","",'try{_dailySetFilter(\'all\')}catch(e){}')
+      + k(urgent,"Urgent","u")
+      + k(repeats,"Repeats","r")
+      + k(pend,"Pending QB","p",'try{_dailySetFilter(\'qbpending\')}catch(e){}')
+      + k(full,"Full","g")
+      + k(part,"Part","y")
+      + k(none,"No Warr","n")
+      + '</div>';
+  }
+  function grpSegHTML(){
+    var g=grpMode();
+    function s(m,l){return '<button class="'+(g===m?"on":"")+'" type="button" onclick="aspenEntGroupSet(\''+m+'\')">'+l+'</button>';}
+    return '<div class="ent-grpseg"><span class="lbl">Group by</span>'+s("tech","Technician")+s("status","Status")+s("warranty","Warranty")+'</div>';
+  }
+  function grpKey(t,g){
+    if(g==="status")return t.status==="reschedule"?"Reschedule":"Submitted";
+    if(g==="warranty"){var c=classifyWarr(t);return c==="full"?"Full warranty":c==="part"?"Partial warranty":c==="none"?"No warranty":"Unspecified";}
+    return (t.techs&&t.techs.length)?t.techs[0]:"Unassigned";
+  }
+  function grpOrder(names,g){
+    if(g==="status")return ["Submitted","Reschedule"].filter(function(n){return names.indexOf(n)>=0;});
+    if(g==="warranty")return ["Full warranty","Partial warranty","No warranty","Unspecified"].filter(function(n){return names.indexOf(n)>=0;});
+    return names.sort(function(a,b){if(a==="Unassigned")return 1;if(b==="Unassigned")return -1;return a.localeCompare(b);});
+  }
+
+  function render(){
+    var host=$("aspenEntView"); if(!host)return;
+    var P=pool(),g=grpMode();
+    var head='<div class="ent-head"><div></div><div>Customer \u00b7 Technician</div><div>Visit</div><div>Warranty</div><div>QB Status</div><div class="r">Charge</div></div>';
+    var top=kpiHTML(P)+grpSegHTML();
+    if(!P.length){host.innerHTML=top+'<div class="ent-board"><div class="ent-scroll"><div class="ent-inner">'+head+'<div class="ent-empty">No tickets match this view.</div></div></div></div>';return;}
+    var by={};P.forEach(function(t){var k=grpKey(t,g);(by[k]||(by[k]=[])).push(t);});
+    var names=grpOrder(Object.keys(by),g);
+    var body="";
+    names.forEach(function(nm){
+      var items=by[nm];
+      var sum=items.reduce(function(s,t){return s+(Number(t.total)||0);},0);
+      var pend=items.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
+      var avi=(g==="tech"&&nm!=="Unassigned")?('<span>'+av(nm,26)+'</span>'):"";
+      body+='<div class="ent-grp">'+avi+'<span class="gnm">'+esc2(nm)+'</span><span class="gct">'+items.length+'</span>'
+        +'<span class="gsum"><b>'+money(sum)+'</b>'+(pend?' \u00b7 '+pend+' pending QB':'')+'</span></div>';
+      body+=items.map(rowHTML).join("");
+    });
+    host.innerHTML=top+'<div class="ent-board"><div class="ent-scroll"><div class="ent-inner">'+head+body+'</div></div></div>';
+  }
+
+  /* ─── collapsible navy "Today's Collections" box ──────────────────────── */
+  function collapseColl(){
+    try{
+      var scope=$("pg1"); if(!scope)return;
+      var box=null,h3s=scope.querySelectorAll("h3");
+      for(var i=0;i<h3s.length;i++){ if(/Today's Collections/i.test(h3s[i].textContent||"")){ box=h3s[i].closest('div[onclick]'); break; } }
+      if(!box||!box.parentNode)return;
+      var collapsed=(localStorage.getItem("aspenCollColl")||"1")==="1";
+      var prev=box.previousElementSibling;
+      var bar=(prev&&prev.classList&&prev.classList.contains("ent-colltoggle"))?prev:null;
+      if(!bar){bar=document.createElement("div");bar.className="ent-colltoggle";box.parentNode.insertBefore(bar,box);}
+      var txt=box.textContent||"",mAmt=txt.match(/\$[\d,]+\.\d{2}/);
+      bar.innerHTML='\uD83D\uDCB0 <b>Today\u2019s Collections</b>'+(mAmt?' \u00b7 '+mAmt[0]+' outstanding':'')+'<span class="cc-x">'+(collapsed?'\u25B8 show':'\u25BE hide')+'</span>';
+      bar.onclick=function(e){e.stopPropagation();var c=(localStorage.getItem("aspenCollColl")||"1")==="1";try{localStorage.setItem("aspenCollColl",c?"0":"1");}catch(_e){}collapseColl();};
+      box.style.display=collapsed?"none":"";
+    }catch(e){console.warn("[collColl]",e);}
+  }
+
   function ensureDom(){
     var pg=$("pg1"); if(!pg)return;
     if(!$("aspenEntToolbar")){
-      var tb=document.createElement("div");
-      tb.id="aspenEntToolbar"; tb.className="ent-toolbar";
+      var tb=document.createElement("div");tb.id="aspenEntToolbar";tb.className="ent-toolbar";
       tb.innerHTML='<div class="ent-seg"><button id="entSegBoard" type="button" onclick="aspenEntToggle(false)">\uD83D\uDDC2\uFE0F Board</button>'
                  +'<button id="entSegEnt" type="button" onclick="aspenEntToggle(true)">\u2728 Enterprise</button></div>'
                  +'<span style="font-size:var(--fs-xs);color:var(--i3);font-weight:600">Same tickets, premium view \u00b7 preview</span>';
       var split=$("ticketsSplit");
-      if(split&&split.parentNode)split.parentNode.insertBefore(tb,split);
-      else pg.appendChild(tb);
+      if(split&&split.parentNode)split.parentNode.insertBefore(tb,split);else pg.appendChild(tb);
     }
     if(!$("aspenEntView")){
-      var v=document.createElement("div"); v.id="aspenEntView";
+      var v=document.createElement("div");v.id="aspenEntView";
       var split2=$("ticketsSplit");
-      if(split2&&split2.parentNode)split2.parentNode.insertBefore(v,split2.nextSibling);
-      else pg.appendChild(v);
+      if(split2&&split2.parentNode)split2.parentNode.insertBefore(v,split2.nextSibling);else pg.appendChild(v);
     }
   }
 
   function sync(){
     ensureDom();
     var on=entMode();
-    var split=$("ticketsSplit"), view=$("aspenEntView");
-    var bB=$("entSegBoard"), bE=$("entSegEnt");
+    var split=$("ticketsSplit"),view=$("aspenEntView"),flt=$("dailyFilters"),pcb=$("pcDailyBar");
+    var bB=$("entSegBoard"),bE=$("entSegEnt");
     if(bB)bB.classList.toggle("on",!on);
     if(bE)bE.classList.toggle("on",on);
     if(view)view.classList.toggle("on",on);
     if(split)split.style.display=on?"none":"";
+    if(flt)flt.style.display=on?"none":"";          // hide filter-chip bar in Enterprise
+    if(pcb)pcb.style.display=on?"none":"";           // hide daily receivables bar (KPI covers it)
+    collapseColl();                                   // always make the navy box collapsible
     if(on)render();
   }
 
-  window.aspenEntToggle=function(on){ setMode(!!on); sync(); };
+  window.aspenEntToggle=function(on){setMode(!!on);sync();};
+  window.aspenEntGroupSet=function(m){setGrp(m);if(entMode())render();var segs=document.querySelectorAll(".ent-grpseg button");segs.forEach(function(b){b.classList.remove("on");});};
 
-  // Decorator: keep the Enterprise view in sync on every rndrA() (search,
-  // filters, data updates) WITHOUT modifying the original function.
+  // Decorator: keep the Enterprise view in sync on every rndrA() WITHOUT
+  // modifying the original function (search, filters, data updates all flow in).
   function install(){
     if(typeof rndrA==="function" && !rndrA.__aspenEntWrapped){
       var orig=rndrA;
-      rndrA=function(){ var r=orig.apply(this,arguments); try{sync();}catch(e){console.warn("[aspenEnt sync]",e);} return r; };
+      rndrA=function(){var r=orig.apply(this,arguments);try{sync();}catch(e){console.warn("[aspenEnt sync]",e);}return r;};
       rndrA.__aspenEntWrapped=true;
     }
     try{ensureDom();sync();}catch(e){}
@@ -22007,7 +22052,6 @@ function showTicketDetail(p,i){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(install,0);});
   else setTimeout(install,0);
 })();
-
 </script>
 </body>
 </html>
