@@ -10786,16 +10786,16 @@ function _reschedToHeal(){
     var act=(typeof active!=="undefined"?active:[]);
     var all=[].concat(act, typeof done!=="undefined"?done:[]);
     var now=Date.now();
-    var MAXAGE=90*24*60*60*1000; // cap how far back auto-heal reaches (~90 days)
+    var MAXAGE=36500*24*60*60*1000; // ~100y: auto-heal orphans of ANY age (the guards below — no open call, not admin-canceled, not served, valid household key — keep it safe). Alberto: fully automatic, no manual healing.
     var byId={}; all.forEach(function(t){ if(t&&t.id) byId[t.id]=t; });
     var cands=all.filter(function(r){
       if(!r||r.status!=="reschedule")return false;
       // Only reschedules stamped AFTER this fix shipped carry reschedAtMs, so
       // historical orphans are never mass-resurrected on deploy — those stay in
       // the existing manual "Rescheduled visits not in Service Log" banner.
-      if(!r.reschedAtMs)return false;
+      var _rms=r.reschedAtMs||((typeof _ticketCreatedMs==="function")?_ticketCreatedMs(r):0)||0; if(!_rms)return false; // FALLBACK (Jun 2026): old reschedules predate reschedAtMs — use ticket creation time so they auto-heal too. The guards below (no open dispatch · not admin-canceled · not served at/after · 90-day window) keep it safe: only genuine recent orphans get a re-booking call.
       if(!_custGroupKey(r.customer))return false; // no reliable household key (blank/punctuation-only name) — leave to manual review, never auto-heal (prevents flapping)
-      if((now-r.reschedAtMs)>MAXAGE)return false;
+      if((now-_rms)>MAXAGE)return false;
       // (a) household already has an OPEN dispatch -> nothing is missing
       if(act.some(function(d){ return d&&d.source==="dispatch"&&!d.fieldReportSubmitted&&d.status!=="canceled"&&d.status!=="done"&&_custSameHousehold(d.customer,r.customer); }))return false;
       // (b) admin already dealt with the auto-call (canceled/closed it) -> respect it
@@ -10810,7 +10810,7 @@ function _reschedToHeal(){
         var fin=(x.status==="done")||(x.source!=="dispatch"&&x.status==="complete")||(x.source==="dispatch"&&!!x.fieldReportSubmitted);
         if(!fin)return false;
         var xms=x.reschedAtMs||((typeof _ticketCreatedMs==="function")?_ticketCreatedMs(x):0)||0;
-        return xms>=r.reschedAtMs;
+        return xms>=_rms;
       }))return false;
       return true;
     });
@@ -12997,9 +12997,9 @@ function rndrSlog(){
   if(_orphans.length){
     _orphanBanner='<div style="background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:14px;margin-bottom:16px">'+
       '<div style="font-size:var(--fs-base);font-weight:800;color:var(--c-warning-fg);margin-bottom:4px;display:flex;align-items:center;gap:6px">'+icon("alert-triangle",15,{color:"var(--c-warning-fg)"})+'Rescheduled visits not in Service Log ('+_orphans.length+')</div>'+
-      '<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);margin-bottom:10px;line-height:1.4">A tech marked these Reschedule but they have no open service call. Tap a name to add it so the customer gets re-booked.</div>'+
+      '<div style="font-size:var(--fs-xs);color:var(--c-warning-fg);margin-bottom:10px;line-height:1.4">A tech marked these Reschedule. They are being re-added to the Service Log automatically so each customer gets re-booked - no action needed.</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
-      _orphans.map(function(r){return '<button onclick="_readdReschedToSlog(\''+r.id+'\')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1.5px solid var(--c-warning-strong);border-radius:9px;font-size:var(--fs-sm);font-weight:700;color:var(--c-warning-fg);cursor:pointer">'+icon("rotate-ccw",13,{color:"var(--c-warning-fg)"})+esc(r.customer)+'</button>'}).join("")+
+      _orphans.map(function(r){return '<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1.5px solid var(--c-warning-strong);border-radius:9px;font-size:var(--fs-sm);font-weight:700;color:var(--c-warning-fg)">'+icon("rotate-ccw",13,{color:"var(--c-warning-fg)"})+esc(r.customer)+'</span>'}).join("")+
       '</div></div>';
   }
   if(!all.length){el.innerHTML=_orphanBanner+'<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
