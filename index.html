@@ -21845,22 +21845,24 @@ function showTicketDetail(p,i){
     return {amount:stored,covered:false,rule:(b&&b.bottom)||"",b:b};
   }
 
+  // Built EXACTLY like Customer 360 (rndrCust): group [...active,...done] by
+  // _custGroupKey; visits = ticket count → numbers match the Customer 360 screen.
+  // (No dispatch exclusion, no de-dup — same as the native customer record.)
   function aggAll(){
-    var map={},all=[],seen={};
+    var map={},all=[];
     try{all=(Array.isArray(active)?active:[]).concat(Array.isArray(done)?done:[]);}catch(e){all=[];}
     all.forEach(function(t){
-      if(!t)return; if(t.id&&seen[t.id])return; if(t.id)seen[t.id]=1;
-      if(t.source==="dispatch")return;
+      if(!t||!t.customer||!t.customer.trim())return;
       var k=key(t.customer); if(!k)return;
       var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},openBal:0,spaDesc:""});
       m.visits++;
       if(Number(t.visitNum)===4)m.repeats++;
-      if((t.status==="complete"||t.status==="done"))m.lifetime+=Number(t.total)||0;
+      if(t.status==="complete"||t.status==="done")m.lifetime+=Number(t.total)||0;
       if(t.date&&(!m.since||t.date<m.since))m.since=t.date;
       var tech=(t.techs&&t.techs[0])||""; if(tech)m.techs[tech]=(m.techs[tech]||0)+1;
       if(t.spaDesc&&t.spaDesc.length>(m.spaDesc||"").length)m.spaDesc=t.spaDesc;
     });
-    try{var pc=_porCobrarData();(pc.items||[]).forEach(function(it){var k=key(it.customer);if(!k)return;var m=map[k]||(map[k]={visits:0,repeats:0,lifetime:0,since:"",techs:{},openBal:0,spaDesc:""});m.openBal+=Number(it.saldo)||0;});}catch(e){}
+    try{var pc=_porCobrarData();(pc.items||[]).forEach(function(it){var kk=key(it.customer);if(!kk)return;var mm=map[kk]||(map[kk]={visits:0,repeats:0,lifetime:0,since:"",techs:{},openBal:0,spaDesc:""});mm.openBal+=Number(it.saldo)||0;});}catch(e){}
     return map;
   }
   function prefTech(m){var best="",n=-1;for(var k in (m.techs||{})){if(m.techs[k]>n){n=m.techs[k];best=k;}}return best||"\u2014";}
@@ -21953,17 +21955,17 @@ function showTicketDetail(p,i){
     return h+'</div></div>';
   }
   function actionsRow(t){
-    var id=jsq(t.id),idx=-1,isDone=false;
-    try{idx=active.indexOf(t);if(idx<0){idx=done.indexOf(t);if(idx>=0)isDone=true;}}catch(e){}
+    var id=jsq(t.id),isDone=false;
+    try{if(active.indexOf(t)<0&&done.indexOf(t)>=0)isDone=true;}catch(e){}
     var canReport=false;try{canReport=(typeof _canSendCustomerReport==="function")&&_canSendCustomerReport();}catch(e){}
     var h='<div class="ent-actions">';
     if(!isDone){
       h+='<button class="b-done" onclick="event.stopPropagation();markDone(\''+id+'\')">\u2713 Complete</button>';
       h+='<button class="b-res" onclick="event.stopPropagation();markResched(\''+id+'\')">\u21BB Reschedule</button>';
     }
-    if(canReport&&idx>=0)h+='<button class="b-ai" onclick="event.stopPropagation();openReportModal('+(isDone?"true":"false")+','+idx+')">'+(isDone?"\uD83D\uDCE4 Customer Report":"\u2728 AI Report \u00b7 Copy for QB")+'</button>';
+    if(canReport)h+='<button class="b-ai" onclick="event.stopPropagation();_aspenEntReport(\''+id+'\')">'+(isDone?"\uD83D\uDCE4 Customer Report":"\u2728 AI Report \u00b7 Copy for QB")+'</button>';
     h+='<button class="b-360" onclick="event.stopPropagation();(typeof open360ByName===\'function\')&&open360ByName(\''+jsq(t.customer)+'\')">\uD83D\uDC64 Customer 360</button>';
-    h+='<button class="b-edit" onclick="event.stopPropagation();openTktDetail(\''+id+'\')">\u270E Full editor</button>';
+    h+='<button class="b-edit" onclick="event.stopPropagation();_aspenEntEdit(\''+id+'\')">\uD83D\uDCCB Field Report</button>';
     return h+'</div>';
   }
   function detailHTML(t){
@@ -22003,6 +22005,25 @@ function showTicketDetail(p,i){
         if(t){d.innerHTML=detailHTML(t);d.setAttribute("data-filled","1");}
       }
     }catch(e){console.warn("[ent expand]",e);}
+  };
+  // Open the ticket in the FIELD REPORT (Tab 0) — same as the Board's "Edit Ticket".
+  window._aspenEntEdit=function(id){
+    try{
+      var i=(Array.isArray(active)?active:[]).findIndex(function(x){return x&&String(x.id)===String(id);});
+      if(i>=0){editTkt(i,0);return;}
+      var j=(Array.isArray(done)?done:[]).findIndex(function(x){return x&&String(x.id)===String(id);});
+      if(j>=0){editTkt(j,1);return;}
+      if(typeof openTktDetail==="function")openTktDetail(id);
+    }catch(e){console.warn("[ent edit]",e);}
+  };
+  // Real "AI Report / Copy for QB" modal — fresh index lookup (robust to refreshes).
+  window._aspenEntReport=function(id){
+    try{
+      var i=(Array.isArray(active)?active:[]).findIndex(function(x){return x&&String(x.id)===String(id);});
+      if(i>=0){openReportModal(false,i);return;}
+      var j=(Array.isArray(done)?done:[]).findIndex(function(x){return x&&String(x.id)===String(id);});
+      if(j>=0){openReportModal(true,j);return;}
+    }catch(e){console.warn("[ent report]",e);}
   };
 
   function grpSeg(){
