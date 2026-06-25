@@ -2524,6 +2524,19 @@ body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 3
 .ent-billrow .bill-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--acd)}
 .ent-billrow .bill-v{font-size:16px;font-weight:800;color:var(--br);font-variant-numeric:tabular-nums}
 @media(max-width:620px){.ent-qbready{margin-left:0}}
+/* ── v9 BILLING VERDICT banner — the decision, before you read the ticket ── */
+.ent-verdict{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:13px;margin-bottom:13px;font-weight:800}
+.ent-verdict .vd-txt{font-size:15px;line-height:1.2}
+.ent-verdict .vd-sub{font-size:12px;font-weight:600;opacity:.85;margin-left:auto;text-align:right}
+.ent-verdict.v-yes{background:var(--c-success-strong,#16a34a);color:#fff;box-shadow:0 4px 13px -4px rgba(22,163,74,.55)}
+.ent-verdict.v-yes .vd-sub{color:#fff;opacity:.92}
+.ent-verdict.v-no{background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#b91c1c);box-shadow:inset 0 0 0 1.5px var(--c-danger-strong,#dc2626)}
+.ent-verdict.v-warn{background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);box-shadow:inset 0 0 0 1.5px var(--c-warning-strong,#f59e0b)}
+.ent-verdict.v-review{background:var(--c-ash,#f1ece4);color:var(--i2,#6b5d4f)}
+.ent-verdict.v-info{background:var(--acl,#e0f2fe);color:var(--acd,#0369a1)}
+.ent-verdict.v-done{background:var(--c-success-bg,#dcfce7);color:var(--c-success-fg,#166534)}
+.ent-verdict.v-neutral{background:var(--c-ash,#f1ece4);color:var(--i2,#6b5d4f)}
+@media(max-width:620px){.ent-verdict{flex-wrap:wrap}.ent-verdict .vd-sub{margin-left:0;text-align:left;width:100%;margin-top:2px}}
 </style>
 <style id="aspenDrawerSkin">
 /* Premium skin for the ticket editor modal (openTktDetail). CSS-ONLY, scoped to
@@ -21876,6 +21889,28 @@ function showTicketDetail(p,i){
     return {txt:"\u26A0 Needs review",cls:"review",hasNotes:hasNotes,hasTime:hasTime,hasWork:hasWork};
   }
 
+  /* ─── BILLING VERDICT ENGINE ───────────────────────────────────────────
+     The interface thinks WITH you: one plain-language decision per ticket,
+     BEFORE you read it. Pure synthesis over existing fns — chargeFor(_billingFor),
+     qbReady, visitNum, warranty. Degrades to "Needs review" when unsure; never
+     guesses (a wrong "you can bill" is worse than "review this"). You can override. */
+  function verdict(t){
+    var rd=qbReady(t),vn=Number(t.visitNum),c=chargeFor(t),w=(t&&t.warranty)||{};
+    if(t.status==="reschedule")return {txt:"\u21BB Reschedule",sub:"No billing yet",cls:"v-neutral"};
+    if(t.qbCopied)return {txt:"\u2713 In QuickBooks",sub:"Already billed",cls:"v-done"};
+    if(vn===4||t.isRepeat)return {txt:"\u26D4 Don\u2019t bill \u2014 Repeat",sub:"Warranty callback \u00b7 no charge",cls:"v-no"};
+    if(c.covered)return {txt:"\u26D4 Don\u2019t bill \u2014 covered",sub:"Parts + labor under warranty",cls:"v-no"};
+    if(vn===3)return {txt:"\uD83D\uDD35 No labor charge \u2014 CM",sub:"Chemical maintenance",cls:"v-info"};
+    if(vn===5)return {txt:"\uD83D\uDD35 No labor charge \u2014 Delivery",sub:"Spa delivery",cls:"v-info"};
+    if(c.b&&(!!c.b.partsFree!==!!c.b.laborFree))return {txt:"\u26A0\uFE0F Stop \u2014 check warranty",sub:(c.b.partsFree?"Parts covered \u00b7 labor billable":"Labor covered \u00b7 parts billable"),cls:"v-warn"};
+    if((w.has===true||w.label)&&!c.covered)return {txt:"\u26A0\uFE0F Stop \u2014 check warranty",sub:"Warranty on file \u2014 confirm coverage",cls:"v-warn"};
+    if(!(rd.hasNotes&&rd.hasTime&&rd.hasWork)){
+      var miss=[];if(!rd.hasTime)miss.push("times");if(!rd.hasNotes)miss.push("notes");if(!rd.hasWork)miss.push("work type");
+      return {txt:"\uD83D\uDCDD Needs review",sub:"Incomplete report: "+miss.join(", "),cls:"v-review"};
+    }
+    return {txt:"\u2705 You can bill"+(c.amount>0?" "+money(c.amount):""),sub:"Billable visit \u00b7 report complete",cls:"v-yes"};
+  }
+
   function aggAll(){
     var map={},all=[];
     try{all=(Array.isArray(active)?active:[]).concat(Array.isArray(done)?done:[]);}catch(e){all=[];}
@@ -22018,10 +22053,11 @@ function showTicketDetail(p,i){
     var workStr=works.length?(works.slice(0,3).join(" \u00b7 ")+(works.length>3?" +"+(works.length-3):"")):(Number(t.visitNum)===3?"Chemical maintenance":Number(t.visitNum)===5?"Spa delivery":"");
     var urg=t.isUrgent?'<span class="tc-urg">\uD83D\uDD25 URGENT</span>':'';
     var rep=(Number(t.visitNum)===4||t.isRepeat)?'<span class="ent-chip rep">\u21A9\uFE0F Repeat</span>':'';
-    var rd=qbReady(t),nMedia=(Array.isArray(t.media)?t.media.length:0),bh=billHrsShort(t);
+    var rd=qbReady(t),vd=verdict(t),nMedia=(Array.isArray(t.media)?t.media.length:0),bh=billHrsShort(t);
     return '<div class="ent-card" onclick="_aspenEntExpand(this,\''+id+'\')">'
       + '<div class="ent-card-rail" style="background:'+rail(t)+'"></div>'
       + '<div class="ent-card-mid">'
+        + '<div class="ent-verdict '+vd.cls+'"><span class="vd-txt">'+vd.txt+'</span>'+(vd.sub?'<span class="vd-sub">'+esc2(vd.sub)+'</span>':'')+'</div>'
         + '<div class="ent-card-row1"><div class="tc-cust"><h4>'+esc2(t.customer)+' '+urg+'</h4>'
           + '<div class="tc-sub">'+av((t.techs&&t.techs[0])||"",18)+' '+esc2((t.techs||[]).join(", "))+(t.date?' \u00b7 '+esc2(t.date):'')+(t.arrival?' \u00b7 '+esc2(t.arrival):'')+'</div></div>'
           + chargeHTML+'</div>'
@@ -22032,7 +22068,6 @@ function showTicketDetail(p,i){
           + '<span class="ent-rdy '+(rd.hasNotes?"ok":"no")+'" title="Tech notes">\uD83D\uDCDD</span>'
           + '<span class="ent-rdy '+(nMedia?"ok":"no")+'" title="Photos attached">\uD83D\uDCF7'+(nMedia?" "+nMedia:"")+'</span>'
           + '<span class="ent-rdy '+(rd.hasTime?"ok":"no")+'" title="Billable time on site">\u23F1'+(bh?" "+bh:"")+'</span>'
-          + '<span class="ent-qbready '+rd.cls+'">'+rd.txt+'</span>'
         + '</div>'
       + '</div>'
       + '<div class="ent-card-exp">\u203a</div>'
