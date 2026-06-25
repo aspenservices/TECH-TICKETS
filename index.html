@@ -2507,6 +2507,23 @@ body.aspen-ent-on .dsum-card.dead{opacity:.55}
 body.dark-mode .ent-w-health{background:var(--cd)}
 body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 38px rgba(0,0,0,.6)}
 @media(prefers-reduced-motion:reduce){.ent-card:hover,.ent-kpi:hover,.ent-actions button:hover,.ent-photo:hover,body.aspen-ent-on .dsum-card:hover{transform:none}.ent-detail-in,#aspenEntView.on{animation:none}}
+/* ── v6 decision-first card: service summary + validation strip + QB-ready ── */
+.tc-svc{display:flex;align-items:center;gap:9px;margin-top:11px;flex-wrap:wrap}
+.tc-work{font-size:13px;font-weight:700;color:var(--i2);line-height:1.3}
+.ent-valid{display:flex;align-items:center;gap:7px;margin-top:12px;flex-wrap:wrap}
+.ent-chip.rep{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+.ent-rdy{font-size:12px;font-weight:800;border-radius:8px;padding:4px 9px;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.ent-rdy.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
+.ent-rdy.no{background:var(--c-ash,#f1ece4);color:var(--i3);opacity:.5}
+.ent-qbready{margin-left:auto;font-size:13px;font-weight:800;border-radius:999px;padding:7px 16px;white-space:nowrap}
+.ent-qbready.ready{background:var(--c-success-strong,#16a34a);color:#fff;box-shadow:0 4px 13px -3px rgba(22,163,74,.55)}
+.ent-qbready.review{background:var(--c-warning-bg);color:var(--c-warning-fg);box-shadow:inset 0 0 0 1.5px var(--c-warning-strong)}
+.ent-qbready.done{background:var(--c-success-bg);color:var(--c-success-fg)}
+.ent-qbready.res{background:var(--c-ash,#eee);color:var(--i2)}
+.ent-billrow{display:flex;align-items:center;justify-content:space-between;background:var(--acl);border-radius:13px;padding:11px 14px;margin-bottom:11px}
+.ent-billrow .bill-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--acd)}
+.ent-billrow .bill-v{font-size:16px;font-weight:800;color:var(--br);font-variant-numeric:tabular-nums}
+@media(max-width:620px){.ent-qbready{margin-left:0}}
 </style>
 <style id="aspenDrawerSkin">
 /* Premium skin for the ticket editor modal (openTktDetail). CSS-ONLY, scoped to
@@ -21790,22 +21807,17 @@ function showTicketDetail(p,i){
 <div id="ticketDetail" class="tkt-detail" aria-live="polite"></div>
 <script id="aspenEntScript">
 /* ════════════════════════════════════════════════════════════════════════
-   ASPEN — DAILY "ENTERPRISE" DASHBOARD  v4   ADDITIVE · OPT-IN
-   Premium SaaS dashboard beside Alberto's board. Nothing existing is modified
-   (rndrA + all logic byte-identical; only wrapped at runtime). v4:
-   • NO own KPI row — REUSES Alberto's native KPI cards (#dailySummary .dsum-card,
-     Open/Urgent/Repeats/Pending QB/Full 100%/Part 50%/No Warr — clickable real
-     filters), premium-restyled in Enterprise only. Zero duplication.
-   • In Enterprise it hides redundant chrome (welcome KPIs/greeting/collections,
-     the filter pills #dailyFilters, the receivable bar #pcDailyBar) for ONE
-     clean header.
-   • Premium ticket CARDS + rich, visual detail widgets (Customer Health icon
-     tiles, Warranty Center coverage badges + progress, Invoice big total + chips).
-   Real data/functions reused: pool = rndrA's selection; _warSeg; markDone/
-   markResched; openReportModal (AI · Copy for QB); open360ByName; openTktDetail;
-   _billingFor (charge; full=$0); _svcWarranty/_svcUntilStr; _parseSpaDescription
-   (real "Since"=delivery); _porCobrarData; _custGroupKey; _dailyRail.
-   Delete this <script> + <style id="aspenEntStyle"> to fully revert.
+   ASPEN — DAILY "ENTERPRISE" DASHBOARD  v6   ADDITIVE · OPT-IN
+   Service-Validation dashboard. Philosophy: Time · Precision · Confidence.
+   Every card answers, at a glance: what was done · is it billable · warranty ·
+   repeat · is the report complete · photos · safe to send to QuickBooks.
+   Reuses Alberto's native KPI cards (#dailySummary) as the premium KPI row;
+   adds nothing that duplicates them. Wraps rndrA at runtime; never edits logic.
+   Real fns reused: _warSeg, _billingFor, _visitMins, billableMins, calcLabor,
+   _svcWarranty, _parseSpaDescription (.year=spa year), _custGroupKey, _porCobrarData,
+   _dailyRail, markDone, markResched, editTkt (Field Report), openReportModal,
+   open360ByName, previewAttachment.
+   Delete this <script> + <style id="aspenEntStyle"> + <style id="aspenDrawerSkin"> to revert.
    ════════════════════════════════════════════════════════════════════════ */
 (function(){
   "use strict";
@@ -21844,10 +21856,26 @@ function showTicketDetail(p,i){
     if(b&&b.partsFree&&b.laborFree)return {amount:0,covered:true,rule:b.bottom||"Full warranty — no charge",b:b};
     return {amount:stored,covered:false,rule:(b&&b.bottom)||"",b:b};
   }
+  // Billable hours — same quarter-hour rule the office bills by (native helpers).
+  function billHrsShort(t){
+    try{if(!t.arrival||!t.departure)return "";var raw=_visitMins(t.arrival,t.departure)||0;if(!raw)return "";return (billableMins(raw)/60).toFixed(2)+"h";}catch(e){return "";}
+  }
+  function billHrsFull(t){
+    try{if(!t.arrival||!t.departure)return "";var raw=_visitMins(t.arrival,t.departure)||0;if(!raw)return "\u2014";
+      var bm=billableMins(raw),hh=Math.floor(bm/60),mm=bm%60;
+      return (bm/60).toFixed(2)+" hrs ("+(hh?hh+"h"+(mm?" "+mm+"m":""):mm+"m")+")";}catch(e){return "";}
+  }
+  // The decision: safe to send to QuickBooks? (report complete & not yet sent)
+  function qbReady(t){
+    var hasNotes=!!(t.notes&&String(t.notes).trim());
+    var hasTime=!!(t.arrival&&t.departure);
+    var hasWork=!!((t.workTypes&&t.workTypes.length)||Number(t.visitNum)===3||Number(t.visitNum)===5);
+    if(t.status==="reschedule")return {txt:"\u21BB Reschedule",cls:"res",hasNotes:hasNotes,hasTime:hasTime,hasWork:hasWork};
+    if(t.qbCopied)return {txt:"\u2713 In QuickBooks",cls:"done",hasNotes:hasNotes,hasTime:hasTime,hasWork:hasWork};
+    if(hasNotes&&hasTime&&hasWork)return {txt:"\u2713 Ready for QB",cls:"ready",hasNotes:hasNotes,hasTime:hasTime,hasWork:hasWork};
+    return {txt:"\u26A0 Needs review",cls:"review",hasNotes:hasNotes,hasTime:hasTime,hasWork:hasWork};
+  }
 
-  // Built EXACTLY like Customer 360 (rndrCust): group [...active,...done] by
-  // _custGroupKey; visits = ticket count → numbers match the Customer 360 screen.
-  // (No dispatch exclusion, no de-dup — same as the native customer record.)
   function aggAll(){
     var map={},all=[];
     try{all=(Array.isArray(active)?active:[]).concat(Array.isArray(done)?done:[]);}catch(e){all=[];}
@@ -21866,21 +21894,22 @@ function showTicketDetail(p,i){
     return map;
   }
   function prefTech(m){var best="",n=-1;for(var k in (m.techs||{})){if(m.techs[k]>n){n=m.techs[k];best=k;}}return best||"\u2014";}
+  // "Since" = the SPA's model year ("2021 Arcadia ES" -> 2021); falls back to delivery year, then first service.
   function sinceOf(m){
     try{
       if(m.spaDesc&&typeof _parseSpaDescription==="function"){
         var p=_parseSpaDescription(m.spaDesc);
-        if(p&&p.delivered){var d=new Date(p.delivered);if(!isNaN(d.getTime()))return String(d.getFullYear());var mm=String(p.delivered).match(/(20\d{2})/);if(mm)return mm[1];}
+        if(p){
+          if(p.year)return String(p.year);
+          if(p.delivered){var d=new Date(p.delivered);if(!isNaN(d.getTime()))return String(d.getFullYear());}
+        }
       }
+      var mm=String(m.spaDesc||"").match(/\b(20[0-3]\d)\b/);
+      if(mm)return mm[1];
     }catch(e){}
     return m.since?String(m.since).slice(0,4):"\u2014";
   }
 
-  function qbPill(t){
-    if(t.status==="reschedule")return '<span class="ent-pill res">\u21BB Reschedule</span>';
-    if(t.qbCopied)return '<span class="ent-pill done">\u2713 In QuickBooks</span>';
-    return '<span class="ent-pill pend">\u25CB Pending QB</span>';
-  }
   function warrChips(t){
     var w=(t&&t.warranty)||{},chips="";
     chips+=w.label?'<span class="ent-chip warr">\uD83D\uDEE1\uFE0F '+esc2(w.label)+'</span>':'<span class="ent-chip">\uD83D\uDCB2 N/W</span>';
@@ -21927,12 +21956,14 @@ function showTicketDetail(p,i){
     try{if(typeof _visitMins==="function")mins=_visitMins(t.arrival,t.departure)||0;}catch(e){}
     var tos=(mins&&typeof fmtTime==="function")?fmtTime(mins):"";
     var chips='<div class="ent-ichips">'
-      + (tos?'<span class="ent-ichip">\u23F1 '+esc2(tos)+'</span>':'')
+      + (tos?'<span class="ent-ichip">\u23F1 '+esc2(tos)+' on site</span>':'')
       + ((t.arrival&&t.departure)?'<span class="ent-ichip">\uD83D\uDCCD '+esc2(t.arrival)+'\u2013'+esc2(t.departure)+'</span>':'')
       + (t.workTypes||[]).map(function(x){return '<span class="ent-ichip">\uD83D\uDD27 '+esc2(x)+'</span>';}).join("")
       + '</div>';
+    var bill=billHrsFull(t);
     return '<div class="ent-w"><div class="ent-w-h">\uD83E\uDDFE Invoice</div>'
       + '<div class="ent-bigtotal '+(c.covered?"covered":"")+'"><div class="bt-l">Service Total</div><div class="bt-v">'+(c.covered?"$0":money(c.amount))+'</div>'+(c.covered?'<div class="bt-tag">Covered \u00b7 warranty</div>':'')+'</div>'
+      + (bill?'<div class="ent-billrow"><span class="bill-l">\uD83D\uDCB5 Billable hours</span><span class="bill-v">'+esc2(bill)+'</span></div>':'')
       + (c.rule?'<div class="ent-inv-rule">'+esc2(c.rule)+'</div>':'')
       + chips
       + '</div>';
@@ -21977,19 +22008,31 @@ function showTicketDetail(p,i){
       + '</div>';
   }
 
+  /* ─── decision-first ticket card ─── */
   function ticketCard(t){
     var id=jsq(t.id),c=chargeFor(t);
     var chargeHTML=c.covered?'<div class="tc-charge cov">$0<span>covered</span></div>'
       :(c.amount>0?'<div class="tc-charge">'+money(c.amount)+'</div>':'<div class="tc-charge none">\u2014</div>');
     var vis=VLABEL[Number(t.visitNum)]||"1st visit";
+    var works=(t.workTypes||[]);
+    var workStr=works.length?(works.slice(0,3).join(" \u00b7 ")+(works.length>3?" +"+(works.length-3):"")):(Number(t.visitNum)===3?"Chemical maintenance":Number(t.visitNum)===5?"Spa delivery":"");
     var urg=t.isUrgent?'<span class="tc-urg">\uD83D\uDD25 URGENT</span>':'';
+    var rep=(Number(t.visitNum)===4||t.isRepeat)?'<span class="ent-chip rep">\u21A9\uFE0F Repeat</span>':'';
+    var rd=qbReady(t),nMedia=(Array.isArray(t.media)?t.media.length:0),bh=billHrsShort(t);
     return '<div class="ent-card" onclick="_aspenEntExpand(this,\''+id+'\')">'
       + '<div class="ent-card-rail" style="background:'+rail(t)+'"></div>'
       + '<div class="ent-card-mid">'
         + '<div class="ent-card-row1"><div class="tc-cust"><h4>'+esc2(t.customer)+' '+urg+'</h4>'
           + '<div class="tc-sub">'+av((t.techs&&t.techs[0])||"",18)+' '+esc2((t.techs||[]).join(", "))+(t.date?' \u00b7 '+esc2(t.date):'')+(t.arrival?' \u00b7 '+esc2(t.arrival):'')+'</div></div>'
           + chargeHTML+'</div>'
-        + '<div class="ent-card-chips"><span class="ent-chip vis">'+vis+'</span>'+warrChips(t)+qbPill(t)+'</div>'
+        + '<div class="tc-svc"><span class="ent-chip vis">'+vis+'</span>'+(workStr?'<span class="tc-work">'+esc2(workStr)+'</span>':'')+'</div>'
+        + '<div class="ent-valid">'
+          + warrChips(t) + rep
+          + '<span class="ent-rdy '+(rd.hasNotes?"ok":"no")+'" title="Tech notes">\uD83D\uDCDD</span>'
+          + '<span class="ent-rdy '+(nMedia?"ok":"no")+'" title="Photos attached">\uD83D\uDCF7'+(nMedia?" "+nMedia:"")+'</span>'
+          + '<span class="ent-rdy '+(rd.hasTime?"ok":"no")+'" title="Billable time on site">\u23F1'+(bh?" "+bh:"")+'</span>'
+          + '<span class="ent-qbready '+rd.cls+'">'+rd.txt+'</span>'
+        + '</div>'
       + '</div>'
       + '<div class="ent-card-exp">\u203a</div>'
       + '<div class="ent-detail" id="entD_'+esc2(t.id)+'"></div>'
@@ -22016,7 +22059,6 @@ function showTicketDetail(p,i){
       if(typeof openTktDetail==="function")openTktDetail(id);
     }catch(e){console.warn("[ent edit]",e);}
   };
-  // Real "AI Report / Copy for QB" modal — fresh index lookup (robust to refreshes).
   window._aspenEntReport=function(id){
     try{
       var i=(Array.isArray(active)?active:[]).findIndex(function(x){return x&&String(x.id)===String(id);});
@@ -22088,7 +22130,7 @@ function showTicketDetail(p,i){
       var tb=document.createElement("div");tb.id="aspenEntToolbar";tb.className="ent-toolbar";
       tb.innerHTML='<div class="ent-seg"><button id="entSegBoard" type="button" onclick="aspenEntToggle(false)">\uD83D\uDDC2\uFE0F Board</button>'
                  +'<button id="entSegEnt" type="button" onclick="aspenEntToggle(true)">\u2728 Enterprise</button></div>'
-                 +'<span class="ent-hint">Premium dashboard \u00b7 same tickets \u00b7 preview</span>';
+                 +'<span class="ent-hint">Service validation \u00b7 same tickets \u00b7 decide in seconds</span>';
       var split=$("ticketsSplit");
       if(split&&split.parentNode)split.parentNode.insertBefore(tb,split);else pg.appendChild(tb);
     }
@@ -22109,10 +22151,9 @@ function showTicketDetail(p,i){
     if(bE)bE.classList.toggle("on",on);
     if(view)view.classList.toggle("on",on);
     if(split)split.style.display=on?"none":"";
-    if(flt)flt.style.display=on?"none":"";          // redundant filter pills
-    if(pcb)pcb.style.display=on?"none":"";           // receivable bar
-    if(wk)wk.style.display=on?"none":"";              // greeting + collections + sparklines → clean single header
-    // NOTE: #dailySummary (native .dsum-card KPI cards) is intentionally KEPT — it IS the KPI row (premium-restyled in CSS). No duplicate KPI row is rendered.
+    if(flt)flt.style.display=on?"none":"";
+    if(pcb)pcb.style.display=on?"none":"";
+    if(wk)wk.style.display=on?"none":"";
     collapseColl();
     if(on)render();
   }
