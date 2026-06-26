@@ -11678,6 +11678,7 @@ function _pcGo360(id){_pcClose();if(typeof openCustomer360ByTicket==="function")
 /* ---- Daily top bar button (office staff only) ---- */
 function _pcRenderDailyBar(){
   var bar=document.getElementById("pcDailyBar");if(!bar)return;
+  bar.innerHTML="";return;   // Board receivable pill hidden for a clean board — delete this line to restore
   if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
   if(!_dataLoaded){bar.innerHTML="";return;}
   var d=_porCobrarData();
@@ -11877,6 +11878,7 @@ function _applyDailyFilter(pool){
 }
 function _renderDailyFilters(){
   var bar=document.getElementById("dailyFilters");if(!bar)return;
+  bar.innerHTML="";return;   // Board filter chips + Select hidden for a clean board — delete this line to restore
   if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
   if(typeof _dataLoaded!=="undefined"&&!_dataLoaded){bar.innerHTML="";return;}
   var qp=0,rp=0,cm=0,pc=0,un=0,_zoneCounts={};
