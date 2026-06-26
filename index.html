@@ -5312,7 +5312,12 @@ function cancelLogin(){
 function doLogin(){
   if(!selectedLoginUser)return;
   const pin=document.getElementById("loginPinIn").value;
-  if(pin!==selectedLoginUser.pin){document.getElementById("loginPinErr").style.display="block";return}
+  // Normalize both sides: a PIN stored as a number (3333) or with stray spaces
+  // must still match the typed string. Strict !== was rejecting everyone when
+  // config/users held numeric PINs. Compare as trimmed strings.
+  const _entered=String(pin==null?"":pin).trim();
+  const _stored=String(selectedLoginUser.pin==null?"":selectedLoginUser.pin).trim();
+  if(_entered!==_stored){document.getElementById("loginPinErr").style.display="block";return}
   currentUser=selectedLoginUser;
   isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
   sessionStorage.setItem("aspUser",JSON.stringify(currentUser));
@@ -5352,7 +5357,7 @@ function logout(){
   cancelLogin();
   renderLoginScreen();
 }
-function tryAutoLogin(){const s=sessionStorage.getItem("aspUser");if(!s)return false;try{const u=JSON.parse(s);const found=allUsers.find(x=>x.name===u.name&&x.pin===u.pin);if(found){currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";return true}}catch(e){}return false}
+function tryAutoLogin(){const s=sessionStorage.getItem("aspUser");if(!s)return false;try{const u=JSON.parse(s);const _pn=String(u.pin==null?"":u.pin).trim();const found=allUsers.find(x=>x.name===u.name&&String(x.pin==null?"":x.pin).trim()===_pn);if(found){currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";return true}}catch(e){}return false}
 
 function toggleAdmin(){logout()}
 function updAdmin(){
