@@ -2320,17 +2320,9 @@ body:not(.theme-ember) #pg1 .tech-col{
 body:not(.theme-ember) #pg1 .tech-col:hover{
   box-shadow:0 2px 4px rgba(0,0,0,.06),0 12px 26px -12px rgba(0,0,0,.35);
 }
-/* Colored accent bar on top of each column (cycles like the mockup) */
-body:not(.theme-ember) #pg1 .tech-col::before{
-  content:"";position:absolute;left:0;right:0;top:0;height:3px;
-  border-radius:14px 14px 0 0;background:var(--accent,var(--ac));
-}
-body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+1){--accent:var(--ac)}
-body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+2){--accent:var(--c-danger-strong)}
-body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+3){--accent:var(--c-purple-strong)}
-body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+4){--accent:var(--c-info-fg)}
-body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+5){--accent:var(--c-success-strong)}
-body:not(.theme-ember) #pg1 .tech-col:nth-of-type(6n+6){--accent:var(--c-warning-fg)}
+/* (Removed Jun 2026) Colored top accent bar per column — it cycled colors by
+   column position and read as a tech-avatar color bug at the rounded corners.
+   Columns now have a clean, uniform top. Nothing else here changed. */
 /* Header sits flush inside the card */
 body:not(.theme-ember) #pg1 .tech-col-hdr{
   background:var(--cardbg);
@@ -2350,6 +2342,13 @@ body:not(.theme-ember) #pg1 .tkt:hover{
 @media(prefers-reduced-motion:reduce){
   body:not(.theme-ember) #pg1 .tkt:hover{transform:none}
 }
+/* (Jun 2026) Hide the Daily quick-filter chips (All / Pending QB / Receivable /
+   Repeat / CM / Select) and the receivable summary pill, per request — visual
+   only. Filtering and receivable logic stay intact in the code; the search bar is
+   untouched. These elements simply don't render. Reversible: delete these two
+   rules to bring them back. */
+#pg1 #dailyFilters{display:none !important}
+#pg1 #pcDailyBar{display:none !important}
 </style>
 <!-- ════════════════════════════════════════════════════════════════════════
      CUSTOMER 360 — VISUAL SKIN ONLY (CRM look: Monday / HubSpot / ServiceTitan).
