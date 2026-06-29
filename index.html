@@ -6558,6 +6558,19 @@ async function _runDispatchCleanup(opts){
   var ok=0,fail=0;
   for(var i=0;i<stale.length;i++){
     try{
+      // STALE-CLEANUP GUARD (Jun 2026 — 100k chaos-sim): the stale[] list is built
+      // from THIS device's snapshot, which may predate a reopen on another device
+      // (calendar drag or detail-edit re-books the visit and sets cleanupExempt).
+      // A snapshot taken before that reopen won't see the exempt flag and would
+      // re-close the just-reopened visit on the server (it vanishes again). Re-read
+      // the doc fresh from the server right before closing and skip if it's now
+      // exempt / already closed / canceled. Same fresh-read hardening pattern used
+      // by _autoCreateReschedDispatch. Cleanup is never urgent — a skipped close is
+      // re-evaluated on the next pass once the snapshot catches up.
+      var _freshSnap=await db.collection("tickets").doc(stale[i].id).get();
+      if(!_freshSnap.exists)continue;
+      var _fd=_freshSnap.data()||{};
+      if(_fd.cleanupExempt===true||_fd.fieldReportSubmitted===true||_fd.status==="canceled")continue;
       var _updC={
         fieldReportSubmitted:true,
         fieldReportSubmittedAt:new Date().toISOString(),
@@ -11018,6 +11031,16 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       media:[],videoLinks:null,source:"dispatch",status:"pending",
       autoFromResched:true,reschedFromId:srcDocId,reschedAt:stamp,reschedAtMs:stampMs,
       reschedReason:reason||"",reschedNote:reasonNote||"",
+      // FRESH-CREATE FLAG-CLEAR (Jun 2026 — sim): this is set({merge:true}) on the
+      // DETERMINISTIC doc id "resched_<src>". If that doc already exists in a CLOSED
+      // state (a prior auto-call that was dismissed or auto-cleaned), merge would
+      // KEEP its stale fieldReportSubmitted:true and the re-booking call would be
+      // born invisible. The reuse path already clears these; the create path must
+      // too, so a re-created call is always born OPEN.
+      fieldReportSubmitted:false,
+      fieldReportId:firebase.firestore.FieldValue.delete(),
+      fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
+      cleanedUpBy:firebase.firestore.FieldValue.delete(),
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:stamp
     },{merge:true});
@@ -16439,8 +16462,24 @@ async function calDropOnDay(e,ds){
     var _origDoc=await db.collection("tickets").doc(dragTktId).get();
     var _orig=_origDoc.exists?_origDoc.data():{};
     var upd={date:ds};
+    // RESCHEDULE-REOPEN (Jun 2026): moving a dispatch whose field report is
+    // already in (the green "✓ REPORTED" card) to a DIFFERENT day means the
+    // office is booking a NEW visit for this customer. The old report stays on
+    // its own field-report doc (the previous visit keeps its history); THIS
+    // dispatch must reopen as a clean scheduled visit so it no longer reads
+    // "REPORTED". Mirror _orphanRestore exactly: clear the submit flag and the
+    // report linkage, and set cleanupExempt so the one-report-one-dispatch
+    // pairing/auto-cleanup can't instantly re-close it on the next pass.
+    var _reopened=_orig.source==="dispatch"&&_orig.fieldReportSubmitted===true&&(_orig.date||"")!==ds;
+    if(_reopened){
+      upd.fieldReportSubmitted=false;
+      upd.cleanupExempt=true;
+      upd.fieldReportId=firebase.firestore.FieldValue.delete();
+      upd.fieldReportSubmittedAt=firebase.firestore.FieldValue.delete();
+      upd.cleanedUpBy=firebase.firestore.FieldValue.delete();
+    }
     await db.collection("tickets").doc(dragTktId).update(upd);
-    toast("Moved to "+ds);
+    toast(_reopened?("Moved to "+ds+" · reopened for new visit \u21BB"):("Moved to "+ds));
     // Only offer SMS when the ticket already has techs assigned (otherwise
     // there's no one to notify the customer about yet).
     if(_orig.techs&&_orig.techs.length)_maybeOfferAppointmentSMS(_orig,upd);
@@ -16461,8 +16500,20 @@ async function calDropOnTech(e,techName,ds){
     if(techName)update.techs=[techName];
     else update.techs=[];
     if(ds)update.date=ds;
+    // RESCHEDULE-REOPEN (Jun 2026): same rule as calDropOnDay — if this is a
+    // dispatch whose report is already in and we're moving it to a DIFFERENT
+    // day, reopen it as a fresh visit so the green "REPORTED" badge clears and
+    // the prior report (which stays on the previous visit) can't re-close it.
+    var _reopened=ds&&_orig.source==="dispatch"&&_orig.fieldReportSubmitted===true&&(_orig.date||"")!==ds;
+    if(_reopened){
+      update.fieldReportSubmitted=false;
+      update.cleanupExempt=true;
+      update.fieldReportId=firebase.firestore.FieldValue.delete();
+      update.fieldReportSubmittedAt=firebase.firestore.FieldValue.delete();
+      update.cleanedUpBy=firebase.firestore.FieldValue.delete();
+    }
     await db.collection("tickets").doc(dragTktId).update(update);
-    toast(techName?"Reassigned to "+techName+" ✓":"Set to Unassigned ✓");
+    toast(techName?("Reassigned to "+techName+(_reopened?" · reopened \u21BB":"")+" \u2713"):"Set to Unassigned \u2713");
     // Offer the appointment SMS — only when we just ASSIGNED a tech (not when
     // we dropped it on the unassigned bin). _maybeOfferAppointmentSMS already
     // guards on phone presence and assignment change.
@@ -17728,6 +17779,23 @@ async function saveDetailEdits(id){
     }else{
       upd.status="pending";
     }
+  }
+  // RESCHEDULE-REOPEN (Jun 2026 — 100k chaos-sim confirmed this SECOND path):
+  // editing the DATE of a dispatch whose field report is already in (the green
+  // "✓ REPORTED" card) via the detail modal carries the SAME "book a new visit"
+  // intent as dragging it on the calendar — but the status logic above would
+  // preserve fieldReportSubmitted, so the moved visit kept reading REPORTED on the
+  // new day (baseline sim: 14.2% of chaos scenarios). Mirror calDropOnDay /
+  // _orphanRestore exactly: clear the submit flag + report linkage and set
+  // cleanupExempt so the new visit reopens clean and auto-cleanup can't instantly
+  // re-close it. Gated on an ACTUAL date change so a no-date edit is untouched.
+  if(orig&&dEl&&orig.source==="dispatch"&&orig.fieldReportSubmitted===true&&(orig.date||"")!==date){
+    upd.fieldReportSubmitted=false;
+    upd.cleanupExempt=true;
+    upd.fieldReportId=firebase.firestore.FieldValue.delete();
+    upd.fieldReportSubmittedAt=firebase.firestore.FieldValue.delete();
+    upd.cleanedUpBy=firebase.firestore.FieldValue.delete();
+    upd.status="pending";
   }
   if(isAdmin){
     var ce=document.getElementById("dtCust");
