@@ -20342,8 +20342,15 @@ function _mapsRenderHistory(){
   const totals={}; // techName: {miles,seconds,stops,days:Set}
   Object.keys(_mapsDistCache).forEach(function(key){
     const idx=key.lastIndexOf("_");
+    if(idx<0)return;
     const tech=key.substring(0,idx);
     const date=key.substring(idx+1);
+    // _mapsDistCache holds TWO key shapes: clean "<tech>_<YYYY-MM-DD>" aggregation
+    // keys (set explicitly for history) AND compound route-cache keys that embed
+    // segment coords / reschedule dispatch ids (contain | and :). Only the clean
+    // ones belong in this per-tech historical roll-up — skip anything whose date
+    // part isn't a bare YYYY-MM-DD, so dispatch ids never show as fake "techs".
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
     if(!totals[tech])totals[tech]={miles:0,seconds:0,stops:0,days:new Set()};
     const d=_mapsDistCache[key];
     totals[tech].miles+=d.miles;
