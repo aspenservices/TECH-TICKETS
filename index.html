@@ -12760,7 +12760,12 @@ function openReportModal(isDone,i){
   h+='<div style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.5px;color:var(--i3);font-weight:700;margin-bottom:6px">Report preview</div>';
   h+='<div id="repPreviewBox" style="border:1px solid var(--ln);border-radius:10px;padding:8px;background:#fff;max-height:340px;overflow-y:auto;margin-bottom:14px">'+rep.htmlBody+'</div>';
   // Action buttons
-  h+='<button onclick="improveAndCopyQB()" style="width:100%;margin-bottom:8px;padding:13px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">✨ Improve &amp; Copy for QuickBooks</button>';
+  // Two-birds AI: one short line for QuickBooks + one polished paragraph for the invoice.
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+  h+='<button id="qbShortBtn" onclick="copyQBShort()" style="flex:1;min-width:180px;padding:13px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">📋 AI · Copy for QuickBooks</button>';
+  h+='<button id="invBtn" onclick="copyInvoiceDetailed()" style="flex:1;min-width:180px;padding:13px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">📄 AI · Copy for Invoice</button>';
+  h+='</div>';
+  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:10px;text-align:center">Both start with the technician\'s name. QuickBooks = short line · Invoice = polished paragraph.</div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
   h+='<button onclick="sendReportEmail()" style="flex:1;min-width:160px;padding:12px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer">📧 Email (.eml)</button>';
   h+='<button onclick="sendReportText()" style="flex:1;min-width:160px;padding:12px;background:var(--c-success-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer">📱 Text</button>';
@@ -12921,6 +12926,85 @@ async function copyReportText(){
     if(typeof celebrate==="function")celebrate({count:80});
   }catch(_qe){console.warn("[qbCopied flag]",_qe)}
   closeReportModal();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// TWO-BIRDS AI SUMMARIES — one technician note → (1) a short QuickBooks line and
+// (2) a polished invoice paragraph. Both English, both led by the tech's name so
+// the customer knows who visited. Reuses the same api.anthropic.com call pattern.
+// ══════════════════════════════════════════════════════════════════════════
+function _repTechName(t){return (t&&t.techs&&t.techs.length)?t.techs.join(", "):"";}
+
+async function _aiSummarize(sysPrompt,rawText){
+  if(!rawText||!rawText.trim())return rawText||"";
+  const apiKey=getAIKey();
+  if(!apiKey)throw new Error("Please configure your AI key in the Admin tab first");
+  const response=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sysPrompt,messages:[{role:"user",content:rawText}]})
+  });
+  if(!response.ok){
+    let errMsg="AI request failed ("+response.status+")";
+    try{const e=await response.json();if(e&&e.error&&e.error.message)errMsg+=": "+e.error.message;}catch(_e){}
+    if(response.status===401)errMsg+=" — your API key may be invalid. Check it in the Admin tab.";
+    throw new Error(errMsg);
+  }
+  const data=await response.json();
+  return ((data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim())||rawText;
+}
+
+// A tiny copyable result popup (shared by both buttons).
+function _showCopyResult(title,text,accent){
+  var ov=document.getElementById("aiCopyOv");
+  if(!ov){ov=document.createElement("div");ov.id="aiCopyOv";
+    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10001;padding:16px";
+    ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 id="aiCopyTitle" style="font-size:16px;font-weight:800;margin:0"></h3><button onclick="document.getElementById(\'aiCopyOv\').style.display=\'none\'" style="border:none;background:transparent;font-size:22px;cursor:pointer;color:#888">×</button></div>'
+      +'<textarea id="aiCopyText" style="width:100%;min-height:130px;padding:12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;font-family:inherit;line-height:1.5;box-sizing:border-box;resize:vertical"></textarea>'
+      +'<button id="aiCopyBtn" style="width:100%;margin-top:12px;padding:13px;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer">📋 Copy to clipboard</button>'
+      +'<div style="font-size:11px;color:#999;margin-top:8px;text-align:center">You can edit the text above before copying.</div></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display="flex";
+  document.getElementById("aiCopyTitle").textContent=title;
+  document.getElementById("aiCopyText").value=text;
+  var btn=document.getElementById("aiCopyBtn");
+  btn.style.background=accent||"var(--br)";
+  btn.onclick=async function(){
+    var v=document.getElementById("aiCopyText").value;
+    try{await navigator.clipboard.writeText(v);}catch(_e){var ta=document.getElementById("aiCopyText");ta.select();document.execCommand("copy");}
+    toast("Copied ✓");
+    try{if(db&&_repCurrentTicket&&_repCurrentTicket.id){db.collection("tickets").doc(_repCurrentTicket.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()});_repCurrentTicket.qbCopied=true;if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();}}catch(_qe){}
+  };
+}
+
+async function copyQBShort(){
+  const t=_repCurrentTicket;if(!t)return;
+  const raw=((document.getElementById("repNotesEdit")||{}).value||"").trim();
+  if(!raw){toast("Nothing to summarize — notes are empty","warn");return;}
+  const btn=document.getElementById("qbShortBtn");const o=btn?btn.innerHTML:"";
+  if(btn){btn.disabled=true;btn.style.opacity=".7";btn.innerHTML="⏳ Summarizing…";}
+  const sys="You condense a spa technician's field notes into a SHORT QuickBooks line item. Rules: Write in English. 1 to 2 lines, maximum ~30 words. Third person, past tense. START with the technician name followed by an em dash, e.g. \""+(_repTechName(t)||"Technician")+" — \". State only the concrete work done and the outcome. No greetings, no emojis, no bullet points, no customer name, no filler like 'I' or 'we'. Output ONLY the finished line, nothing else. Technician name to use: "+(_repTechName(t)||"Technician")+".";
+  try{
+    const out=await _aiSummarize(sys,raw);
+    _showCopyResult("📋 QuickBooks summary (short)",out,"linear-gradient(135deg,#7c3aed,#c2410c)");
+  }catch(e){toast((e&&e.message)||"AI request failed","err");}
+  finally{if(btn){btn.disabled=false;btn.style.opacity="1";btn.innerHTML=o;}}
+}
+
+async function copyInvoiceDetailed(){
+  const t=_repCurrentTicket;if(!t)return;
+  const raw=((document.getElementById("repNotesEdit")||{}).value||"").trim();
+  if(!raw){toast("Nothing to summarize — notes are empty","warn");return;}
+  const btn=document.getElementById("invBtn");const o=btn?btn.innerHTML:"";
+  if(btn){btn.disabled=true;btn.style.opacity=".7";btn.innerHTML="⏳ Writing…";}
+  const sys="You rewrite a spa technician's field notes into a polished, professional paragraph for a customer invoice. Rules: Write in English. Well-written, clear, courteous, third person, past tense. START by naming the technician who performed the visit, e.g. \"Service performed by "+(_repTechName(t)||"our technician")+". \" Describe what was inspected, found, and repaired, and the final result, in complete sentences. Keep it concise (2 to 4 sentences). No emojis, no greeting line, no signature, no bullet points. Output ONLY the paragraph. Technician name to use: "+(_repTechName(t)||"our technician")+".";
+  try{
+    const out=await _aiSummarize(sys,raw);
+    _showCopyResult("📄 Invoice description (detailed)",out,"var(--br)");
+  }catch(e){toast((e&&e.message)||"AI request failed","err");}
+  finally{if(btn){btn.disabled=false;btn.style.opacity="1";btn.innerHTML=o;}}
 }
 
 // ── One-shot: Improve with AI, then copy QB text, in a single click (Feature 2)
