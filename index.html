@@ -11590,12 +11590,49 @@ function _dailyChargeToggle(arg){
   e.style.display=open?"none":"block";
 }
 
+// One-click copy of the customer name (no manual text selection). Reads the name
+// straight from the ticket card's header so it works in the desktop drawer AND the
+// mobile accordion. Copies to clipboard, shows a toast, and flashes the button.
+function _copyCustNameFallback(txt,cb){
+  try{
+    var ta=document.createElement("textarea");
+    ta.value=txt;ta.style.position="fixed";ta.style.top="-9999px";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.focus();ta.select();
+    try{document.execCommand("copy");}catch(_e){}
+    document.body.removeChild(ta);
+  }catch(_e){}
+  if(cb)cb();
+}
+function _copyCustName(btnEl){
+  var name="";
+  try{
+    var card=(btnEl&&btnEl.closest)?btnEl.closest(".tkt"):null;
+    var h=card?(card.querySelector(".tkt-h h4")||card.querySelector("h4")):null;
+    name=h?((h.getAttribute("data-cust")||h.textContent||"").trim()):"";
+  }catch(_e){}
+  if(!name){try{if(typeof toast==="function")toast(L2("No pude leer el nombre","Couldn't read the name"),"warn");}catch(_e){}return;}
+  var flash=function(){
+    try{if(typeof toast==="function")toast(L2("Nombre copiado ✓","Name copied ✓"));}catch(_e){}
+    try{
+      if(btnEl.getAttribute("data-orig")==null)btnEl.setAttribute("data-orig",btnEl.innerHTML);
+      btnEl.innerHTML="\u2713 "+L2("Copiado","Copied");
+      setTimeout(function(){var o=btnEl.getAttribute("data-orig");if(o!=null)btnEl.innerHTML=o;},1200);
+    }catch(_e){}
+  };
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(name).then(flash,function(){_copyCustNameFallback(name,flash);});
+    }else{_copyCustNameFallback(name,flash);}
+  }catch(_e){_copyCustNameFallback(name,flash);}
+}
+
 // The one-click quick-actions row.
 function _dailyQuickRow(t,isDone,i){
   var id=t.id;
   var cl='';
   try{ if(typeof _chargeTrailHTML==="function") cl=_chargeTrailHTML(t)||''; }catch(_e){}
   return '<div class="dq-label">'+L2("Acciones rápidas","Quick actions")+'</div>'
+    +'<button type="button" class="dq-copyname" onclick="event.stopPropagation();_copyCustName(this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;margin-bottom:8px;border-radius:11px;border:1.5px solid var(--ac);background:var(--acl);color:var(--acd);font-weight:800;font-size:var(--fs-sm);cursor:pointer;font-family:inherit">\uD83D\uDC64 '+L2("Copiar nombre del cliente","Copy customer name")+'</button>'
     +'<div class="dq-row">'
       +'<button class="dq-btn" onclick="event.stopPropagation();_dailyChargeToggle(this)"><span class="dq-ico">\uD83D\uDCB3</span>Charge Log</button>'
       +'<button class="dq-btn" onclick="event.stopPropagation();openCustomer360ByTicket(\''+id+'\')"><span class="dq-ico">\uD83D\uDC64</span>Customer 360</button>'
