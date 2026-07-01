@@ -11615,8 +11615,8 @@ function _copyCustName(btnEl){
     try{if(typeof toast==="function")toast(L2("Nombre copiado ✓","Name copied ✓"));}catch(_e){}
     try{
       if(btnEl.getAttribute("data-orig")==null)btnEl.setAttribute("data-orig",btnEl.innerHTML);
-      btnEl.innerHTML="\u2713 "+L2("Copiado","Copied");
-      setTimeout(function(){var o=btnEl.getAttribute("data-orig");if(o!=null)btnEl.innerHTML=o;},1200);
+      btnEl.innerHTML="\u2713";
+      setTimeout(function(){var o=btnEl.getAttribute("data-orig");if(o!=null)btnEl.innerHTML=o;},1000);
     }catch(_e){}
   };
   try{
@@ -11632,7 +11632,6 @@ function _dailyQuickRow(t,isDone,i){
   var cl='';
   try{ if(typeof _chargeTrailHTML==="function") cl=_chargeTrailHTML(t)||''; }catch(_e){}
   return '<div class="dq-label">'+L2("Acciones rápidas","Quick actions")+'</div>'
-    +'<button type="button" class="dq-copyname" onclick="event.stopPropagation();_copyCustName(this)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;margin-bottom:8px;border-radius:11px;border:1.5px solid var(--ac);background:var(--acl);color:var(--acd);font-weight:800;font-size:var(--fs-sm);cursor:pointer;font-family:inherit">\uD83D\uDC64 '+L2("Copiar nombre del cliente","Copy customer name")+'</button>'
     +'<div class="dq-row">'
       +'<button class="dq-btn" onclick="event.stopPropagation();_dailyChargeToggle(this)"><span class="dq-ico">\uD83D\uDCB3</span>Charge Log</button>'
       +'<button class="dq-btn" onclick="event.stopPropagation();openCustomer360ByTicket(\''+id+'\')"><span class="dq-ico">\uD83D\uDC64</span>Customer 360</button>'
@@ -12375,7 +12374,7 @@ function tktHTML(list,i,isDone){
   const laborAmt=lb?lb.amount:0;
   const grandTotal=partsTotal+laborAmt;
 
-  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}${(t.status==='complete'||isDone)&&!t.qbCopied?' qb-pending':''}" style="border-left:4px solid ${_dailyRail(t)}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4>${esc(t.customer)}</h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tiers">${_dailyTags3(t,w,_warMismatchBadge)}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
+  return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}${(t.status==='complete'||isDone)&&!t.qbCopied?' qb-pending':''}" style="border-left:4px solid ${_dailyRail(t)}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4 data-cust="${esc(t.customer)}">${esc(t.customer)}<span class="cust-copy" onclick="event.stopPropagation();_copyCustName(this)" title="${L2('Copiar nombre','Copy name')}" style="display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:1px;border-radius:5px;color:var(--i3);cursor:pointer;vertical-align:middle;opacity:.55" onmouseover="this.style.opacity='1';this.style.color='var(--acd)'" onmouseout="this.style.opacity='.55';this.style.color='var(--i3)'">${icon("clipboard",13,{})}</span></h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tiers">${_dailyTags3(t,w,_warMismatchBadge)}</div></div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
 ${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:var(--c-info-bg);border-radius:8px;color:var(--c-info-strong);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:8px">${icon("clock",14,{style:"vertical-align:-2px"})} Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})<span style="padding:2px 9px;border-radius:6px;background:var(--c-money-bg,#dcfce7);color:var(--c-money-fg,#166534);font-weight:800;font-size:var(--fs-sm)" title="Time on site rounded to the nearest 15 min — bill the customer this many hours">${icon("banknote",13,{style:"vertical-align:-2px"})} Bill: ${billLabel}</span></div>`:""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
