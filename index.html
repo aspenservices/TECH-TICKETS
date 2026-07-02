@@ -44,6 +44,9 @@
   /* Money / Paid */
   --c-money-bg:#d1fae5;       --c-money-fg:#065f46;
   --c-money-strong:#059669;
+  /* Chemical Maintenance plan (Aspen teal) */
+  --c-chem-bg:#dcf4f9;        --c-chem-fg:#0e6a7d;
+  --c-chem-strong:#1C8FA8;
   /* Neutral / Subtle */
   --c-neutral-bg:#f5f5f4;     --c-neutral-fg:#57534e;
   --c-neutral-border:#e7e5e4;
@@ -109,6 +112,7 @@ body.dark-mode{
   --c-danger-bg:#3a1518;--c-danger-fg:#fca5a5;--c-danger-border:#5a2024;--c-danger-strong:#ef4444;
   --c-info-bg:#15243f;--c-info-fg:#93c5fd;--c-info-border:#1e3a63;--c-info-strong:#3b82f6;
   --c-money-bg:#0f3326;--c-money-fg:#6ee7b7;--c-money-strong:#10b981;
+  --c-chem-bg:#0d2e36;--c-chem-fg:#7fd6e8;--c-chem-strong:#1C8FA8;
   --c-neutral-bg:#23262d;--c-neutral-fg:#b6bac2;--c-neutral-border:#323742;
   --c-purple-bg:#2a2245;--c-purple-fg:#c4b5fd;--c-purple-strong:#8b5cf6;
   --c-ash:#21242b;--c-ash-2:#262a31;
@@ -11488,6 +11492,38 @@ function _dailyRail(t){
   if(v===3)return "var(--brl)";                  // CM
   return "var(--ln)";                            // 1st visit · neutral
 }
+// ═══ CHEMICAL MAINTENANCE ORIGIN CHIP (Jul 2026) ═══
+// Tickets auto-created by the Chemical Maintenance dashboard arrive with
+// chemMaintenance:true + createdFrom:'chem-dashboard' (+ chemClientId and
+// chemSuggestedTech). This chip makes that origin visible everywhere the
+// ticket renders, so the office instantly knows it's a chem-plan visit.
+function _isChemTicket(t){
+  if(!t)return false;
+  return t.chemMaintenance===true||t.createdFrom==="chem-dashboard"||!!t.chemClientId;
+}
+function _chemChip(t,mini){
+  if(!_isChemTicket(t))return"";
+  var tip="Created from the Chemical Maintenance dashboard"+(t.chemSuggestedTech?" \u2014 suggested tech: "+t.chemSuggestedTech:"");
+  if(mini)return '<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-chem-bg);color:var(--c-chem-fg);border:1px solid var(--c-chem-strong);display:inline-flex;align-items:center;gap:3px" title="'+esc(tip)+'">\uD83E\uDDEA Chem</span>';
+  return '<span class="tkt-tag" style="background:var(--c-chem-bg);color:var(--c-chem-fg);border:1px solid var(--c-chem-strong);font-weight:800" title="'+esc(tip)+'">\uD83E\uDDEA Chem Maintenance</span>';
+}
+// URL of the Chemical Maintenance dashboard (GitHub Pages, aspenservices org).
+// Adjust here if the repo ever moves. #client=ID deep-links to that client.
+const CHEM_APP_URL="https://aspenservices.github.io/CHEMICAL-MAINTENCE/";
+// #1 (Jul 2026): one-tap assign of the tech suggested by the Chemical
+// Maintenance dashboard. Add-only (never removes); reuses slToggleTech so
+// status handling + the appointment-SMS offer stay identical to manual assign.
+async function _chemAssignSuggested(docId,techName,btn){
+  if(!db||!techName)return;
+  if(btn){btn.disabled=true;btn.textContent="Assigning\u2026";}
+  try{
+    const doc=await db.collection("tickets").doc(docId).get();
+    const d=doc.exists?doc.data():{};
+    if((d.techs||[]).includes(techName)){toast(techName+" is already assigned");if(btn)btn.textContent="\u2713 Assigned";return;}
+    await slToggleTech(docId,techName);
+    if(btn)btn.textContent="\u2713 Assigned";
+  }catch(e){toast("Error: "+e.message,"err");if(btn){btn.disabled=false;btn.textContent="Retry assign";}}
+}
 function _dailyTags3(t,w,warMismatch){
   w=w||{};warMismatch=warMismatch||"";
   var ic=(typeof icon==="function")?icon:function(){return""};
@@ -11501,6 +11537,7 @@ function _dailyTags3(t,w,warMismatch){
   if(t.visitNum===6)t1.push('<span class="tkt-tag" style="background:var(--acl,var(--acl));color:var(--acd,var(--acd));font-weight:800">\uD83D\uDE9A Spa Move</span>');
   if(t.isUrgent)t1.push('<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">\uD83D\uDD25 URGENT</span>');
   if(t.isNewSpa)t1.push('<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">\u2728 NEW SPA</span>');
+  var _chm=_chemChip(t); if(_chm)t1.push(_chm);
   if(t.needsOtherTech)t1.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="'+esc(t.needsOtherTechReason||'Needs an extra technician \u2014 2-person job')+'">\uD83D\uDC65 Needs 2nd tech</span>');
   if(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer))){
     t1.push(t.paidBeforeServiceOK
@@ -12101,6 +12138,18 @@ function _renderDailySummary(){
       +(dead?"":' onclick="_dailySummaryClick(\''+key+'\')"')+'>'
       +'<span class="dsum-n">'+n+'</span><span class="dsum-l">'+esc(label)+'</span></button>';
   });
+  // #4 (Jul 2026): 🧪 Chem-plan visits scheduled THIS WEEK (Mon–Sun) —
+  // dispatch tickets created by the Chemical Maintenance dashboard. Clicking
+  // jumps to the Service Log with the Chem filter on. The Enterprise view
+  // reuses these same cards, so the KPI shows there too.
+  try{
+    var _wk=(function(){var d=new Date();var off=(d.getDay()+6)%7;var mon=new Date(d);mon.setDate(d.getDate()-off);var sun=new Date(mon);sun.setDate(mon.getDate()+6);function k(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")}return [k(mon),k(sun)]})();
+    var _chemWk=(Array.isArray(active)?active:[]).filter(function(t){return _isChemTicket(t)&&t.status!=="canceled"&&t.date&&t.date>=_wk[0]&&t.date<=_wk[1]}).length;
+    h+='<button type="button" class="dsum-card'+(_chemWk===0?" dead":"")+'" style="--dsum-c:var(--c-chem-strong)"'
+      +(_chemWk===0?'':' onclick="slogChemOnly=true;if(typeof showTab===\'function\')showTab(5);if(typeof rndrSlog===\'function\')rndrSlog()"')
+      +' title="Chemical Maintenance visits scheduled this week \u2014 click to open the Service Log filtered to Chem">'
+      +'<span class="dsum-n">'+_chemWk+'</span><span class="dsum-l">'+L2("\uD83E\uDDEA Chem sem.","\uD83E\uDDEA Chem wk")+'</span></button>';
+  }catch(_e){}
   bar.innerHTML=h;
 }
 // Toggle: tapping the active filter again returns to "All".
@@ -13407,6 +13456,7 @@ async function _boardBulkDone(){
   });
 }
 let slogZone="all";
+let slogChemOnly=false; // #2 (Jul 2026): Service Log "Chem plan only" toggle
 function rndrD(){
   const el=document.getElementById("cList");
   const q=(document.getElementById("searchDone")||{}).value||"";
@@ -13510,7 +13560,8 @@ function rndrSlog(){
   if(!all.length){el.innerHTML=_orphanBanner+'<div class="empty-state"><div class="es-ico">'+icon("phone-call",28,{color:"var(--i3)"})+'</div><h3>No service calls waiting</h3><p>Unassigned dispatch tickets land here. Create one from the Calendar or wait for incoming calls.</p></div>';sf.innerHTML="";return}
   const zones=new Set();all.forEach(t=>{zones.add(effectiveZone(t)||"No Zone")});
   sf.innerHTML=""; // Top zone row removed — the clickable LOAD summary below is the single zone filter
-  const filtered=slogZone==="all"?all:all.filter(t=>(effectiveZone(t)||"No Zone")===slogZone);
+  let filtered=slogZone==="all"?all:all.filter(t=>(effectiveZone(t)||"No Zone")===slogZone);
+  if(slogChemOnly)filtered=filtered.filter(_isChemTicket);
   if(!filtered.length){el.innerHTML=_orphanBanner+'<div class="empty-state"><div class="es-ico">'+icon("map-pin-off",28,{color:"var(--i3)"})+'</div><h3>Nothing in this zone</h3><p>No unassigned tickets in this zone right now. Try another zone above or check back later.</p></div>';return}
   const byZone={};filtered.forEach(t=>{const z=effectiveZone(t)||"No Zone";if(!byZone[z])byZone[z]=[];byZone[z].push(t)});
   Object.values(byZone).forEach(arr=>arr.sort((a,b)=>(a.date||"").localeCompare(b.date||"")));
@@ -13522,6 +13573,8 @@ function rndrSlog(){
     h+='<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:2px 0">';
     h+='<span style="font-size:var(--fs-xs);font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--i3);margin-right:2px">Load</span>';
     h+='<button onclick="slogZone=\'all\';rndrSlog()" style="font-size:var(--fs-sm);font-weight:800;color:var(--ink);background:var(--cd);border:'+(slogZone==="all"?"2px solid var(--ac)":"1px solid var(--ln)")+';padding:3px 12px;border-radius:999px;cursor:pointer">Total '+all.length+'</button>';
+    var _chemN=all.filter(_isChemTicket).length;
+    if(_chemN||slogChemOnly)h+='<button onclick="slogChemOnly=!slogChemOnly;rndrSlog()" style="font-size:var(--fs-sm);font-weight:800;color:var(--c-chem-fg);background:var(--c-chem-bg);border:'+(slogChemOnly?"2px solid var(--c-chem-strong)":"1px solid var(--ln)")+';padding:3px 12px;border-radius:999px;cursor:pointer;'+(slogChemOnly?"box-shadow:0 0 0 3px color-mix(in srgb,var(--c-chem-strong) 18%,transparent)":"")+'" title="Show only Chemical Maintenance plan tickets">\uD83E\uDDEA Chem '+_chemN+'</button>';
     _loadKeys.forEach(function(z){
       var zc=ZONE_COLORS[z]||{bg:"#fff",text:"var(--i2)"};
       var _on=slogZone===z;
@@ -13555,6 +13608,7 @@ function rndrSlog(){
     return t.autoFromResched&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"&&!t.fieldReportSubmitted&&!_slServed(t);
   });
   if(slogZone!=="all")_reschedSrc=_reschedSrc.filter(function(t){return (effectiveZone(t)||"No Zone")===slogZone});
+  if(slogChemOnly)_reschedSrc=_reschedSrc.filter(_isChemTicket);
   if(q)_reschedSrc=_reschedSrc.filter(function(t){return tktMatchesSearch(t,q)});
   var rescheds=_reschedSrc.filter(function(t){return !t.date}).sort(function(a,b){return (a.reschedAtMs||9e15)-(b.reschedAtMs||9e15)});
   if(rescheds.length){
@@ -13639,6 +13693,7 @@ function rndrSlog(){
     if(t.fieldReportSubmitted)return false;
     if(t.status==="canceled"||t.status==="done")return false;
     if(!t.ccRequested)return false;
+    if(slogChemOnly&&!_isChemTicket(t))return false;
     if(slogZone!=="all"&&(effectiveZone(t)||"No Zone")!==slogZone)return false;
     if(q&&!tktMatchesSearch(t,q))return false;
     return true;
@@ -13665,7 +13720,7 @@ function rndrSlog(){
     items.forEach(t=>{
       const _wc=_warrantyMiniChip(t);
       const isDone=t.status==="done";const noTech=!t.techs||!t.techs.length;
-      h+=`<div class="zone-card-item" onclick="openTktDetail('${t.id}')" style="${t.isUrgent?"border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)":t.isNewSpa?"border-left:3px solid var(--c-purple-strong);background:var(--c-purple-bg)":t.autoFromResched?"border-left:3px solid var(--c-warning-fg);background:var(--c-warning-bg)":noTech?"border-left:3px solid var(--r)":""}${isDone?";opacity:.6":""}"><h6>${esc(t.customer)}${t.isUrgent?' <span style="color:var(--c-danger-strong);font-size:var(--fs-xs);font-weight:800">'+icon("flame",13,{style:"vertical-align:-1px"})+' URGENT</span>':''}${t.isNewSpa?' <span style="color:var(--c-purple-strong);font-size:var(--fs-xs);font-weight:800">'+icon("sparkles",13,{style:"vertical-align:-1px"})+' NEW SPA</span>':''}${t.isRepeat?' <span style="color:var(--r);font-size:var(--fs-xs);font-weight:700">'+icon("repeat",13,{style:"vertical-align:-1px"})+' REPEAT</span>':''}${t.autoFromResched?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:800">↻ RESCHEDULE</span>':''}${ticketHasOpenTodo(t.id)?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700">'+icon("clipboard-list",13,{style:"vertical-align:-1px"})+' TO DO</span>':''}${t.payCheck?' <span style="color:var(--c-info-strong);font-size:var(--fs-xs);font-weight:700">✓ CHECK</span>':''}${_wc?' '+_wc:''}</h6><p>${(t.techs||[]).join(", ")||"Unassigned"} · ${t.date||""}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓":""}</p>${t.phone?`<p>${icon("phone",13,{style:"vertical-align:-2px"})} ${esc(t.phone)}</p>`:""}</div>`;
+      h+=`<div class="zone-card-item" onclick="openTktDetail('${t.id}')" style="${t.isUrgent?"border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)":t.isNewSpa?"border-left:3px solid var(--c-purple-strong);background:var(--c-purple-bg)":t.autoFromResched?"border-left:3px solid var(--c-warning-fg);background:var(--c-warning-bg)":noTech?"border-left:3px solid var(--r)":""}${isDone?";opacity:.6":""}"><h6>${esc(t.customer)}${t.isUrgent?' <span style="color:var(--c-danger-strong);font-size:var(--fs-xs);font-weight:800">'+icon("flame",13,{style:"vertical-align:-1px"})+' URGENT</span>':''}${t.isNewSpa?' <span style="color:var(--c-purple-strong);font-size:var(--fs-xs);font-weight:800">'+icon("sparkles",13,{style:"vertical-align:-1px"})+' NEW SPA</span>':''}${t.isRepeat?' <span style="color:var(--r);font-size:var(--fs-xs);font-weight:700">'+icon("repeat",13,{style:"vertical-align:-1px"})+' REPEAT</span>':''}${t.autoFromResched?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:800">↻ RESCHEDULE</span>':''}${_isChemTicket(t)?' '+_chemChip(t,true):''}${ticketHasOpenTodo(t.id)?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700">'+icon("clipboard-list",13,{style:"vertical-align:-1px"})+' TO DO</span>':''}${t.payCheck?' <span style="color:var(--c-info-strong);font-size:var(--fs-xs);font-weight:700">✓ CHECK</span>':''}${_wc?' '+_wc:''}</h6><p>${(t.techs||[]).join(", ")||"Unassigned"} · ${t.date||""}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓":""}</p>${t.phone?`<p>${icon("phone",13,{style:"vertical-align:-2px"})} ${esc(t.phone)}</p>`:""}</div>`;
     });
     h+=`</div></div>`;
   });
@@ -16376,7 +16431,7 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // visually reads as occupied (4 = whole day).
   if(_slots>1)h+=`<div class="cal-allday-banner">${icon("clock",11,{style:"vertical-align:-1px"})} ${_slots>=4?"ALL DAY — takes the whole day":"TAKES "+_slots+" OF 4 SLOTS"}</div>`;
   if(canDismiss)h+=`<button onclick="calCycleDaySlots('${t.id}',event)" title="Day slots: ${_slots} of 4 — tap to change (1→2→3→4)" style="position:absolute;top:6px;right:34px;min-width:24px;height:24px;border:1.5px solid var(--ac);border-radius:7px;background:${_slots>1?"var(--ac)":"#fff"};color:${_slots>1?"#fff":"var(--ac)"};font-size:11px;font-weight:800;cursor:pointer;line-height:1;padding:0 4px;z-index:2">${icon("clock",12)}${_slots>1?_slots:""}</button>`;
-  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">${icon("triangle-alert",10,{color:"#fff"})} NEEDS REPORT</span> `;if(reported)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-success-strong);color:#fff;display:inline-block;margin-right:4px">✓ REPORTED</span> `;if(reschedReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">↻ REPORTED · RESCHEDULED</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;{var _wc=_warrantyMiniChip(t);if(_wc)h+=_wc+' ';}if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">${icon("flame",10,{color:"#fff"})} URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">${icon("sparkles",10,{color:"#fff"})} NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">${icon("triangle-alert",10,{color:"#fff"})} NEEDS REPORT</span> `;if(reported)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-success-strong);color:#fff;display:inline-block;margin-right:4px">✓ REPORTED</span> `;if(reschedReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">↻ REPORTED · RESCHEDULED</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;{var _wc=_warrantyMiniChip(t);if(_wc)h+=_wc+' ';}{var _cm=_chemChip(t,true);if(_cm)h+=_cm+' ';}if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">${icon("flame",10,{color:"#fff"})} URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">${icon("sparkles",10,{color:"#fff"})} NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket — admin/organizer only (the UI also hides
 // the toggle from techs, but defense in depth prevents console-side bypass).
@@ -17428,6 +17483,7 @@ function openTktDetail(id){
     // ─── Badges row — only render flags that are actually set ────
     // (instead of greyed-out disabled checkboxes for every flag)
     var _flagBadges=[];
+    if(_isChemTicket(t))_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:800;background:var(--c-chem-bg);color:var(--c-chem-fg);border:1px solid var(--c-chem-strong)">\uD83E\uDDEA Chem Maintenance'+(t.chemSuggestedTech?' \u00b7 suggested: '+esc(t.chemSuggestedTech):'')+'</span>');
     if(t.ccOnFile)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:var(--c-money-bg);color:var(--c-money-fg)">'+icon("credit-card",12,{color:"var(--c-money-fg)"})+'CC on File</span>');
     if(t.ccRequested)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:#fef3cd;color:#856404">'+icon("credit-card",12,{color:"#856404"})+'Request CC</span>');
     if(t.isRepeat)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:var(--c-danger-bg);color:var(--c-danger-fg)">⚠ Repeat</span>');
@@ -17444,6 +17500,13 @@ function openTktDetail(id){
   // Admin path: show editable checkboxes (techs use the badge row above instead).
   if(isAdmin){
     h+='<div class="dt-sec"><div class="dt-sec-t">🏷️ Flags &amp; Payment</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
+    if(_isChemTicket(t)){
+      h+='<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:800;background:var(--c-chem-bg);color:var(--c-chem-fg);border:1px solid var(--c-chem-strong)" title="Created from the Chemical Maintenance dashboard">\uD83E\uDDEA Chem Maintenance'+(t.chemSuggestedTech?' \u00b7 suggested: '+esc(t.chemSuggestedTech):'')+'</span>';
+      if(t.chemSuggestedTech&&!(t.techs||[]).includes(t.chemSuggestedTech))
+        h+='<button onclick="_chemAssignSuggested(\''+t.id+'\',\''+String(t.chemSuggestedTech).replace(/[\\\'"<>]/g,'')+'\',this)" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:800;background:var(--c-chem-strong);color:#fff;border:none;cursor:pointer">\uD83D\uDC64 Assign '+esc(t.chemSuggestedTech)+'</button>';
+      if(t.chemClientId!=null)
+        h+='<a href="'+CHEM_APP_URL+'#client='+encodeURIComponent(t.chemClientId)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:transparent;color:var(--c-chem-fg);border:1px dashed var(--c-chem-strong);text-decoration:none" title="Open this client in the Chemical Maintenance dashboard">Open in Chem \u2197</a>';
+    }
     h+='<label class="dt-chip" style="--chip-c:var(--i2);--chip-bg:var(--c-neutral-bg)"><input type="checkbox" id="dtCcFile" '+(t.ccOnFile?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> CC on File</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--ac);--chip-bg:var(--acl)"><input type="checkbox" id="dtCcReq" '+(t.ccRequested?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Request CC</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--r);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ↻ Repeat</label>';
