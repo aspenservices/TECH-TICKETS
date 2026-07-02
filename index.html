@@ -787,7 +787,7 @@ body.density-compact .mt-col{padding:7px}
 body.theme-ember .cw .cw-name{background:#231a12}
 body.theme-ember .cw thead th{background:rgba(255,255,255,.04)}
 /* ── Calendar: Day Timeline (hour rail × tech lanes) ── */
-.ctl-head{display:flex;gap:5px;margin-bottom:8px;padding-left:39px}
+.ctl-head{display:flex;gap:5px;margin-bottom:8px;padding-left:39px;min-width:min-content}
 .ctl-tcol{flex:1;min-width:200px;text-align:center;font-size:11px;font-weight:800;color:#fff;padding:6px 3px;border-radius:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ctl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .ctl-body{display:flex;gap:5px;position:relative;min-width:min-content}
@@ -16170,7 +16170,11 @@ function rndrCalTimeline(sel,byDate){
     if(sel===todayDs){var now=new Date();var nowMins=(now.getHours()*60+now.getMinutes())-(START*60);if(nowMins>=0&&nowMins<=(END-START)*60)lane+='<div class="ctl-now" style="top:'+((nowMins/60)*HPX)+'px"></div>'}
     lane+='</div>';body+=lane;
   });
-  document.getElementById("calGrid").innerHTML=cmd+head+'<div class="ctl-scroll"><div class="ctl-body">'+hours+body+'</div></div>';
+  // MOBILE FIX (Jul 2026): the tech-name header must live INSIDE .ctl-scroll —
+  // lanes are min-width:200px, so on phones the body overflows and pans
+  // horizontally; with the header outside the scroller the names stayed frozen
+  // and drifted out of alignment with their own columns.
+  document.getElementById("calGrid").innerHTML=cmd+'<div class="ctl-scroll">'+head+'<div class="ctl-body">'+hours+body+'</div></div>';
   _layoutTimelineLanes(railTop,GAP);
   requestAnimationFrame(function(){_layoutTimelineLanes(railTop,GAP)});
 }
