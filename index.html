@@ -10038,7 +10038,42 @@ async function makeEstimatePdfMedia(e,ticketKey){
   }catch(err){console.warn("[estimate PDF] generation/upload failed",err);return null}
 }
 
+// ─── FIRESTORE 1MB HARD LIMIT (Jul 2026 — Jeremy's failed submit) ────────────
+// Firestore rejects any document over 1,048,576 bytes. When Storage upload
+// fails (weak 5G, low battery), the old fallback embedded FULL-QUALITY base64
+// photos in the doc: 3 photos ≈ 1.5MB → the ENTIRE report write failed with
+// "cannot be written because its size exceeds…". Now the fallback recompresses
+// to emergency grade (800px q0.5 ≈ 100-160KB) under a strict 600KB total
+// budget; anything over budget goes to the MEDIA OUTBOX and auto-uploads to
+// Storage when the connection recovers. The write can never exceed the limit.
+var _frOverflowFiles=[];
+var _frEmbeddedBudget=0;
+async function _frStashOverflow(docId){
+  try{
+    if(!_frOverflowFiles.length||!docId)return;
+    var items=_frOverflowFiles.splice(0);
+    var n=await _obStash(docId,items);
+    if(n)toast("\uD83D\uDCCE "+n+" photo(s) couldn't upload on this connection \u2014 saved to outbox, will auto-upload","warn");
+  }catch(_e){console.warn("[fr overflow stash]",_e)}
+}
+async function _frEnforceDocSize(cleanData){
+  var LIMIT=950000; // headroom under Firestore's 1,048,576-byte cap
+  try{
+    if(JSON.stringify(cleanData).length<=LIMIT)return;
+    var media=Array.isArray(cleanData.media)?cleanData.media:[];
+    var keep=[],embedded=[];
+    media.forEach(function(m){(m&&m.data&&!m.url)?embedded.push(m):keep.push(m)});
+    embedded.sort(function(a,b){return (b.data||"").length-(a.data||"").length});
+    while(embedded.length&&JSON.stringify(Object.assign({},cleanData,{media:keep.concat(embedded)})).length>LIMIT){
+      var big=embedded.shift(); // largest first
+      try{_frOverflowFiles.push({file:await (await fetch(big.data)).blob(),name:"photo.jpg",type:"photo"})}catch(_e){}
+    }
+    cleanData.media=keep.concat(embedded);
+    if(!cleanData.media.length)delete cleanData.media;
+  }catch(_e){console.warn("[fr doc-size guard]",_e)}
+}
 async function compressAllMedia(){
+  _frOverflowFiles=[];_frEmbeddedBudget=0;
   if(!mediaFiles.length)return[];
   const prog=document.getElementById("uploadProg"),bar=document.getElementById("uploadBar");
   prog.classList.add("show");
@@ -10061,8 +10096,17 @@ async function compressAllMedia(){
           storageWorks=false; // stop trying for the rest
         }
       }
-      // Fallback: save as base64 in the document (old behavior)
-      results.push({data:compressed.dataUrl,type:"photo"});
+      // Fallback: base64 IN the doc is capped by Firestore's hard 1MB limit.
+      // Emergency recompress (800px q0.5) + 600KB running budget; over-budget
+      // photos go to the outbox and reach Storage when the network recovers.
+      const fb=await compressPhoto(mediaFiles[i].file,800,0.5);
+      const fbLen=(fb.dataUrl||"").length;
+      if(_frEmbeddedBudget+fbLen<=600000){
+        _frEmbeddedBudget+=fbLen;
+        results.push({data:fb.dataUrl,type:"photo"});
+      }else{
+        _frOverflowFiles.push({file:fb.blob,name:"photo.jpg",type:"photo"});
+      }
     }catch(e){console.warn("Skip photo "+i,e)}
   }
   setTimeout(()=>prog.classList.remove("show"),400);
@@ -10742,6 +10786,9 @@ async function submitTkt(st){
     // Sanitize: remove any undefined values that Firestore rejects
     function sanitize(obj){if(!obj||typeof obj!=="object")return obj;if(Array.isArray(obj))return obj.map(sanitize);var o={};Object.keys(obj).forEach(function(k){if(obj[k]!==undefined)o[k]=typeof obj[k]==="object"&&obj[k]!==null&&!Array.isArray(obj[k])?sanitize(obj[k]):obj[k]});return o}
     const cleanData=sanitize(tktData);
+    // Firestore 1MB guard: if embedded photos still push the doc over the cap
+    // (e.g. giant notes + several fallbacks), move the largest to the outbox.
+    try{await _frEnforceDocSize(cleanData)}catch(_e){}
 
     if(editingDocId){
       // Preserve "done" status when editing a completed ticket (so it stays in Completed tab)
@@ -10753,6 +10800,7 @@ async function submitTkt(st){
       cleanData.editedAt=new Date().toLocaleString();
       delete cleanData.phone;delete cleanData.address;delete cleanData.city;delete cleanData.zip;delete cleanData.zone;
       await db.collection("tickets").doc(editingDocId).update(cleanData);
+      try{await _frStashOverflow(editingDocId)}catch(_e){}
       // If editing a field report and marking it complete, also clear any matching dispatch tickets.
       // Uses the strict _custSameHousehold matcher (group-key equality) so that the set of dispatches
       // we CLOSE here is identical to the set the visibility/cleanup layer would HIDE — closed <=> hidden,
@@ -10841,6 +10889,7 @@ async function submitTkt(st){
       }else{
         newRef=await db.collection("tickets").add(cleanData);
       }
+      try{await _frStashOverflow(newRef.id)}catch(_e){}
       // If this field report was started from a dispatch ticket, mark that dispatch ticket as completed
       // so it disappears from the calendar (both for techs and admin)
       if(_backToTktId&&st==="complete"){
