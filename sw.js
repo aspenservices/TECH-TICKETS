@@ -9,7 +9,7 @@
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.1.72";
+const CACHE_VERSION = "v1.1.73";
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
@@ -22,6 +22,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./st.bundle.json",
   // Firebase SDK CDN URLs — same versions used in index.html
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js",
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js",
