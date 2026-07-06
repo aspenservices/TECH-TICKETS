@@ -66,3 +66,5 @@ Your site: `https://YOUR_USER.github.io/aspen-tickets/`
 - 1 GB Firestore = ~1000+ tickets with photos
 - 50K reads/day, 20K writes/day
 - Photos compressed to ~50-80KB each
+- https://aspen-ai.serviceaspen096.workers.dev CLOUDFLARE
+- 
