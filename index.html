@@ -18356,14 +18356,28 @@ function _arrivalWindow(arrival){
   var endStr=_fmt12h(String(endH).padStart(2,"0")+":"+mm);
   return startStr+" and "+endStr;
 }
+// Is this ticket a Water Change covered under the Chemical Maintenance plan?
+// True when the Water Change was explicitly marked "Chemical Maint." (wcType),
+// or when the ticket carries the Chem badge / CM visit type AND has the
+// "Water Change" work type. Used to customize the appointment SMS.
+function _isChemWaterChange(t){
+  if(!t)return false;
+  var hasWC=(t.workTypes||[]).some(function(w){return /water\s*change/i.test(w||"")});
+  if(t.wcType==="chem")return true;
+  var isChem=(typeof _isChemTicket==="function"&&_isChemTicket(t))||Number(t.visitNum||1)===3;
+  return isChem&&hasWC;
+}
 // Build the appointment notification SMS body
 function buildAppointmentSMS(t,techs,date,arrival){
   var techList=(techs||[]).filter(Boolean);
   var techNames=techList.length?techList.join(" / "):"a technician";
   var isDelivery=(t.workTypes||[]).some(function(w){return /deliver/i.test(w)});
+  var isChemWC=_isChemWaterChange(t);
   var actionLine=isDelivery
     ?"we have availability to deliver to your home on "+_fmtMD(date)
-    :"we have availability to send "+techNames+" to service your spa on "+_fmtMD(date);
+    :isChemWC
+      ?"on "+_fmtMD(date)+" we will be sending "+techNames+" to perform the water change included as part of your Chemical Maintenance program"
+      :"we have availability to send "+techNames+" to service your spa on "+_fmtMD(date);
   if(arrival)actionLine+=" between "+_arrivalWindow(arrival);
   var body="Good afternoon,\n\nMy name is "+SERVICE_MGR_NAME+",\n"+SERVICE_MGR_TITLE+" at Aspen Spas.\nI am reaching out to let you know that "+actionLine+".\n\nTo confirm your appointment, there is no need to call us — simply replying by text message to "+SERVICE_MGR_PHONE+" is enough.\n\nIf this date or time does not work for you, please let us know by text message at the same number, and we will be glad to reschedule for a day that fits your availability.\n\nOnce your appointment is confirmed, our technician will contact you with a reminder call before heading to your home.\nPlease note that if the technician is unable to arrive within the scheduled window, you will be notified in advance of a delayed arrival or a possible rescheduling of your appointment.\n\nWe appreciate your patience and look forward to servicing your spa.\nKind regards,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
   return body;
