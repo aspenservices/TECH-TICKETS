@@ -5589,12 +5589,20 @@ function updAdmin(){
   // Hide tech filter, Team view for techs; To-Do sidebar is ONLY for admin
   const isTechRole=currentUser&&currentUser.role==="tech";
   const isAdminRole=currentUser&&currentUser.role==="admin";
+  // Fix (Jul 2026): these lines referenced "cvTeam", an element that was renamed
+  // to "cvLanes" (the calendar's "Team Wk" button). The stale id returned null and
+  // threw `Cannot read properties of null (reading 'style')` at init, AND the
+  // intended hiding of the Team-Wk button for techs silently stopped working. Now
+  // it targets the real element and null-guards every lookup, so a missing node is
+  // a harmless no-op instead of a crash.
+  var _calFilterWrap=document.getElementById("calFilterWrap");
+  var _teamWkBtn=document.getElementById("cvLanes");
   if(isTechRole){
-    document.getElementById("calFilterWrap").style.display="none";
-    document.getElementById("cvTeam").style.display="none";
+    if(_calFilterWrap)_calFilterWrap.style.display="none";
+    if(_teamWkBtn)_teamWkBtn.style.display="none";
   }else{
-    document.getElementById("calFilterWrap").style.display="flex";
-    document.getElementById("cvTeam").style.display="";
+    if(_calFilterWrap)_calFilterWrap.style.display="flex";
+    if(_teamWkBtn)_teamWkBtn.style.display="";
   }
   // pg5 cal-side (new service call form): show to admin + organizer, hide for tech
   document.querySelectorAll("#pg5 .cal-side").forEach(cs=>cs.style.display=isTechRole?"none":"");
