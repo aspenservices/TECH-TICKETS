@@ -3064,6 +3064,34 @@ body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 3
   <!-- Repeated reschedules (operational flag — rendered by rndrAdminRepeatResched) -->
   <div id="adminRepeatResched" style="margin-bottom:12px"></div>
   <div id="adminFollowUps" style="margin-bottom:12px"></div>
+
+  <!-- ASPEN BRAIN — unified cross-app activity feed (reads only on demand) -->
+  <div class="card" style="margin-bottom:12px">
+    <div onclick="adminToggleSection('Brain')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:2px solid var(--ac)" id="adminBrainHdr">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">&#129504;</span>
+        <span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Brain &mdash; Live Feed</span>
+        <span id="adminBrainCount" style="background:var(--ac);color:#fff;font-size:var(--fs-sm);font-weight:700;padding:2px 10px;border-radius:12px">0</span>
+      </div>
+      <span id="adminBrainArrow" style="font-size:var(--fs-md);color:var(--i2);transition:transform .2s;transform:rotate(-90deg)">&#9660;</span>
+    </div>
+    <div id="adminBrainBody" style="padding-top:12px;display:none">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="adminBrainQ" placeholder="Search a customer&hellip;" autocomplete="off" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-md);outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')adminBrainSearch()">
+        <button onclick="adminBrainSearch()" style="background:var(--br);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">Search</button>
+        <button onclick="adminBrainLoad(true)" style="background:var(--ac);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">&#8635; Load / Refresh</button>
+      </div>
+      <div id="adminBrainFilters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <button class="abchip" data-app="all" onclick="adminBrainFilter('all')" style="border:1.5px solid var(--ln);background:var(--br);color:#fff;border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">All</button>
+        <button class="abchip" data-app="tickets" onclick="adminBrainFilter('tickets')" style="border:1.5px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Tickets</button>
+        <button class="abchip" data-app="chemical" onclick="adminBrainFilter('chemical')" style="border:1.5px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Chemical</button>
+        <button class="abchip" data-app="delivery" onclick="adminBrainFilter('delivery')" style="border:1.5px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Delivery</button>
+      </div>
+      <div id="adminBrainFeed"><div style="padding:16px;text-align:center;color:var(--i3)">Tap <b>Load / Refresh</b> to pull the latest cross-app activity. Nothing is read until you do.</div></div>
+      <button id="adminBrainMore" onclick="adminBrainLoad(false)" style="display:none;width:100%;margin-top:10px;background:var(--bg);color:var(--br);border:1.5px solid var(--ln);border-radius:8px;padding:9px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">Load older activity</button>
+      <div id="adminBrainFoot" style="margin-top:8px;text-align:center;font-size:var(--fs-xs);color:var(--i3)"></div>
+    </div>
+  </div>
   <!-- Customers currently within their 90-day service warranty (rendered by rndrSvcWarranty) -->
   <div id="svcWarrantyPanel" style="margin-bottom:12px"></div>
   <!-- Technicians + Users & PINs side by side (2 columns), both collapsible -->
@@ -5846,6 +5874,64 @@ function adminToggleSection(k){
   body.style.display=nowCollapsed?"none":"";
   arr.style.transform=nowCollapsed?"rotate(-90deg)":"";
   try{localStorage.setItem("admin"+k+"Collapsed",nowCollapsed?"1":"0")}catch(_e){}
+}
+
+// ═══ ASPEN BRAIN — admin live feed (reads on demand only) ═══
+var _brainState={events:[],lastDoc:null,reads:0,filter:"all"};
+function _brainMeta(app){return ({tickets:{t:"TICKETS",c:"#134A63"},chemical:{t:"CHEM",c:"#1C8FA8"},delivery:{t:"DELIVERY",c:"#B5733A"}})[app]||{t:String(app||"").toUpperCase(),c:"var(--i3)"};}
+function _brainRel(ts){var d=null;try{d=ts&&ts.toDate?ts.toDate():null}catch(_e){}if(!d)return"";var s=Math.floor((Date.now()-d.getTime())/1000);if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";if(s<604800)return Math.floor(s/86400)+"d ago";return d.toLocaleDateString();}
+function _brainShown(){return _brainState.filter==="all"?_brainState.events:_brainState.events.filter(function(e){return e.app===_brainState.filter});}
+function _brainRenderFeed(){
+  var el=document.getElementById("adminBrainFeed");if(!el)return;
+  var cnt=document.getElementById("adminBrainCount");if(cnt)cnt.textContent=_brainState.events.length;
+  var list=_brainShown();
+  if(!list.length){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">No activity to show yet. As tickets close, water changes and deliveries are logged, they appear here.</div>';return;}
+  el.innerHTML=list.map(function(e){var m=_brainMeta(e.app);var who=e.actor?(" \u00b7 "+esc(e.actor)):"";
+    return '<div style="display:flex;gap:10px;padding:11px 2px;border-bottom:1px solid var(--ln)">'
+      +'<span style="flex:none;align-self:flex-start;background:'+m.c+';color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.4px">'+esc(m.t)+'</span>'
+      +'<div style="min-width:0;flex:1"><div style="font-weight:700;color:var(--i1)">'+esc(e.title||e.type||"")+'</div>'
+      +'<div style="font-size:var(--fs-sm);color:var(--i3)"><b style="color:var(--br)">'+esc(e.customer||"(no name)")+'</b> \u00b7 '+esc(_brainRel(e.ts))+who+'</div></div></div>';
+  }).join("");
+}
+function _brainFoot(msg){var f=document.getElementById("adminBrainFoot");if(f)f.textContent=msg||("Firestore reads this session: "+_brainState.reads);}
+async function adminBrainLoad(reset){
+  if(!db){if(typeof toast==="function")toast("Firebase not ready","err");return;}
+  if(reset){_brainState.events=[];_brainState.lastDoc=null;}
+  var more=document.getElementById("adminBrainMore");if(more)more.style.display="none";
+  var feed=document.getElementById("adminBrainFeed");if(reset&&feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">Loading\u2026</div>';
+  try{
+    var q=_brainState.lastDoc
+      ?db.collection("events").orderBy("ts","desc").startAfter(_brainState.lastDoc).limit(100)
+      :db.collection("events").orderBy("ts","desc").limit(100);
+    var snap=await q.get();_brainState.reads+=snap.size;
+    snap.forEach(function(doc){_brainState.events.push(Object.assign({id:doc.id},doc.data()))});
+    _brainState.lastDoc=snap.docs.length?snap.docs[snap.docs.length-1]:_brainState.lastDoc;
+    _brainRenderFeed();
+    if(more)more.style.display=(snap.size===100)?"block":"none";
+    _brainFoot();
+  }catch(err){console.error(err);if(feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--c-danger-fg)">Couldn\u2019t load: '+esc(err.message||"")+'</div>';}
+}
+async function adminBrainSearch(){
+  if(!db){if(typeof toast==="function")toast("Firebase not ready","err");return;}
+  var name=(document.getElementById("adminBrainQ")||{}).value||"";
+  var key=(typeof AspenBrain!=="undefined"&&AspenBrain.custKey)?AspenBrain.custKey(name):String(name).replace(/\s+/g," ").trim().toLowerCase();
+  if(!key){adminBrainLoad(true);return;}
+  var feed=document.getElementById("adminBrainFeed");if(feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">Searching\u2026</div>';
+  var more=document.getElementById("adminBrainMore");if(more)more.style.display="none";
+  try{
+    var snap=await db.collection("events").where("customerKey","==",key).limit(200).get();_brainState.reads+=snap.size;
+    _brainState.events=snap.docs.map(function(d){return Object.assign({id:d.id},d.data())});
+    _brainState.events.sort(function(a,b){var ta=a.ts&&a.ts.toMillis?a.ts.toMillis():0;var tb=b.ts&&b.ts.toMillis?b.ts.toMillis():0;return tb-ta;});
+    _brainRenderFeed();_brainFoot("Showing "+_brainState.events.length+' event(s) for "'+name+'" \u00b7 reads this session: '+_brainState.reads);
+  }catch(err){console.error(err);if(feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--c-danger-fg)">Search failed: '+esc(err.message||"")+'</div>';}
+}
+function adminBrainFilter(app){
+  _brainState.filter=app;
+  try{document.querySelectorAll("#adminBrainFilters .abchip").forEach(function(x){
+    var on=x.getAttribute("data-app")===app;
+    x.style.background=on?"var(--br)":"var(--bg)";x.style.color=on?"#fff":"var(--i2)";
+  });}catch(_e){}
+  _brainRenderFeed();
 }
 // ── Admin Stats: dark-mode palette adaptation (Jun 2026 visual pass) ──
 // Category data-viz colors are used as 8-digit hex (color+'22' for translucent
