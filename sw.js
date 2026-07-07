@@ -9,7 +9,7 @@
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.1.77";
+const CACHE_VERSION = "v1.1.78";
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
@@ -73,13 +73,19 @@ self.addEventListener("fetch", function (event) {
   const url = req.url;
 
   // ── Skip Firestore/Firebase API requests — handled by SDK's own offline cache
+  // Also skip unpkg.com: Leaflet is loaded from there with crossorigin="" (CORS
+  // mode). If the SW intercepts and serves an "opaque" response for a CORS
+  // request, the browser rejects it (ERR_FAILED) and the route map fails to load.
+  // Letting the network handle unpkg directly lets the browser do the correct
+  // CORS fetch (unpkg sends Access-Control-Allow-Origin: *), so Leaflet loads.
   if (
     url.indexOf("firestore.googleapis.com") !== -1 ||
     url.indexOf("firebaseio.com") !== -1 ||
     url.indexOf("googleapis.com/identitytoolkit") !== -1 ||
-    url.indexOf("securetoken.googleapis.com") !== -1
+    url.indexOf("securetoken.googleapis.com") !== -1 ||
+    url.indexOf("unpkg.com") !== -1
   ) {
-    return; // Let the network handle these (Firebase SDK has its own caching)
+    return; // Let the network handle these (SDK/CDN manage their own semantics)
   }
 
   // ── Skip non-GET requests
