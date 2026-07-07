@@ -11245,6 +11245,92 @@ async function promptDialog(message, opts){
   });
 })();
 
+// ═══ ASPEN BRAIN — shared customer event log (schema v2, name-key) ═══
+// Zero-read logging. Customers joined by a normalized name key (no importer,
+// no customers/ collection). Writes to the master Firestore (tech-tickets-a9485);
+// on a different project it opens a secondary "brain" app and signs in anonymously.
+// Deterministic event IDs mean a re-save MERGES — logging can't inflate the count.
+const AspenBrain = (() => {
+  const MASTER_CONFIG = {
+    apiKey: "AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc",
+    authDomain: "tech-tickets-a9485.firebaseapp.com",
+    projectId: "tech-tickets-a9485",
+    storageBucket: "tech-tickets-a9485.firebasestorage.app",
+    messagingSenderId: "680308339087",
+    appId: "1:680308339087:web:3d18766c4b0e465a1a9bfa"
+  };
+  function custKey(name){return String(name||"").replace(/\s+/g," ").trim().toLowerCase();}
+  function fnv1a(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0;}return("00000000"+h.toString(16)).slice(-8);}
+  function _app(){
+    const primary=firebase.apps.find(a=>a.options&&a.options.projectId===MASTER_CONFIG.projectId);
+    if(primary)return primary;
+    try{return firebase.app("brain");}catch(e){return firebase.initializeApp(MASTER_CONFIG,"brain");}
+  }
+  async function _db(){
+    const app=_app();
+    try{if(app.auth&&!app.auth().currentUser){await app.auth().signInAnonymously();}}catch(e){}
+    return app.firestore();
+  }
+  async function logEvent(e){
+    if(!e||!e.customer||!e.app||!e.type){console.warn("[AspenBrain] skipped \u2014 missing customer/app/type",e);return null;}
+    const key=custKey(e.customer);if(!key)return null;
+    const sourceId=e.ref&&e.ref.id?String(e.ref.id):(e.title||"");
+    const eventId=e.app+"_"+fnv1a(e.app+"|"+e.type+"|"+sourceId);
+    const doc={customerKey:key,customer:String(e.customer),app:e.app,type:e.type,title:e.title||"",actor:e.actor||"",ref:e.ref||null,meta:e.meta||{},schemaV:2,ts:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    try{const database=await _db();await database.collection("events").doc(eventId).set(doc,{merge:true});return eventId;}
+    catch(err){console.error("[AspenBrain] logEvent failed",err);return null;}
+  }
+  async function timeline(name,max=50){
+    const key=custKey(name);if(!key)return[];
+    try{const database=await _db();const snap=await database.collection("events").where("customerKey","==",key).limit(200).get();
+      const rows=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+      rows.sort((a,b)=>{const ta=a.ts&&a.ts.toMillis?a.ts.toMillis():0;const tb=b.ts&&b.ts.toMillis?b.ts.toMillis():0;return tb-ta;});
+      return rows.slice(0,max);}
+    catch(err){console.error("[AspenBrain] timeline failed",err);return[];}
+  }
+  return{logEvent,timeline,custKey,fnv1a};
+})();
+
+// ═══ ASPEN BRAIN — customer timeline viewer (Phase 3) ═══
+// Opens a modal showing this customer's unified cross-app history (tickets,
+// chemical, delivery). One-time .get() bounded to the customer's events — no
+// realtime listener, no composite index.
+function closeBrainTL(){var b=document.getElementById("brainTLBg");if(b)b.classList.remove("open");}
+async function openCustomerTimeline(name){
+  if(!name||!String(name).trim())return;
+  var bg=document.getElementById("brainTLBg");
+  if(!bg){
+    bg=document.createElement("div");
+    bg.id="brainTLBg";bg.className="mbg";bg.style.zIndex="var(--z-dialog)";
+    bg.onclick=function(e){if(e.target===bg)closeBrainTL();};
+    bg.innerHTML='<div class="modal" style="max-width:520px"><div class="mt"><div class="mt-bar"></div>'
+      +'<div class="mt-t"><h3>\uD83E\uDDE0 Customer Timeline</h3><button class="mcl" onclick="closeBrainTL()">\u00d7</button></div>'
+      +'<div id="brainTLName" style="font-size:var(--fs-sm);color:var(--i3);margin:0 2px 6px"></div></div>'
+      +'<div class="rl" id="brainTLBody" style="max-height:60vh;overflow:auto;padding:2px 12px 14px"></div></div>';
+    document.body.appendChild(bg);
+  }
+  document.getElementById("brainTLName").textContent=name;
+  var body=document.getElementById("brainTLBody");
+  body.innerHTML='<div style="padding:18px;text-align:center;color:var(--i3)">Loading\u2026</div>';
+  bg.classList.add("open");
+  var events=[];
+  try{events=await AspenBrain.timeline(name,50);}catch(e){events=[];}
+  if(!events.length){
+    body.innerHTML='<div style="padding:22px;text-align:center;color:var(--i3)">No cross-app activity yet for this customer.</div>';
+    return;
+  }
+  var chip={tickets:{t:"TICKETS",c:"#134A63"},chemical:{t:"CHEM",c:"#1C8FA8"},delivery:{t:"DELIVERY",c:"#B5733A"}};
+  body.innerHTML=events.map(function(ev){
+    var m=chip[ev.app]||{t:String(ev.app||"").toUpperCase(),c:"var(--i3)"};
+    var when="";try{if(ev.ts&&ev.ts.toDate)when=ev.ts.toDate().toLocaleString();}catch(_e){}
+    var meta=[when,ev.actor].filter(Boolean).join(" \u00b7 ");
+    return '<div style="display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid var(--ln)">'
+      +'<span style="flex:none;align-self:flex-start;background:'+m.c+';color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:.4px">'+esc(m.t)+'</span>'
+      +'<div style="min-width:0"><div style="font-weight:700;font-size:var(--fs-base);color:var(--i1)">'+esc(ev.title||ev.type||"")+'</div>'
+      +(meta?'<div style="font-size:var(--fs-sm);color:var(--i3)">'+esc(meta)+'</div>':'')+'</div></div>';
+  }).join("");
+}
+
 // ═══ MARK DONE ═══
 // Short haptic pulse on supported devices — used on confirm actions. No-op elsewhere.
 function _haptic(ms){try{if(navigator.vibrate)navigator.vibrate(ms||15)}catch(_e){}}
@@ -11255,6 +11341,8 @@ async function markDone(docId){
   var _pCompleted=_prev?(_prev.completedAt||null):null;
   try{
     await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});
+    // Aspen Brain: record the completed service on the customer timeline.
+    try{AspenBrain.logEvent({customer:(_prev&&_prev.customer)||"",app:"tickets",type:"ticket.closed",title:"Service completed",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",ref:{app:"tickets",id:docId}});}catch(_be){}
     if(typeof celebrate==="function")celebrate({count:90});
     _undoBar("Completed ✓","Undo",function(){
       db.collection("tickets").doc(docId).update({status:_pStatus,completedAt:_pCompleted})
@@ -19541,6 +19629,8 @@ function qbCustRenderDetail(customers){
   const zc=ZONE_COLORS[c.zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
 
   let h='';
+  // ── ASPEN BRAIN — one-tap unified cross-app timeline for this customer
+  h+='<button data-brtl="'+esc(c.name||"")+'" onclick="openCustomerTimeline(this.dataset.brtl)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:#1C8FA8;color:#fff;border:none;border-radius:10px;padding:10px;font-weight:700;font-size:var(--fs-sm);cursor:pointer;margin:0 0 12px">\uD83E\uDDE0 Cross-app timeline</button>';
   // ── CROSS-APP ALERTS BANNER — show payment/service alerts from other Aspen apps
   const _alerts=getCustomerAlerts(c);
   if(_alerts.length){
