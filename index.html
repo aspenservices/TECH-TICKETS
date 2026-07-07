@@ -16051,10 +16051,25 @@ function _buildFieldReportIndex(){
       if(isNaN(t1)||isNaN(t2))continue;
       const diff=Math.abs(Math.round((t2-t1)/86400000));
       if(diff>30)continue;
-      if(r.createdMs>0&&d.createdMs>0){
-        if(r.createdMs<=d.createdMs)continue; // dispatch created AFTER report = new separate visit
-      }else{
-        if(!(d.date<_prToday))continue;       // legacy timestamps: only past-dated dispatches
+      // SAME-VISIT OVERRIDE (Jul 2026 — "Spaid" report not marked REPORTED):
+      // The "dispatch created after report" guard below exists to stop an OLD
+      // report from closing a NEWLY-booked FUTURE visit — and those ALWAYS have
+      // a DIFFERENT date. But when the dispatch and the report share the EXACT
+      // SAME DATE and an overlapping technician, it is the same visit, not a new
+      // one, even if the dispatch row was (re)created after the tech started the
+      // report — e.g. the visit was moved onto today's route while the tech was
+      // already on site (dispatch createdMs > report createdMs). In that case the
+      // pairing wrongly discarded it and the visit kept reading "NEW SPA" instead
+      // of "REPORTED". Same date + overlapping tech ⇒ pair it. The one-report-
+      // one-dispatch constraint below still guarantees this report can close only
+      // ONE dispatch, so no unrelated same-day visit is ever swallowed.
+      const _sameVisit=(diff===0)&&_pairTechOverlap(r.techs,d.techs);
+      if(!_sameVisit){
+        if(r.createdMs>0&&d.createdMs>0){
+          if(r.createdMs<=d.createdMs)continue; // dispatch created AFTER report = new separate visit
+        }else{
+          if(!(d.date<_prToday))continue;       // legacy timestamps: only past-dated dispatches
+        }
       }
       cand.push({ri:i,dj:j,diff:diff,score:diff-(_pairTechOverlap(r.techs,d.techs)?1.5:0)});
     }
