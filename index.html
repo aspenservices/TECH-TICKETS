@@ -3064,34 +3064,6 @@ body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 3
   <!-- Repeated reschedules (operational flag — rendered by rndrAdminRepeatResched) -->
   <div id="adminRepeatResched" style="margin-bottom:12px"></div>
   <div id="adminFollowUps" style="margin-bottom:12px"></div>
-
-  <!-- ASPEN BRAIN — unified cross-app activity feed (reads only on demand) -->
-  <div class="card" style="margin-bottom:12px">
-    <div onclick="adminToggleSection('Brain')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:10px;border-bottom:2px solid var(--ac)" id="adminBrainHdr">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:18px">&#129504;</span>
-        <span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">Brain &mdash; Live Feed</span>
-        <span id="adminBrainCount" style="background:var(--ac);color:#fff;font-size:var(--fs-sm);font-weight:700;padding:2px 10px;border-radius:12px">0</span>
-      </div>
-      <span id="adminBrainArrow" style="font-size:var(--fs-md);color:var(--i2);transition:transform .2s;transform:rotate(-90deg)">&#9660;</span>
-    </div>
-    <div id="adminBrainBody" style="padding-top:12px;display:none">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-        <input id="adminBrainQ" placeholder="Search a customer&hellip;" autocomplete="off" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-md);outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')adminBrainSearch()">
-        <button onclick="adminBrainSearch()" style="background:var(--br);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">Search</button>
-        <button onclick="adminBrainLoad(true)" style="background:var(--ac);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">&#8635; Load / Refresh</button>
-      </div>
-      <div id="adminBrainFilters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <button class="abchip" data-app="all" onclick="adminBrainFilter('all')" style="border:1.5px solid var(--ln);background:var(--br);color:#fff;border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">All</button>
-        <button class="abchip" data-app="tickets" onclick="adminBrainFilter('tickets')" style="border:1.5px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Tickets</button>
-        <button class="abchip" data-app="chemical" onclick="adminBrainFilter('chemical')" style="border:1.5px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Chemical</button>
-        <button class="abchip" data-app="delivery" onclick="adminBrainFilter('delivery')" style="border:1.5px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:999px;padding:5px 12px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">Delivery</button>
-      </div>
-      <div id="adminBrainFeed"><div style="padding:16px;text-align:center;color:var(--i3)">Tap <b>Load / Refresh</b> to pull the latest cross-app activity. Nothing is read until you do.</div></div>
-      <button id="adminBrainMore" onclick="adminBrainLoad(false)" style="display:none;width:100%;margin-top:10px;background:var(--bg);color:var(--br);border:1.5px solid var(--ln);border-radius:8px;padding:9px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">Load older activity</button>
-      <div id="adminBrainFoot" style="margin-top:8px;text-align:center;font-size:var(--fs-xs);color:var(--i3)"></div>
-    </div>
-  </div>
   <!-- Customers currently within their 90-day service warranty (rendered by rndrSvcWarranty) -->
   <div id="svcWarrantyPanel" style="margin-bottom:12px"></div>
   <!-- Technicians + Users & PINs side by side (2 columns), both collapsible -->
@@ -5874,64 +5846,6 @@ function adminToggleSection(k){
   body.style.display=nowCollapsed?"none":"";
   arr.style.transform=nowCollapsed?"rotate(-90deg)":"";
   try{localStorage.setItem("admin"+k+"Collapsed",nowCollapsed?"1":"0")}catch(_e){}
-}
-
-// ═══ ASPEN BRAIN — admin live feed (reads on demand only) ═══
-var _brainState={events:[],lastDoc:null,reads:0,filter:"all"};
-function _brainMeta(app){return ({tickets:{t:"TICKETS",c:"#134A63"},chemical:{t:"CHEM",c:"#1C8FA8"},delivery:{t:"DELIVERY",c:"#B5733A"}})[app]||{t:String(app||"").toUpperCase(),c:"var(--i3)"};}
-function _brainRel(ts){var d=null;try{d=ts&&ts.toDate?ts.toDate():null}catch(_e){}if(!d)return"";var s=Math.floor((Date.now()-d.getTime())/1000);if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";if(s<604800)return Math.floor(s/86400)+"d ago";return d.toLocaleDateString();}
-function _brainShown(){return _brainState.filter==="all"?_brainState.events:_brainState.events.filter(function(e){return e.app===_brainState.filter});}
-function _brainRenderFeed(){
-  var el=document.getElementById("adminBrainFeed");if(!el)return;
-  var cnt=document.getElementById("adminBrainCount");if(cnt)cnt.textContent=_brainState.events.length;
-  var list=_brainShown();
-  if(!list.length){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">No activity to show yet. As tickets close, water changes and deliveries are logged, they appear here.</div>';return;}
-  el.innerHTML=list.map(function(e){var m=_brainMeta(e.app);var who=e.actor?(" \u00b7 "+esc(e.actor)):"";
-    return '<div style="display:flex;gap:10px;padding:11px 2px;border-bottom:1px solid var(--ln)">'
-      +'<span style="flex:none;align-self:flex-start;background:'+m.c+';color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.4px">'+esc(m.t)+'</span>'
-      +'<div style="min-width:0;flex:1"><div style="font-weight:700;color:var(--i1)">'+esc(e.title||e.type||"")+'</div>'
-      +'<div style="font-size:var(--fs-sm);color:var(--i3)"><b style="color:var(--br)">'+esc(e.customer||"(no name)")+'</b> \u00b7 '+esc(_brainRel(e.ts))+who+'</div></div></div>';
-  }).join("");
-}
-function _brainFoot(msg){var f=document.getElementById("adminBrainFoot");if(f)f.textContent=msg||("Firestore reads this session: "+_brainState.reads);}
-async function adminBrainLoad(reset){
-  if(!db){if(typeof toast==="function")toast("Firebase not ready","err");return;}
-  if(reset){_brainState.events=[];_brainState.lastDoc=null;}
-  var more=document.getElementById("adminBrainMore");if(more)more.style.display="none";
-  var feed=document.getElementById("adminBrainFeed");if(reset&&feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">Loading\u2026</div>';
-  try{
-    var q=_brainState.lastDoc
-      ?db.collection("events").orderBy("ts","desc").startAfter(_brainState.lastDoc).limit(100)
-      :db.collection("events").orderBy("ts","desc").limit(100);
-    var snap=await q.get();_brainState.reads+=snap.size;
-    snap.forEach(function(doc){_brainState.events.push(Object.assign({id:doc.id},doc.data()))});
-    _brainState.lastDoc=snap.docs.length?snap.docs[snap.docs.length-1]:_brainState.lastDoc;
-    _brainRenderFeed();
-    if(more)more.style.display=(snap.size===100)?"block":"none";
-    _brainFoot();
-  }catch(err){console.error(err);if(feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--c-danger-fg)">Couldn\u2019t load: '+esc(err.message||"")+'</div>';}
-}
-async function adminBrainSearch(){
-  if(!db){if(typeof toast==="function")toast("Firebase not ready","err");return;}
-  var name=(document.getElementById("adminBrainQ")||{}).value||"";
-  var key=(typeof AspenBrain!=="undefined"&&AspenBrain.custKey)?AspenBrain.custKey(name):String(name).replace(/\s+/g," ").trim().toLowerCase();
-  if(!key){adminBrainLoad(true);return;}
-  var feed=document.getElementById("adminBrainFeed");if(feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">Searching\u2026</div>';
-  var more=document.getElementById("adminBrainMore");if(more)more.style.display="none";
-  try{
-    var snap=await db.collection("events").where("customerKey","==",key).limit(200).get();_brainState.reads+=snap.size;
-    _brainState.events=snap.docs.map(function(d){return Object.assign({id:d.id},d.data())});
-    _brainState.events.sort(function(a,b){var ta=a.ts&&a.ts.toMillis?a.ts.toMillis():0;var tb=b.ts&&b.ts.toMillis?b.ts.toMillis():0;return tb-ta;});
-    _brainRenderFeed();_brainFoot("Showing "+_brainState.events.length+' event(s) for "'+name+'" \u00b7 reads this session: '+_brainState.reads);
-  }catch(err){console.error(err);if(feed)feed.innerHTML='<div style="padding:16px;text-align:center;color:var(--c-danger-fg)">Search failed: '+esc(err.message||"")+'</div>';}
-}
-function adminBrainFilter(app){
-  _brainState.filter=app;
-  try{document.querySelectorAll("#adminBrainFilters .abchip").forEach(function(x){
-    var on=x.getAttribute("data-app")===app;
-    x.style.background=on?"var(--br)":"var(--bg)";x.style.color=on?"#fff":"var(--i2)";
-  });}catch(_e){}
-  _brainRenderFeed();
 }
 // ── Admin Stats: dark-mode palette adaptation (Jun 2026 visual pass) ──
 // Category data-viz colors are used as 8-digit hex (color+'22' for translucent
@@ -11331,92 +11245,6 @@ async function promptDialog(message, opts){
   });
 })();
 
-// ═══ ASPEN BRAIN — shared customer event log (schema v2, name-key) ═══
-// Zero-read logging. Customers joined by a normalized name key (no importer,
-// no customers/ collection). Writes to the master Firestore (tech-tickets-a9485);
-// on a different project it opens a secondary "brain" app and signs in anonymously.
-// Deterministic event IDs mean a re-save MERGES — logging can't inflate the count.
-const AspenBrain = (() => {
-  const MASTER_CONFIG = {
-    apiKey: "AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc",
-    authDomain: "tech-tickets-a9485.firebaseapp.com",
-    projectId: "tech-tickets-a9485",
-    storageBucket: "tech-tickets-a9485.firebasestorage.app",
-    messagingSenderId: "680308339087",
-    appId: "1:680308339087:web:3d18766c4b0e465a1a9bfa"
-  };
-  function custKey(name){return String(name||"").replace(/\s+/g," ").trim().toLowerCase();}
-  function fnv1a(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0;}return("00000000"+h.toString(16)).slice(-8);}
-  function _app(){
-    const primary=firebase.apps.find(a=>a.options&&a.options.projectId===MASTER_CONFIG.projectId);
-    if(primary)return primary;
-    try{return firebase.app("brain");}catch(e){return firebase.initializeApp(MASTER_CONFIG,"brain");}
-  }
-  async function _db(){
-    const app=_app();
-    try{if(app.auth&&!app.auth().currentUser){await app.auth().signInAnonymously();}}catch(e){}
-    return app.firestore();
-  }
-  async function logEvent(e){
-    if(!e||!e.customer||!e.app||!e.type){console.warn("[AspenBrain] skipped \u2014 missing customer/app/type",e);return null;}
-    const key=custKey(e.customer);if(!key)return null;
-    const sourceId=e.ref&&e.ref.id?String(e.ref.id):(e.title||"");
-    const eventId=e.app+"_"+fnv1a(e.app+"|"+e.type+"|"+sourceId);
-    const doc={customerKey:key,customer:String(e.customer),app:e.app,type:e.type,title:e.title||"",actor:e.actor||"",ref:e.ref||null,meta:e.meta||{},schemaV:2,ts:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-    try{const database=await _db();await database.collection("events").doc(eventId).set(doc,{merge:true});return eventId;}
-    catch(err){console.error("[AspenBrain] logEvent failed",err);return null;}
-  }
-  async function timeline(name,max=50){
-    const key=custKey(name);if(!key)return[];
-    try{const database=await _db();const snap=await database.collection("events").where("customerKey","==",key).limit(200).get();
-      const rows=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
-      rows.sort((a,b)=>{const ta=a.ts&&a.ts.toMillis?a.ts.toMillis():0;const tb=b.ts&&b.ts.toMillis?b.ts.toMillis():0;return tb-ta;});
-      return rows.slice(0,max);}
-    catch(err){console.error("[AspenBrain] timeline failed",err);return[];}
-  }
-  return{logEvent,timeline,custKey,fnv1a};
-})();
-
-// ═══ ASPEN BRAIN — customer timeline viewer (Phase 3) ═══
-// Opens a modal showing this customer's unified cross-app history (tickets,
-// chemical, delivery). One-time .get() bounded to the customer's events — no
-// realtime listener, no composite index.
-function closeBrainTL(){var b=document.getElementById("brainTLBg");if(b)b.classList.remove("open");}
-async function openCustomerTimeline(name){
-  if(!name||!String(name).trim())return;
-  var bg=document.getElementById("brainTLBg");
-  if(!bg){
-    bg=document.createElement("div");
-    bg.id="brainTLBg";bg.className="mbg";bg.style.zIndex="var(--z-dialog)";
-    bg.onclick=function(e){if(e.target===bg)closeBrainTL();};
-    bg.innerHTML='<div class="modal" style="max-width:520px"><div class="mt"><div class="mt-bar"></div>'
-      +'<div class="mt-t"><h3>\uD83E\uDDE0 Customer Timeline</h3><button class="mcl" onclick="closeBrainTL()">\u00d7</button></div>'
-      +'<div id="brainTLName" style="font-size:var(--fs-sm);color:var(--i3);margin:0 2px 6px"></div></div>'
-      +'<div class="rl" id="brainTLBody" style="max-height:60vh;overflow:auto;padding:2px 12px 14px"></div></div>';
-    document.body.appendChild(bg);
-  }
-  document.getElementById("brainTLName").textContent=name;
-  var body=document.getElementById("brainTLBody");
-  body.innerHTML='<div style="padding:18px;text-align:center;color:var(--i3)">Loading\u2026</div>';
-  bg.classList.add("open");
-  var events=[];
-  try{events=await AspenBrain.timeline(name,50);}catch(e){events=[];}
-  if(!events.length){
-    body.innerHTML='<div style="padding:22px;text-align:center;color:var(--i3)">No cross-app activity yet for this customer.</div>';
-    return;
-  }
-  var chip={tickets:{t:"TICKETS",c:"#134A63"},chemical:{t:"CHEM",c:"#1C8FA8"},delivery:{t:"DELIVERY",c:"#B5733A"}};
-  body.innerHTML=events.map(function(ev){
-    var m=chip[ev.app]||{t:String(ev.app||"").toUpperCase(),c:"var(--i3)"};
-    var when="";try{if(ev.ts&&ev.ts.toDate)when=ev.ts.toDate().toLocaleString();}catch(_e){}
-    var meta=[when,ev.actor].filter(Boolean).join(" \u00b7 ");
-    return '<div style="display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid var(--ln)">'
-      +'<span style="flex:none;align-self:flex-start;background:'+m.c+';color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:.4px">'+esc(m.t)+'</span>'
-      +'<div style="min-width:0"><div style="font-weight:700;font-size:var(--fs-base);color:var(--i1)">'+esc(ev.title||ev.type||"")+'</div>'
-      +(meta?'<div style="font-size:var(--fs-sm);color:var(--i3)">'+esc(meta)+'</div>':'')+'</div></div>';
-  }).join("");
-}
-
 // ═══ MARK DONE ═══
 // Short haptic pulse on supported devices — used on confirm actions. No-op elsewhere.
 function _haptic(ms){try{if(navigator.vibrate)navigator.vibrate(ms||15)}catch(_e){}}
@@ -11427,8 +11255,6 @@ async function markDone(docId){
   var _pCompleted=_prev?(_prev.completedAt||null):null;
   try{
     await db.collection("tickets").doc(docId).update({status:"done",completedAt:new Date().toLocaleString()});
-    // Aspen Brain: record the completed service on the customer timeline.
-    try{AspenBrain.logEvent({customer:(_prev&&_prev.customer)||"",app:"tickets",type:"ticket.closed",title:"Service completed",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",ref:{app:"tickets",id:docId}});}catch(_be){}
     if(typeof celebrate==="function")celebrate({count:90});
     _undoBar("Completed ✓","Undo",function(){
       db.collection("tickets").doc(docId).update({status:_pStatus,completedAt:_pCompleted})
@@ -12441,7 +12267,7 @@ var AI_INTERPRET_SYS =
 +"- REPEAT: we returned because a TECHNICIAN MADE A MISTAKE and we fixed the SAME problem again -> NO charge (our error). Usually the same issue within Aspen's 90-day service warranty.\n"
 +"- NEW FAULT on that return: if the tech finds a DIFFERENT / new fault, it is reported as a new fault and charged as a SECOND VISIT.\n"
 +"- RESCHEDULE: the job could not be finished, or the tech must return to the house for some reason -> counts as a SECOND VISIT (charged).\n"
-+"- SECOND VISIT (labor billed = Service Call $150 + overage; parts follow warranty): installing a part diagnosed earlier, OR a reschedule, OR a new fault found during a repeat visit.\n"
++"- SECOND VISIT (NO Service Call fee: ALL on-site time is billed as additional labor at $100/hr in 15-min increments, and the prior technical visit's time is added; parts follow warranty): installing a part diagnosed earlier, OR a reschedule, OR a new fault found during a repeat visit.\n"
 +"- WARRANTY: spa within manufacturer warranty (series ES/GS/VS/SS + year) AND the failing part is covered -> parts $0, labor per tier (full / TC-only / 50%).\n"
 +"- NO WARRANTY: out of warranty or part not covered -> customer pays parts retail + Service Call $150 + overage.\n"
 +"If warranty model/year is not provided, set part_warranty to \"unknown\" and add a flag to verify the spa's series + year. "
@@ -19715,8 +19541,6 @@ function qbCustRenderDetail(customers){
   const zc=ZONE_COLORS[c.zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
 
   let h='';
-  // ── ASPEN BRAIN — one-tap unified cross-app timeline for this customer
-  h+='<button data-brtl="'+esc(c.name||"")+'" onclick="openCustomerTimeline(this.dataset.brtl)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:#1C8FA8;color:#fff;border:none;border-radius:10px;padding:10px;font-weight:700;font-size:var(--fs-sm);cursor:pointer;margin:0 0 12px">\uD83E\uDDE0 Cross-app timeline</button>';
   // ── CROSS-APP ALERTS BANNER — show payment/service alerts from other Aspen apps
   const _alerts=getCustomerAlerts(c);
   if(_alerts.length){
@@ -24191,5 +24015,298 @@ function showTicketDetail(p,i){
   else setTimeout(install,0);
 })();
 </script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     ASPEN BILLING SPRINT (Jul 2026) — ADDITIVE & fully reversible.
+     Paste this whole block right before </body>. Delete the block to revert.
+     One-at-a-time invoice capture for Nela: pulls every completed ticket not
+     yet in QuickBooks (!qbCopied), shows verdict + $ breakdown + ready QB text,
+     one tap copies it, marks qbCopied and auto-advances. No markup or existing
+     function is modified — reuses buildCustomerReport / _billingFor / qbCopied.
+     ════════════════════════════════════════════════════════════════════════ -->
+<style id="aspenBillingSprintCSS">
+#bsLaunch{display:none;width:100%;margin:0 0 12px;padding:13px 16px;border:1.5px solid var(--c-money-fg,#065f46);border-radius:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;display:none;align-items:center;justify-content:center;gap:8px;transition:transform .12s}
+#bsLaunch:hover{transform:translateY(-1px)}
+#bsLaunch .bs-cnt{background:var(--c-money-fg,#065f46);color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;padding:0 7px}
+#bsOv{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:14px}
+#bsOv .bs-box{background:var(--card,#fff);color:var(--ink,#1f1a15);border-radius:18px;max-width:640px;width:100%;max-height:92vh;max-height:92dvh;overflow:auto;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+#bsOv .bs-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+#bsOv .bs-title{font-size:16px;font-weight:800;margin:0}
+#bsOv .bs-prog{margin-left:auto;font-size:12px;font-weight:700;color:var(--i3,#8a8073)}
+#bsOv .bs-x{background:none;border:none;font-size:24px;line-height:1;color:var(--i3,#999);cursor:pointer;padding:2px 6px}
+#bsOv .bs-bar{height:6px;border-radius:999px;background:var(--ln,#e5e0d8);overflow:hidden;margin-bottom:14px}
+#bsOv .bs-bar i{display:block;height:100%;background:var(--c-money-fg,#065f46);border-radius:999px;transition:width .25s}
+#bsOv .bs-cust{font-size:19px;font-weight:800;margin:0 0 2px}
+#bsOv .bs-meta{font-size:12.5px;color:var(--i3,#8a8073);font-weight:600;margin-bottom:10px}
+#bsOv .bs-verdict{display:block;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:800;margin-bottom:4px}
+#bsOv .bs-verdict .bs-sub{display:block;font-size:11.5px;font-weight:600;opacity:.85;margin-top:2px}
+#bsOv .bs-v-ok{background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46)}
+#bsOv .bs-v-no{background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b)}
+#bsOv .bs-v-warn{background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e)}
+#bsOv .bs-v-info{background:var(--c-info-bg,#dbeafe);color:var(--c-info-fg,#1e40af)}
+#bsOv .bs-money{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 12px}
+#bsOv .bs-money div{background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:8px 10px;text-align:center}
+#bsOv .bs-money b{display:block;font-size:15px}
+#bsOv .bs-money span{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--i3,#8a8073);font-weight:700}
+#bsOv .bs-lines{border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--bg,#faf8f4)}
+#bsOv .bs-lines-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--i3,#8a8073);font-weight:800;margin-bottom:6px}
+#bsOv .bs-line{display:flex;gap:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--ln,#e5e0d8);flex-wrap:wrap;align-items:baseline}
+#bsOv .bs-line:last-of-type{border-bottom:none}
+#bsOv .bs-line b{font-weight:700}
+#bsOv .bs-line .bs-q{margin-left:auto;white-space:nowrap;color:var(--i2,#5a5248)}
+#bsOv .bs-line em{flex-basis:100%;font-style:normal;font-size:11px;color:var(--c-warning-fg,#92400e)}
+#bsOv .bs-lines-f{font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:6px}
+#bsOv textarea{width:100%;min-height:190px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;border:1px solid var(--ln,#ddd);border-radius:10px;padding:12px;background:var(--bg,#faf8f4);color:var(--ink,#1f1a15);resize:vertical;box-sizing:border-box}
+#bsOv .bs-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#bsOv .bs-copy{width:100%;padding:14px;background:var(--br,#3D2B1F);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;min-height:48px}
+#bsOv .bs-row2{display:flex;gap:8px}
+#bsOv .bs-skip,#bsOv .bs-nobill{flex:1;padding:11px;background:transparent;border:1.5px solid var(--ln,#ddd);border-radius:10px;font-weight:700;font-size:13px;color:var(--i2,#5a5248);cursor:pointer;min-height:44px}
+#bsOv .bs-nobill{border-color:var(--c-danger-fg,#991b1b);color:var(--c-danger-fg,#991b1b)}
+#bsOv .bs-endbtn{width:100%;padding:13px;border-radius:10px;border:1.5px solid var(--ln,#ddd);background:transparent;font-weight:800;font-size:14px;cursor:pointer;color:var(--ink,#1f1a15);margin-top:8px}
+@media(max-width:520px){#bsOv .bs-money{grid-template-columns:repeat(2,1fr)}}
+</style>
+<script id="aspenBillingSprintJS">
+(function(){
+"use strict";
+var VLABEL={1:"1st visit",2:"2nd visit · labor",3:"Chemical Maint.",4:"Repeat (warranty)",5:"Delivery",6:"Spa Move"};
+var Q=[],idx=0,billed=0,skipped=[];
+
+function canUse(){try{return typeof currentUser!=="undefined"&&currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");}catch(e){return false;}}
+
+/* PENDING ONLY (Jul 2026, per Alberto): the queue is strictly the Daily
+   tickets awaiting billing — status "complete", not yet qbCopied. The `done`
+   archive is EXCLUDED on purpose: old history predates the qbCopied flag and
+   would flood the queue with hundreds of already-billed tickets. */
+function pool(){
+  return ((typeof active!=="undefined"&&active)||[]).filter(function(t){
+    return t&&t.source!=="dispatch"&&!t.qbCopied&&!t.bsNoBill&&t.status==="complete";
+  }).sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
+}
+
+/* $ breakdown — same rules as _billingRowsFor (stored totals authoritative;
+   sel-swap around calcLabor so the open Field Report form can't leak in). */
+function moneyFor(t){
+  var parts=(t.parts||[]).reduce(function(s,p){return s+(((p.ch!=null?p.ch:p.p)||0)*(p.qty||1));},0);
+  var tax=+(Number(t.tax)||0).toFixed(2);
+  var sp=(t.partsCost!=null&&!isNaN(Number(t.partsCost)))?+Number(t.partsCost).toFixed(2):null;
+  var st=(t.total!=null&&!isNaN(Number(t.total))&&Number(t.total)>0)?+Number(t.total).toFixed(2):null;
+  if(st!=null){var p2=(sp!=null?sp:+parts.toFixed(2));return{parts:p2,labor:+Math.max(0,st-p2-tax).toFixed(2),tax:tax,total:st};}
+  var lb=null,_s;
+  try{
+    _s=sel;sel=Array.isArray(t.parts)?t.parts:[];
+    lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{}):"none"),t.noLabor||false);
+  }catch(e){}finally{try{sel=_s;}catch(e2){}}
+  var labor=lb&&typeof lb.amount==="number"?lb.amount:0;
+  return{parts:+parts.toFixed(2),labor:+labor.toFixed(2),tax:tax,total:+(parts+labor+tax).toFixed(2)};
+}
+
+/* Light verdict — mirrors the Daily verdict engine rules via _billingFor. */
+function verdictFor(t){
+  var vn=Number(t.visitNum)||1,b=null;
+  try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
+  var sub=b&&b.bottom?b.bottom:"";
+  if(vn===4||t.isRepeat)return{txt:"⛔ NO facturar — Repeat / warranty callback",sub:"",cls:"no"};
+  if(b&&b.partsFree&&b.laborFree)return{txt:"⛔ NO facturar — cubierto por garantía",sub:sub,cls:"no"};
+  if(b&&(b.verify||b.pending))return{txt:"⚠️ Revisar garantía antes de facturar",sub:sub,cls:"warn"};
+  if(vn===3)return{txt:"🔵 Chemical Maintenance — sin mano de obra",sub:sub,cls:"info"};
+  if(vn===5)return{txt:"🔵 Delivery — sin mano de obra",sub:sub,cls:"info"};
+  if(vn===6)return{txt:"🔵 Spa Move — tarifa plana (según estimate)",sub:sub,cls:"info"};
+  if(b&&(!!b.partsFree!==!!b.laborFree))return{txt:"⚠️ Cobro parcial — "+(b.partsFree?"parts gratis · labor se cobra":"labor gratis · parts se cobran"),sub:sub,cls:"warn"};
+  var miss=[];if(!String(t.notes||"").trim())miss.push("notas");if(!t.arrival||!t.departure)miss.push("horas");
+  if(miss.length)return{txt:"⚠️ Falta: "+miss.join(", ")+" — revisar antes de facturar",sub:sub,cls:"warn"};
+  return{txt:"✅ Facturar",sub:sub,cls:"ok"};
+}
+
+function qbTextFor(t){
+  var _s,txt="";
+  try{
+    _s=sel;sel=Array.isArray(t.parts)?t.parts:[];
+    var rep=(typeof buildCustomerReport==="function")?buildCustomerReport(t):null;
+    txt=rep?(rep.textQB||rep.textPlain||""):"";
+  }catch(e){txt="("+String((e&&e.message)||"error")+") — open the ticket to copy manually";}
+  finally{try{sel=_s;}catch(e2){}}
+  return txt;
+}
+
+/* ── QB LINE BUILDER — mirrors Nela's real QuickBooks invoices (Jul 2026,
+   confirmed with Alberto against 5 real invoices):
+   · No warranty ......... Service-Basic 1@$150 + Service-Additional Hour @$100
+                           (15-min steps beyond first hour) + parts at price.
+   · Warranty 100% ....... Service-Warranty Service + parts + Discount-
+                           Service(Warranty) "Warranty Work" → $0, no tax.
+   · Partial ............. Service-Basic $150 charged · additional hours $0 ·
+                           main part at 50% (negative discount line).
+   · 2nd visit ........... NO Basic — all time as Additional Hours @$100,
+                           plus the prior technical-visit time (Nela adds it).
+   · Repeat .............. only Additional Hours, full visit time @$0; part
+                           charged ONLY with Tom's approval.
+   · Chemical maint. ..... $0.  · Delivery: parts only.  · Spa Move: flat.
+   Tax = "S/C for Missouri Installed Sale" at the end (QB adds it). ── */
+function _hrsAll(mins){return mins>0?Math.ceil(mins/15)/4:0;}
+function _hrsExtra(mins){return mins>60?Math.ceil((mins-60)/15)/4:0;}
+function _qMins(t){try{return _visitMins(t.arrival,t.departure)||0;}catch(e){return 0;}}
+function _fq(n){return String(Math.round(n*100)/100);}
+function qbLinesFor(t){
+  var vn=Number(t.visitNum)||1,b=null,mins=_qMins(t),L=[];
+  try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
+  var parts=(t.parts||[]).filter(function(p){return p&&p.n;});
+  function addParts(zero,note){parts.forEach(function(p,k){var pr=(p.ch!=null?p.ch:p.p)||0;L.push({i:p.n,q:_fq(p.qty||1),r:zero?"$0.00":"$"+(+pr).toFixed(2),n:(k===0?note:"")});});}
+  if(vn===3)return{lines:L,foot:"Chemical maintenance — $0. No se factura."};
+  if(vn===4||t.isRepeat){
+    L.push({i:"Service-Additional Hour",q:_fq(_hrsAll(mins)||1),r:"$0.00",n:"Repeat: todo el tiempo de la visita a rate $0"});
+    addParts(false,parts.length?"Part SOLO si Tom aprobó cobrarlo — si no, $0":"");
+    return{lines:L,foot:"Repeat — sin Basic, sin labor. Total normalmente $0 + part aprobado."};
+  }
+  if(vn===2){
+    L.push({i:"Service-Additional Hour",q:_fq(_hrsAll(mins)),r:"$100.00",n:"2ª visita: SIN Basic. Sumar al qty el tiempo de la visita técnica anterior"});
+    addParts(!!(b&&b.partsFree),(b&&b.partsFree)?"Parts cubiertos por garantía":"");
+    if(b&&b.partsFree)L.push({i:"Discount-Service(Warranty)",q:"",r:"Warranty Work"});
+    return{lines:L,foot:"S/C for Missouri Installed Sale al final (tax)."};
+  }
+  if(vn===5){addParts(false,"");return{lines:L,foot:"Delivery — sin labor. Solo parts + tax."};}
+  if(vn===6){
+    L.push({i:"Service-Basic",q:"1",r:"$150.00"});
+    if(_hrsExtra(mins))L.push({i:"Service-Additional Hour",q:_fq(_hrsExtra(mins)),r:"$100.00"});
+    L.push({i:"Service-Additional Hour (Move spa)",q:"1",r:"según estimate",n:"Flat rate del estimate aprobado"});
+    addParts(false,"");
+    return{lines:L,foot:"Spa Move — flat según estimate + tax."};
+  }
+  if(b&&b.partsFree&&b.laborFree){
+    L.push({i:"Service-Warranty Service",q:"1",r:"$0.00"});
+    addParts(true,"");
+    L.push({i:"Discount-Service(Warranty)",q:"",r:"Warranty Work"});
+    return{lines:L,foot:"Warranty 100% — Total $0 · Tax $0."};
+  }
+  if(b&&(b.verify||b.pending)){
+    L.push({i:"Service-Basic",q:"1",r:"$150.00",n:"⚠ Garantía sin confirmar — verificar antes de digitar"});
+    addParts(false,"");
+    return{lines:L,foot:"Confirmar cobertura (serie/año o fecha del part) antes de facturar."};
+  }
+  if(b&&(!!b.partsFree!==!!b.laborFree)){
+    L.push({i:"Service-Basic",q:"1",r:"$150.00"});
+    if(_hrsExtra(mins))L.push({i:"Service-Additional Hour",q:_fq(_hrsExtra(mins)),r:b.laborFree?"$0.00":"$100.00"});
+    addParts(!!b.partsFree,b.partsFree?"Parts cubiertos":( (b.parts||"").indexOf("50%")>=0?"Part al 50% — agregar línea de descuento −50% del part":""));
+    L.push({i:"Discount-Service(Warranty)",q:"",r:"Warranty Work"});
+    return{lines:L,foot:"Partial — "+(b.bottom||"")+". Tax solo sobre lo cobrado."};
+  }
+  L.push({i:"Service-Basic",q:"1",r:"$150.00"});
+  if(_hrsExtra(mins))L.push({i:"Service-Additional Hour",q:_fq(_hrsExtra(mins)),r:"$100.00"});
+  addParts(false,"");
+  return{lines:L,foot:"No warranty — cobrar todo + S/C Missouri (tax)."};
+}
+function qbLinesHTML(t){
+  var ql=null;try{ql=qbLinesFor(t);}catch(e){return "";}
+  if(!ql||(!ql.lines.length&&!ql.foot))return "";
+  var rows=ql.lines.map(function(r){
+    return '<div class="bs-line"><b>'+esc3(r.i)+'</b><span class="bs-q">'+(r.q?("qty "+esc3(r.q)+" · "):"")+esc3(String(r.r))+'</span>'+(r.n?'<em>'+esc3(r.n)+'</em>':'')+'</div>';
+  }).join("");
+  return '<div class="bs-lines"><div class="bs-lines-h">Items para QuickBooks</div>'+rows+(ql.foot?'<div class="bs-lines-f">'+esc3(ql.foot)+'</div>':'')+'</div>';
+}
+
+/* ── Launch button on Daily (injected; admin/organizer only) ── */
+function renderBtn(){
+  if(!canUse())return;
+  var pg=document.getElementById("pg1");if(!pg)return;
+  var n=pool().length;
+  var btn=document.getElementById("bsLaunch");
+  if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=bsOpen;pg.insertBefore(btn,pg.firstChild);}
+  btn.style.display=n?"inline-flex":"none";
+  btn.innerHTML="⚡ Billing Sprint — facturas pendientes <span class='bs-cnt'>"+n+"</span>";
+}
+setInterval(function(){try{renderBtn();}catch(e){}},4000);
+setTimeout(function(){try{renderBtn();}catch(e){}},2500);
+
+/* ── Overlay ── */
+function esc3(s){try{return esc(s);}catch(e){return String(s==null?"":s);}}
+function cur(){while(idx<Q.length&&(Q[idx].qbCopied||Q[idx].bsNoBill))idx++;return Q[idx]||null;}
+
+window.bsOpen=function(){
+  Q=pool();idx=0;billed=0;skipped=[];
+  if(!Q.length){try{toast("No pending invoices ✓");}catch(e){}return;}
+  var ov=document.getElementById("bsOv");
+  if(!ov){
+    ov=document.createElement("div");ov.id="bsOv";
+    ov.innerHTML='<div class="bs-box"><div class="bs-head"><h3 class="bs-title">⚡ Billing Sprint</h3><span class="bs-prog" id="bsProg"></span><button class="bs-x" onclick="bsClose()">×</button></div><div class="bs-bar"><i id="bsBarFill" style="width:0%"></i></div><div id="bsBody"></div></div>';
+    ov.addEventListener("click",function(e){if(e.target===ov)bsClose();});
+    document.body.appendChild(ov);
+  }
+  ov.style.display="flex";document.body.style.overflow="hidden";
+  show();
+};
+window.bsClose=function(){var ov=document.getElementById("bsOv");if(ov)ov.style.display="none";document.body.style.overflow="";try{renderBtn();}catch(e){}};
+
+function show(){
+  var body=document.getElementById("bsBody"),t=cur();
+  var doneN=billed+skipped.length,total=Q.length;
+  var prog=document.getElementById("bsProg");if(prog)prog.textContent=Math.min(doneN+1,total)+" / "+total+" · ✓ "+billed+" · ↷ "+skipped.length;
+  var bar=document.getElementById("bsBarFill");if(bar)bar.style.width=Math.round(doneN/total*100)+"%";
+  if(!t){ // end of queue
+    body.innerHTML='<div style="text-align:center;padding:26px 8px">'
+      +'<div style="font-size:40px;margin-bottom:8px">🎉</div>'
+      +'<div style="font-size:17px;font-weight:800;margin-bottom:4px">Sprint terminado</div>'
+      +'<div style="font-size:13px;color:var(--i3,#8a8073);font-weight:600">'+billed+' facturadas · '+skipped.length+' saltadas</div>'
+      +(skipped.length?'<button class="bs-endbtn" onclick="bsReviewSkipped()">↻ Repasar las '+skipped.length+' saltadas</button>':'')
+      +'<button class="bs-endbtn" onclick="bsClose()">Cerrar</button></div>';
+    return;
+  }
+  var v=verdictFor(t),m=moneyFor(t);
+  var vn=Number(t.visitNum)||1;
+  body.innerHTML=
+     '<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
+    +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+'</div>'
+    +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
+    +'<div class="bs-money">'
+      +'<div><span>Parts</span><b>$'+m.parts.toFixed(2)+'</b></div>'
+      +'<div><span>Labor</span><b>$'+m.labor.toFixed(2)+'</b></div>'
+      +'<div><span>Tax</span><b>$'+m.tax.toFixed(2)+'</b></div>'
+      +'<div><span>Total</span><b>$'+m.total.toFixed(2)+'</b></div>'
+    +'</div>'
+    +qbLinesHTML(t)
+    +'<div class="bs-lines-f" style="margin:0 0 4px">El texto de abajo va en la DESCRIPCIÓN del primer item (Service-Basic / Warranty):</div>'
+    +'<textarea id="bsText"></textarea>'
+    +'<div class="bs-actions">'
+      +'<button class="bs-copy" onclick="bsCopyNext()">📋 Copiar + Facturada ✓ → siguiente</button>'
+      +'<div class="bs-row2">'
+        +'<button class="bs-skip" onclick="bsSkip()">Saltar →</button>'
+        +'<button class="bs-nobill" onclick="bsNoBill()">⛔ No se factura</button>'
+      +'</div>'
+    +'</div>';
+  document.getElementById("bsText").value=qbTextFor(t);
+  try{document.querySelector("#bsOv .bs-box").scrollTop=0;}catch(e){}
+}
+
+window.bsCopyNext=async function(){
+  var t=cur();if(!t)return;
+  var txt=(document.getElementById("bsText")||{}).value||"";
+  try{await navigator.clipboard.writeText(txt);}
+  catch(e){var ta=document.getElementById("bsText");if(ta){ta.select();try{document.execCommand("copy");}catch(e2){}}}
+  try{
+    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}).catch(function(){});
+    t.qbCopied=true;
+    if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();
+  }catch(e){}
+  billed++;idx++;
+  try{toast("Copied ✓ — pégalo en QuickBooks");}catch(e){}
+  show();
+};
+
+window.bsSkip=function(){var t=cur();if(!t)return;skipped.push(t);idx++;show();};
+
+/* "No se factura" — flags bsNoBill (NEW additive field) so warranty callbacks /
+   covered visits leave the queue WITHOUT being mislabeled "In QuickBooks". */
+window.bsNoBill=async function(){
+  var t=cur();if(!t)return;
+  var ok=true;
+  try{ok=await confirmDialog("Marcar \""+(t.customer||"")+"\" como NO facturable?\n\nSale de la cola del Sprint. No se marca como enviada a QuickBooks.",{title:"No se factura",tone:"warn",okLabel:"Sí, no se factura",cancelLabel:"Cancelar"});}catch(e){ok=confirm("Marcar como NO facturable?");}
+  if(!ok)return;
+  try{if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({bsNoBill:true,bsNoBillAt:new Date().toLocaleString()}).catch(function(){});t.bsNoBill=true;}catch(e){}
+  idx++;show();
+};
+
+window.bsReviewSkipped=function(){Q=skipped.slice();skipped=[];idx=0;show();};
+})();
+</script>
+<!-- ════ END ASPEN BILLING SPRINT ════ -->
+
 </body>
 </html>
