@@ -24069,7 +24069,7 @@ function showTicketDetail(p,i){
 (function(){
 "use strict";
 var VLABEL={1:"1st visit",2:"2nd visit · labor",3:"Chemical Maint.",4:"Repeat (warranty)",5:"Delivery",6:"Spa Move"};
-var Q=[],idx=0,sk={};
+var Q=[],idx=0,sk={},bl=[],fTech="";
 
 function canUse(){try{return typeof currentUser!=="undefined"&&currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");}catch(e){return false;}}
 
@@ -24125,6 +24125,7 @@ function qbTextFor(t){
     txt=rep?(rep.textQB||rep.textPlain||""):"";
   }catch(e){txt="("+String((e&&e.message)||"error")+") — open the ticket to copy manually";}
   finally{try{sel=_s;}catch(e2){}}
+  try{var _m=moneyFor(t);txt+="\n\nEXPECTED TOTAL: $"+_m.total.toFixed(2)+"  (parts $"+_m.parts.toFixed(2)+" · labor $"+_m.labor.toFixed(2)+" · tax $"+_m.tax.toFixed(2)+")";}catch(e){}
   return txt;
 }
 
@@ -24327,11 +24328,13 @@ function soScanFor(t){
 }
 function soHTML(t){
   var r=null;try{r=soScanFor(t);}catch(e){}
+  if(t&&t.soNumber)return '<div style="background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:6px">🧾 Sales Order #'+esc3(t.soNumber)+' verificado ✓'+(t.soCheckedAt?' · '+esc3(t.soCheckedAt):'')+'</div>';
   if(!r)return "";
   return '<div style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:6px">'
     +'🧾 VENTA DE COVER/ACCESORIO — normalmente hay un <u>Sales Order</u> en QB'
     +'<div style="font-weight:600;font-size:11.5px;margin-top:3px">Antes de cobrar el part: 1) busca el SO del cliente en QB · 2) revisa si ya PAGÓ (depósito o total). Si el part ya se pagó en el SO, aquí NO se cobra otra vez — solo TC/labor si aplica.</div>'
     +(r.clue?'<div style="font-weight:600;font-size:11.5px;margin-top:5px;background:rgba(0,0,0,.06);border-radius:6px;padding:5px 8px">🕘 Comentario previo ('+esc3(r.clue.date)+'): “'+esc3(r.clue.txt)+'”</div>':'<div style="font-weight:600;font-size:11.5px;margin-top:5px;opacity:.85">No encontré ningún comentario previo que mencione la orden — con más razón confirma el SO en QB.</div>')
+    +'<div style="display:flex;gap:6px;margin-top:7px"><input id="bsSO" placeholder="SO# de QB (cuando lo verifiques)" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--c-warning-fg,#92400e);border-radius:8px;font-family:inherit;font-size:12px;background:rgba(255,255,255,.7);color:#1f1a15"><button onclick="bsSaveSO()" style="padding:8px 12px;border-radius:8px;border:none;background:var(--c-warning-fg,#92400e);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Guardar ✓</button></div>'
     +'</div>';
 }
 function histHTML(t){
@@ -24343,15 +24346,75 @@ function histHTML(t){
     }).join("")+'</details>';
 }
 
+/* ── SPEED + ANTI-ERROR PACK (Jul 2026): aging chips, duplicate-invoice
+   guard, keyboard shortcuts, SO# capture, tech filter, session summary. ── */
+function _ageDays(t){try{return Math.max(0,Math.floor((Date.now()-new Date(t.date+"T12:00:00"))/86400000));}catch(e){return 0;}}
+function ageChip(t){
+  var d=_ageDays(t);
+  if(d>=15)return ' <span style="background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b);border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:800">🔥 '+d+'d sin facturar</span>';
+  if(d>=7)return ' <span style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:800">'+d+'d</span>';
+  return '';
+}
+function dupHTML(t){
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").trim().toLowerCase();
+    var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+    var dup=all.find(function(x){return x.id!==t.id&&(x.status==="complete"||x.status==="done")&&x.date&&t.date&&Math.abs(new Date(x.date)-new Date(t.date))<=3*86400000&&((typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").trim().toLowerCase())===k;});
+    if(!dup)return "";
+    return '<div style="background:var(--c-purple-bg,#f3e8ff);color:var(--c-purple-strong,#7e22ce);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;margin-bottom:6px">👯 OJO — hay OTRO ticket de este cliente con fecha cercana: '+esc3(dup.date)+(dup.techs&&dup.techs.length?' ('+esc3(dup.techs.join(", "))+')':'')+' · '+(dup.qbCopied?'ya en QB ✓':'PENDIENTE')+'. Verifica no facturar doble.</div>';
+  }catch(e){return "";}
+}
+window.bsSaveSO=async function(){
+  var t=Q[idx];if(!t)return;
+  var v=((document.getElementById("bsSO")||{}).value||"").trim();
+  if(!v){try{toast("Escribe el número de SO","warn");}catch(e){}return;}
+  try{
+    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({soNumber:v,soCheckedBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",soCheckedAt:new Date().toLocaleString()}).catch(function(){});
+    t.soNumber=v;
+  }catch(e){}
+  try{toast("SO #"+v+" guardado ✓");}catch(e){}
+  show();
+};
+window.bsFilterTech=function(n){
+  fTech=n||"";
+  Q=pool().filter(function(t){return !fTech||(t.techs||[]).indexOf(fTech)>=0;});
+  idx=0;
+  if(!Q.length){try{toast("Sin pendientes"+(fTech?" de "+fTech:""),"warn");}catch(e){}fTech="";Q=pool();}
+  bsList();
+};
+window.bsCopySummary=async function(){
+  var tot=bl.reduce(function(s,x){return s+x.tot;},0);
+  var d=(typeof fmtD==="function")?fmtD(new Date()):new Date().toISOString().slice(0,10);
+  var txt="ASPEN BILLING — "+d+"\n"+bl.length+" invoices copied to QuickBooks · $"+tot.toFixed(2)+"\n"+bl.map(function(x){return "· "+x.c+" — $"+x.tot.toFixed(2);}).join("\n");
+  try{await navigator.clipboard.writeText(txt);}catch(e){}
+  try{toast("Resumen copiado ✓");}catch(e){}
+};
+document.addEventListener("keydown",function(e){
+  var ov=document.getElementById("bsOv");
+  if(!ov||ov.style.display!=="flex")return;
+  var tag=((e.target&&e.target.tagName)||"").toLowerCase();
+  if(tag==="textarea"||tag==="input"||tag==="select")return;
+  if(e.key==="Enter"){e.preventDefault();if(document.getElementById("bsText"))bsCopyNext();}
+  else if(e.key==="ArrowLeft"){e.preventDefault();bsBack();}
+  else if(e.key==="ArrowRight"){e.preventDefault();bsNext();}
+  else if(e.key==="s"||e.key==="S"){e.preventDefault();if(document.getElementById("bsText"))bsSkip();}
+  else if(e.key==="Escape"){bsClose();}
+});
+
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
+var _btnCache={n:-1,total:0};
 function renderBtn(){
   if(!canUse())return;
   var pg=document.getElementById("pg1");if(!pg)return;
-  var n=pool().length;
+  var p=pool(),n=p.length;
+  if(n!==_btnCache.n){
+    var tot=0;p.forEach(function(t){try{tot+=moneyFor(t).total;}catch(e){}});
+    _btnCache={n:n,total:tot};
+  }
   var btn=document.getElementById("bsLaunch");
   if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=bsOpen;pg.insertBefore(btn,pg.firstChild);}
   btn.style.display=n?"inline-flex":"none";
-  btn.innerHTML="⚡ Billing Sprint — facturas pendientes <span class='bs-cnt'>"+n+"</span>";
+  btn.innerHTML="⚡ Billing Sprint — <span class='bs-cnt'>"+n+"</span> pendientes · $"+Math.round(_btnCache.total).toLocaleString("en-US");
 }
 setInterval(function(){try{renderBtn();}catch(e){}},4000);
 setTimeout(function(){try{renderBtn();}catch(e){}},2500);
@@ -24362,7 +24425,7 @@ function cur(){return Q[idx]||null;}
 function _counts(){var d=0,k=0;Q.forEach(function(t){if(t.qbCopied||t.bsNoBill)d++;else if(sk[t.id])k++;});return{d:d,s:k};}
 
 window.bsOpen=function(){
-  Q=pool();idx=0;sk={};
+  fTech="";Q=pool();idx=0;sk={};bl=[];
   if(!Q.length){try{toast("No pending invoices ✓");}catch(e){}return;}
   var ov=document.getElementById("bsOv");
   if(ov)ov.remove();
@@ -24389,6 +24452,7 @@ function show(){
       +'<div style="font-size:40px;margin-bottom:8px">🎉</div>'
       +'<div style="font-size:17px;font-weight:800;margin-bottom:4px">Fin de la cola</div>'
       +'<div style="font-size:13px;color:var(--i3,#8a8073);font-weight:600">'+c.d+' resueltas · '+c.s+' saltadas</div>'
+      +(bl.length?'<div style="font-size:14px;font-weight:800;margin-top:4px">Esta sesión: '+bl.length+' facturadas · $'+bl.reduce(function(s2,x){return s2+x.tot;},0).toFixed(2)+'</div><button class="bs-endbtn" onclick="bsCopySummary()">📋 Copiar resumen del día</button>':'')
       +(c.s?'<button class="bs-endbtn" onclick="bsReviewSkipped()">↻ Repasar las '+c.s+' saltadas</button>':'')
       +'<button class="bs-endbtn" onclick="bsList()">☰ Ver lista completa</button>'
       +'<button class="bs-endbtn" onclick="bsClose()">Cerrar</button></div>';
@@ -24409,10 +24473,11 @@ function show(){
   var vn=Number(t.visitNum)||1;
   body.innerHTML=
      '<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
-    +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+(sk[t.id]?" · ↷ saltada antes":"")+'</div>'
+    +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+(sk[t.id]?" · ↷ saltada antes":"")+ageChip(t)+'</div>'
     +histHTML(t)
     +repeatHTML(t)
     +soHTML(t)
+    +dupHTML(t)
     +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
     +'<div class="bs-money">'
       +'<div><span>Parts</span><b>$'+m.parts.toFixed(2)+'</b></div>'
@@ -24429,7 +24494,8 @@ function show(){
         +'<button class="bs-skip" onclick="bsSkip()">Saltar →</button>'
         +'<button class="bs-nobill" onclick="bsNoBill()">⛔ No se factura</button>'
       +'</div>'
-    +'</div>';
+    +'</div>'
+    +'<div style="text-align:center;font-size:10.5px;color:var(--i3,#8a8073);margin-top:6px">⌨ Enter = copiar · S = saltar · ← → = navegar · Esc = cerrar</div>';
   document.getElementById("bsText").value=qbTextFor(t);
   try{document.querySelector("#bsOv .bs-box").scrollTop=0;}catch(e){}
 }
@@ -24437,12 +24503,15 @@ function show(){
 window.bsList=function(){
   var body=document.getElementById("bsBody");if(!body||!Q.length)return;
   var back=idx;
+  var _tk={};pool().forEach(function(t){(t.techs||[]).forEach(function(x){_tk[x]=1;});});
+  var _chip=function(lbl,val){var on=(fTech===val);return '<button onclick="bsFilterTech(\''+val+'\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid '+(on?'var(--br,#3D2B1F)':'var(--ln,#ddd)')+';background:'+(on?'var(--br,#3D2B1F)':'transparent')+';color:'+(on?'#fff':'var(--i2,#5a5248)')+';font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">'+esc3(lbl)+'</button>';};
   body.innerHTML='<div style="font-weight:800;font-size:14px;margin-bottom:8px">Cola del Sprint — toca una para abrirla</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+_chip("Todos","")+Object.keys(_tk).sort().map(function(x){return _chip(x,x);}).join("")+'</div>'
     +Q.map(function(t,k){
       var st=t.qbCopied?"done":(t.bsNoBill?"nobill":(sk[t.id]?"skip":"pend"));
       var lbl=st==="done"?"✓ facturada":st==="nobill"?"⛔ no factura":st==="skip"?"↷ saltada":"· pendiente";
       var col=st==="done"?"var(--c-money-fg,#065f46)":st==="nobill"?"var(--c-danger-fg,#991b1b)":st==="skip"?"var(--c-warning-fg,#92400e)":"var(--i2,#5a5248)";
-      return '<div onclick="bsJump('+k+')" style="display:flex;gap:8px;align-items:baseline;padding:9px 6px;border-bottom:1px dashed var(--ln,#e5e0d8);cursor:pointer'+(k===back?';background:var(--bg,#faf8f4);border-radius:8px':'')+'"><b style="font-size:13px">'+esc3(t.customer||"—")+'</b><span style="font-size:11px;color:var(--i3,#8a8073)">'+esc3(t.date||"")+'</span><span style="margin-left:auto;font-size:11.5px;font-weight:800;color:'+col+'">'+lbl+'</span></div>';
+      return '<div onclick="bsJump('+k+')" style="display:flex;gap:8px;align-items:baseline;padding:9px 6px;border-bottom:1px dashed var(--ln,#e5e0d8);cursor:pointer'+(k===back?';background:var(--bg,#faf8f4);border-radius:8px':'')+'"><b style="font-size:13px">'+esc3(t.customer||"—")+'</b><span style="font-size:11px;color:var(--i3,#8a8073)">'+esc3(t.date||"")+'</span>'+ageChip(t)+'<span style="margin-left:auto;font-size:11.5px;font-weight:800;color:'+col+'">'+lbl+'</span></div>';
     }).join("")
     +'<button class="bs-endbtn" onclick="bsJump('+back+')">← Volver</button>';
   try{document.querySelector("#bsOv .bs-box").scrollTop=0;}catch(e){}
@@ -24467,6 +24536,7 @@ window.bsCopyNext=async function(){
   try{
     if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}).catch(function(){});
     t.qbCopied=true;delete sk[t.id];
+    try{bl.push({c:t.customer||"",tot:moneyFor(t).total});}catch(_b){}
     if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();
   }catch(e){}
   try{toast("Copied ✓ — pégalo en QuickBooks");}catch(e){}
