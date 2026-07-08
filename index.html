@@ -24064,6 +24064,11 @@ function showTicketDetail(p,i){
 #bsOv .bs-nobill{border-color:var(--c-danger-fg,#991b1b);color:var(--c-danger-fg,#991b1b)}
 #bsOv .bs-endbtn{width:100%;padding:13px;border-radius:10px;border:1.5px solid var(--ln,#ddd);background:transparent;font-weight:800;font-size:14px;cursor:pointer;color:var(--ink,#1f1a15);margin-top:8px}
 @media(max-width:520px){#bsOv .bs-money{grid-template-columns:repeat(2,1fr)}}
+#bsOv details summary{list-style:none}
+#bsOv details summary::-webkit-details-marker{display:none}
+@keyframes bsIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+#bsBody.bs-anim{animation:bsIn .16s ease-out}
+@media(max-width:520px){#bsOv{padding:0;align-items:stretch}#bsOv .bs-box{max-width:none;height:100dvh;max-height:none;border-radius:0}}
 </style>
 <script id="aspenBillingSprintJS">
 (function(){
@@ -24071,6 +24076,7 @@ function showTicketDetail(p,i){
 var VLABEL={1:"1st visit",2:"2nd visit · labor",3:"Chemical Maint.",4:"Repeat (warranty)",5:"Delivery",6:"Spa Move"};
 var Q=[],idx=0,sk={},bl=[],fTech="";
 
+function bico(n,sz){try{if(typeof icon==="function"&&typeof lucide!=="undefined"&&lucide.icons)return icon(n,sz||15,{style:"vertical-align:-2px"});}catch(e){}return "";}
 function canUse(){try{return typeof currentUser!=="undefined"&&currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");}catch(e){return false;}}
 
 /* PENDING ONLY (Jul 2026, per Alberto): the queue is strictly the Daily
@@ -24250,12 +24256,12 @@ function repeatHTML(t){
   if(r.level==="warn"){
     var hit=r.hits[0];
     h+='<div style="background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:6px">'
-      +'🔁 POSIBLE REPEAT — misma cosa que la visita del '+esc3(hit.p.date)+(hit.p.techs&&hit.p.techs.length?' ('+esc3(hit.p.techs.join(", "))+')':'')
+      +bico("repeat",14)+' POSIBLE REPEAT — misma cosa que la visita del '+esc3(hit.p.date)+(hit.p.techs&&hit.p.techs.length?' ('+esc3(hit.p.techs.join(", "))+')':'')
       +': <u>'+esc3(hit.match.join(", "))+'</u>'
       +'<div style="font-weight:600;font-size:11.5px;margin-top:4px;opacity:.9">“'+esc3(_bsSnip(hit.p.notes,140))+'”</div>'
       +'<div style="display:flex;gap:8px;margin-top:8px">'
-        +'<button onclick="bsMarkRepeat()" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--c-danger-strong,#dc2626);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">🔁 Marcar Repeat · $0</button>'
-        +'<button onclick="bsAskAI()" id="bsAIBtn" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--c-danger-fg,#991b1b);background:transparent;color:var(--c-danger-fg,#991b1b);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">🤖 Preguntar a la IA</button>'
+        +'<button onclick="bsMarkRepeat()" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--c-danger-strong,#dc2626);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">'+bico("repeat",13)+' Marcar Repeat · $0</button>'
+        +'<button onclick="bsAskAI()" id="bsAIBtn" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--c-danger-fg,#991b1b);background:transparent;color:var(--c-danger-fg,#991b1b);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">'+bico("sparkles",13)+' Preguntar a la IA</button>'
       +'</div><div id="bsAIOut" style="font-weight:600;font-size:12px;margin-top:6px"></div></div>';
   }else{
     var lp=r.prior[0];
@@ -24293,7 +24299,7 @@ window.bsAskAI=async function(){
     var txt=((d.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join(" ")).trim();
     if(out)out.textContent=txt||"(sin respuesta)";
   }catch(e){if(out)out.textContent="⚠ "+((e&&e.message)||"error");}
-  if(btn){btn.disabled=false;btn.textContent="🤖 Preguntar a la IA";}
+  if(btn){btn.disabled=false;btn.innerHTML=bico("sparkles",13)+" Preguntar a la IA";}
 };
 
 /* ── SALES-ORDER SENTRY + CUSTOMER HISTORY (Jul 2026) — cover/accessory
@@ -24330,17 +24336,17 @@ function soHTML(t){
   var r=null;try{r=soScanFor(t);}catch(e){}
   if(t&&t.soNumber)return '<div style="background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:6px">🧾 Sales Order #'+esc3(t.soNumber)+' verificado ✓'+(t.soCheckedAt?' · '+esc3(t.soCheckedAt):'')+'</div>';
   if(!r)return "";
-  return '<div style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:6px">'
-    +'🧾 VENTA DE COVER/ACCESORIO — normalmente hay un <u>Sales Order</u> en QB'
+  return '<details style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;margin-bottom:6px">'
+    +'<summary style="cursor:pointer;font-weight:800">'+bico("receipt",14)+' Venta de cover/accesorio — revisar <u>Sales Order</u> en QB ▾</summary>'
     +'<div style="font-weight:600;font-size:11.5px;margin-top:3px">Antes de cobrar el part: 1) busca el SO del cliente en QB · 2) revisa si ya PAGÓ (depósito o total). Si el part ya se pagó en el SO, aquí NO se cobra otra vez — solo TC/labor si aplica.</div>'
     +(r.clue?'<div style="font-weight:600;font-size:11.5px;margin-top:5px;background:rgba(0,0,0,.06);border-radius:6px;padding:5px 8px">🕘 Comentario previo ('+esc3(r.clue.date)+'): “'+esc3(r.clue.txt)+'”</div>':'<div style="font-weight:600;font-size:11.5px;margin-top:5px;opacity:.85">No encontré ningún comentario previo que mencione la orden — con más razón confirma el SO en QB.</div>')
-    +'<div style="display:flex;gap:6px;margin-top:7px"><input id="bsSO" placeholder="SO# de QB (cuando lo verifiques)" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--c-warning-fg,#92400e);border-radius:8px;font-family:inherit;font-size:12px;background:rgba(255,255,255,.7);color:#1f1a15"><button onclick="bsSaveSO()" style="padding:8px 12px;border-radius:8px;border:none;background:var(--c-warning-fg,#92400e);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Guardar ✓</button></div>'
-    +'</div>';
+    +'<div style="display:flex;gap:6px;margin-top:7px"><input id="bsSO" placeholder="SO# de QB (cuando lo verifiques)" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--c-warning-fg,#92400e);border-radius:8px;font-family:inherit;font-size:12px;background:var(--card,#fff);color:var(--ink,#1f1a15)"><button onclick="bsSaveSO()" style="padding:8px 12px;border-radius:8px;border:none;background:var(--c-warning-fg,#92400e);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Guardar ✓</button></div>'
+    +'</details>';
 }
 function histHTML(t){
   var prior=_bsAllPrior(t).filter(function(x){return (x.notes&&x.notes.trim())||(x.reportedIssue&&x.reportedIssue.trim());}).slice(0,6);
   if(!prior.length)return "";
-  return '<details style="margin:0 0 8px"><summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--i2,#5a5248);padding:6px 0">🕘 Historial del cliente — '+prior.length+' visita'+(prior.length===1?'':'s')+' anteriores (toca para ver)</summary>'
+  return '<details style="margin:0 0 8px"><summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--i2,#5a5248);padding:6px 0">'+bico("history",13)+' Historial del cliente — '+prior.length+' visita'+(prior.length===1?'':'s')+' anteriores (toca para ver)</summary>'
     +prior.map(function(x){
       return '<div style="padding:6px 0;border-bottom:1px dashed var(--ln,#e5e0d8);font-size:11.5px;line-height:1.45;color:var(--i2,#5a5248)"><b style="color:var(--ink,#1f1a15)">'+esc3(x.date||"—")+'</b>'+(x.techs&&x.techs.length?' · '+esc3(x.techs.join(", ")):'')+' · '+(VLABEL[Number(x.visitNum)||1]||"")+(x.paid?' · <span style="color:var(--c-money-fg,#065f46);font-weight:800">PAID ✓</span>':'')+(x.qbCopied?' · <span style="color:var(--c-money-fg,#065f46);font-weight:700">QB ✓</span>':'')+'<br>'+(x.reportedIssue?'🗣️ '+esc3(_bsSnip(x.reportedIssue,90))+' · ':'')+esc3(_bsSnip(x.notes,170))+'</div>';
     }).join("")+'</details>';
@@ -24361,7 +24367,7 @@ function dupHTML(t){
     var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
     var dup=all.find(function(x){return x.id!==t.id&&(x.status==="complete"||x.status==="done")&&x.date&&t.date&&Math.abs(new Date(x.date)-new Date(t.date))<=3*86400000&&((typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").trim().toLowerCase())===k;});
     if(!dup)return "";
-    return '<div style="background:var(--c-purple-bg,#f3e8ff);color:var(--c-purple-strong,#7e22ce);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;margin-bottom:6px">👯 OJO — hay OTRO ticket de este cliente con fecha cercana: '+esc3(dup.date)+(dup.techs&&dup.techs.length?' ('+esc3(dup.techs.join(", "))+')':'')+' · '+(dup.qbCopied?'ya en QB ✓':'PENDIENTE')+'. Verifica no facturar doble.</div>';
+    return '<details open style="background:var(--c-purple-bg,#f3e8ff);color:var(--c-purple-strong,#7e22ce);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:6px"><summary style="cursor:pointer;font-weight:800">'+bico("copy",13)+' OJO — posible factura doble ▾</summary><div style="margin-top:4px;font-weight:600">Otro ticket de este cliente con fecha cercana: '+esc3(dup.date)+(dup.techs&&dup.techs.length?' ('+esc3(dup.techs.join(", "))+')':'')+' · '+(dup.qbCopied?'ya en QB ✓':'PENDIENTE')+'. Verifica no facturar doble.</div></details>';
   }catch(e){return "";}
 }
 window.bsSaveSO=async function(){
@@ -24414,7 +24420,7 @@ function renderBtn(){
   var btn=document.getElementById("bsLaunch");
   if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=bsOpen;pg.insertBefore(btn,pg.firstChild);}
   btn.style.display=n?"inline-flex":"none";
-  btn.innerHTML="⚡ Billing Sprint — <span class='bs-cnt'>"+n+"</span> pendientes · $"+Math.round(_btnCache.total).toLocaleString("en-US");
+  btn.innerHTML=bico("zap",15)+" Billing Sprint — <span class='bs-cnt'>"+n+"</span> pendientes · $"+Math.round(_btnCache.total).toLocaleString("en-US");
 }
 setInterval(function(){try{renderBtn();}catch(e){}},4000);
 setTimeout(function(){try{renderBtn();}catch(e){}},2500);
@@ -24425,12 +24431,12 @@ function cur(){return Q[idx]||null;}
 function _counts(){var d=0,k=0;Q.forEach(function(t){if(t.qbCopied||t.bsNoBill)d++;else if(sk[t.id])k++;});return{d:d,s:k};}
 
 window.bsOpen=function(){
-  fTech="";Q=pool();idx=0;sk={};bl=[];
+  fTech="";Q=pool();idx=0;sk={};bl=[];window._bsParty=false;
   if(!Q.length){try{toast("No pending invoices ✓");}catch(e){}return;}
   var ov=document.getElementById("bsOv");
   if(ov)ov.remove();
   ov=document.createElement("div");ov.id="bsOv";
-  ov.innerHTML='<div class="bs-box"><div class="bs-head"><button class="bs-x" onclick="bsBack()" title="Anterior" style="font-size:19px">←</button><h3 class="bs-title">⚡ Billing Sprint</h3><span class="bs-prog" id="bsProg" onclick="bsList()" style="cursor:pointer;text-decoration:underline dotted" title="Ver la lista completa"></span><button class="bs-x" onclick="bsClose()">×</button></div><div class="bs-bar"><i id="bsBarFill" style="width:0%"></i></div><div id="bsBody"></div></div>';
+  ov.innerHTML='<div class="bs-box"><div class="bs-head"><button class="bs-x" onclick="bsBack()" title="Anterior" style="font-size:19px">←</button><h3 class="bs-title">'+bico("zap",16)+' Billing Sprint</h3><span class="bs-prog" id="bsProg" onclick="bsList()" style="cursor:pointer;text-decoration:underline dotted" title="Ver la lista completa"></span><button class="bs-x" onclick="bsClose()">×</button></div><div class="bs-bar"><i id="bsBarFill" style="width:0%"></i></div><div id="bsBody"></div></div>';
   ov.addEventListener("click",function(e){if(e.target===ov)bsClose();});
   document.body.appendChild(ov);
   ov.style.display="flex";document.body.style.overflow="hidden";
@@ -24447,15 +24453,17 @@ function show(){
   var prog=document.getElementById("bsProg");if(prog)prog.textContent=Math.min(idx+1,Q.length)+" / "+Q.length+" · ✓ "+c.d+" · ↷ "+c.s;
   var bar=document.getElementById("bsBarFill");if(bar)bar.style.width=(Q.length?Math.round(c.d/Q.length*100):0)+"%";
   if(!body)return;
+  body.classList.remove("bs-anim");void body.offsetWidth;body.classList.add("bs-anim");
   if(!t){
     body.innerHTML='<div style="text-align:center;padding:26px 8px">'
       +'<div style="font-size:40px;margin-bottom:8px">🎉</div>'
       +'<div style="font-size:17px;font-weight:800;margin-bottom:4px">Fin de la cola</div>'
       +'<div style="font-size:13px;color:var(--i3,#8a8073);font-weight:600">'+c.d+' resueltas · '+c.s+' saltadas</div>'
-      +(bl.length?'<div style="font-size:14px;font-weight:800;margin-top:4px">Esta sesión: '+bl.length+' facturadas · $'+bl.reduce(function(s2,x){return s2+x.tot;},0).toFixed(2)+'</div><button class="bs-endbtn" onclick="bsCopySummary()">📋 Copiar resumen del día</button>':'')
+      +(bl.length?'<div style="font-size:14px;font-weight:800;margin-top:4px">Esta sesión: '+bl.length+' facturadas · $'+bl.reduce(function(s2,x){return s2+x.tot;},0).toFixed(2)+'</div><button class="bs-endbtn" onclick="bsCopySummary()">'+bico("clipboard",13)+' Copiar resumen del día</button>':'')
       +(c.s?'<button class="bs-endbtn" onclick="bsReviewSkipped()">↻ Repasar las '+c.s+' saltadas</button>':'')
-      +'<button class="bs-endbtn" onclick="bsList()">☰ Ver lista completa</button>'
+      +'<button class="bs-endbtn" onclick="bsList()">'+bico("list",14)+' Ver lista completa</button>'
       +'<button class="bs-endbtn" onclick="bsClose()">Cerrar</button></div>';
+    if(c.d>0&&!window._bsParty){window._bsParty=true;try{if(typeof celebrate==="function")celebrate({count:120});}catch(e){}}
     return;
   }
   if(t.qbCopied||t.bsNoBill){
@@ -24489,11 +24497,9 @@ function show(){
     +'<div class="bs-lines-f" style="margin:0 0 4px">El texto de abajo va en la DESCRIPCIÓN del primer item (Service-Basic / Warranty):</div>'
     +'<textarea id="bsText"></textarea>'
     +'<div class="bs-actions">'
-      +'<button class="bs-copy" onclick="bsCopyNext()">📋 Copiar + Facturada ✓ → siguiente</button>'
-      +'<div class="bs-row2">'
-        +'<button class="bs-skip" onclick="bsSkip()">Saltar →</button>'
-        +'<button class="bs-nobill" onclick="bsNoBill()">⛔ No se factura</button>'
-      +'</div>'
+      +'<button class="bs-copy" onclick="bsCopyNext()">'+bico("clipboard",15)+' Copiar + Facturada ✓ → siguiente</button>'
+      +'<button class="bs-skip" onclick="bsSkip()" style="width:100%">Saltar →</button>'
+      +'<button class="bs-nobill" onclick="bsNoBill()" style="width:100%;margin-top:10px">'+bico("ban",14)+' No se factura</button>'
     +'</div>'
     +'<div style="text-align:center;font-size:10.5px;color:var(--i3,#8a8073);margin-top:6px">⌨ Enter = copiar · S = saltar · ← → = navegar · Esc = cerrar</div>';
   document.getElementById("bsText").value=qbTextFor(t);
