@@ -24295,6 +24295,54 @@ window.bsAskAI=async function(){
   if(btn){btn.disabled=false;btn.textContent="🤖 Preguntar a la IA";}
 };
 
+/* ── SALES-ORDER SENTRY + CUSTOMER HISTORY (Jul 2026) — cover/accessory
+   sales normally have a prepaid Sales Order in QB. When the ticket delivers
+   or installs an ordered item, warn Nela to check the SO + payment BEFORE
+   charging the part again, and quote the prior comment that mentions the
+   order. Plus a collapsible full history so she can review previous visits
+   without leaving the Sprint. All from in-memory arrays — zero extra reads. ── */
+function _bsAllPrior(t){
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").trim().toLowerCase();
+    var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+    return all.filter(function(x){return x.id!==t.id&&x.date&&(!t.date||x.date<=t.date)&&((typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").trim().toLowerCase())===k;})
+      .sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
+  }catch(e){return [];}
+}
+function _tktTxt(x){return ((x.reportedIssue||"")+" "+(x.notes||"")+" "+((x.parts||[]).map(function(p){return (p&&p.n)||"";}).join(" "))).toLowerCase();}
+var _SO_ITEM=/cover|lifter|pillow|steps|handrail|umbrella|ozonator|stereo|clips/;
+var _SO_SALE=/sales order|s\.o\.|so#|order|purchas|bought|deposit|prepaid|paid|pagad|pagó/;
+function soScanFor(t){
+  var now=_tktTxt(t);
+  var isSale=_SO_ITEM.test(now)&&/deliver|install|drop|order|purchas|bought|replac|new /.test(now);
+  if(!isSale&&(t.parts||[]).some(function(p){return p&&/^AC-|cover|lifter|pillow/i.test(p.n||"");}))isSale=true;
+  if(!isSale)return null;
+  var clue=null;
+  _bsAllPrior(t).some(function(x){
+    var s=_tktTxt(x);
+    if(_SO_ITEM.test(s)&&_SO_SALE.test(s)){clue={date:x.date,txt:_bsSnip((x.reportedIssue?x.reportedIssue+" — ":"")+(x.notes||""),150)};return true;}
+    return false;
+  });
+  return {clue:clue};
+}
+function soHTML(t){
+  var r=null;try{r=soScanFor(t);}catch(e){}
+  if(!r)return "";
+  return '<div style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:6px">'
+    +'🧾 VENTA DE COVER/ACCESORIO — normalmente hay un <u>Sales Order</u> en QB'
+    +'<div style="font-weight:600;font-size:11.5px;margin-top:3px">Antes de cobrar el part: 1) busca el SO del cliente en QB · 2) revisa si ya PAGÓ (depósito o total). Si el part ya se pagó en el SO, aquí NO se cobra otra vez — solo TC/labor si aplica.</div>'
+    +(r.clue?'<div style="font-weight:600;font-size:11.5px;margin-top:5px;background:rgba(0,0,0,.06);border-radius:6px;padding:5px 8px">🕘 Comentario previo ('+esc3(r.clue.date)+'): “'+esc3(r.clue.txt)+'”</div>':'<div style="font-weight:600;font-size:11.5px;margin-top:5px;opacity:.85">No encontré ningún comentario previo que mencione la orden — con más razón confirma el SO en QB.</div>')
+    +'</div>';
+}
+function histHTML(t){
+  var prior=_bsAllPrior(t).filter(function(x){return (x.notes&&x.notes.trim())||(x.reportedIssue&&x.reportedIssue.trim());}).slice(0,6);
+  if(!prior.length)return "";
+  return '<details style="margin:0 0 8px"><summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--i2,#5a5248);padding:6px 0">🕘 Historial del cliente — '+prior.length+' visita'+(prior.length===1?'':'s')+' anteriores (toca para ver)</summary>'
+    +prior.map(function(x){
+      return '<div style="padding:6px 0;border-bottom:1px dashed var(--ln,#e5e0d8);font-size:11.5px;line-height:1.45;color:var(--i2,#5a5248)"><b style="color:var(--ink,#1f1a15)">'+esc3(x.date||"—")+'</b>'+(x.techs&&x.techs.length?' · '+esc3(x.techs.join(", ")):'')+' · '+(VLABEL[Number(x.visitNum)||1]||"")+(x.paid?' · <span style="color:var(--c-money-fg,#065f46);font-weight:800">PAID ✓</span>':'')+(x.qbCopied?' · <span style="color:var(--c-money-fg,#065f46);font-weight:700">QB ✓</span>':'')+'<br>'+(x.reportedIssue?'🗣️ '+esc3(_bsSnip(x.reportedIssue,90))+' · ':'')+esc3(_bsSnip(x.notes,170))+'</div>';
+    }).join("")+'</details>';
+}
+
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
 function renderBtn(){
   if(!canUse())return;
@@ -24362,7 +24410,9 @@ function show(){
   body.innerHTML=
      '<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
     +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+(sk[t.id]?" · ↷ saltada antes":"")+'</div>'
+    +histHTML(t)
     +repeatHTML(t)
+    +soHTML(t)
     +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
     +'<div class="bs-money">'
       +'<div><span>Parts</span><b>$'+m.parts.toFixed(2)+'</b></div>'
