@@ -6184,7 +6184,14 @@ function _dmInit(){
       if(document.getElementById("dmPanel").style.display==="flex"&&_dm.view==="list")_dmRenderList();
     },function(err){console.warn("[dm] threads listener",err);});
 }
-function _dmOpenPanel(){_dmEnsureDom();document.getElementById("dmPanel").style.display="flex";_dmRenderList();}
+function _dmOpenPanel(){
+  _dmEnsureDom();document.getElementById("dmPanel").style.display="flex";_dmRenderList();
+  // roster may be empty if loadUsers() hasn't resolved yet — fetch, then refresh the list
+  try{
+    var haveUsers=(typeof allUsers!=="undefined"&&allUsers&&allUsers.length);
+    if(!haveUsers&&typeof loadUsers==="function"){Promise.resolve(loadUsers()).then(function(){if(document.getElementById("dmPanel").style.display==="flex"&&_dm.view==="list")_dmRenderList();}).catch(function(){});}
+  }catch(_e){}
+}
 function closeTeamChat(){
   var p=document.getElementById("dmPanel");if(p)p.style.display="none";
   if(_dm.unsubMsgs){try{_dm.unsubMsgs();}catch(_e){}_dm.unsubMsgs=null;}
@@ -6193,7 +6200,8 @@ function closeTeamChat(){
 function _dmRoster(){
   var names={};
   try{(allUsers||[]).forEach(function(u){if(u&&u.name)names[u.name]=1;});}catch(_e){}
-  try{(TECHS||[]).forEach(function(n){names[n]=1;});}catch(_e){}
+  try{(typeof CORE_USERS!=="undefined"&&CORE_USERS||[]).forEach(function(u){if(u&&u.name)names[u.name]=1;});}catch(_e){}
+  try{(TECHS||[]).forEach(function(n){if(n)names[n]=1;});}catch(_e){}
   if(currentUser)delete names[currentUser.name];
   return Object.keys(names).sort();
 }
@@ -6218,9 +6226,9 @@ function _dmRenderList(){
       +'</div>';
   });
   document.getElementById("dmBody").innerHTML=h;
-  var roster=_dmRoster().filter(function(n){var me2=currentUser&&currentUser.name;return !_dm.threads.some(function(t){return (t.users||[]).indexOf(n)>=0&&(t.users||[]).indexOf(me2)>=0;});});
+  var roster=_dmRoster();
   document.getElementById("dmFoot").innerHTML='<div style="display:flex;gap:8px;padding:10px 12px;align-items:center">'
-    +'<select id="dmNewPeer" style="flex:1;padding:9px 10px;border:1px solid var(--ln);border-radius:9px;font-size:var(--fs-sm);background:var(--bg)"><option value="">New message to\u2026</option>'
+    +'<select id="dmNewPeer" style="flex:1;padding:9px 10px;border:1px solid var(--ln);border-radius:9px;font-size:var(--fs-sm);background:var(--bg)"><option value="">'+(roster.length?"New message to\u2026":"No other users found")+'</option>'
     +roster.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join("")
     +'</select><button onclick="var v=document.getElementById(\'dmNewPeer\').value;if(v)_dmOpenThread(v)" style="background:var(--br);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">Start</button></div>';
 }
