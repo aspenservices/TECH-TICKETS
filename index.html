@@ -6144,14 +6144,67 @@ function convReview(name){var c=(typeof _convContact==="function")?_convContact(
 var _dm={threads:[],unsubThreads:null,unsubMsgs:null,view:"list",peer:null,inited:false,lastBadge:0};
 function _dmTid(a,b){var k=[AspenBrain.custKey(a),AspenBrain.custKey(b)].sort().join("|");return "t_"+AspenBrain.fnv1a(k);}
 function _dmMyUnread(){var n=0,me=currentUser&&currentUser.name;_dm.threads.forEach(function(t){n+=(t.unread&&t.unread[me])||0;});return n;}
+function _dmMakeDraggable(fab){
+  // Restore saved position (right/bottom in px). Default: bottom-right dock.
+  try{var sv=JSON.parse(localStorage.getItem("dmFabPos")||"null");
+    if(sv&&typeof sv.right==="number"&&typeof sv.bottom==="number"){
+      fab.style.right=Math.max(6,sv.right)+"px";fab.style.bottom=Math.max(6,sv.bottom)+"px";
+    }
+  }catch(_e){}
+  var dragging=false,moved=false,sx=0,sy=0,startR=0,startB=0;
+  function pt(e){return e.touches&&e.touches[0]?e.touches[0]:e;}
+  function down(e){
+    dragging=true;moved=false;
+    var p=pt(e);sx=p.clientX;sy=p.clientY;
+    var r=fab.getBoundingClientRect();
+    startR=window.innerWidth-r.right;startB=window.innerHeight-r.bottom;
+    document.addEventListener("mousemove",move,{passive:false});
+    document.addEventListener("touchmove",move,{passive:false});
+    document.addEventListener("mouseup",up);document.addEventListener("touchend",up);
+  }
+  function move(e){
+    if(!dragging)return;
+    var p=pt(e);var dx=p.clientX-sx,dy=p.clientY-sy;
+    if(Math.abs(dx)+Math.abs(dy)>6)moved=true;
+    if(!moved)return;
+    e.preventDefault();
+    var sz=fab.offsetWidth;
+    var right=Math.min(window.innerWidth-sz-6,Math.max(6,startR-dx));
+    var bottom=Math.min(window.innerHeight-sz-6,Math.max(6,startB-dy));
+    fab.style.right=right+"px";fab.style.bottom=bottom+"px";
+    var panel=document.getElementById("dmPanel");
+    if(panel&&panel.style.display==="flex")_dmPositionPanel();
+  }
+  function up(){
+    document.removeEventListener("mousemove",move);document.removeEventListener("touchmove",move);
+    document.removeEventListener("mouseup",up);document.removeEventListener("touchend",up);
+    if(moved){
+      try{localStorage.setItem("dmFabPos",JSON.stringify({right:parseInt(fab.style.right)||14,bottom:parseInt(fab.style.bottom)||88}));}catch(_e){}
+    }else{
+      var pn=document.getElementById("dmPanel");
+      if(pn&&pn.style.display==="flex"){closeTeamChat();}else{_dmOpenPanel();}
+    }
+    dragging=false;
+  }
+  fab.addEventListener("mousedown",down);
+  fab.addEventListener("touchstart",down,{passive:true});
+}
+function _dmPositionPanel(){
+  var fab=document.getElementById("dmFab"),panel=document.getElementById("dmPanel");
+  if(!fab||!panel)return;
+  var fr=parseInt(fab.style.right)||14, fb=parseInt(fab.style.bottom)||88;
+  // panel sits just above the bubble, aligned to the same right edge, clamped to viewport
+  panel.style.right=Math.min(window.innerWidth-40, fr)+"px";
+  panel.style.bottom=(fb+fab.offsetHeight+10)+"px";
+}
 function _dmEnsureDom(){
   if(document.getElementById("dmFab"))return;
   var fab=document.createElement("button");
   fab.id="dmFab";
   fab.style.cssText="position:fixed;right:14px;bottom:88px;width:54px;height:54px;border-radius:50%;border:none;background:var(--br);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(19,74,99,.35);z-index:4400;display:none;align-items:center;justify-content:center";
   fab.innerHTML='\uD83D\uDCAC<span id="dmBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#C0492F;color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;padding:0 5px;line-height:20px;text-align:center">0</span>';
-  fab.onclick=function(){var p=document.getElementById("dmPanel");if(p.style.display==="flex"){closeTeamChat();}else{_dmOpenPanel();}};
   document.body.appendChild(fab);
+  _dmMakeDraggable(fab);
   var panel=document.createElement("div");
   panel.id="dmPanel";
   panel.style.cssText="position:fixed;right:12px;bottom:150px;width:min(340px,calc(100vw - 24px));max-height:min(480px,calc(100dvh - 170px));background:#fff;border:1px solid var(--ln);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.22);z-index:4400;display:none;flex-direction:column;overflow:hidden";
@@ -6186,6 +6239,7 @@ function _dmInit(){
 }
 function _dmOpenPanel(){
   _dmEnsureDom();document.getElementById("dmPanel").style.display="flex";_dmRenderList();
+  try{_dmPositionPanel();}catch(_e){}
   // roster may be empty if loadUsers() hasn't resolved yet — fetch, then refresh the list
   try{
     var haveUsers=(typeof allUsers!=="undefined"&&allUsers&&allUsers.length);
@@ -20307,6 +20361,10 @@ function qbCustRenderDetail(customers){
     return;
   }
   const sorted=c.tickets.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  // Photo history: every tech-uploaded photo across ALL this customer's tickets.
+  var _allPhotos=[];
+  c.tickets.forEach(function(t){(t.media||[]).forEach(function(m){if(m&&m.type!=="pdf"&&m.url){_allPhotos.push({url:m.url,date:t.date||"",tech:(t.techs||[]).join(", ")||"",wt:(t.workTypes||[]).join(", ")||""});}});});
+  _allPhotos.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   let spaDesc="";sorted.forEach(t=>{if(t.spaDesc&&t.spaDesc.length>spaDesc.length)spaDesc=t.spaDesc});
   const fullAddr=(c.address||"")+(c.city?", "+c.city:"")+(c.zip?" "+c.zip:"");
   const hasPhone2=!!(c.phone2&&c.phone2.trim());
@@ -20439,9 +20497,44 @@ function qbCustRenderDetail(customers){
   h+='<div class="qb-cust-tabs">';
   h+='<button class="qb-cust-tab'+(qbCustTab==="info"?" on":"")+'" onclick="qbCustSetTab(\'info\')">Notes</button>';
   h+='<button class="qb-cust-tab'+(qbCustTab==="spa"?" on":"")+'" onclick="qbCustSetTab(\'spa\')">Spa Description</button>';
+  h+='<button class="qb-cust-tab'+(qbCustTab==="photos"?" on":"")+'" onclick="qbCustSetTab(\'photos\')">Photos'+(_allPhotos.length?'<span class="qb-cust-tab-badge">'+_allPhotos.length+'</span>':'')+'</button>';
   h+='<button class="qb-cust-tab'+(qbCustTab==="history"?" on":"")+'" onclick="qbCustSetTab(\'history\')">Service History<span class="qb-cust-tab-badge">'+c.tickets.length+'</span></button>';
   h+='</div>';
 
+  // Merge a customer's tickets into JOBS: group by date + normalized work-type;
+  // within a group prefer the DONE ticket as the representative (it carries the
+  // final note + warranty), remember the others as .mergedFrom for the expand.
+  function _custMergeJobs(list){
+    var groups={},order=[];
+    (list||[]).forEach(function(t){
+      // group key = date + PRIMARY work-type only, so "Water Change" and
+      // "Water Change, Chemical balance" on the same day are the SAME job.
+      var wts=(t.workTypes||[]);
+      var primary=(wts[0]||t.type||"").toLowerCase().replace(/[^a-z]/g,"");
+      var gk=(t.date||"")+"|"+primary;
+      if(!groups[gk]){groups[gk]={items:[]};order.push(gk);}
+      groups[gk].items.push(t);
+    });
+    var out=[];
+    order.forEach(function(gk){
+      var it=groups[gk].items;
+      if(it.length===1){out.push(it[0]);return;}
+      // representative: DONE > active > canceled; with the longest note
+      var rep=it.slice().sort(function(a,b){
+        var rank=function(x){return x.status==="done"?0:(x.status==="canceled"?2:1);};
+        var r=rank(a)-rank(b);if(r)return r;
+        return String(b.notes||"").length-String(a.notes||"").length;
+      })[0];
+      // stitch any distinct notes from the other tickets so nothing is lost
+      var extra=it.filter(function(x){return x!==rep && String(x.notes||"").trim() && String(x.notes||"").trim()!==String(rep.notes||"").trim();})
+                   .map(function(x){return String(x.notes||"").trim();});
+      var merged=Object.assign({},rep);
+      merged._mergedCount=it.length;
+      if(extra.length){merged.notes=(String(rep.notes||"").trim()+"\n\n"+extra.join("\n\n")).trim();}
+      out.push(merged);
+    });
+    return out;
+  }
   // ── TAB BODY
   h+='<div class="qb-cust-tab-body">';
   if(qbCustTab==="info"){
@@ -20449,13 +20542,18 @@ function qbCustRenderDetail(customers){
     if(!sorted.length){
       h+='<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:var(--fs-base)">No notes yet for this customer.</div>';
     }else{
+      // ── MERGE by job (QB-style): a request (ACTIVE) and its completion (DONE)
+      //    for the same customer+date+work-type collapse into ONE continuous line.
+      //    Service History tab still shows every ticket individually.
+      var _jobs=_custMergeJobs(sorted);
       h+='<div class="qb-notes-tbl-hdr"><span>DATE</span><span style="flex:1">NOTES</span></div>';
-      sorted.forEach((t,idx)=>{
+      _jobs.forEach((t,idx)=>{
         const isCanceled=t.status==="canceled";
         const isDone=t.status==="done";
         const cls=isCanceled?"canceled":(isDone?"done":"");
         const pin=idx===0?'<span class="qb-note-pin">'+icon("map-pin",12)+'</span>':'<span class="qb-note-pin"></span>';
         const status=isCanceled?'<span class="qb-note-status" style="background:var(--c-warning-bg);color:var(--c-warning-fg)">CANCELED</span>':(isDone?'<span class="qb-note-status" style="background:var(--c-success-bg);color:var(--c-success-fg)">DONE</span>':'<span class="qb-note-status" style="background:var(--acl);color:var(--acd)">ACTIVE</span>');
+        if(t._mergedCount>1)status+='<span class="qb-note-status" style="background:var(--bg);color:var(--i3);border:1px solid var(--ln)">'+t._mergedCount+' visits'+'</span>';
         const techs=(t.techs||[]).join(", ")||"—";
         const wt=(t.workTypes||[]).join(", ");
         const noteTxt=(t.notes||"").substring(0,260)+((t.notes||"").length>260?"...":"");
@@ -20470,6 +20568,20 @@ function qbCustRenderDetail(customers){
         h+='<span data-cnchev aria-hidden="true" style="color:var(--ac);font-weight:800;font-size:15px;line-height:1.4;flex-shrink:0;transition:transform .18s">\u203a</span>';
         h+='</div>';
       });
+    }
+  }else if(qbCustTab==="photos"){
+    if(!_allPhotos.length){
+      h+='<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:var(--fs-base)">\uD83D\uDCF7 No photos yet.<br><span style="font-size:var(--fs-sm)">Photos a tech adds on a Field Report will collect here \u2014 every visit, in one place.</span></div>';
+    }else{
+      h+='<div style="font-size:var(--fs-sm);color:var(--i3);font-weight:600;margin:2px 2px 10px">\uD83D\uDCF7 '+_allPhotos.length+' photo'+(_allPhotos.length===1?'':'s')+' across all visits \u00b7 tap to enlarge</div>';
+      h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:0 0 6px">';
+      _allPhotos.forEach(function(ph){
+        var cap=(ph.date||'')+(ph.tech?(' \u00b7 '+ph.tech):'');
+        h+='<div onclick="previewAttachment(this.dataset.u,\'photo\',this.dataset.c)" data-u="'+esc(ph.url)+'" data-c="'+esc(cap)+'" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--ln);background:var(--bg)">'
+          +'<img src="'+esc(ph.url)+'" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#0002">'
+          +'<div style="font-size:10px;color:var(--i3);padding:4px 6px;line-height:1.25"><div style="font-weight:700;color:var(--i2)">'+esc(ph.date||'')+'</div>'+(ph.tech?'<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ph.tech)+'</div>':'')+'</div></div>';
+      });
+      h+='</div>';
     }
   }else if(qbCustTab==="spa"){
     h+='<div style="margin-bottom:8px;font-size:var(--fs-sm);color:var(--i3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">🛁 Spa / Equipment Description</div>';
