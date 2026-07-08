@@ -24069,6 +24069,8 @@ function showTicketDetail(p,i){
 @keyframes bsIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 #bsBody.bs-anim{animation:bsIn .16s ease-out}
 @media(max-width:520px){#bsOv{padding:0;align-items:stretch}#bsOv .bs-box{max-width:none;height:100dvh;max-height:none;border-radius:0}}
+#bsDigest .bsd-r{font-size:12px;padding:4px 0;color:var(--i2,#5a5248);font-weight:600;line-height:1.45}
+#bsDigest .bsd-r b{color:var(--ink,#1f1a15)}
 /* Sticky search on Daily (additive — existing markup untouched) */
 #pg1 .search-wrap{position:sticky;top:0;z-index:60;background:var(--bg,#faf8f4);padding:8px 0 10px;margin-top:-8px}
 #pg1 .search-wrap .search-bar{box-shadow:0 2px 10px rgba(0,0,0,.06)}
@@ -24449,6 +24451,74 @@ document.addEventListener("keydown",function(e){
   else if(e.key==="Escape"){bsClose();}
 });
 
+/* ── NELA'S MORNING DIGEST (Jul 2026) — one card on Daily with the day
+   prioritized: pending invoices + $, incomplete tickets, warranty
+   mismatches, customers owing a CC, open payment alerts (crossAppEvents,
+   same source as the New Service Call account-status panel). All from
+   in-memory data; recomputed only when the pending count changes.
+   Dismissible per-day via localStorage. ── */
+function _bsMissing(t){
+  var vn=Number(t.visitNum)||1,miss=[];
+  if(!String(t.notes||"").trim())miss.push("notas del trabajo");
+  if(!t.arrival||!t.departure)miss.push("hora llegada/salida");
+  var hasWork=!!((t.workTypes&&t.workTypes.length)||vn===3||vn===5||vn===6);
+  if(!hasWork)miss.push("tipo de trabajo");
+  return miss;
+}
+function _bsMismatch(t){
+  try{
+    if(typeof _parseSpaDescription!=="function"||typeof _autoWarrantyFromSpec!=="function")return false;
+    var sd=_custSpaDesc(t);if(!sd)return false;
+    var p=_parseSpaDescription(sd);if(!p)return false;
+    var a=_autoWarrantyFromSpec(p);if(!a)return false;
+    var w=t.warranty||{};
+    return (w.has===true&&!a.hasAny)||(w.has===false&&a.hasAny);
+  }catch(e){return false;}
+}
+function _bsDigestKey(){return "bsDigestHide_"+((typeof fmtD==="function")?fmtD(new Date()):new Date().toDateString());}
+function renderDigest(p){
+  if(!canUse())return;
+  var pg=document.getElementById("pg1");if(!pg)return;
+  var el=document.getElementById("bsDigest");
+  try{if(localStorage.getItem(_bsDigestKey())==="1"){if(el)el.style.display="none";return;}}catch(e){}
+  p=p||pool();
+  var tot=0;p.forEach(function(t){try{tot+=moneyFor(t).total;}catch(e){}});
+  var missN=p.filter(function(t){return _bsMissing(t).length>0;}).length;
+  var mmN=p.filter(function(t){return _bsMismatch(t);}).length;
+  var cc=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.ccRequested&&!t.ccOnFile;});
+  var ev=[];try{ev=((typeof crossAppEvents!=="undefined"&&crossAppEvents)||[]).filter(function(x){return x&&x.eventType!=="qb_backlog_snapshot";});}catch(e){}
+  var evTot=0;try{ev.forEach(function(x){evTot+=(typeof _alertAmount==="function"?(_alertAmount(x)||0):0);});}catch(e){}
+  var rows=[];
+  if(p.length)rows.push('<div class="bsd-r" onclick="bsOpen()" style="cursor:pointer">'+bico("zap",13)+' <b>'+p.length+' por facturar</b> · $'+Math.round(tot).toLocaleString("en-US")+' — abrir Sprint →</div>');
+  if(missN)rows.push('<div class="bsd-r">'+bico("triangle-alert",13)+' <b>'+missN+' con datos incompletos</b> — pídelos al técnico desde el Sprint</div>');
+  if(mmN)rows.push('<div class="bsd-r">'+bico("shield-alert",13)+' <b>'+mmN+' con garantía inconsistente</b> vs Customer 360</div>');
+  if(cc.length)rows.push('<div class="bsd-r">'+bico("credit-card",13)+' <b>'+cc.length+' deben dejar CC</b>: '+esc3(cc.slice(0,3).map(function(t){return t.customer||"";}).join(", "))+(cc.length>3?"…":"")+'</div>');
+  if(ev.length)rows.push('<div class="bsd-r">'+bico("banknote",13)+' <b>'+ev.length+' alertas de pago abiertas</b> · $'+Math.round(evTot).toLocaleString("en-US")+'</div>');
+  if(!rows.length){if(el)el.style.display="none";return;}
+  if(!el){
+    el=document.createElement("div");el.id="bsDigest";
+    var anchor=document.getElementById("bsLaunch");
+    if(anchor&&anchor.parentNode===pg)pg.insertBefore(el,anchor.nextSibling);
+    else pg.insertBefore(el,pg.firstChild);
+  }
+  el.style.display="";
+  var uname=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
+  el.innerHTML='<div style="border:1.5px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--card,#fff)">'
+    +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:13px">'+bico("sun",14)+' Tu día'+(uname?", "+esc3(uname):"")+'</b><button onclick="bsDigestHide()" title="Ocultar por hoy" style="margin-left:auto;border:none;background:none;color:var(--i3,#999);cursor:pointer;font-size:16px;line-height:1">×</button></div>'
+    +rows.join("")+'</div>';
+}
+window.bsDigestHide=function(){try{localStorage.setItem(_bsDigestKey(),"1");}catch(e){}var el=document.getElementById("bsDigest");if(el)el.style.display="none";};
+
+/* Tech-chase message: one tap copies a ready-to-send note asking the tech
+   for exactly what the ticket is missing. */
+window.bsTechMsg=async function(){
+  var t=Q[idx];if(!t)return;
+  var miss=_bsMissing(t);if(!miss.length)return;
+  var msg="Hola "+(((t.techs||[])[0])||"")+": al ticket de "+(t.customer||"")+" ("+(t.date||"")+") le falta: "+miss.join(", ")+". ¿Lo completas para poder facturarlo? Gracias — "+((typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"");
+  try{await navigator.clipboard.writeText(msg);}catch(e){var ta=document.createElement("textarea");ta.value=msg;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e2){}document.body.removeChild(ta);}
+  try{toast("Mensaje copiado ✓ — pégalo en el chat del técnico");}catch(e){}
+};
+
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
 var _btnCache={n:-1,total:0};
 function renderBtn(){
@@ -24458,6 +24528,7 @@ function renderBtn(){
   if(n!==_btnCache.n){
     var tot=0;p.forEach(function(t){try{tot+=moneyFor(t).total;}catch(e){}});
     _btnCache={n:n,total:tot};
+    try{renderDigest(p);}catch(e){}
   }
   var btn=document.getElementById("bsLaunch");
   if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=bsOpen;pg.insertBefore(btn,pg.firstChild);}
@@ -24519,7 +24590,7 @@ function show(){
       +'</div>';
     return;
   }
-  var v=verdictFor(t),m=moneyFor(t);
+  var v=verdictFor(t),m=moneyFor(t),miss=_bsMissing(t);
   var vn=Number(t.visitNum)||1;
   body.innerHTML=
      '<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
@@ -24530,6 +24601,7 @@ function show(){
     +dupHTML(t)
     +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
     +c360HTML(t)
+    +(miss.length?'<button onclick="bsTechMsg()" style="width:100%;margin:2px 0 6px;padding:10px;border-radius:10px;border:1.5px solid var(--c-warning-fg,#92400e);background:transparent;color:var(--c-warning-fg,#92400e);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">'+bico("message-circle",13)+' Pedir datos al técnico'+((t.techs&&t.techs[0])?(" — "+esc3(t.techs[0])):"")+' (falta: '+esc3(miss.join(", "))+')</button>':'')
     +'<div class="bs-money">'
       +'<div><span>Parts</span><b>$'+m.parts.toFixed(2)+'</b></div>'
       +'<div><span>Labor</span><b>$'+m.labor.toFixed(2)+'</b></div>'
