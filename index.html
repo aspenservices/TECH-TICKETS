@@ -24151,9 +24151,9 @@ function qbLinesFor(t){
   try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
   var parts=(t.parts||[]).filter(function(p){return p&&p.n;});
   function addParts(zero,note){parts.forEach(function(p,k){var pr=(p.ch!=null?p.ch:p.p)||0;L.push({i:p.n,q:_fq(p.qty||1),r:zero?"$0.00":"$"+(+pr).toFixed(2),n:(k===0?note:"")});});}
-  if(vn===3)return{lines:L,foot:"Chemical maintenance — $0. No se factura."};
+  if(vn===3)return{lines:L,foot:"Chemical maintenance — $0 (Service - Chemical Bi Monthly / Weekly). No se cobra."};
   if(vn===4||t.isRepeat){
-    L.push({i:"Service-Additional Hour",q:_fq(_hrsAll(mins)||1),r:"$0.00",n:"Repeat: todo el tiempo de la visita a rate $0"});
+    L.push({i:"Service-Repeat Service",q:_fq(_hrsAll(mins)||1),r:"$0.00",n:"Repeat: item de QB \"Service-Repeat Service\" con el tiempo de la visita, rate $0"});
     addParts(false,parts.length?"Part SOLO si Tom aprobó cobrarlo — si no, $0":"");
     return{lines:L,foot:"Repeat — sin Basic, sin labor. Total normalmente $0 + part aprobado."};
   }
@@ -24165,31 +24165,31 @@ function qbLinesFor(t){
   }
   if(vn===5){addParts(false,"");return{lines:L,foot:"Delivery — sin labor. Solo parts + tax."};}
   if(vn===6){
-    L.push({i:"Service-Basic",q:"1",r:"$150.00"});
+    L.push({i:"Service-Basic Service Call",q:"1",r:"$150.00"});
     if(_hrsExtra(mins))L.push({i:"Service-Additional Hour",q:_fq(_hrsExtra(mins)),r:"$100.00"});
-    L.push({i:"Service-Additional Hour (Move spa)",q:"1",r:"según estimate",n:"Flat rate del estimate aprobado"});
+    L.push({i:"Service - Spa Move",q:"1",r:"según estimate",n:"Flat rate del estimate aprobado"});
     addParts(false,"");
     return{lines:L,foot:"Spa Move — flat según estimate + tax."};
   }
   if(b&&b.partsFree&&b.laborFree){
-    L.push({i:"Service-Warranty Service",q:"1",r:"$0.00"});
+    L.push({i:"Service-Warranty Service Call",q:"1",r:"$0.00"});
     addParts(true,"");
     L.push({i:"Discount-Service(Warranty)",q:"",r:"Warranty Work"});
     return{lines:L,foot:"Warranty 100% — Total $0 · Tax $0."};
   }
   if(b&&(b.verify||b.pending)){
-    L.push({i:"Service-Basic",q:"1",r:"$150.00",n:"⚠ Garantía sin confirmar — verificar antes de digitar"});
+    L.push({i:"Service-Basic Service Call",q:"1",r:"$150.00",n:"⚠ Garantía sin confirmar — verificar antes de digitar"});
     addParts(false,"");
     return{lines:L,foot:"Confirmar cobertura (serie/año o fecha del part) antes de facturar."};
   }
   if(b&&(!!b.partsFree!==!!b.laborFree)){
-    L.push({i:"Service-Basic",q:"1",r:"$150.00"});
+    L.push({i:"Service-Basic Service Call",q:"1",r:"$150.00"});
     if(_hrsExtra(mins))L.push({i:"Service-Additional Hour",q:_fq(_hrsExtra(mins)),r:b.laborFree?"$0.00":"$100.00"});
     addParts(!!b.partsFree,b.partsFree?"Parts cubiertos":( (b.parts||"").indexOf("50%")>=0?"Part al 50% — agregar línea de descuento −50% del part":""));
     L.push({i:"Discount-Service(Warranty)",q:"",r:"Warranty Work"});
     return{lines:L,foot:"Partial — "+(b.bottom||"")+". Tax solo sobre lo cobrado."};
   }
-  L.push({i:"Service-Basic",q:"1",r:"$150.00"});
+  L.push({i:"Service-Basic Service Call",q:"1",r:"$150.00"});
   if(_hrsExtra(mins))L.push({i:"Service-Additional Hour",q:_fq(_hrsExtra(mins)),r:"$100.00"});
   addParts(false,"");
   return{lines:L,foot:"No warranty — cobrar todo + S/C Missouri (tax)."};
@@ -24202,6 +24202,98 @@ function qbLinesHTML(t){
   }).join("");
   return '<div class="bs-lines"><div class="bs-lines-h">Items para QuickBooks</div>'+rows+(ql.foot?'<div class="bs-lines-f">'+esc3(ql.foot)+'</div>':'')+'</div>';
 }
+
+/* ── REPEAT DETECTOR (Jul 2026) — techs often forget to mark Repeat, so the
+   Sprint scans the SAME customer's completed visits in the last 90 days
+   (in-memory arrays — zero Firestore reads) and compares component keywords
+   between the notes. Overlap on the same component (lights, wiring, pump…)
+   → "possible repeat" banner + one-tap fix + optional on-demand AI check
+   (AI costs tokens ONLY when the button is tapped). ── */
+var _bsKW=[["lights","light","led","lighting"],["wire","wires","wiring","cable","cables","connector","connection","disconnected","reconnected","rewired"],["pump","pumps","circulation"],["heater","heating","heat","temperature","thermostat"],["leak","leaking","leaks","drip"],["jet","jets","diverter","valve"],["board","pack","motherboard","spa pack"],["breaker","gfci","electrical","electrician","ground"],["control","topside","panel"],["cover","lifter"],["salt","chemical","chemistry"],["wifi","module","in.touch","intouch","app"]];
+var _bsKWNAME=["lights","wiring/connector","pump","heater","leak","jets/diverter","pack/board","electrical","topside control","cover","chemistry","wifi/module"];
+function _bsGroups(txt){
+  var s=String(txt||"").toLowerCase(),out={};
+  _bsKW.forEach(function(g,i){for(var k=0;k<g.length;k++){if(s.indexOf(g[k])>=0){out[i]=1;break;}}});
+  return out;
+}
+function _bsPrior(t){
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):(String(t.customer||"").trim().toLowerCase());
+    var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+    return all.filter(function(x){
+      return x.id!==t.id&&(x.status==="complete"||x.status==="done")&&x.date&&t.date&&x.date<t.date
+        &&((typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").trim().toLowerCase())===k
+        &&(new Date(t.date)-new Date(x.date))/86400000<=90;
+    }).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
+  }catch(e){return [];}
+}
+function repeatScanFor(t){
+  var vn=Number(t.visitNum)||1;
+  if(vn===4||t.isRepeat)return null;
+  var prior=_bsPrior(t);if(!prior.length)return null;
+  var gNow=_bsGroups(t.notes);
+  var hits=[];
+  prior.slice(0,4).forEach(function(p){
+    var gp=_bsGroups(p.notes),match=[];
+    for(var i in gNow)if(gp[i])match.push(_bsKWNAME[i]);
+    if(match.length)hits.push({p:p,match:match});
+  });
+  if(!hits.length)return {level:"info",prior:prior};
+  return {level:"warn",prior:prior,hits:hits};
+}
+function _bsSnip(s,n){s=String(s||"").replace(/\s+/g," ").trim();return s.length>n?s.slice(0,n)+"…":s;}
+function repeatHTML(t){
+  var r=null;try{r=repeatScanFor(t);}catch(e){}
+  if(!r)return "";
+  var h="";
+  if(r.level==="warn"){
+    var hit=r.hits[0];
+    h+='<div style="background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:6px">'
+      +'🔁 POSIBLE REPEAT — misma cosa que la visita del '+esc3(hit.p.date)+(hit.p.techs&&hit.p.techs.length?' ('+esc3(hit.p.techs.join(", "))+')':'')
+      +': <u>'+esc3(hit.match.join(", "))+'</u>'
+      +'<div style="font-weight:600;font-size:11.5px;margin-top:4px;opacity:.9">“'+esc3(_bsSnip(hit.p.notes,140))+'”</div>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'
+        +'<button onclick="bsMarkRepeat()" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--c-danger-strong,#dc2626);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">🔁 Marcar Repeat · $0</button>'
+        +'<button onclick="bsAskAI()" id="bsAIBtn" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--c-danger-fg,#991b1b);background:transparent;color:var(--c-danger-fg,#991b1b);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">🤖 Preguntar a la IA</button>'
+      +'</div><div id="bsAIOut" style="font-weight:600;font-size:12px;margin-top:6px"></div></div>';
+  }else{
+    var lp=r.prior[0];
+    h+='<div style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:10px;padding:8px 12px;font-size:11.5px;font-weight:600;margin-bottom:6px">⏱ Visita previa hace poco ('+esc3(lp.date)+') — tema distinto según las notas, pero échale un ojo: “'+esc3(_bsSnip(lp.notes,110))+'”</div>';
+  }
+  return h;
+}
+window.bsMarkRepeat=async function(){
+  var t=cur();if(!t)return;
+  var ok=true;
+  try{ok=await confirmDialog("Cambiar \""+(t.customer||"")+"\" a REPEAT?\n\n→ visit type = Repeat (4) · labor $0 · el panel de items cambia a Service-Repeat Service.",{title:"Marcar Repeat",tone:"warn",okLabel:"Sí, es Repeat",cancelLabel:"Cancelar"});}catch(e){ok=confirm("Cambiar a REPEAT?");}
+  if(!ok)return;
+  try{
+    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({visitNum:4,isRepeat:true,repeatFlaggedBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",repeatFlaggedAt:new Date().toLocaleString()}).catch(function(){});
+    t.visitNum=4;t.isRepeat=true;
+  }catch(e){}
+  try{toast("Repeat ✓ — labor $0");}catch(e){}
+  show();
+};
+window.bsAskAI=async function(){
+  var t=cur();if(!t)return;
+  var out=document.getElementById("bsAIOut"),btn=document.getElementById("bsAIBtn");
+  var prior=_bsPrior(t).slice(0,3);
+  if(!prior.length){if(out)out.textContent="Sin visitas previas para comparar.";return;}
+  if(btn){btn.disabled=true;btn.textContent="Analizando…";}
+  try{
+    var key=(typeof getAIKey==="function"&&getAIKey())||"";
+    if(!key)throw new Error("Configura tu API key en Admin primero");
+    var ctx=prior.map(function(p){return p.date+" ("+((p.techs||[]).join(", ")||"?")+"): "+_bsSnip(p.notes,300);}).join("\n")+"\nCURRENT "+t.date+": "+_bsSnip(t.notes,300);
+    var r=await _aiFetch({model:"claude-sonnet-4-6",max_tokens:200,
+      system:"You are Aspen Spas' billing assistant. REPEAT = a previous Aspen tech failed and this visit re-fixed the SAME problem (no charge). SECOND VISIT / NEW FAULT = chargeable. Compare the prior visit notes with the CURRENT one. Answer in Spanish, max 50 words, starting with exactly REPEAT:, NO REPEAT: or DUDOSO:",
+      messages:[{role:"user",content:ctx}]});
+    if(!r.ok)throw new Error("AI "+r.status);
+    var d=await r.json();
+    var txt=((d.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join(" ")).trim();
+    if(out)out.textContent=txt||"(sin respuesta)";
+  }catch(e){if(out)out.textContent="⚠ "+((e&&e.message)||"error");}
+  if(btn){btn.disabled=false;btn.textContent="🤖 Preguntar a la IA";}
+};
 
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
 function renderBtn(){
@@ -24254,6 +24346,7 @@ function show(){
   body.innerHTML=
      '<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
     +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+'</div>'
+    +repeatHTML(t)
     +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
     +'<div class="bs-money">'
       +'<div><span>Parts</span><b>$'+m.parts.toFixed(2)+'</b></div>'
