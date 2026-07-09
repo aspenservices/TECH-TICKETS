@@ -25084,6 +25084,45 @@ function showTicketDetail(p,i){
   else setTimeout(install,0);
 })();
 </script>
+<script id="ak-sheet-gestures">
+/* Swipe-down-to-dismiss for the app's existing bottom-sheet modals (.mbg/.modal).
+   Grabbing the header (.mt) and pulling down past a threshold clicks the modal's
+   own close button (.mcl) so each modal runs its proper cleanup. */
+(function(){
+  var drag=false,startY=0,dy=0,modal=null,mbg=null;
+  function start(e){
+    var tgt=e.target;if(!tgt||!tgt.closest)return;
+    var mt=tgt.closest('.mt');if(!mt)return;
+    if(tgt.closest('button,input,textarea,select,a'))return;
+    mbg=mt.closest('.mbg');if(!mbg||!mbg.classList.contains('open'))return;
+    modal=mt.closest('.modal');if(!modal)return;
+    drag=true;startY=(e.touches?e.touches[0].clientY:e.clientY);modal.style.transition='none';
+  }
+  function move(e){
+    if(!drag)return;var y=(e.touches?e.touches[0].clientY:e.clientY);dy=Math.max(0,y-startY);
+    modal.style.transform='translateY('+dy+'px)';
+  }
+  function end(){
+    if(!drag)return;drag=false;
+    modal.style.transition='transform .4s cubic-bezier(.32,1.4,.5,1)';
+    if(dy>110){
+      var cl=mbg.querySelector('.mcl');
+      modal.style.transform='translateY(100%)';
+      var m=modal,g=mbg;
+      setTimeout(function(){try{if(cl)cl.click();else g.classList.remove('open')}catch(_e){g.classList.remove('open')}m.style.transform='';m.style.transition='';},240);
+    }else{modal.style.transform='translateY(0)';}
+    dy=0;modal=null;mbg=null;
+  }
+  document.addEventListener('touchstart',start,{passive:true});
+  document.addEventListener('touchmove',move,{passive:true});
+  document.addEventListener('touchend',end);
+  document.addEventListener('mousedown',start);
+  document.addEventListener('mousemove',move);
+  document.addEventListener('mouseup',end);
+})();
+</script>
+
+
 
 <!-- ════════════════════════════════════════════════════════════════════════
      ASPEN BILLING SPRINT (Jul 2026) — ADDITIVE & fully reversible.
@@ -25117,14 +25156,14 @@ function showTicketDetail(p,i){
 #bsOv .bs-money div{background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:8px 10px;text-align:center}
 #bsOv .bs-money b{display:block;font-size:15px}
 #bsOv .bs-money span{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--i3,#8a8073);font-weight:700}
-#bsOv .bs-lines{border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--bg,#faf8f4)}
-#bsOv .bs-lines-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--i3,#8a8073);font-weight:800;margin-bottom:6px}
-#bsOv .bs-line{display:flex;gap:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--ln,#e5e0d8);flex-wrap:wrap;align-items:baseline}
-#bsOv .bs-line:last-of-type{border-bottom:none}
-#bsOv .bs-line b{font-weight:700}
-#bsOv .bs-line .bs-q{margin-left:auto;white-space:nowrap;color:var(--i2,#5a5248)}
-#bsOv .bs-line em{flex-basis:100%;font-style:normal;font-size:11px;color:var(--c-warning-fg,#92400e)}
-#bsOv .bs-lines-f{font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:6px}
+#bsOv .bs-lines,#nvPanel .bs-lines{border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--bg,#faf8f4)}
+#bsOv .bs-lines-h,#nvPanel .bs-lines-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--i3,#8a8073);font-weight:800;margin-bottom:6px}
+#bsOv .bs-line,#nvPanel .bs-line{display:flex;gap:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--ln,#e5e0d8);flex-wrap:wrap;align-items:baseline}
+#bsOv .bs-line:last-of-type,#nvPanel .bs-line:last-of-type{border-bottom:none}
+#bsOv .bs-line b,#nvPanel .bs-line b{font-weight:700}
+#bsOv .bs-line .bs-q,#nvPanel .bs-line .bs-q{margin-left:auto;white-space:nowrap;color:var(--i2,#5a5248)}
+#bsOv .bs-line em,#nvPanel .bs-line em{flex-basis:100%;font-style:normal;font-size:11px;color:var(--c-warning-fg,#92400e)}
+#bsOv .bs-lines-f,#nvPanel .bs-lines-f{font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:6px}
 #bsOv textarea{width:100%;min-height:190px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;border:1px solid var(--ln,#ddd);border-radius:10px;padding:12px;background:var(--bg,#faf8f4);color:var(--ink,#1f1a15);resize:vertical;box-sizing:border-box}
 #bsOv .bs-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 #bsOv .bs-copy{width:100%;padding:14px;background:var(--br,#3D2B1F);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;min-height:48px}
@@ -25138,18 +25177,49 @@ function showTicketDetail(p,i){
 @keyframes bsIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 #bsBody.bs-anim{animation:bsIn .16s ease-out}
 @media(max-width:520px){#bsOv{padding:0;align-items:stretch}#bsOv .bs-box{max-width:none;height:100dvh;max-height:none;border-radius:0}}
+#nvLaunch{width:100%;margin:0 0 12px;padding:11px 16px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center;gap:8px}
+#nvOv{position:fixed;inset:0;background:var(--bg,#faf8f4);z-index:10001;overflow:auto;padding:16px 18px;display:none}
+#nvOv .nv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+#nvOv .nv-kpi{background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px}
+#nvOv .nv-kpi b{display:block;font-size:21px;margin-top:2px}
+#nvOv .nv-kpi span{font-size:10.5px;color:var(--i3,#8a8073);font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+#nvOv .nv-kpi em{font-style:normal;font-size:11px;font-weight:700}
+#nvOv .nv-bar{display:flex;align-items:center;gap:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;margin-bottom:12px;flex-wrap:wrap}
+#nvOv .nv-track{flex:1;min-width:140px;height:8px;border-radius:999px;background:rgba(0,0,0,.12);overflow:hidden}
+#nvOv .nv-track i{display:block;height:100%;background:var(--c-money-fg,#065f46)}
+#nvOv .nv-cols{display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:24px}
+#nvOv .nv-col{min-width:235px;flex:1}
+#nvOv .nv-colh{font-size:11.5px;font-weight:800;letter-spacing:.4px;padding:7px 10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+#nvOv .nv-card{background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:transform .1s}
+#nvOv .nv-card:hover{transform:translateY(-1px)}
+#nvOv .nv-more{text-align:center;font-size:11.5px;font-weight:800;color:var(--i2,#5a5248);border:1.5px dashed var(--ln,#d5d0c8);border-radius:10px;padding:8px;cursor:pointer;margin-bottom:8px}
+#nvOv .nv-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:10px;margin:4px 0 18px}
+#nvPanel{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);background:var(--card,#fff);color:var(--ink,#1f1a15);z-index:10004;box-shadow:-12px 0 40px rgba(0,0,0,.2);overflow:auto;padding:18px;display:none}
+#nvPanel .nv-act{width:100%;padding:12px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;margin-top:8px}
 #bsDigest .bsd-r{font-size:12px;padding:4px 0;color:var(--i2,#5a5248);font-weight:600;line-height:1.45}
 #bsDigest .bsd-r b{color:var(--ink,#1f1a15)}
 /* Sticky search on Daily (additive — existing markup untouched) */
 #pg1 .search-wrap{position:sticky;top:0;z-index:60;background:var(--bg,#faf8f4);padding:8px 0 10px;margin-top:-8px}
 #pg1 .search-wrap .search-bar{box-shadow:0 2px 10px rgba(0,0,0,.06)}
+#bsOv .bs-grid{display:grid;grid-template-columns:1fr;gap:0 20px}
+@media(min-width:920px){#bsOv .bs-box{max-width:1080px}#bsOv .bs-grid{grid-template-columns:1.05fr 1fr}}
+#bsOv .bs-ck{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}
+#bsOv .bs-ck button{flex:1;min-width:120px;padding:9px 8px;border-radius:10px;border:1.5px solid var(--ln,#ddd);background:transparent;font-weight:800;font-size:11px;color:var(--i3,#8a8073);cursor:pointer;font-family:inherit}
+#bsOv .bs-ck button.on{border-color:var(--c-money-fg,#065f46);background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46)}
+#bsOv .bs-copy[disabled]{opacity:.45;cursor:not-allowed}
+body.aspSkin:not(.dark){--bg:#FBF8F4;--card:#FFFFFF;--c-money-bg:#E4F0E7;--c-money-fg:#41694F;--c-warning-bg:#F7EDDD;--c-warning-fg:#8A6A3B;--c-danger-bg:#F6E3DE;--c-danger-fg:#A85B4B;--c-info-bg:#E7EEF3;--c-info-fg:#4A6B82}
+body.aspSkin:not(.dark) #pg1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 90'%3E%3Cpath d='M0 55 Q50 40 100 55 T200 55 T300 55 T400 55' fill='none' stroke='%23B98A5E' stroke-opacity='0.10' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M0 72 Q50 58 100 72 T200 72 T300 72 T400 72' fill='none' stroke='%238A7768' stroke-opacity='0.08' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21 C7 16 8 9 12 3 C16 9 17 16 12 21 Z' fill='%23B98A5E' fill-opacity='0.06'/%3E%3C/svg%3E");background-repeat:repeat-x,no-repeat;background-position:bottom -4px center,right -70px top -60px;background-size:820px 90px,320px 320px}
+body.aspSkin:not(.dark) #bsOv .bs-box,body.aspSkin:not(.dark) #bsDigest>div,body.aspSkin:not(.dark) #nvOv .nv-kpi,body.aspSkin:not(.dark) #nvOv .nv-card,body.aspSkin:not(.dark) #bsLaunch,body.aspSkin:not(.dark) #nvLaunch,body.aspSkin:not(.dark) #nvPanel{box-shadow:0 1px 6px rgba(92,74,61,.08),inset 0 1.5px 0 rgba(255,255,255,.85);border-color:#EDE6DD}
+body.aspFs2 #bsOv .bs-box,body.aspFs2 #bsDigest,body.aspFs2 #nvPanel{zoom:1.12}
+body.aspFs3 #bsOv .bs-box,body.aspFs3 #bsDigest,body.aspFs3 #nvPanel{zoom:1.3}
 </style>
 <script id="aspenBillingSprintJS">
 (function(){
 "use strict";
 var VLABEL={1:"1st visit",2:"2nd visit · labor",3:"Chemical Maint.",4:"Repeat (warranty)",5:"Delivery",6:"Spa Move"};
-var Q=[],idx=0,sk={},bl=[],fTech="";
+var Q=[],idx=0,sk={},bl=[],fTech="",wKept={},ck={};
 
+function TT(a,b){try{return L2(a,b);}catch(e){return a;}}
 function bico(n,sz){try{if(typeof icon==="function"&&typeof lucide!=="undefined"&&lucide.icons)return icon(n,sz||15,{style:"vertical-align:-2px"});}catch(e){}return "";}
 function canUse(){try{return typeof currentUser!=="undefined"&&currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");}catch(e){return false;}}
 
@@ -25180,6 +25250,12 @@ function moneyFor(t){
   return{parts:+parts.toFixed(2),labor:+labor.toFixed(2),tax:tax,total:+(parts+labor+tax).toFixed(2)};
 }
 
+function moneySub(t){var m=moneyFor(t);return +(m.parts+m.labor).toFixed(2);}
+/* fx: ripple de agua al facturar (solo al actuar, cero costo en reposo) */
+function fxRipple(el){try{if(!el)return;var host=el.closest(".bs-box")||el.parentElement;var hb=host.getBoundingClientRect(),r=el.getBoundingClientRect();if(getComputedStyle(host).position==="static")host.style.position="relative";var sp=document.createElement("span");sp.style.cssText="position:absolute;border-radius:50%;background:rgba(232,167,111,.35);pointer-events:none;transform:translate(-50%,-50%);width:10px;height:10px;z-index:6;left:"+(r.left-hb.left+r.width/2)+"px;top:"+(r.top-hb.top+r.height/2)+"px";host.appendChild(sp);sp.animate([{width:"10px",height:"10px",opacity:1},{width:"1000px",height:"1000px",opacity:0}],{duration:600,easing:"ease-out"}).onfinish=function(){sp.remove();};}catch(e){}}
+/* fx: vapor zen al terminar la cola (una sola vez) */
+function fxSteam(host){try{var w=document.createElement("div");w.style.cssText="display:flex;justify-content:center;pointer-events:none";w.innerHTML='<svg viewBox="0 0 200 80" style="width:150px"><path d="M40 75 Q30 55 40 40 Q50 25 42 8" fill="none" stroke="#B98A5E" stroke-width="5" stroke-linecap="round"/><path d="M100 78 Q90 58 100 42 Q110 26 102 6" fill="none" stroke="#8A7768" stroke-width="5" stroke-linecap="round"/><path d="M160 75 Q150 55 160 40 Q170 25 162 8" fill="none" stroke="#B98A5E" stroke-width="5" stroke-linecap="round"/></svg>';host.insertBefore(w,host.firstChild);var g=w.firstChild;g.style.opacity="0";g.animate([{opacity:0,transform:"translateY(20px)"},{opacity:.5,transform:"translateY(0)"},{opacity:0,transform:"translateY(-16px)"}],{duration:2800,easing:"ease-out"}).onfinish=function(){w.remove();};}catch(e){}}
+function vrule(vn){var M={1:TT("Regla 1ª visita: TC $150 (1ª hora) + $100/hr en cuartos + parts","1st visit rule: TC $150 (first hour) + $100/hr in quarters + parts"),2:TT("Regla 2ª visita: SIN Basic — todo como Additional Hours $100/hr (+ tiempo de la visita técnica previa)","2nd visit rule: NO Basic — all time as Additional Hours $100/hr (+ prior tech visit time)"),3:TT("Regla CM: $0 — no se cobra","CM rule: $0 — no charge"),4:TT("Regla Repeat: $0 — item Service-Repeat Service","Repeat rule: $0 — Service-Repeat Service item"),5:TT("Regla Delivery: solo parts, sin labor","Delivery rule: parts only, no labor"),6:TT("Regla Spa Move: flat según estimate aprobado","Spa Move rule: flat per approved estimate")};return M[vn]||"";}
 /* Light verdict — mirrors the Daily verdict engine rules via _billingFor. */
 function verdictFor(t){
   var vn=Number(t.visitNum)||1,b=null;
@@ -25197,15 +25273,31 @@ function verdictFor(t){
   return{txt:"✅ Facturar",sub:sub,cls:"ok"};
 }
 
+function _cleanNotes(t){
+  var n=String(t.notes||"").trim();
+  n=n.replace(/^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*[·—:,-]*\s*/,"");
+  var tech=((t.techs||[])[0])||"";
+  if(tech){try{var rx=new RegExp("^\\s*"+tech.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*[·—:,-]*\\s*","i");n=n.replace(rx,"");}catch(e){}}
+  n=n.replace(/\s+/g," ").trim();
+  if(n){n=n.charAt(0).toUpperCase()+n.slice(1);if(!/[.!?]$/.test(n))n+=".";}
+  return n;
+}
+function _firstSent(str,max){
+  str=String(str||"");if(str.length<=max)return str;
+  var cut=str.slice(0,max);
+  var p=Math.max(cut.lastIndexOf(". "),cut.lastIndexOf("; "));
+  return p>40?cut.slice(0,p+1):(cut.replace(/\s+\S*$/,"")+"…");
+}
 function qbTextFor(t){
-  var _s,txt="";
-  try{
-    _s=sel;sel=Array.isArray(t.parts)?t.parts:[];
-    var rep=(typeof buildCustomerReport==="function")?buildCustomerReport(t):null;
-    txt=rep?(rep.textQB||rep.textPlain||""):"";
-  }catch(e){txt="("+String((e&&e.message)||"error")+") — open the ticket to copy manually";}
-  finally{try{sel=_s;}catch(e2){}}
-  try{var _m=moneyFor(t);txt+="\n\nEXPECTED TOTAL: $"+_m.total.toFixed(2)+"  (parts $"+_m.parts.toFixed(2)+" · labor $"+_m.labor.toFixed(2)+" · tax $"+_m.tax.toFixed(2)+")";}catch(e){}
+  var mins=_qMins(t),dur=mins?(Math.floor(mins/60)+"h "+(mins%60)+"m"):"";
+  var dl=t.date||"";
+  try{if(t.date){var d=new Date(t.date+"T12:00:00");var mo=["January","February","March","April","May","June","July","August","September","October","November","December"];dl=mo[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear();}}catch(e){}
+  var body=_cleanNotes(t);
+  var txt="Service date: "+dl;
+  var techs=(t.techs||[]).filter(Boolean).join(", ");
+  if(techs)txt+="\nTechnician: "+techs;
+  if(dur)txt+="\nTime on site: "+dur+" ("+(t.arrival||"")+" - "+(t.departure||"")+")";
+  txt+="\n\nWork performed:\n"+(body||TT("(sin notas del técnico — pídelas antes de facturar)","(no tech notes — request them before billing)"));
   return txt;
 }
 
@@ -25275,6 +25367,74 @@ function qbLinesFor(t){
   addParts(false,"");
   return{lines:L,foot:"No warranty — cobrar todo + S/C Missouri (tax)."};
 }
+function qbShortFor(t){
+  var d=t.date||"";
+  try{var p=String(t.date||"").split("-");if(p.length===3)d=p[1]+"/"+p[2]+"/"+p[0];}catch(e){}
+  var body=_firstSent(_cleanNotes(t),210);
+  var txt=(d?d+" ":"")+(((t.techs||[])[0])||"")+(body?" — "+body:"");
+  return txt;
+}
+/* ── AI DRAFTER "Two-birds" (Jul 2026, proposal B) — ONE on-demand call
+   gathers what Nela used to chase across 4 places (tech notes, prior visits,
+   C360 warranty truth, parts, verdict) and returns BOTH texts: the condensed
+   QB Notes line and the detailed invoice description. Runs ONLY on tap, uses
+   the existing aspenAIKey, visible daily counter so spend is never blind. ── */
+function _bsAiKey(){return "bsAiRuns_"+((typeof fmtD==="function")?fmtD(new Date()):"");}
+function _bsAiCount(){try{return parseInt(localStorage.getItem(_bsAiKey())||"0",10);}catch(e){return 0;}}
+function _bsAiBump(){try{localStorage.setItem(_bsAiKey(),String(_bsAiCount()+1));}catch(e){}}
+window.bsAiDraft=async function(){
+  var t=Q[idx];if(!t)return;
+  var btn=document.getElementById("bsAiBtn");
+  if(btn){btn.disabled=true;btn.textContent="Redactando…";}
+  try{
+    var key=(typeof getAIKey==="function"&&getAIKey())||"";
+    if(!key)throw new Error("Configura tu API key en Admin primero");
+    var v=verdictFor(t),m=moneyFor(t),mins=_qMins(t),b=null;
+    try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
+    var c360="";
+    try{
+      var sd=_custSpaDesc(t);
+      if(sd&&typeof _parseSpaDescription==="function"&&typeof _autoWarrantyFromSpec==="function"){
+        var p=_parseSpaDescription(sd);var a=p?_autoWarrantyFromSpec(p):null;
+        if(a)c360=((p.series||"")+" "+(p.year||"")).trim()+" — "+(a.hasAny?("in warranty yr "+a.yearN):"OUT of manufacturer warranty");
+      }
+    }catch(e){}
+    var prior="";
+    try{
+      var r=repeatScanFor(t);
+      if(r&&r.hits&&r.hits.length)prior="PRIOR VISIT "+r.hits[0].p.date+" (POSSIBLE REPEAT, same component: "+r.hits[0].match.join(", ")+"): "+_bsSnip(r.hits[0].p.notes,200);
+      else{var ap=_bsAllPrior(t);if(ap.length)prior="PRIOR VISIT "+ap[0].date+": "+_bsSnip(ap[0].notes,150);}
+    }catch(e){}
+    var partsL=(t.parts||[]).filter(function(x){return x&&x.n;}).map(function(x){return (x.qty||1)+"x "+x.n+" ($"+(((x.ch!=null?x.ch:x.p)||0))+")";}).join(", ");
+    var ctx="Customer: "+(t.customer||"")+"\nDate: "+(t.date||"")+" · Tech: "+((t.techs||[]).join(", "))+" · Visit type: "+(VLABEL[Number(t.visitNum)||1]||"")+" · Time on site: "+(mins?(Math.floor(mins/60)+"h "+(mins%60)+"m"):"?")
+      +"\nBilling verdict: "+v.txt+(v.sub?" — "+v.sub:"")+(b&&b.bottom?" · "+b.bottom:"")
+      +(c360?"\nSpa per records: "+c360:"")
+      +"\nParts used: "+(partsL||"none")
+      +"\nTotals: parts $"+m.parts.toFixed(2)+" · labor $"+m.labor.toFixed(2)+" · tax $"+m.tax.toFixed(2)+" · TOTAL $"+m.total.toFixed(2)
+      +(t.reportedIssue?"\nCustomer reported: "+_bsSnip(t.reportedIssue,200):"")
+      +"\nTECH NOTES: "+_bsSnip(t.notes||"",700)
+      +(prior?"\n"+prior:"");
+    var resp=await _aiFetch({model:"claude-sonnet-4-6",max_tokens:700,
+      system:"You write QuickBooks invoice text for Aspen Spas (hot tub service company, St. Louis). Produce BOTH outputs in English. Output EXACTLY this structure:\n===SHORT===\nINTERNAL note for the QB Notes field (office record, the customer never sees it). Format: MM/DD/YYYY TechFirstName — then one brief, direct summary of what the tech found, what was done, and the outcome. Technical shorthand OK. STRICT: no parts list, no hours, no prices.\n===DETAILED===\nCustomer-facing invoice description. Format exactly: 'Service date: <Month D, YYYY>' newline 'Technician: <name>' newline 'Time on site: <Xh Ym>' blank line 'Work performed:' then a clear, warm, plain-language paragraph describing what the technician found and did in the customer's home and the result. STRICT: never mention part names, prices, warranty codes (RDA, N/W), repeats, or internal billing decisions.\nThe two outputs MUST describe the same visit with the same facts and outcome — no contradictions. Write complete grammatical sentences; if the tech notes are fragmentary or mixed-language, rewrite them into clean English prose WITHOUT adding facts. Do not repeat the date or technician name inside the body text (they are already in the header/prefix). If the data is too thin to describe the work, output exactly: 'Technician visit completed — see service record.' NEVER invent facts not present in the data.",
+      messages:[{role:"user",content:ctx}]});
+    if(!resp.ok){var em="AI "+resp.status;try{var ej=await resp.json();if(ej&&ej.error&&ej.error.message)em+=": "+ej.error.message;}catch(e){}throw new Error(em);}
+    var d=await resp.json();
+    var txt=((d.content||[]).filter(function(x){return x.type==="text";}).map(function(x){return x.text;}).join("\n")).trim();
+    var shortT="",detT=txt;
+    var seg1=txt.split(/===SHORT===/i)[1];
+    if(seg1){var seg2=seg1.split(/===DETAILED===/i);shortT=(seg2[0]||"").trim();detT=((seg2[1]||"").trim())||txt;}
+    var ta=document.getElementById("bsText");if(ta&&detT)ta.value=detT;
+    var sh=document.getElementById("bsShortTxt");if(sh&&shortT)sh.value=shortT;
+    _bsAiBump();
+    try{toast("Redactado ✓ — revisa los dos textos");}catch(e){}
+  }catch(e){try{toast("⚠ "+((e&&e.message)||"error"),"err");}catch(e2){}}
+  if(btn){btn.disabled=false;btn.innerHTML=bico("sparkles",13)+" Redactar con AI (los 2 textos) · hoy: "+_bsAiCount();}
+};
+window.bsCopyShort=async function(){
+  var el=document.getElementById("bsShortTxt");if(!el)return;
+  try{await navigator.clipboard.writeText(el.value);}catch(e){el.select();try{document.execCommand("copy");}catch(e2){}}
+  try{toast("Nota corta copiada ✓ — pégala en NOTES de QB");}catch(e){}
+};
 function qbLinesHTML(t){
   var ql=null;try{ql=qbLinesFor(t);}catch(e){return "";}
   if(!ql||(!ql.lines.length&&!ql.foot))return "";
@@ -25393,25 +25553,41 @@ function _custSpaDesc(t){
     return best;
   }catch(e){return "";}
 }
+window.bsSyncW=async function(){
+  var t=Q[idx];if(!t)return;
+  try{
+    var sd=_custSpaDesc(t),p=sd?_parseSpaDescription(sd):null,a=p?_autoWarrantyFromSpec(p):null;
+    if(!a||!a.warrantyObj)return;
+    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({warranty:a.warrantyObj,warrantySyncedBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",warrantySyncedAt:new Date().toLocaleString()}).catch(function(){});
+    t.warranty=a.warrantyObj;
+  }catch(e){}
+  try{toast(TT("Garantía sincronizada con C360 ✓","Warranty synced with C360 ✓"));}catch(e){}
+  show();
+};
+window.bsKeepW=function(){var t=Q[idx];if(t)wKept[t.id]=1;show();};
 function c360HTML(t){
   try{
     if(typeof _parseSpaDescription!=="function"||typeof _autoWarrantyFromSpec!=="function")return "";
-    var sd=_custSpaDesc(t);if(!sd)return "";
-    var parsed=_parseSpaDescription(sd);if(!parsed)return "";
-    var auto=_autoWarrantyFromSpec(parsed);if(!auto)return "";
+    var sd=_custSpaDesc(t);
+    var p=sd?_parseSpaDescription(sd):null;
+    var a=p?_autoWarrantyFromSpec(p):null;
     var w=t.warranty||{};
-    var lbl=(auto.warrantyObj&&auto.warrantyObj.label)||"";
-    var base='Customer 360 detecta: '+esc3(((parsed.series||"").toUpperCase())+(parsed.year?" "+parsed.year:""))+(auto.yearN?' · año '+Math.min(auto.yearN,6):'')+' → '+(auto.hasAny?('EN garantía ('+esc3(lbl)+')'):'FUERA de garantía del fabricante (parts RDA, labor se cobra)');
-    if(w.has===true&&!auto.hasAny){
-      return '<div style="background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;margin:6px 0">'+bico("shield-alert",14)+' INCONSISTENCIA — el ticket dice UNDER WARRANTY pero '+base+'.<div style="font-weight:600;font-size:11.5px;margin-top:3px">Si la cobertura es por part reemplazado (1 año / 90 días) o garantía de servicio 90d, está bien. Si no, corrige el ticket antes de facturar — riesgo de regalar el trabajo.</div></div>';
+    var tSays=(w.has===true)?(String(w.model||"").toUpperCase()+" Yr"+(w.year||"?")+" · under warranty"):(w.has===false?"N/W":TT("sin marcar","not set"));
+    var lbl=(a&&a.warrantyObj&&a.warrantyObj.label)||"";
+    var cSays=a?((String((p&&p.series)||"").toUpperCase()+((p&&p.year)?" "+p.year:"")).trim()+(a.yearN?" · "+TT("año ","yr ")+Math.min(a.yearN,6):"")+" → "+(a.hasAny?TT("EN garantía ("+lbl+")","IN warranty ("+lbl+")"):TT("FUERA de garantía","OUT of warranty"))):TT("sin spa description","no spa description");
+    var mm=a?((w.has===true&&!a.hasAny)||(w.has===false&&a.hasAny)):false;
+    var h='<div style="background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:8px 12px;font-size:11.5px;margin-bottom:6px">'
+      +'<div style="display:flex;justify-content:space-between;gap:8px;color:var(--i2,#5a5248)"><span>'+TT("Ticket dice:","Ticket says:")+'</span><b style="text-align:right;color:'+(w.has===true?"var(--c-money-fg,#065f46)":(w.has===false?"var(--c-danger-fg,#991b1b)":"var(--i3,#8a8073)"))+'">'+esc3(tSays)+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:8px;border-top:1px dashed var(--ln,#e5e0d8);margin-top:4px;padding-top:4px;color:var(--i2,#5a5248)"><span>'+TT("C360 detecta:","C360 detects:")+'</span><b style="text-align:right;color:'+(a?(a.hasAny?"var(--c-money-fg,#065f46)":"var(--c-danger-fg,#991b1b)"):"var(--i3,#8a8073)")+'">'+esc3(cSays)+'</b></div>';
+    if(mm&&!wKept[t.id]){
+      h+='<div style="margin-top:6px;background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b);border-radius:8px;padding:7px 10px;font-weight:700;font-size:11.5px">'+bico("shield-alert",13)+' '+TT("CONFLICTO — decide antes de facturar.","CONFLICT — decide before billing.")+(t.partWarranty90?" "+TT("Hay part reemplazado con garantía propia (1 año/90d) — puede ser cobertura válida.","A replaced part has its own warranty (1yr/90d) — may be valid coverage."):"")+'</div>'
+      +'<div style="display:flex;gap:6px;margin-top:6px">'
+      +(t.partWarranty90?"":'<button onclick="bsSyncW()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:11.5px;cursor:pointer;font-family:inherit">'+bico("refresh",12)+' '+TT("Sincronizar con C360","Sync with C360")+'</button>')
+      +'<button onclick="bsKeepW()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--ln,#ddd);background:transparent;color:var(--i2,#5a5248);font-weight:800;font-size:11.5px;cursor:pointer;font-family:inherit">'+TT("Mantener lo del técnico","Keep tech setting")+'</button></div>';
+    }else if(a&&!mm){
+      h+='<div style="margin-top:4px;font-size:10.5px;font-weight:700;color:var(--c-money-fg,#065f46)">'+bico("shield-check",12)+' '+TT("Consistente ✓","Consistent ✓")+'</div>';
     }
-    if(w.has===false&&auto.hasAny){
-      return '<div style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;margin:6px 0">'+bico("shield-alert",14)+' INCONSISTENCIA — el ticket dice N/W pero '+base+'.<div style="font-weight:600;font-size:11.5px;margin-top:3px">Riesgo de cobrar de más a un cliente con garantía vigente. Verifica serie y fecha de entrega en Customer 360.</div></div>';
-    }
-    if(w.has==null){
-      return '<div style="background:var(--c-info-bg,#dbeafe);color:var(--c-info-fg,#1e40af);border-radius:10px;padding:8px 12px;font-size:11.5px;font-weight:600;margin:6px 0">'+bico("shield",13)+' El ticket no trae garantía marcada. '+base+'.</div>';
-    }
-    return '<div style="font-size:11px;font-weight:600;color:var(--c-money-fg,#065f46);margin:4px 0 6px">'+bico("shield-check",13)+' Consistente con Customer 360 — '+base+'</div>';
+    return h+'</div>';
   }catch(e){return "";}
 }
 
@@ -25504,7 +25680,7 @@ window.bsFilterTech=function(n){
 window.bsCopySummary=async function(){
   var tot=bl.reduce(function(s,x){return s+x.tot;},0);
   var d=(typeof fmtD==="function")?fmtD(new Date()):new Date().toISOString().slice(0,10);
-  var txt="ASPEN BILLING — "+d+"\n"+bl.length+" invoices copied to QuickBooks · $"+tot.toFixed(2)+"\n"+bl.map(function(x){return "· "+x.c+" — $"+x.tot.toFixed(2);}).join("\n");
+  var txt="ASPEN BILLING — "+d+"\n"+bl.length+" invoices copied to QuickBooks · $"+tot.toFixed(2)+" pre-tax"+"\n"+bl.map(function(x){return "· "+x.c+" — $"+x.tot.toFixed(2);}).join("\n");
   try{await navigator.clipboard.writeText(txt);}catch(e){}
   try{toast("Resumen copiado ✓");}catch(e){}
 };
@@ -25551,14 +25727,14 @@ function renderDigest(p){
   var el=document.getElementById("bsDigest");
   try{if(localStorage.getItem(_bsDigestKey())==="1"){if(el)el.style.display="none";return;}}catch(e){}
   p=p||pool();
-  var tot=0;p.forEach(function(t){try{tot+=moneyFor(t).total;}catch(e){}});
+  var tot=0;p.forEach(function(t){try{tot+=moneySub(t);}catch(e){}});
   var missN=p.filter(function(t){return _bsMissing(t).length>0;}).length;
   var mmN=p.filter(function(t){return _bsMismatch(t);}).length;
   var cc=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.ccRequested&&!t.ccOnFile;});
   var ev=[];try{ev=((typeof crossAppEvents!=="undefined"&&crossAppEvents)||[]).filter(function(x){return x&&x.eventType!=="qb_backlog_snapshot";});}catch(e){}
   var evTot=0;try{ev.forEach(function(x){evTot+=(typeof _alertAmount==="function"?(_alertAmount(x)||0):0);});}catch(e){}
   var rows=[];
-  if(p.length)rows.push('<div class="bsd-r" onclick="bsOpen()" style="cursor:pointer">'+bico("zap",13)+' <b>'+p.length+' por facturar</b> · $'+Math.round(tot).toLocaleString("en-US")+' — abrir Sprint →</div>');
+  if(p.length)rows.push('<div class="bsd-r" onclick="bsOpen()" style="cursor:pointer">'+bico("zap",13)+' <b>'+p.length+' por facturar</b> · $'+Math.round(tot).toLocaleString("en-US")+' pre-tax — abrir Sprint →</div>');
   if(missN)rows.push('<div class="bsd-r">'+bico("triangle-alert",13)+' <b>'+missN+' con datos incompletos</b> — pídelos al técnico desde el Sprint</div>');
   if(mmN)rows.push('<div class="bsd-r">'+bico("shield-alert",13)+' <b>'+mmN+' con garantía inconsistente</b> vs Customer 360</div>');
   if(cc.length)rows.push('<div class="bsd-r">'+bico("credit-card",13)+' <b>'+cc.length+' deben dejar CC</b>: '+esc3(cc.slice(0,3).map(function(t){return t.customer||"";}).join(", "))+(cc.length>3?"…":"")+'</div>');
@@ -25573,7 +25749,7 @@ function renderDigest(p){
   el.style.display="";
   var uname=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
   el.innerHTML='<div style="border:1.5px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--card,#fff)">'
-    +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:13px">'+bico("sun",14)+' Tu día'+(uname?", "+esc3(uname):"")+'</b><button onclick="bsDigestHide()" title="Ocultar por hoy" style="margin-left:auto;border:none;background:none;color:var(--i3,#999);cursor:pointer;font-size:16px;line-height:1">×</button></div>'
+    +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:13px">'+bico("sun",14)+' Tu día'+(uname?", "+esc3(uname):"")+'</b><span style="margin-left:auto;display:inline-flex;gap:2px;align-items:center"><button onclick="bsFs(1)" title="Letra normal" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:10px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsFs(2)" title="Letra mediana" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsFs(3)" title="Letra grande" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:14px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsSkinToggle()" title="Tema Aspen on/off" style="border:none;background:none;font-size:14px;cursor:pointer">🎨</button></span><button onclick="bsDigestHide()" title="Ocultar por hoy" style="border:none;background:none;color:var(--i3,#999);cursor:pointer;font-size:16px;line-height:1;margin-left:2px">×</button></div>'
     +rows.join("")+'</div>';
 }
 window.bsDigestHide=function(){try{localStorage.setItem(_bsDigestKey(),"1");}catch(e){}var el=document.getElementById("bsDigest");if(el)el.style.display="none";};
@@ -25588,14 +25764,181 @@ window.bsTechMsg=async function(){
   try{toast("Mensaje copiado ✓ — pégalo en el chat del técnico");}catch(e){}
 };
 
+/* ── VISTA NELA — Phase 1 (Jul 2026): additive desktop billing board.
+   Groups the PENDING queue by billing stage (Ready to Bill / Needs Review /
+   Warranty·No bill / Reschedule / In QB today) + honest KPIs (no invented
+   confidence numbers — the real verdict engine decides the column).
+   Session-only overlay; existing Daily untouched. Click a card → opens the
+   Sprint on that exact ticket. ── */
+function _nvCol(t){
+  var v=verdictFor(t);
+  if(v.cls==="no")return "war";
+  if(_bsMissing(t).length||v.cls==="warn"||_bsMismatch(t))return "rev";
+  return "rdy";
+}
+function nvCard(t,extra){
+  var sub=0;try{sub=moneySub(t);}catch(e){}
+  return '<div class="nv-card" onclick="nvOpenTicket(\''+String(t.id).replace(/'/g,"")+'\')">'
+    +'<div style="font-weight:800;font-size:13px;color:var(--ink,#1f1a15)">'+esc3(t.customer||"—")+'</div>'
+    +'<div style="font-size:11px;color:var(--i3,#8a8073);margin-top:2px">'+esc3(t.date||"")+((t.techs&&t.techs[0])?" · "+esc3(t.techs[0]):"")+" · "+(VLABEL[Number(t.visitNum)||1]||"")+ageChip(t)+'</div>'
+    +'<div style="font-size:12.5px;font-weight:800;margin-top:4px;color:var(--ink,#1f1a15)">$'+sub.toFixed(2)+' <span style="font-size:9.5px;font-weight:700;color:var(--i3,#8a8073)">pre-tax</span>'+(extra?' <span style="font-size:10.5px;font-weight:700;color:var(--i3,#8a8073)">'+extra+'</span>':'')+'</div>'
+  +'</div>';
+}
+window.nvOpen=function(){
+  if(!canUse())return;
+  var ov=document.getElementById("nvOv");
+  if(!ov){ov=document.createElement("div");ov.id="nvOv";document.body.appendChild(ov);}
+  ov.style.display="block";document.body.style.overflow="hidden";
+  nvRender();
+};
+window.nvClose=function(){var ov=document.getElementById("nvOv");if(ov)ov.style.display="none";document.body.style.overflow="";try{renderBtn();}catch(e){}};
+window.nvOpenTicket=function(id){nvShowPanel(id);};
+window.nvMore=function(k){(window._nvExp=window._nvExp||{})[k]=1;nvRender();};
+window.nvLess=function(k){if(window._nvExp)delete window._nvExp[k];nvRender();};
+function _nvFind(id){var t=null;((typeof active!=="undefined"&&active)||[]).some(function(x){if(x&&String(x.id)===String(id)){t=x;return true;}return false;});return t;}
+window.nvHidePanel=function(){var pn=document.getElementById("nvPanel");if(pn)pn.style.display="none";window._nvSel=null;};
+window.nvShowPanel=function(id){
+  var t=_nvFind(id);if(!t)return;
+  window._nvSel=id;
+  var pn=document.getElementById("nvPanel");
+  if(!pn){pn=document.createElement("div");pn.id="nvPanel";document.body.appendChild(pn);}
+  var v=verdictFor(t),m=moneyFor(t),miss=_bsMissing(t),mins=_qMins(t);
+  var VC={ok:["var(--c-money-bg,#ecfdf5)","var(--c-money-fg,#065f46)"],no:["var(--c-danger-bg,#fee2e2)","var(--c-danger-fg,#991b1b)"],warn:["var(--c-warning-bg,#fef3c7)","var(--c-warning-fg,#92400e)"],info:["var(--c-info-bg,#dbeafe)","var(--c-info-fg,#1e40af)"]}[v.cls]||["#eee","#333"];
+  var dur=mins?(Math.floor(mins/60)+"h "+String(mins%60)+"m"):"—";
+  var photos=(t.media||[]).filter(function(x){return x&&x.type!=="pdf"&&(x.url||x.data);}).slice(0,4);
+  var addr=((t.address||"")+(t.zip?" "+t.zip:"")).trim();
+  function box(l,val){return '<div style="background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:8px 10px;text-align:center"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--i3,#8a8073);font-weight:800">'+l+'</div><div style="font-size:14px;font-weight:800;margin-top:2px">'+val+'</div></div>';}
+  pn.innerHTML=
+    '<div style="display:flex;align-items:flex-start;gap:10px"><div><div style="font-size:17px;font-weight:800">'+esc3(t.customer||"—")+'</div><div style="font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:2px">'+esc3(t.date||"")+((t.techs&&t.techs.length)?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[Number(t.visitNum)||1]||"")+ageChip(t)+'</div></div><button onclick="nvHidePanel()" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
+    +'<div style="background:'+VC[0]+';color:'+VC[1]+';border-radius:10px;padding:9px 12px;font-size:13px;font-weight:800;margin:10px 0 4px">'+v.txt+(v.sub?'<div style="font-size:11px;font-weight:600;margin-top:2px">'+esc3(v.sub)+'</div>':'')+'</div>'
+    +c360HTML(t)
+    +'<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0">'+box("En sitio",dur)+box("Labor · sin tax","$"+m.labor.toFixed(2))+box("Parts · +tax","$"+m.parts.toFixed(2))+box("Subtotal","$"+(m.parts+m.labor).toFixed(2))+'</div>'
+    +qbLinesHTML(t)
+    +(String(t.notes||"").trim()?'<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--i3,#8a8073);font-weight:800;margin:8px 0 4px">Descripción del técnico</div><div style="font-size:12px;line-height:1.55;color:var(--i2,#5a5248);white-space:pre-wrap;background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;max-height:180px;overflow:auto">'+esc3(_bsSnip(t.notes,900))+'</div>':'')
+    +(photos.length?'<div style="display:flex;gap:6px;margin-top:8px">'+photos.map(function(x){var u=x.url||x.data;return '<img src="'+esc3(u)+'" onclick="window.open(\''+esc3(x.url||"")+'\',\'_blank\')" style="width:58px;height:58px;object-fit:cover;border-radius:8px;border:1px solid var(--ln,#e5e0d8);cursor:pointer">';}).join("")+'</div>':'')
+    +'<button class="nv-act" onclick="nvOpenSprint()" style="background:var(--br,#3D2B1F);color:#fff;border:none;margin-top:14px">'+bico("zap",14)+' '+TT("Facturar en Sprint (con checks) →","Bill in Sprint (with checks) →")+'</button>'
+    +(miss.length?'<button class="nv-act" onclick="nvTechMsgP()" style="background:transparent;border:1.5px solid var(--c-warning-fg,#92400e);color:var(--c-warning-fg,#92400e)">'+bico("message-circle",13)+' Pedir datos al técnico (falta: '+esc3(miss.join(", "))+')</button>':'')
+    +'<div style="display:flex;gap:8px">'
+    +(addr?'<button class="nv-act" onclick="window.open(\'https://maps.apple.com/?q='+encodeURIComponent(addr)+'\',\'_blank\')" style="flex:1;background:transparent;border:1.5px solid var(--ln,#ddd);color:var(--i2,#5a5248)">'+bico("map-pin",13)+' Ver en mapa</button>':'')+'</div>'
+    +'<button class="nv-act" onclick="nvNoBillP()" style="background:transparent;border:1.5px solid var(--c-danger-fg,#991b1b);color:var(--c-danger-fg,#991b1b)">'+bico("ban",13)+' No se factura</button>';
+  pn.style.display="block";pn.scrollTop=0;
+};
+window.nvCopyBill=async function(){
+  var t=_nvFind(window._nvSel);if(!t)return;
+  var txt=qbTextFor(t);
+  try{await navigator.clipboard.writeText(txt);}catch(e){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e2){}document.body.removeChild(ta);}
+  try{if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}).catch(function(){});t.qbCopied=true;if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();}catch(e){}
+  try{toast("Copied ✓ — pégalo en QuickBooks");}catch(e){}
+  nvHidePanel();nvRender();
+};
+window.nvNoBillP=async function(){
+  var t=_nvFind(window._nvSel);if(!t)return;
+  var ok=true;
+  try{ok=await confirmDialog("Marcar \""+(t.customer||"")+"\" como NO facturable?",{title:"No se factura",tone:"warn",okLabel:"Sí",cancelLabel:"Cancelar"});}catch(e){ok=confirm("¿No se factura?");}
+  if(!ok)return;
+  try{if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({bsNoBill:true,bsNoBillAt:new Date().toLocaleString()}).catch(function(){});t.bsNoBill=true;}catch(e){}
+  nvHidePanel();nvRender();
+};
+window.nvTechMsgP=async function(){
+  var t=_nvFind(window._nvSel);if(!t)return;
+  var miss=_bsMissing(t);if(!miss.length)return;
+  var msg="Hola "+(((t.techs||[])[0])||"")+": al ticket de "+(t.customer||"")+" ("+(t.date||"")+") le falta: "+miss.join(", ")+". ¿Lo completas para poder facturarlo? Gracias — "+((typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"");
+  try{await navigator.clipboard.writeText(msg);}catch(e){}
+  try{toast("Mensaje copiado ✓");}catch(e){}
+};
+window.nvOpenSprint=function(){
+  var id=window._nvSel;nvHidePanel();
+  bsOpen();
+  for(var i=0;i<Q.length;i++)if(String(Q[i].id)===String(id)){bsJump(i);return;}
+};
+window.nvRender=function(){
+  var ov=document.getElementById("nvOv");if(!ov||ov.style.display==="none")return;
+  var act=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.source!=="dispatch";});
+  var pend=pool();
+  var today=(typeof fmtD==="function")?fmtD(new Date()):"";
+  var yd=new Date();yd.setDate(yd.getDate()-1);
+  var yest=(typeof fmtD==="function")?fmtD(yd):"";
+  var d0=new Date();var todLocale=(d0.getMonth()+1)+"/"+d0.getDate()+"/"+d0.getFullYear();
+  var compToday=act.filter(function(t){return (t.status==="complete"||t.status==="done")&&t.date===today;}).length;
+  var compYest=act.filter(function(t){return (t.status==="complete"||t.status==="done")&&t.date===yest;}).length;
+  var totPend=0;pend.forEach(function(t){try{totPend+=moneySub(t);}catch(e){}});
+  var missN=pend.filter(function(t){return _bsMissing(t).length;}).length;
+  var mmN=pend.filter(function(t){return _bsMismatch(t);}).length;
+  var repN=act.filter(function(t){return (Number(t.visitNum)===4||t.isRepeat)&&t.status==="complete";}).length;
+  var outst=0,outN=0;act.forEach(function(t){if(t.status==="complete"&&!t.paid){try{outst+=moneySub(t);outN++;}catch(e){}}});
+  var qbToday=act.filter(function(t){return t.qbCopied&&String(t.qbCopiedAt||"").indexOf(todLocale)===0;});
+  var sprDone=qbToday.length,sprTotal=sprDone+pend.length;
+  var cols={rdy:[],rev:[],war:[]};
+  pend.forEach(function(t){cols[_nvCol(t)].push(t);});
+  var res=act.filter(function(t){return t.status==="reschedule";});
+  var delta=compToday-compYest;
+  function kpi(lbl,val,sub,subCol){return '<div class="nv-kpi"><span>'+lbl+'</span><b>'+val+'</b>'+(sub?'<em style="color:'+(subCol||"var(--i3,#8a8073)")+'">'+sub+'</em>':'')+'</div>';}
+  function colH(lbl,arr,bg,fg){var tot=0;arr.forEach(function(t){try{tot+=moneySub(t);}catch(e){}});return '<div class="nv-colh" style="background:'+bg+';color:'+fg+'">'+lbl+' · '+arr.length+'<span>$'+Math.round(tot).toLocaleString("en-US")+'</span></div>';}
+  function colBody(key,arr,extraFn){
+    var LIM=6,exp=window._nvExp&&window._nvExp[key];
+    var shown=exp?arr:arr.slice(0,LIM),restA=exp?[]:arr.slice(LIM),rest=0;
+    restA.forEach(function(t){try{rest+=moneySub(t);}catch(e){}});
+    return shown.map(function(t){return nvCard(t,extraFn?extraFn(t):"");}).join("")
+      +(restA.length?'<div class="nv-more" onclick="nvMore(\''+key+'\')">+'+restA.length+' tickets más · $'+Math.round(rest).toLocaleString("en-US")+'</div>':'')
+      +(exp&&arr.length>LIM?'<div class="nv-more" onclick="nvLess(\''+key+'\')">− mostrar menos</div>':'');
+  }
+  function bars(title,rows,color){
+    var mx=0;rows.forEach(function(r){if(r.v>mx)mx=r.v;});
+    return '<div class="nv-kpi"><span>'+title+'</span>'
+     +rows.map(function(r){return '<div style="margin-top:7px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--i2,#5a5248)"><span>'+esc3(r.l)+'</span><span>'+esc3(r.s)+'</span></div><div style="height:7px;border-radius:999px;background:var(--ln,#e5e0d8);margin-top:3px;overflow:hidden"><i style="display:block;height:100%;width:'+(mx?Math.round(r.v/mx*100):0)+'%;background:'+color+';border-radius:999px"></i></div></div>';}).join("")+'</div>';
+  }
+  var buckets=[["0-3 días",0,3],["4-7 días",4,7],["8-14 días",8,14],["15-30 días",15,30],["30+ días",31,100000]].map(function(b){
+    var n=pend.filter(function(t){var d=_ageDays(t);return d>=b[1]&&d<=b[2];}).length;
+    return {l:b[0],v:n,s:String(n)};
+  });
+  var byTech={};pend.forEach(function(t){var k=(t.techs&&t.techs[0])||"—";try{byTech[k]=(byTech[k]||0)+moneySub(t);}catch(e){}});
+  var techRows=Object.keys(byTech).map(function(k){return {l:k,v:byTech[k],s:"$"+Math.round(byTech[k]).toLocaleString("en-US")};}).sort(function(a,b){return b.v-a.v;}).slice(0,6);
+  ov.innerHTML=
+    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+      +'<h2 style="margin:0;font-size:19px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("layout-dashboard",18)+' Vista Nela — facturación por etapa</h2>'
+      +'<span style="font-size:12px;color:var(--i3,#8a8073);font-weight:700">'+esc3(today)+'</span>'
+      +'<button onclick="nvRender()" title="Actualizar" style="margin-left:auto;border:1.5px solid var(--ln,#ddd);background:var(--card,#fff);border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">↻</button>'
+      +'<button onclick="nvHidePanel();nvClose()" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer">×</button>'
+    +'</div>'
+    +'<div class="nv-kpis">'
+      +kpi("Pendientes QB",pend.length,"$"+Math.round(totPend).toLocaleString("en-US")+" pre-tax","var(--c-money-fg,#065f46)")
+      +kpi("Datos incompletos",missN,missN?"pide al técnico":"","var(--c-warning-fg,#92400e)")
+      +kpi("Garantía inconsistente",mmN,mmN?"vs Customer 360":"","var(--c-danger-fg,#991b1b)")
+      +kpi("Repeats activos",repN,"labor $0","var(--c-danger-fg,#991b1b)")
+      +kpi("Completadas hoy",compToday,(delta>=0?"+":"")+delta+" vs ayer",delta>=0?"var(--c-money-fg,#065f46)":"var(--c-danger-fg,#991b1b)")
+      +kpi("Por cobrar",outN,"$"+Math.round(outst).toLocaleString("en-US")+" pre-tax sin PAID","var(--c-money-fg,#065f46)")
+    +'</div>'
+    +'<div class="nv-bar">'+bico("zap",14)+' Sprint de hoy: '+sprDone+' / '+sprTotal
+      +'<div class="nv-track"><i style="width:'+(sprTotal?Math.round(sprDone/sprTotal*100):0)+'%"></i></div>'
+      +'<button onclick="bsOpen()" style="border:none;background:var(--c-money-fg,#065f46);color:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Continuar Sprint →</button>'
+    +'</div>'
+    +'<div class="nv-cols">'
+      +'<div class="nv-col">'+colH("READY TO BILL",cols.rdy,"var(--c-money-bg,#ecfdf5)","var(--c-money-fg,#065f46)")+colBody("rdy",cols.rdy)+'</div>'
+      +'<div class="nv-col">'+colH("NEEDS REVIEW",cols.rev,"var(--c-warning-bg,#fef3c7)","var(--c-warning-fg,#92400e)")+colBody("rev",cols.rev,function(t){return _bsMissing(t).length?"falta: "+esc3(_bsMissing(t).join(", ")):(_bsMismatch(t)?"garantía vs C360":"");})+'</div>'
+      +'<div class="nv-col">'+colH("WARRANTY · NO FACTURAR",cols.war,"var(--c-danger-bg,#fee2e2)","var(--c-danger-fg,#991b1b)")+colBody("war",cols.war,function(t){return verdictFor(t).txt.replace(/^[^ ]+ /,"");})+'</div>'
+      +'<div class="nv-col">'+colH("RESCHEDULE",res,"var(--c-ash,#eceae6)","var(--i2,#5a5248)")+colBody("res",res)+'</div>'
+      +'<div class="nv-col" style="opacity:.8">'+colH("EN QB HOY ✓",qbToday,"var(--c-info-bg,#dbeafe)","var(--c-info-fg,#1e40af)")+colBody("qb",qbToday,function(){return "✓ facturada";})+'</div>'
+    +'</div>'
+    +'<div class="nv-charts">'
+      +bars("Antigüedad de pendientes",buckets,"var(--c-warning-fg,#92400e)")
+      +bars("$ pendiente por técnico",techRows,"var(--c-money-fg,#065f46)")
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--i3,#8a8073);font-weight:600;padding-bottom:16px">Última actualización: '+new Date().toLocaleTimeString()+' · datos en vivo de la app (la sincronización con QuickBooks eres tú 😉)</div>';
+};
+
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
+function _applySkin(){try{var on=canUse()&&localStorage.getItem("aspSkinOff")!=="1";document.body.classList.toggle("aspSkin",!!on);}catch(e){}}
+function _applyFs(){var n=1;try{n=parseInt(localStorage.getItem("aspFs")||"1",10);}catch(e){}document.body.classList.toggle("aspFs2",n===2);document.body.classList.toggle("aspFs3",n===3);}
+window.bsFs=function(n){try{localStorage.setItem("aspFs",String(n));}catch(e){}_applyFs();};
+window.bsSkinToggle=function(){try{localStorage.setItem("aspSkinOff",localStorage.getItem("aspSkinOff")==="1"?"0":"1");}catch(e){}_applySkin();};
 var _btnCache={n:-1,total:0};
 function renderBtn(){
+  _applySkin();_applyFs();
   if(!canUse())return;
   var pg=document.getElementById("pg1");if(!pg)return;
   var p=pool(),n=p.length;
   if(n!==_btnCache.n){
-    var tot=0;p.forEach(function(t){try{tot+=moneyFor(t).total;}catch(e){}});
+    var tot=0;p.forEach(function(t){try{tot+=moneySub(t);}catch(e){}});
     _btnCache={n:n,total:tot};
     try{renderDigest(p);}catch(e){}
   }
@@ -25603,6 +25946,11 @@ function renderBtn(){
   if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=bsOpen;pg.insertBefore(btn,pg.firstChild);}
   btn.style.display=n?"inline-flex":"none";
   btn.innerHTML=bico("zap",15)+" Billing Sprint — <span class='bs-cnt'>"+n+"</span> pendientes · $"+Math.round(_btnCache.total).toLocaleString("en-US");
+  var nb=document.getElementById("nvLaunch");
+  if(!nb){nb=document.createElement("button");nb.id="nvLaunch";nb.type="button";nb.onclick=nvOpen;if(btn.nextSibling)pg.insertBefore(nb,btn.nextSibling);else pg.appendChild(nb);}
+  nb.style.display="inline-flex";
+  nb.innerHTML=bico("layout-dashboard",14)+" Vista Nela — board por etapa de facturación";
+  try{nvRender();}catch(e){}
 }
 setInterval(function(){try{renderBtn();}catch(e){}},4000);
 setTimeout(function(){try{renderBtn();}catch(e){}},2500);
@@ -25613,7 +25961,7 @@ function cur(){return Q[idx]||null;}
 function _counts(){var d=0,k=0;Q.forEach(function(t){if(t.qbCopied||t.bsNoBill)d++;else if(sk[t.id])k++;});return{d:d,s:k};}
 
 window.bsOpen=function(){
-  fTech="";Q=pool();idx=0;sk={};bl=[];window._bsParty=false;
+  fTech="";Q=pool();idx=0;sk={};bl=[];wKept={};ck={};window._bsParty=false;
   if(!Q.length){try{toast("No pending invoices ✓");}catch(e){}return;}
   var ov=document.getElementById("bsOv");
   if(ov)ov.remove();
@@ -25624,7 +25972,7 @@ window.bsOpen=function(){
   ov.style.display="flex";document.body.style.overflow="hidden";
   show();
 };
-window.bsClose=function(){var ov=document.getElementById("bsOv");if(ov)ov.style.display="none";document.body.style.overflow="";try{renderBtn();}catch(e){}};
+window.bsClose=function(){var ov=document.getElementById("bsOv");if(ov)ov.style.display="none";document.body.style.overflow="";try{renderBtn();}catch(e){}try{var nv=document.getElementById("nvOv");if(nv&&nv.style.display!=="none"){document.body.style.overflow="hidden";nvRender();}}catch(e2){}};
 window.bsBack=function(){if(idx>0){idx--;show();}};
 window.bsNext=function(){idx++;show();};
 window.bsJump=function(k){idx=Math.max(0,Math.min(k,Q.length));show();};
@@ -25638,57 +25986,72 @@ function show(){
   body.classList.remove("bs-anim");void body.offsetWidth;body.classList.add("bs-anim");
   if(!t){
     body.innerHTML='<div style="text-align:center;padding:26px 8px">'
-      +'<div style="font-size:40px;margin-bottom:8px">🎉</div>'
-      +'<div style="font-size:17px;font-weight:800;margin-bottom:4px">Fin de la cola</div>'
-      +'<div style="font-size:13px;color:var(--i3,#8a8073);font-weight:600">'+c.d+' resueltas · '+c.s+' saltadas</div>'
-      +(bl.length?'<div style="font-size:14px;font-weight:800;margin-top:4px">Esta sesión: '+bl.length+' facturadas · $'+bl.reduce(function(s2,x){return s2+x.tot;},0).toFixed(2)+'</div><button class="bs-endbtn" onclick="bsCopySummary()">'+bico("clipboard",13)+' Copiar resumen del día</button>':'')
-      +(c.s?'<button class="bs-endbtn" onclick="bsReviewSkipped()">↻ Repasar las '+c.s+' saltadas</button>':'')
-      +'<button class="bs-endbtn" onclick="bsList()">'+bico("list",14)+' Ver lista completa</button>'
-      +'<button class="bs-endbtn" onclick="bsClose()">Cerrar</button></div>';
-    if(c.d>0&&!window._bsParty){window._bsParty=true;try{if(typeof celebrate==="function")celebrate({count:120});}catch(e){}}
+      +'<div style="font-size:17px;font-weight:800;margin-bottom:4px">'+TT("Cola en cero — buen trabajo","Queue at zero — well done")+'</div>'
+      +'<div style="font-size:13px;color:var(--i3,#8a8073);font-weight:600">'+c.d+' '+TT("resueltas","done")+' · '+c.s+' '+TT("saltadas","skipped")+'</div>'
+      +(bl.length?'<div style="font-size:14px;font-weight:800;margin-top:4px">'+TT("Esta sesión: ","This session: ")+bl.length+' · $'+bl.reduce(function(s2,x){return s2+x.tot;},0).toFixed(2)+' pre-tax</div><button class="bs-endbtn" onclick="bsCopySummary()">'+bico("clipboard",13)+' '+TT("Copiar resumen del día","Copy day summary")+'</button>':'')
+      +(c.s?'<button class="bs-endbtn" onclick="bsReviewSkipped()">↻ '+TT("Repasar las ","Review ")+c.s+' '+TT("saltadas","skipped")+'</button>':'')
+      +'<button class="bs-endbtn" onclick="bsList()">'+bico("list",14)+' '+TT("Ver lista completa","Full list")+'</button>'
+      +'<button class="bs-endbtn" onclick="bsClose()">'+TT("Cerrar","Close")+'</button></div>';
+    if(c.d>0&&!window._bsParty){window._bsParty=true;fxSteam(body.firstChild);}
     return;
   }
   if(t.qbCopied||t.bsNoBill){
     var isB=!!t.qbCopied;
     body.innerHTML='<div class="bs-cust">'+esc3(t.customer||"—")+'</div>'
       +'<div class="bs-meta">'+esc3(t.date||"")+'</div>'
-      +'<span class="bs-verdict '+(isB?"bs-v-ok":"bs-v-no")+'">'+(isB?"✓ Ya facturada — en QuickBooks":"⛔ Marcada como NO facturable")+'</span>'
+      +'<span class="bs-verdict '+(isB?"bs-v-ok":"bs-v-no")+'">'+(isB?"✓ "+TT("Ya facturada — en QuickBooks","Already billed — in QuickBooks"):"⛔ "+TT("Marcada como NO facturable","Marked as NO bill"))+'</span>'
       +'<div class="bs-actions">'
-        +'<button class="bs-endbtn" style="margin:0" onclick="bsUnmark()">↩ Quitar marca — volver a pendiente</button>'
-        +'<button class="bs-copy" onclick="bsNext()">Siguiente →</button>'
+        +'<button class="bs-endbtn" style="margin:0" onclick="bsUnmark()">↩ '+TT("Quitar marca — volver a pendiente","Unmark — back to pending")+'</button>'
+        +'<button class="bs-copy" onclick="bsNext()">'+TT("Siguiente","Next")+' →</button>'
       +'</div>';
     return;
   }
   var v=verdictFor(t),m=moneyFor(t),miss=_bsMissing(t);
   var vn=Number(t.visitNum)||1;
-  body.innerHTML=
-     '<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
-    +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+(sk[t.id]?" · ↷ saltada antes":"")+ageChip(t)+'</div>'
+  var sub=+(m.parts+m.labor).toFixed(2);
+  var ckt=ck[t.id]||(ck[t.id]={g:!_bsMismatch(t),v:false,tx:false});
+  var ready=ckt.g&&ckt.v&&ckt.tx;
+  var L=''
+    +'<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
+    +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+(sk[t.id]?" · ↷ "+TT("saltada antes","skipped earlier"):"")+ageChip(t)+'</div>'
     +histHTML(t)
     +repeatHTML(t)
     +soHTML(t)
     +dupHTML(t)
-    +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
     +c360HTML(t)
-    +(miss.length?'<button onclick="bsTechMsg()" style="width:100%;margin:2px 0 6px;padding:10px;border-radius:10px;border:1.5px solid var(--c-warning-fg,#92400e);background:transparent;color:var(--c-warning-fg,#92400e);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">'+bico("message-circle",13)+' Pedir datos al técnico'+((t.techs&&t.techs[0])?(" — "+esc3(t.techs[0])):"")+' (falta: '+esc3(miss.join(", "))+')</button>':'')
-    +'<div class="bs-money">'
-      +'<div><span>Parts</span><b>$'+m.parts.toFixed(2)+'</b></div>'
-      +'<div><span>Labor</span><b>$'+m.labor.toFixed(2)+'</b></div>'
-      +'<div><span>Tax</span><b>$'+m.tax.toFixed(2)+'</b></div>'
-      +'<div><span>Total</span><b>$'+m.total.toFixed(2)+'</b></div>'
+    +'<span class="bs-verdict bs-v-'+v.cls+'">'+v.txt+(v.sub?'<span class="bs-sub">'+esc3(v.sub)+'</span>':'')+'</span>'
+    +'<div class="bs-lines-f" style="margin:0 0 8px">'+bico("book",12)+' '+esc3(vrule(vn))+'</div>'
+    +'<div class="bs-money" style="grid-template-columns:repeat('+(m.tax>0?4:3)+',1fr)">'
+      +'<div><span>'+TT("Labor · sin tax","Labor · no tax")+'</span><b>$'+m.labor.toFixed(2)+'</b></div>'
+      +'<div><span>'+TT("Parts · taxean","Parts · taxed")+'</span><b>$'+m.parts.toFixed(2)+'</b></div>'
+      +'<div style="border-color:var(--i3,#8a8073)"><span>Subtotal pre-tax</span><b>$'+sub.toFixed(2)+'</b></div>'
+      +(m.tax>0?'<div><span>'+TT("Total c/tax guardado","Total w/ saved tax")+'</span><b>$'+m.total.toFixed(2)+'</b></div>':'')
     +'</div>'
-    +qbLinesHTML(t)
-    +'<div class="bs-lines-f" style="margin:0 0 4px">El texto de abajo va en la DESCRIPCIÓN del primer item (Service-Basic / Warranty):</div>'
+    +qbLinesHTML(t);
+  var R=''
+    +'<div style="font-size:11px;margin:2px 0 3px"><span style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);font-weight:800;padding:1px 8px;border-radius:999px;font-size:10px">'+bico("lock",10)+' '+TT("INTERNA","INTERNAL")+'</span> <span style="color:var(--i3,#8a8073);font-weight:700">'+TT("Nota → NOTES de QB · solo el comentario, fecha primero","Note → QB NOTES · comment only, date first")+'</span></div>'
+    +'<div style="display:flex;gap:6px;align-items:stretch"><textarea id="bsShortTxt" style="min-height:54px;flex:1"></textarea><button onclick="bsCopyShort()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--br,#3D2B1F);background:transparent;color:var(--br,#3D2B1F);font-weight:800;font-size:11.5px;cursor:pointer;font-family:inherit">'+TT("Copiar<br>nota","Copy<br>note")+'</button></div>'
+    +'<div style="font-size:11px;margin:10px 0 3px"><span style="background:var(--c-info-bg,#dbeafe);color:var(--c-info-fg,#1e40af);font-weight:800;padding:1px 8px;border-radius:999px;font-size:10px">'+bico("user",10)+' '+TT("CLIENTE","CUSTOMER")+'</span> <span style="color:var(--i3,#8a8073);font-weight:700">'+TT("Detalle → DESCRIPTION · fecha + horas + trabajo · sin parts ni precios","Detail → DESCRIPTION · date + time + work · no parts, no prices")+'</span></div>'
     +'<textarea id="bsText"></textarea>'
-    +'<div class="bs-actions">'
-      +'<button class="bs-copy" onclick="bsCopyNext()">'+bico("clipboard",15)+' Copiar + Facturada ✓ → siguiente</button>'
-      +'<button class="bs-skip" onclick="bsSkip()" style="width:100%">Saltar →</button>'
-      +'<button class="bs-nobill" onclick="bsNoBill()" style="width:100%;margin-top:10px">'+bico("ban",14)+' No se factura</button>'
+    +'<button id="bsAiBtn" onclick="bsAiDraft()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid var(--acd,#A85C1F);background:transparent;color:var(--acd,#A85C1F);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("sparkles",13)+' '+TT("Redactar con AI (los 2 textos)","Draft with AI (both texts)")+' · '+TT("hoy","today")+': '+_bsAiCount()+'</button>'
+    +(miss.length?'<button onclick="bsTechMsg()" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid var(--c-warning-fg,#92400e);background:transparent;color:var(--c-warning-fg,#92400e);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">'+bico("message-circle",13)+' '+TT("Pedir datos al técnico","Ask the tech")+((t.techs&&t.techs[0])?" — "+esc3(t.techs[0]):"")+' ('+TT("falta","missing")+': '+esc3(miss.join(", "))+')</button>':'')
+    +'<div class="bs-ck">'
+      +'<button class="'+(ckt.g?"on":"")+'" onclick="bsCk(\'g\')">'+(ckt.g?"✓ ":"")+TT("Garantía revisada","Warranty checked")+'</button>'
+      +'<button class="'+(ckt.v?"on":"")+'" onclick="bsCk(\'v\')">'+(ckt.v?"✓ ":"")+TT("Tipo de visita OK","Visit type OK")+'</button>'
+      +'<button class="'+(ckt.tx?"on":"")+'" onclick="bsCk(\'tx\')">'+(ckt.tx?"✓ ":"")+TT("Textos revisados","Texts reviewed")+'</button>'
     +'</div>'
-    +'<div style="text-align:center;font-size:10.5px;color:var(--i3,#8a8073);margin-top:6px">⌨ Enter = copiar · S = saltar · ← → = navegar · Esc = cerrar</div>';
+    +'<div class="bs-actions" style="margin-top:6px">'
+      +'<button class="bs-copy" '+(ready?"":"disabled ")+'onclick="bsCopyNext()">'+bico("clipboard",15)+' '+TT("Copiar detalle + Facturada ✓ → siguiente","Copy detail + Billed ✓ → next")+'</button>'
+      +'<button class="bs-skip" onclick="bsSkip()" style="width:100%">'+TT("Saltar","Skip")+' →</button>'
+      +'<button class="bs-nobill" onclick="bsNoBill()" style="width:100%;margin-top:10px">'+bico("ban",14)+' '+TT("No se factura","Do not bill")+'</button>'
+    +'</div>'
+    +'<div style="text-align:center;font-size:10.5px;color:var(--i3,#8a8073);margin-top:6px">⌨ Enter '+TT("copiar","copy")+' · S '+TT("saltar","skip")+' · ← → · Esc</div>';
+  body.innerHTML='<div class="bs-grid"><div>'+L+'</div><div>'+R+'</div></div>';
   document.getElementById("bsText").value=qbTextFor(t);
+  try{var _sh=document.getElementById("bsShortTxt");if(_sh)_sh.value=qbShortFor(t);}catch(e){}
   try{document.querySelector("#bsOv .bs-box").scrollTop=0;}catch(e){}
 }
+window.bsCk=function(k){var t=Q[idx];if(!t)return;var c2=ck[t.id];if(!c2)return;c2[k]=!c2[k];show();};
 
 window.bsList=function(){
   var body=document.getElementById("bsBody");if(!body||!Q.length)return;
@@ -25720,17 +26083,23 @@ window.bsUnmark=async function(){
 
 window.bsCopyNext=async function(){
   var t=Q[idx];if(!t)return;
+  var c2=ck[t.id]||{};
+  if(!(c2.g&&c2.v&&c2.tx)){try{toast(TT("Marca los 3 checks antes de facturar","Tick the 3 checks before billing"),"warn");}catch(e){}return;}
   var txt=(document.getElementById("bsText")||{}).value||"";
   try{await navigator.clipboard.writeText(txt);}
   catch(e){var ta=document.getElementById("bsText");if(ta){ta.select();try{document.execCommand("copy");}catch(e2){}}}
   try{
     if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}).catch(function(){});
     t.qbCopied=true;delete sk[t.id];
-    try{bl.push({c:t.customer||"",tot:moneyFor(t).total});}catch(_b){}
+    try{bl.push({c:t.customer||"",tot:moneySub(t)});}catch(_b){}
     if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();
   }catch(e){}
-  try{toast("Copied ✓ — pégalo en QuickBooks");}catch(e){}
-  adv();
+  try{toast(TT("Copiado ✓ — pégalo en QuickBooks","Copied ✓ — paste into QuickBooks"));}catch(e){}
+  try{fxRipple(document.querySelector("#bsOv .bs-copy"));}catch(e){}
+  var body=document.getElementById("bsBody");
+  if(body&&body.animate){
+    body.animate([{transform:"translateY(0) rotate(0deg)",opacity:1},{transform:"translateY(6px)",opacity:1,offset:.25},{transform:"translateX(115%) rotate(2deg)",opacity:0}],{duration:480,easing:"ease-in"}).onfinish=function(){adv();};
+  }else adv();
 };
 
 window.bsSkip=function(){var t=Q[idx];if(!t)return;sk[t.id]=1;adv();};
@@ -25751,45 +26120,6 @@ window.bsReviewSkipped=function(){
 })();
 </script>
 <!-- ════ END ASPEN BILLING SPRINT ════ -->
-
-<script id="ak-sheet-gestures">
-/* Swipe-down-to-dismiss for the app's existing bottom-sheet modals (.mbg/.modal).
-   Grabbing the header (.mt) and pulling down past a threshold clicks the modal's
-   own close button (.mcl) so each modal runs its proper cleanup. */
-(function(){
-  var drag=false,startY=0,dy=0,modal=null,mbg=null;
-  function start(e){
-    var tgt=e.target;if(!tgt||!tgt.closest)return;
-    var mt=tgt.closest('.mt');if(!mt)return;
-    if(tgt.closest('button,input,textarea,select,a'))return;
-    mbg=mt.closest('.mbg');if(!mbg||!mbg.classList.contains('open'))return;
-    modal=mt.closest('.modal');if(!modal)return;
-    drag=true;startY=(e.touches?e.touches[0].clientY:e.clientY);modal.style.transition='none';
-  }
-  function move(e){
-    if(!drag)return;var y=(e.touches?e.touches[0].clientY:e.clientY);dy=Math.max(0,y-startY);
-    modal.style.transform='translateY('+dy+'px)';
-  }
-  function end(){
-    if(!drag)return;drag=false;
-    modal.style.transition='transform .4s cubic-bezier(.32,1.4,.5,1)';
-    if(dy>110){
-      var cl=mbg.querySelector('.mcl');
-      modal.style.transform='translateY(100%)';
-      var m=modal,g=mbg;
-      setTimeout(function(){try{if(cl)cl.click();else g.classList.remove('open')}catch(_e){g.classList.remove('open')}m.style.transform='';m.style.transition='';},240);
-    }else{modal.style.transform='translateY(0)';}
-    dy=0;modal=null;mbg=null;
-  }
-  document.addEventListener('touchstart',start,{passive:true});
-  document.addEventListener('touchmove',move,{passive:true});
-  document.addEventListener('touchend',end);
-  document.addEventListener('mousedown',start);
-  document.addEventListener('mousemove',move);
-  document.addEventListener('mouseup',end);
-})();
-</script>
-
 
 </body>
 </html>
