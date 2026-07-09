@@ -3058,6 +3058,9 @@ body.dark-mode .bottom-nav{background:rgba(22,22,24,.62)}
   <div id="convFoot" style="margin-top:10px;text-align:center;font-size:var(--fs-xs);color:var(--i3)"></div>
 </div>
 <div class="wrap" id="pg3">
+  <!-- METRICS DASHBOARD (Jul 2026) — read-only, computed from loaded tickets, zero reads -->
+  <div id="aspenMetrics"></div>
+  <div id="auditLogPanel" style="background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:var(--fs-md);font-weight:800;color:var(--br)">📋 Audit log</div><button onclick="_auditLoad()" style="margin-left:auto;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:7px 12px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">Cargar últimos 100</button></div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">Quién canceló o borró tickets · se carga bajo demanda</div><div id="auditLogBody" style="margin-top:10px"></div></div>
   <!-- Welcome dashboard with animated count-up KPIs (rendered by rndrAdminWelcome) -->
   <div id="adminWelcome"></div>
   <!-- DATA SAFETY (Jul 2026): one-tap full JSON snapshot. Everything the app
@@ -5642,7 +5645,7 @@ function updAdmin(){
   if(currentUser&&currentUser.role==="tech")document.getElementById("tab1").innerHTML="My Tickets <span class='badge' id='bdg1' style='display:none'>0</span>";
   else document.getElementById("tab1").innerHTML="Daily <span class='badge' id='bdg1' style='display:none'>0</span>";
   document.getElementById("tab4").classList.toggle("hidden",!currentUser);
-  document.getElementById("tab2").classList.toggle("hidden",_isCelia||(!isAdmin&&!(currentUser&&currentUser.role==="organizer")));
+  document.getElementById("tab2").classList.toggle("hidden",true); /* Completed tab removed (Jul 2026) — completed tickets now live in each customer's Service History */
   document.getElementById("tab5").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
   // Coaching Calls: visible to every logged-in role — any tech can run a call.
   var _t12=document.getElementById("tab12");if(_t12)_t12.classList.toggle("hidden",!currentUser);
@@ -5741,11 +5744,62 @@ function updAdmin(){
 // ═══ USER MANAGEMENT (Admin Tab) ═══
 function openUserMgmt(){showTab(3)}
 function closeUserMgmt(){}
+function _metricsMoney(t){
+  try{
+    var parts=Array.isArray(t.parts)?t.parts:[];
+    var pt=parts.reduce(function(sm,p){return sm+((((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1))},0);
+    var lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{}):undefined),t.noLabor||false):null;
+    return pt+(lb?(lb.amount||0):0);
+  }catch(_e){return Number(t.total)||0;}
+}
+function _metricsRender(){
+  try{
+    var box=document.getElementById("aspenMetrics");if(!box)return;
+    var all=[].concat(active||[],done||[]);
+    var completed=all.filter(function(t){return (t.status==="done"||t.fieldReportSubmitted)&&t.status!=="canceled";});
+    function dOf(t){var v=(t.date||"").trim();if(!v)return null;var dt=new Date(v+"T00:00:00");return isNaN(dt)?null:dt;}
+    var now=new Date();
+    var mStart=new Date(now.getFullYear(),now.getMonth(),1);
+    var monthT=completed.filter(function(t){var dt=dOf(t);return dt&&dt>=mStart;});
+    var monthMoney=monthT.reduce(function(sm,t){return sm+_metricsMoney(t);},0);
+    var reworks=monthT.filter(function(t){return Number(t.visitNum)===4||Number(t.visitNum)===2;}).length;
+    var ftfRate=monthT.length?Math.round((1-reworks/monthT.length)*100):0;
+    // last 8 weeks (Sun-based)
+    var weeks=[];for(var i=7;i>=0;i--){var ws=new Date(now);ws.setDate(now.getDate()-now.getDay()-i*7);ws.setHours(0,0,0,0);var we=new Date(ws);we.setDate(ws.getDate()+7);weeks.push({s:ws,e:we,n:0});}
+    completed.forEach(function(t){var dt=dOf(t);if(!dt)return;for(var j=0;j<weeks.length;j++){if(dt>=weeks[j].s&&dt<weeks[j].e){weeks[j].n++;break;}}});
+    var maxW=Math.max(1,Math.max.apply(null,weeks.map(function(w){return w.n;})));
+    // per tech this month
+    var tc={};monthT.forEach(function(t){(t.techs||[]).forEach(function(tech){if(tech)tc[tech]=(tc[tech]||0)+1;});});
+    var techArr=Object.keys(tc).map(function(k){return{name:k,n:tc[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,8);
+    var maxT=Math.max(1,(techArr[0]||{n:1}).n);
+    var mName=now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+    function tile(l,v,c){return '<div style="flex:1;min-width:96px;background:var(--c-ash-2);border:1px solid var(--ln);border-radius:12px;padding:12px 14px"><div style="font-size:22px;font-weight:800;color:'+c+';line-height:1.1">'+v+'</div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">'+l+'</div></div>';}
+    var h='';
+    h+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:16px">';
+    h+='<div style="font-size:var(--fs-md);font-weight:800;color:var(--br)">\uD83D\uDCCA '+(typeof L2==="function"?L2("M\u00e9tricas","Metrics"):"Metrics")+'</div>';
+    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:14px">'+esc(mName)+' \u00b7 '+(typeof L2==="function"?L2("calculado de tus tickets, sin costo de lecturas","computed from your tickets, no read cost"):"")+'</div>';
+    h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">';
+    h+=tile(L2?L2("Completados","Completed"):"Completed",monthT.length,"var(--ac)");
+    h+=tile(L2?L2("Facturado","Billed"):"Billed",'$'+Math.round(monthMoney).toLocaleString(),"var(--c-success-strong)");
+    h+=tile(L2?L2("Resueltos 1\u00aa vez","First-time fix"):"First-time fix",ftfRate+'%',"var(--br)");
+    h+='</div>';
+    h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-bottom:8px">'+(L2?L2("Tickets por semana","Tickets per week"):"Tickets per week")+'</div>';
+    h+='<div style="display:flex;align-items:flex-end;gap:6px;height:96px;margin-bottom:18px">';
+    weeks.forEach(function(w){var hp=Math.max(3,Math.round((w.n/maxW)*78));h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:10px;font-weight:700;color:var(--i3)">'+w.n+'</div><div title="'+w.n+'" style="width:100%;height:'+hp+'px;background:linear-gradient(180deg,var(--ac),var(--br));border-radius:5px 5px 0 0"></div><div style="font-size:9px;color:var(--i3)">'+(w.s.getMonth()+1)+'/'+w.s.getDate()+'</div></div>';});
+    h+='</div>';
+    if(techArr.length){
+      h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-bottom:8px">'+(L2?L2("Por t\u00e9cnico (este mes)","By tech (this month)"):"By tech")+'</div>';
+      techArr.forEach(function(tt){var wp=Math.round((tt.n/maxT)*100);h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:var(--fs-sm);min-width:92px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tt.name)+'</span><div style="flex:1;height:14px;background:var(--c-ash-2);border-radius:7px;overflow:hidden"><div style="width:'+wp+'%;height:100%;background:var(--ac);border-radius:7px"></div></div><span style="font-size:var(--fs-sm);font-weight:800;color:var(--i2);min-width:26px;text-align:right">'+tt.n+'</span></div>';});
+    }
+    h+='</div>';
+    box.innerHTML=h;
+  }catch(e){try{var b=document.getElementById("aspenMetrics");if(b)b.innerHTML="";}catch(_){}console.warn("[metrics]",e);}
+}
 function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminWelcome();rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();rndrWarrantyLog();rndrSpaDataWorklist();rndrWarByYear();_applyAdminCollapse();
+  rndrAdminWelcome();try{_metricsRender()}catch(_me){}rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();rndrWarrantyLog();rndrSpaDataWorklist();rndrWarByYear();_applyAdminCollapse();
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -6195,16 +6249,44 @@ function convRenderDash(){
   }
   var recent=[],rseen={};
   evs.forEach(function(e){var tp=String(e.type||"");if(tp.indexOf("closed")<0&&tp.indexOf("completed")<0)return;var ms2=e.ts&&e.ts.toMillis?e.ts.toMillis():0;if(now-ms2>14*86400000)return;var k2=e.customerKey||"";if(!k2||rseen[k2])return;rseen[k2]=1;recent.push(e.customer||k2);});
+  try{recent=recent.filter(function(nm){return !_reviewAlreadySent(nm);});}catch(_rf){}
   if(recent.length){html+='<div style="background:#fff;border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:800;color:var(--i1);margin-bottom:6px">\u2B50 Ask for a review</div>'+recent.slice(0,5).map(function(nm){return '<div onclick="convReview(this.dataset.c)" data-c="'+esc(nm)+'" style="display:flex;justify-content:space-between;gap:8px;padding:7px 2px;border-top:1px solid var(--ln);cursor:pointer"><span style="font-weight:600;color:var(--i1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+'</span><span style="font-size:var(--fs-sm);color:var(--br);font-weight:700;flex:none">Send review \u2192</span></div>';}).join("")+'</div>';}
   box.innerHTML=html;
 }
 var _teamUnsub=null;
 var ASPEN_REVIEW_URL="https://search.google.com/local/writereview?placeid=ChIJU9ADtwK12IcRNXtXcrRw3pQ";
+async function _obCount(){try{var d=await _obDB();var tx=d.transaction("files","readonly"),st=tx.objectStore("files");return await new Promise(function(res){var r=st.count();r.onsuccess=function(){res(r.result||0)};r.onerror=function(){res(0)};});}catch(_e){return 0;}}
+function _obChipEl(){var el=document.getElementById("obChip");if(!el){el=document.createElement("div");el.id="obChip";el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));z-index:7000;display:none;align-items:center;gap:6px;background:rgba(30,30,32,.93);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer;max-width:92vw;white-space:nowrap";el.onclick=function(){_obRetryNow();};document.body.appendChild(el);}return el;}
+async function _obUpdateChip(flushing){try{var el=_obChipEl();var n=await _obCount();if(n<=0){el.style.display="none";return;}el.style.display="inline-flex";if(flushing){el.textContent="📤 "+(typeof L2==="function"?L2("Subiendo","Uploading"):"Uploading")+" "+n+"…";}else{el.textContent="📎 "+n+" "+(typeof L2==="function"?L2("por subir · toca para reintentar","to upload · tap to retry"):"to upload · tap to retry");}}catch(_e){}}
+var _obRetrying=false;
+async function _obRetryNow(){if(_obRetrying)return;_obRetrying=true;try{await _obUpdateChip(true);await _mediaOutboxFlush();}catch(_e){}_obRetrying=false;try{await _obUpdateChip(false);}catch(_e){}}
+var _obTimer=null,_obDelay=15000;
+async function _obTick(){try{var n=await _obCount();if(n>0){if(typeof navigator==="undefined"||navigator.onLine!==false){await _obRetryNow();}await _obUpdateChip(false);_obDelay=Math.min(Math.round(_obDelay*1.6),120000);}else{_obDelay=15000;await _obUpdateChip(false);}}catch(_e){}clearTimeout(_obTimer);_obTimer=setTimeout(_obTick,_obDelay);}
+function _tktCust(id){try{var t=[].concat(active||[],done||[]).find(function(x){return String(x.id)===String(id);});return t?(t.customer||""):"";}catch(_e){return "";}}
+function _audit(action,opts){try{if(!db)return;opts=opts||{};db.collection("auditLog").add({at:firebase.firestore.FieldValue.serverTimestamp(),atMs:Date.now(),by:(currentUser&&currentUser.name)||"?",action:String(action||""),ticketId:opts.ticketId||"",customer:opts.customer||"",note:opts.note||""}).catch(function(){});}catch(_e){}}
+async function _auditLoad(){var box=document.getElementById("auditLogBody");if(!box)return;box.innerHTML='<div style="color:var(--i3);padding:8px 0">Cargando…</div>';try{if(!db){box.innerHTML="";return;}var snap=await db.collection("auditLog").orderBy("atMs","desc").limit(100).get();var rows=snap.docs.map(function(d){return d.data();});if(!rows.length){box.innerHTML='<div style="color:var(--i3);padding:8px 0">Sin registros aún.</div>';return;}box.innerHTML=rows.map(function(r){var when=r.atMs?new Date(r.atMs).toLocaleString():"";var col=r.action==="deleted"?"var(--c-danger-fg)":(r.action==="canceled"?"var(--c-warning-fg)":"var(--i2)");return '<div style="display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--ln);font-size:var(--fs-sm);align-items:baseline"><span style="color:var(--i3);min-width:118px;font-size:var(--fs-xs)">'+esc(when)+'</span><span style="font-weight:800;color:'+col+';min-width:70px;text-transform:uppercase;font-size:var(--fs-xs)">'+esc(r.action||"")+'</span><span style="flex:1;color:var(--ink);min-width:0">'+esc(r.customer||"")+(r.note?' — '+esc(r.note):'')+'</span><span style="color:var(--i3)">'+esc(r.by||"")+'</span></div>';}).join("");}catch(e){box.innerHTML='<div style="color:var(--c-danger-fg);padding:8px 0">Error</div>';}}
+function _reviewCustTickets(name){
+  var k=(typeof _custGroupKey==="function")?_custGroupKey(name):String(name||"").toLowerCase();
+  var ct=[].concat(active||[],done||[]).filter(function(t){var kk=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").toLowerCase();return kk===k&&(t.status==="done"||t.fieldReportSubmitted);});
+  ct.sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
+  return ct;
+}
+function _markReviewSent(name){
+  try{
+    if(!db||!name)return;
+    var ct=_reviewCustTickets(name);
+    if(ct[0]&&ct[0].id){db.collection("tickets").doc(ct[0].id).update({reviewSentAt:firebase.firestore.FieldValue.serverTimestamp(),reviewSentBy:(currentUser&&currentUser.name)||""}).catch(function(){});}try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:name,app:"tickets",type:"review.sent",title:"⭐ Google review requested",actor:(currentUser&&currentUser.name)||""});}catch(_be){}
+  }catch(_e){}
+}
+function _reviewAlreadySent(name){
+  try{var ct=_reviewCustTickets(name);return !!(ct[0]&&ct[0].reviewSentAt);}catch(_e){return false;}
+}
 function requestReviewSMS(name,phone){
   var ph=String(phone||"").replace(/[^\d+]/g,"");
   var raw=String(name||""),first=raw.indexOf(",")>=0?((raw.split(",")[1]||"").trim().split(/\s+/)[0]||""):(raw.trim().split(/\s+/)[0]||"");
   first=first?(first.charAt(0).toUpperCase()+first.slice(1).toLowerCase()):"";
   var msg=(first?("Hi "+first+", "):"Hi, ")+"thank you for choosing Aspen Spas! It was a pleasure serving you. If you have a moment, we'd truly appreciate a quick Google review \u2014 it means the world to our team: "+ASPEN_REVIEW_URL;
+  try{_markReviewSent(name);}catch(_rs){}
   if(!ph){if(typeof toast==="function")toast("No phone on file \u2014 message copied","warn");try{navigator.clipboard.writeText(msg);}catch(_e){}return;}
   window.location.href="sms:"+ph+"?&body="+encodeURIComponent(msg);
 }
@@ -8532,11 +8614,56 @@ async function toggleUserHidden(i){
   toast(allUsers[i].hidden?(allUsers[i].name+" hidden from login — history kept"):(allUsers[i].name+" visible again ✓"));
 }
 
+// ═══ COST FIX (Jul 2026): windowed live listener + lazy archive ═══
+// The live listener only tracks tickets from the last LIVE_WINDOW_MONTHS
+// (where all active work happens). Older tickets load in two cheap ways:
+//   • _sweepStaleActive(): one-time small .get() of old OPEN tickets (safety
+//     net so an ancient pending dispatch never disappears from the app).
+//   • _loadTicketArchive(): lazy one-time .get() of everything older, fired
+//     only when a tab that needs full history opens (Customers/Admin/Coaching).
+// Techs (most devices) never load the archive — cost stays flat as history grows.
+const LIVE_WINDOW_MONTHS=6;
+const _liveSinceISO=(function(){var d=new Date();d.setMonth(d.getMonth()-LIVE_WINDOW_MONTHS);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
+var _liveDocs=new Map(),_staleActiveDocs=new Map(),_archiveDocs=new Map(),_archiveLoaded=false,_archiveLoading=false;
+function _mergeTicketSources(){
+  var seen=new Set();active=[];done=[];coachingCalls=[];
+  function take(d){
+    if(seen.has(d.id))return;seen.add(d.id);
+    if(d.source==="coaching"){coachingCalls.push(d);return;}
+    if(d.status==="done")done.push(d);else active.push(d);
+  }
+  _liveDocs.forEach(take);_staleActiveDocs.forEach(take);_archiveDocs.forEach(take);
+  function _mtsSort(a,b){var am=a.createdAtMs||0,bm=b.createdAtMs||0;if(am!==bm)return bm-am;return String(b.date||"").localeCompare(String(a.date||""));}
+  try{active.sort(_mtsSort);done.sort(_mtsSort);}catch(_e){}
+}
+async function _sweepStaleActive(){
+  try{
+    if(!db)return;
+    var snap=await db.collection("tickets").where("status","!=","done").get();
+    var added=0;
+    snap.forEach(function(doc){var d=Object.assign({id:doc.id},doc.data());if(!d.date||String(d.date)<_liveSinceISO){_staleActiveDocs.set(d.id,d);added++;}});
+    if(added){_mergeTicketSources();try{refreshAll()}catch(_e){}}
+  }catch(e){console.warn("[stale sweep]",e);}
+}
+async function _loadTicketArchive(){
+  if(_archiveLoaded||_archiveLoading)return;
+  _archiveLoading=true;
+  try{
+    if(!db)return;
+    var snap=await db.collection("tickets").where("date","<",_liveSinceISO).get();
+    snap.forEach(function(doc){_archiveDocs.set(doc.id,Object.assign({id:doc.id},doc.data()));});
+    _archiveLoaded=true;
+    _mergeTicketSources();try{refreshAll()}catch(_e){}
+    console.log("[archive] loaded",_archiveDocs.size,"tickets older than "+_liveSinceISO);
+  }catch(e){console.warn("[archive]",e);}finally{_archiveLoading=false;}
+}
 // ═══ FIREBASE REALTIME ═══
 function initFirebase(){
   if(!db)return;
-  // Single listener for ALL tickets - no composite index needed
-  db.collection("tickets").onSnapshot({includeMetadataChanges:true},snap=>{
+  // COST FIX (Jul 2026): windowed listener (see helpers above). Old open
+  // tickets arrive via _sweepStaleActive; full history via _loadTicketArchive.
+  setTimeout(function(){try{_sweepStaleActive()}catch(_e){}},6000);
+  db.collection("tickets").where("date",">=",_liveSinceISO).onSnapshot({includeMetadataChanges:true},snap=>{
     // SYNC BADGE (Jun 2026 fix): drive the "Syncing changes…" indicator from this
     // listener's metadata instead of db.waitForPendingWrites(). waitForPendingWrites
     // is GLOBAL — it waits for EVERY collection's pending writes, and the presence
@@ -8550,15 +8677,9 @@ function initFirebase(){
     // with identical data): the document SET didn't change — we already refreshed
     // the badge above, so skip the heavy rebuild + cleanup + heal + re-render below.
     if(_dataLoaded && snap.docChanges().length===0) return;
-    active=[];done=[];coachingCalls=[];
-    snap.forEach(doc=>{
-      const d={id:doc.id,...doc.data()};
-      // Coaching calls live ONLY in the Coaching tab — never let them enter
-      // active/done (which feed Service Log, Calendar, Daily, Completed, etc.).
-      if(d.source==="coaching"){coachingCalls.push(d);return;}
-      if(d.status==="done") done.push(d);
-      else active.push(d);
-    });
+    _liveDocs=new Map();
+    snap.forEach(doc=>{_liveDocs.set(doc.id,{id:doc.id,...doc.data()});});
+    _mergeTicketSources();
     _dataLoaded=true;
     try{_activityDone()}catch(_e){}try{renderTechReminder()}catch(_e){}
     // Sort by createdAt descending (newest first)
@@ -8599,7 +8720,7 @@ function initFirebase(){
       try{
         var pg=document.getElementById(pgId);
         if(pg&&pg.classList.contains("show"))fn();
-      }catch(e){console.warn("[render "+label+"]",e)}
+      }catch(e){console.warn("[render "+label+"]",e);/* VISIBLE ERROR (Jul 2026 audit): a thrown render used to leave the tab silently blank. Surface it (throttled) so the user reloads instead of staring at an empty screen. */try{if(Date.now()-(window._lastRenderErrAt||0)>4000){window._lastRenderErrAt=Date.now();if(typeof toast==="function")toast((typeof L2==="function"?L2("No se pudo cargar esta vista \u2014 desliza para refrescar","Couldn\u2019t load this view \u2014 pull to refresh"):"Error"),"err");}}catch(_re){}}
     }
     _safeRender("pg1",rndrA,"active");
     _safeRender("pg2",rndrD,"done");
@@ -9765,6 +9886,7 @@ async function deleteTodo(id){
 // View Transitions: smooth native cross-fade between tabs. Progressive — falls
 // back to an instant switch where unsupported or when reduced-motion is on.
 function showTab(i){
+  try{if(i===3||i===6||i===12)_loadTicketArchive()}catch(_e){}
   var _reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(document.startViewTransition&&!_reduce){try{document.startViewTransition(function(){_showTabImpl(i)});return}catch(_e){}}
   _showTabImpl(i);
@@ -10883,7 +11005,7 @@ function _obDB(){
 async function _obStash(ticketId,items){
   try{
     var d=await _obDB();var tx=d.transaction("files","readwrite"),st=tx.objectStore("files");
-    items.forEach(function(m){st.add({ticketId:ticketId,name:m.name||"",type:m.type||"photo",blob:m.file,addedAt:Date.now()})});
+    items.forEach(function(m){st.add({ticketId:ticketId,name:m.name||"",type:m.type||"photo",blob:m.file,addedAt:Date.now()})});try{setTimeout(function(){_obUpdateChip(false)},150);}catch(_e){}
     await new Promise(function(res){tx.oncomplete=res;tx.onerror=res});
     try{await db.collection("tickets").doc(ticketId).update({pendingMedia:firebase.firestore.FieldValue.increment(items.length)})}catch(_e){}
     return items.length;
@@ -10950,7 +11072,7 @@ async function _mediaOutboxFlush(ticketId){
   return sent;
 }
 window.addEventListener("online",function(){setTimeout(function(){try{_mediaOutboxFlush()}catch(_e){}},3000)});
-setTimeout(function(){try{_mediaOutboxFlush()}catch(_e){}},12000); // startup sweep
+setTimeout(function(){try{_mediaOutboxFlush()}catch(_e){}},12000);setTimeout(function(){try{_obTick()}catch(_e){}},13000); // startup sweep
 // Photos are compressed first (re-using compressPhoto). PDFs are uploaded as-is.
 // Returns an array of media descriptors to save on the ticket document.
 async function slUploadAllMedia(ticketKey){
@@ -12084,6 +12206,39 @@ async function _convAiSummary(){
   try{var out=await _aiSummarize(sys,lines);area.innerHTML='<div style="font-weight:800;color:var(--i1);margin-bottom:3px">\u2728 Summary</div><div style="color:var(--i2)">'+esc(out)+'</div>';}
   catch(e){area.innerHTML='<span style="color:var(--c-danger-fg)">'+esc((e&&e.message)||"AI failed")+'</span>';}
 }
+function _brainPanel(name,events){
+  try{
+    events=events||[];
+    function latest(pfx){var best=null,bms=-1;events.forEach(function(e){if(String(e.type||"").indexOf(pfx)===0){var ms=e.ts&&e.ts.toMillis?e.ts.toMillis():0;if(ms>bms){bms=ms;best=e;best._ms=ms;}}});return best;}
+    function daysAgo(e){if(!e||!e._ms)return null;return Math.floor((Date.now()-e._ms)/86400000);}
+    function fmt(e){var d=daysAgo(e);return d===null?"—":(d===0?(typeof L2==="function"?L2("hoy","today"):"today"):((typeof L2==="function"?L2("hace ","")+d+"d":d+"d ago")));}
+    var del=latest("delivery"),svc=latest("ticket.closed"),chem=latest("chemical"),rev=latest("review");
+    var apps={};events.forEach(function(e){if(e.app)apps[e.app]=1;});
+    function row(lbl,e){return '<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);padding:3px 0"><span style="color:var(--i3)">'+lbl+'</span><span style="color:var(--ink);font-weight:600">'+(e?fmt(e):"—")+'</span></div>';}
+    var h='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin-bottom:12px">';
+    h+='<div style="font-size:var(--fs-sm);font-weight:800;color:var(--br);margin-bottom:8px">🧠 '+(typeof L2==="function"?L2("Perfil del cliente","Customer profile"):"Customer profile")+'</div>';
+    h+=row(L2?L2("Última entrega","Last delivery"):"Last delivery",del)+row(L2?L2("Último servicio","Last service"):"Last service",svc)+row(L2?L2("Última visita chem","Last chemical"):"Last chemical",chem)+row(L2?L2("Último review","Last review"):"Last review",rev);
+    h+='<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);padding:3px 0"><span style="color:var(--i3)">'+(L2?L2("Interacciones","Touchpoints"):"Touchpoints")+'</span><span style="color:var(--ink);font-weight:600">'+events.length+' · '+esc(Object.keys(apps).join(", "))+'</span></div>';
+    var alerts=[];
+    if(del&&del._ms){var after=events.some(function(e){var ms=e.ts&&e.ts.toMillis?e.ts.toMillis():0;return (e.type==="ticket.closed"||String(e.type||"").indexOf("chemical")===0)&&ms>del._ms;});var dd=daysAgo(del);if(!after&&dd!==null&&dd>=14)alerts.push("🆕 "+(L2?L2("Spa entregado hace "+dd+"d sin servicio de seguimiento — agenda una visita.","Spa delivered "+dd+"d ago with no follow-up — schedule a visit."):""));}
+    var recent=events.filter(function(e){return e.type==="ticket.closed"&&e.ts&&e.ts.toMillis&&(Date.now()-e.ts.toMillis())<=2592000000;}).length;
+    if(recent>=3)alerts.push("🔁 "+recent+" "+(L2?L2("servicios en 30 días — posible problema crónico.","services in 30 days — possible chronic issue."):""));
+    if(svc&&svc._ms){var revAfter=rev&&rev._ms&&rev._ms>svc._ms;var sd=daysAgo(svc);if(!revAfter&&sd!==null&&sd>=2&&sd<=21)alerts.push("⭐ "+(L2?L2("Servicio hace "+sd+"d sin review — pídelo.","Service "+sd+"d ago with no review — request it."):""));}
+    if(alerts.length){h+='<div style="margin-top:8px">'+alerts.map(function(a){return '<div style="background:var(--c-warning-bg);color:var(--c-warning-fg);border-radius:8px;padding:7px 10px;font-size:var(--fs-sm);font-weight:600;margin-top:5px">'+esc(a)+'</div>';}).join("")+'</div>';}
+    h+='<div style="margin-top:10px;display:flex;gap:6px"><input id="brainNoteInput" placeholder="'+(L2?L2("Nota compartida (se ve en todas las apps)…","Shared note (shows in all apps)…"):"")+'" style="flex:1;min-width:0;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;font-size:var(--fs-sm);font-family:inherit;background:var(--bg);color:var(--ink)"><button onclick="_brainAddNote(this.getAttribute(\'data-n\'))" data-n="'+esc(name)+'" style="background:var(--ac);border:none;border-radius:8px;padding:8px 14px;font-size:var(--fs-sm);font-weight:700;color:#fff;cursor:pointer;white-space:nowrap">'+(L2?L2("Nota","Note"):"Note")+'</button></div>';
+    h+='</div>';
+    return h;
+  }catch(_e){return "";}
+}
+async function _brainAddNote(name){
+  try{
+    var inp=document.getElementById("brainNoteInput");if(!inp)return;
+    var txt=(inp.value||"").trim();if(!txt)return;inp.value="";
+    if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent){await AspenBrain.logEvent({customer:name,app:"tickets",type:"note",title:"📝 "+txt,actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}
+    if(typeof toast==="function")toast((typeof L2==="function"?L2("Nota guardada","Note saved"):"Note saved")+" ✓");
+    setTimeout(function(){try{openCustomerTimeline(name);}catch(_e){}},450);
+  }catch(_e){if(typeof toast==="function")toast("Error","err");}
+}
 async function openCustomerTimeline(name){
   if(!name||!String(name).trim())return;
   _convCur={name:name,phone:"",email:"",address:""};
@@ -12133,7 +12288,7 @@ async function openCustomerTimeline(name){
     if(_bits.length){var _hd=document.getElementById("brainTLHead");if(_hd)_hd.insertAdjacentHTML("beforeend",'<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">'+_bits.join("")+'</div>');}
   }catch(_bi){}
   var chip={tickets:{t:"TICKETS",c:"#134A63"},chemical:{t:"CHEM",c:"#1C8FA8"},delivery:{t:"DELIVERY",c:"#B5733A"}};
-  body.innerHTML=events.map(function(ev){
+  body.innerHTML=_brainPanel(name,events)+events.map(function(ev){
     var m=chip[ev.app]||{t:String(ev.app||"").toUpperCase(),c:"var(--i3)"};
     var when="";try{if(ev.ts&&ev.ts.toDate)when=ev.ts.toDate().toLocaleString();}catch(_e){}
     var meta=[when,ev.actor].filter(Boolean).join(" \u00b7 ");
@@ -12653,7 +12808,7 @@ async function askDelete(docId){
   if(isAdmin){delTicket(docId)}
   else{toast("Wrong PIN","err")}
 }
-async function delTicket(docId){if(!db)return;try{await db.collection("tickets").doc(docId).delete();toast("Ticket deleted ✓")}catch(e){toast("Error deleting","err")}}
+async function delTicket(docId){if(!db)return;var _dc=_tktCust(docId);try{await db.collection("tickets").doc(docId).delete();try{_audit("deleted",{ticketId:docId,customer:_dc});}catch(_a){}toast("Ticket deleted ✓")}catch(e){toast("Error deleting","err")}}
 
 // ── ROBUST MEDIA FETCH (Jun 2026) ────────────────────────────────────────
 // Both the ZIP download and the iCloud-folder save need the raw bytes of each
@@ -14712,6 +14867,15 @@ function _boardSelAssignMenu(){
   bar.querySelectorAll(".bsb-tech").forEach(function(b){b.onclick=function(){_boardBulkAssign(b.getAttribute("data-tech"));};});
   bar.querySelector("#bsbBack").onclick=function(){_boardSelBar();};
 }
+async function _batchUpdateTickets(items){
+  var n=0;
+  for(var i=0;i<items.length;i+=450){
+    var chunk=items.slice(i,i+450);
+    try{var batch=db.batch();chunk.forEach(function(it){batch.update(db.collection("tickets").doc(it.id),it.data);});await batch.commit();n+=chunk.length;}
+    catch(e){console.warn("batch update error:",e);}
+  }
+  return n;
+}
 async function _boardBulkAssign(tech){
   if(!isAdmin)return;
   tech=(tech||"").trim();
@@ -14721,8 +14885,7 @@ async function _boardBulkAssign(tech){
   if(!db){toast("Firebase not configured","err");return;}
   var prev=[];
   ids.forEach(function(id){var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});if(t)prev.push({id:id,techs:(t.techs||[]).slice()});});
-  var ok=0;
-  for(var i=0;i<prev.length;i++){try{await db.collection("tickets").doc(prev[i].id).update({techs:[tech]});ok++;}catch(e){console.warn("bulk assign error:",e);}}
+  var ok=await _batchUpdateTickets(prev.map(function(p){return {id:p.id,data:{techs:[tech]}};}));
   _boardClearSel();
   if(typeof _haptic==="function")_haptic(18);
   _undoBar(ok+" assigned to "+tech,"Undo all",function(){
@@ -14738,8 +14901,7 @@ async function _boardBulkDone(){
   if(!db){toast("Firebase not configured","err");return;}
   var prev=[];
   ids.forEach(function(id){var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});if(t)prev.push({id:id,status:(t.status||"complete"),completedAt:(t.completedAt||null)});});
-  var ok=0,now=new Date().toLocaleString();
-  for(var i=0;i<prev.length;i++){try{await db.collection("tickets").doc(prev[i].id).update({status:"done",completedAt:now});ok++;}catch(e){console.warn("bulk done error:",e);}}
+  var now=new Date().toLocaleString();var ok=await _batchUpdateTickets(prev.map(function(p){return {id:p.id,data:{status:"done",completedAt:now}};}));
   _boardClearSel();
   if(typeof _haptic==="function")_haptic(22);
   _undoBar(ok+" marked done","Undo all",function(){
@@ -15131,7 +15293,7 @@ async function slDeleteTkt(docId){
   if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can delete tickets","err");return}
   if(!(await confirmDialog("Delete this ticket?")))return;
   if(!db)return;
-  try{await db.collection("tickets").doc(docId).delete();slogPreviewId=null;toast("Deleted ✓");setTimeout(refreshAll,500)}
+  var _dc2=_tktCust(docId);try{await db.collection("tickets").doc(docId).delete();try{_audit("deleted",{ticketId:docId,customer:_dc2});}catch(_a){}slogPreviewId=null;toast("Deleted ✓");setTimeout(refreshAll,500)}
   catch(e){toast("Error: "+e.message,"err")}
 }
 async function cancelVisit(docId){
@@ -15184,7 +15346,7 @@ async function submitTechCancel(docId){
       canceledAt:new Date().toLocaleString(),
       canceledBy:(currentUser&&currentUser.name)||""
     });
-    toast("Visit canceled — admin notified ✓");
+    toast("Visit canceled — admin notified ✓");try{_audit("canceled",{ticketId:docId,customer:_tktCust(docId),note:reason});}catch(_a){}try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:_tktCust(docId),app:"tickets",type:"ticket.canceled",title:"⛔ Canceled: "+reason,actor:(currentUser&&currentUser.name)||""});}catch(_be){}
     closeTktDetail();
     setTimeout(refreshAll,500);
   }catch(e){toast("Error: "+e.message,"err")}
@@ -18605,36 +18767,82 @@ function _c360Kpi(label,val){
 // cards and the Notes tab so they look/behave identically: technician report +
 // photos + PDFs + parts + an explicit "Open full ticket" button. No modal.
 function _c360ExpandBodyHTML(t){
+  // FULL field report exactly as the tech submitted it — shown inline on expand.
   var media=Array.isArray(t.media)?t.media:[];
   var photoSrcs=[];
   (t.photoUrls||[]).forEach(function(u){if(u)photoSrcs.push(u)});
-  media.filter(function(m){return m&&m.type!=="pdf"}).forEach(function(m){var s=m.url||m.data||m.dataUrl;if(s)photoSrcs.push(s)});
+  media.filter(function(m){return m&&m.type!=="pdf"}).forEach(function(m){var sx=m.url||m.data||m.dataUrl;if(sx)photoSrcs.push(sx)});
   var pdfs=media.filter(function(m){return m&&m.type==="pdf"});
   var parts=Array.isArray(t.parts)?t.parts:[];
   var fullNote=String(t.notes||"");
   var idJS=String(t.id||"").replace(/'/g,"\\'");
+  var w=t.warranty||{};
+  var vLbl=(Number(t.visitNum)===6)?"\uD83D\uDE9A Spa Move":(Number(t.visitNum)===5)?"\uD83D\uDCE6 Delivery":(Number(t.visitNum)===4)?"Repeat":(Number(t.visitNum)===3)?"CM":(Number(t.visitNum)===2)?"2nd Visit":"1st Visit";
+  var lb=null;try{lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(w):undefined),t.noLabor||false):null;}catch(_le){lb=null;}
+  var partsTotal=parts.reduce(function(sm,p){return sm+((((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1))},0);
+  var laborAmt=lb?(lb.amount||0):0;
+  function rw(lbl,val){return '<div style="display:flex;gap:8px;font-size:var(--fs-sm);margin-bottom:3px"><span style="color:var(--i3);min-width:88px">'+lbl+'</span><span style="color:var(--ink);font-weight:600;flex:1;min-width:0">'+val+'</span></div>';}
   var h='';
+  // ── meta grid ──
+  h+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin-bottom:10px">';
+  h+=rw("Date",esc(t.date||"\u2014"));
+  h+=rw("Tech",esc((t.techs||[]).join(", ")||"\u2014"));
+  h+=rw("Type",vLbl);
+  if(t.arrival&&t.departure){var mm=0;try{mm=(typeof _visitMins==="function"?_visitMins(t.arrival,t.departure):0)||0;}catch(_me){mm=0;}h+=rw("Time",esc(t.arrival)+" \u2192 "+esc(t.departure)+(mm?" ("+(typeof fmtTime==="function"?fmtTime(mm):(mm+"m"))+")":""));}
+  if((t.workTypes||[]).length)h+=rw("Work",esc(t.workTypes.join(", ")));
+  if(w.label)h+=rw("Warranty",esc(w.label)+(w.model?" \u00b7 "+esc(String(w.model)):"")+(w.year?" \u00b7 "+esc(String(w.year)):""));
+  if(t.reportedIssue)h+=rw("Reported",esc(String(t.reportedIssue)));
+  var fl=[];
+  if(t.ccOnFile)fl.push("\uD83D\uDCB3 CC on file");
+  if(t.paid)fl.push("\u2705 Paid");
+  if(Number(t.visitNum)===4)fl.push("\uD83D\uDD01 Repeat");
+  if(fl.length)h+=rw("",fl.join("  \u00b7  "));
+  h+='</div>';
+  // ── billing ──
+  h+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin-bottom:10px">';
+  h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">\uD83D\uDCB5 Billing</div>';
+  if(parts.length){
+    parts.forEach(function(p){var pr=(((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1);h+='<div style="display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-sm)"><span style="min-width:0">'+esc((p.qty||1)+"\u00d7 "+(p.n||p.d||"part"))+(p.c?' <span style="color:var(--i3)">('+esc(String(p.c))+')</span>':'')+'</span><span style="color:var(--i2);white-space:nowrap">$'+pr.toFixed(2)+'</span></div>';});
+    h+='<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);border-top:1px dashed var(--ln);margin-top:4px;padding-top:4px"><span style="color:var(--i3)">Parts subtotal</span><span>$'+partsTotal.toFixed(2)+'</span></div>';
+  }
+  if(lb&&lb.free)h+='<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm)"><span>Labor</span><span style="color:var(--c-success-strong);font-weight:700">'+esc(lb.label||"FREE (warranty)")+'</span></div>';
+  else if(lb)h+='<div style="display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-sm)"><span style="min-width:0">Labor \u00b7 '+esc(lb.label||"")+'</span><span style="white-space:nowrap">$'+laborAmt.toFixed(2)+'</span></div>';
+  else if(t.noLabor)h+='<div style="font-size:var(--fs-sm);color:var(--i3)">No labor (service call)</div>';
+  h+='<div style="display:flex;justify-content:space-between;font-size:var(--fs-md);font-weight:800;border-top:1px solid var(--ln);margin-top:5px;padding-top:5px"><span>TOTAL</span><span>$'+(partsTotal+laborAmt).toFixed(2)+'</span></div>';
+  h+='</div>';
+  // ── technician report ──
   if(fullNote){
     h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDCDD Technician report</div>';
     h+='<div style="font-size:var(--fs-sm);color:var(--i2);white-space:pre-wrap;line-height:1.5;margin-bottom:10px">'+esc(fullNote)+'</div>';
   }
+  // ── spa description ──
+  if(t.spaDesc){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDEC1 Spa</div>';
+    h+='<div style="font-size:var(--fs-sm);color:var(--i2);white-space:pre-wrap;line-height:1.5;margin-bottom:10px">'+esc(String(t.spaDesc))+'</div>';
+  }
+  // ── photos ──
   if(photoSrcs.length){
     h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDCF7 Photos</div>';
-    h+='<div class="tkt-media" style="margin-top:0;margin-bottom:10px">'+photoSrcs.map(function(s){return '<img src="'+esc(s)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">'}).join("")+'</div>';
+    h+='<div class="tkt-media" style="margin-top:0;margin-bottom:10px">'+photoSrcs.map(function(sx){return '<img src="'+esc(sx)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">'}).join("")+'</div>';
   }
+  // ── pdfs ──
   if(pdfs.length){
     h+='<div class="tkt-att" style="margin-bottom:10px">'+pdfs.map(function(m){return '<a class="tkt-att-pdf" href="'+esc(m.url||"#")+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">\uD83D\uDCC4 '+esc(m.name||"PDF")+'</a>'}).join("")+'</div>';
   }
-  if(parts.length){
-    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83D\uDD27 Parts</div>';
-    h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:10px">';
-    parts.forEach(function(p){h+='<div>\u2022 '+esc((p.qty||1)+'\u00d7 '+(p.n||p.d||"part"))+'</div>'});
-    h+='</div>';
+  // ── video links ──
+  if((t.videoLinks||[]).length){
+    h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">\uD83C\uDFA5 Videos</div>';
+    (t.videoLinks||[]).forEach(function(lk){if(lk)h+='<div style="font-size:var(--fs-sm);margin-bottom:3px;word-break:break-all"><a href="'+esc(lk)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+esc(lk)+'</a></div>';});
   }
-  if(!fullNote&&!photoSrcs.length&&!pdfs.length&&!parts.length){
+  if(!fullNote&&!photoSrcs.length&&!pdfs.length&&!parts.length&&!t.reportedIssue&&!t.spaDesc){
     h+='<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:10px">No report, photos or parts recorded on this visit.</div>';
   }
-  h+='<button onclick="event.stopPropagation();openTktDetail(\''+idJS+'\')" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:9px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">\u270F\uFE0F Open full ticket</button>';
+  // ── footer timestamps ──
+  var foot=[];
+  if(t.submitted)foot.push("Submitted: "+esc(String(t.submitted)));
+  if(t.completedAt)foot.push("Completed: "+esc(String(t.completedAt)));
+  if(foot.length)h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px;margin-bottom:8px">'+foot.join("  \u00b7  ")+'</div>';
+  h+='<button onclick="event.stopPropagation();openTktDetail(\''+idJS+'\')" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:9px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">\u270F\uFE0F Open / edit full ticket</button>';
   return h;
 }
 // Toggle a Notes-tab row open/closed IN PLACE (same UX as Service History).
@@ -18682,6 +18890,7 @@ function _c360VisitCard(t){
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">';
   h+='<span style="font-weight:800;color:var(--ink);font-size:var(--fs-md)">'+esc(t.date||"\u2014")+'</span>';
   h+='<span style="background:'+vt.bg+';color:'+vt.col+';font-size:var(--fs-xs);font-weight:800;border-radius:999px;padding:2px 10px">'+vt.label+'</span>';
+  if(t.status!=="canceled"&&(t.status==="done"||t.fieldReportSubmitted||t.completedAt))h+='<span style="background:var(--c-success-bg);color:var(--c-success-strong);font-size:var(--fs-xs);font-weight:800;border-radius:999px;padding:2px 10px">\u2705 '+(typeof L2==="function"?L2("Completado","Completed"):"Completed")+'</span>';
   if(t.status==="canceled")h+='<span style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700;border-radius:999px;padding:2px 9px">CANCELED</span>';
   h+='<span style="margin-left:auto;display:flex;align-items:center;gap:8px"><span style="font-size:var(--fs-sm);color:var(--i3)">'+esc(techs)+'</span><span data-c360chev aria-hidden="true" style="color:var(--ac);font-weight:800;font-size:15px;line-height:1;transition:transform .18s">\u203a</span></span>';
   h+='</div>';
@@ -18708,6 +18917,7 @@ function _c360Render(tkts){
   tkts=tkts||[];
   if(!tkts.length)return '<div style="text-align:center;padding:40px 20px;color:var(--i3);font-size:var(--fs-base)">No service history yet.</div>';
   var h='';
+  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:10px;line-height:1.4">'+(typeof L2==="function"?L2("Tickets completados de este cliente \u2014 toca una visita para ver el reporte completo del t\u00e9cnico: partes, fotos y notas.","Completed tickets for this customer \u2014 tap a visit to see the full tech report: parts, photos and notes."):"")+'</div>';
   var visits=tkts.filter(function(t){return t.status!=="canceled"}).length;
   var repeats=tkts.filter(function(t){return Number(t.visitNum)===4}).length;
   var lastDate=tkts.map(function(t){return t.date||""}).filter(Boolean).sort().pop()||"\u2014";
