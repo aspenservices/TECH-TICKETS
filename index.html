@@ -2672,6 +2672,64 @@ body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 3
 #tktDetailBg #tktDetailActionsWrap{background:transparent;border:none}
 @media(prefers-reduced-motion:reduce){#tktDetailBg .mcl:hover{transform:none}}
 </style>
+<style id="calProV1">
+/* ═══ CALENDAR PRO — visual upgrade for Month · Team Week · Route (scoped to #pg4, logic untouched) ═══ */
+/* Segmented view control */
+#pg4 .cal-views{border:none;gap:4px;background:var(--bg);padding:4px;border-radius:12px}
+#pg4 .cal-vb{border:none!important;border-radius:9px;font-weight:700;font-family:inherit;padding:8px 15px;color:var(--i2);transition:all .16s}
+#pg4 .cal-vb:hover{background:rgba(19,74,99,.06)}
+#pg4 .cal-vb.on{background:linear-gradient(180deg,#1a5878,#134A63);color:#fff;box-shadow:0 2px 8px rgba(19,74,99,.28)}
+/* KPI command strip */
+#pg4 .cal-cmd-stat{border:none;border-radius:14px;background:linear-gradient(180deg,#fff,#f7fafb);box-shadow:0 2px 10px rgba(19,74,99,.06);padding:11px 14px}
+#pg4 .cal-cmd-stat::before{width:5px;border-radius:0 3px 3px 0}
+#pg4 .cal-cmd-stat .cc-v{font-size:24px}
+
+/* ── ROUTE (timeline lanes) ── */
+#pg4 .ctl-tcol{border-radius:11px 11px 0 0;padding:9px 4px;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;box-shadow:inset 0 -3px 0 rgba(0,0,0,.14);position:relative}
+#pg4 .ctl-lane{background:linear-gradient(180deg,#fbfcfd,#f4f8f9);border:1px solid var(--ln);border-top:none;border-radius:0 0 11px 11px}
+#pg4 .ctl-line{border-top:1px solid rgba(19,74,99,.06)}
+#pg4 .ctl-hr{font-size:9.5px;font-weight:700;color:var(--i3)}
+#pg4 .ctl-now{height:2px;background:#e5484d;box-shadow:0 0 8px rgba(229,72,77,.5)}
+#pg4 .ctl-now::before{width:9px;height:9px;top:-3.5px;background:#e5484d;box-shadow:0 0 0 3px rgba(229,72,77,.18)}
+#pg4 .ctl-lane.ctl-drop{outline:2px dashed var(--copper,#B5733A);outline-offset:-3px;background:linear-gradient(180deg,rgba(184,115,46,.10),rgba(184,115,46,.05))}
+/* cards inside lanes */
+#pg4 .ctl-slot>.cal-tkt-mini{border:1px solid var(--ln);border-radius:11px;box-shadow:0 2px 8px rgba(19,74,99,.08);transition:transform .12s,box-shadow .12s}
+#pg4 .ctl-slot>.cal-tkt-mini:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(19,74,99,.16)}
+
+/* ── TEAM WEEK (tech rows × day cols) ── */
+#pg4 .cw-scroll{border:1px solid var(--ln);border-radius:14px;box-shadow:0 2px 12px rgba(19,74,99,.05)}
+#pg4 .cw thead th{background:linear-gradient(180deg,#1a5878,#134A63);color:#fff;font-size:11px;letter-spacing:.4px;text-transform:uppercase;padding:9px 4px;border-color:rgba(255,255,255,.12)}
+#pg4 .cw thead th.cw-today{background:linear-gradient(180deg,#e08a4a,#B5733A);color:#fff}
+#pg4 .cw .cw-name{font-weight:800}
+#pg4 .cw-ava{width:24px;height:24px;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+#pg4 .cw td.cw-cell{height:58px;transition:background .12s}
+#pg4 .cw td.cw-cell:hover{background:rgba(19,74,99,.05)}
+#pg4 .cw td.cw-cell.cw-today{background:rgba(184,115,46,.07)}
+#pg4 .cw .cw-tk{border-radius:6px;padding:3px 7px;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:transform .1s}
+#pg4 .cw .cw-tk:hover{transform:translateX(1px)}
+
+/* ── MONTH ── */
+#pg4 .cal-dow{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--i3);padding:8px 0;text-align:center}
+#pg4 .cal-day{min-height:132px;padding:7px 7px 5px;transition:background .14s,box-shadow .14s}
+#pg4 .cal-day:hover{background:#f6fbfc;box-shadow:inset 0 0 0 2px rgba(19,74,99,.08)}
+#pg4 .cal-day.today{background:linear-gradient(180deg,rgba(28,143,168,.07),transparent)}
+#pg4 .cal-day.today .dn{background:linear-gradient(180deg,#1a5878,#134A63);color:#fff;box-shadow:0 2px 6px rgba(19,74,99,.3)}
+#pg4 .cal-day.selected{background:#fff8f0;box-shadow:inset 0 0 0 2px rgba(184,115,46,.35)}
+#pg4 .cal-day .dn{font-weight:700;font-size:13px}
+#pg4 .cal-event{border-radius:7px;padding:3px 7px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+#pg4 .cal-event .ev-zone,#pg4 .cal-event .ev-time{font-weight:700}
+#pg4 .cal-day.drop-over{outline:2.5px dashed var(--copper,#B5733A);outline-offset:-3px;background:#fff7ed}
+/* Route drag-to-resize (fills its time block like Google/Apple Calendar) */
+#pg4 .ctl-rz{position:relative;display:flex;flex-direction:column}
+#pg4 .ctl-rz>.cal-tkt-mini{flex:1 1 auto;margin:0!important}
+#pg4 .ctl-resize{position:absolute;left:0;right:0;bottom:0;height:16px;cursor:ns-resize;display:flex;align-items:flex-end;justify-content:center;z-index:4;touch-action:none}
+#pg4 .ctl-resize::after{content:"";width:30px;height:4px;border-radius:3px;background:rgba(19,74,99,.30);margin-bottom:3px;transition:background .12s,width .12s}
+#pg4 .ctl-resize:hover::after,#pg4 .ctl-resize:active::after{background:var(--copper,#B5733A);width:42px}
+#pg4 .ctl-cardextra{margin-top:6px;padding:6px 0 8px;border-top:1px dashed var(--ln);font-size:11px;color:var(--i2);line-height:1.4;display:flex;flex-direction:column;gap:3px}
+#pg4 .ctl-cardextra>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pg4 .ctl-rz{padding-bottom:2px}
+</style>
+</style>
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -14725,6 +14783,15 @@ function _slogOpenCalls(idx){
   });
 }
 
+function _slCust(t){
+  // Fall back to the customer's known contact when the ticket itself lacks it
+  // (e.g. tickets ingested from dispatch / chem / reschedule with no phone/address).
+  var c=(!t.phone||!t.address)?((typeof getCustData==="function"?getCustData(t.customer):null)||{}):{};
+  var phone=t.phone||c.phone||"";
+  var address=t.address||c.address||"";
+  var city=t.city||c.city||"";
+  return {phone:phone,addrLine:address?address+(city?", "+city:""):""};
+}
 function rndrSlog(){
   try{rndrBillingCard()}catch(_e){}
   try{rndrWarrantyLog()}catch(_e){}
@@ -14803,11 +14870,11 @@ function rndrSlog(){
     h+='<div class="lbl" style="color:var(--c-danger-strong);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("flame",15,{style:"vertical-align:-2px"})+' Urgent <span style="background:var(--c-danger-strong);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+urgents.length+'</span></div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     urgents.forEach(function(t){
-      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       h+='<div style="background:#fff;border:1px solid var(--c-danger-bg);border-left:3px solid var(--c-danger-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="font-weight:800;font-size:var(--fs-md);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
-        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+        (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
       '</div>';
     });
@@ -14830,7 +14897,7 @@ function rndrSlog(){
     h+='<div class="lbl" style="color:var(--c-warning-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("rotate-ccw",16,{color:"var(--c-warning-fg)"})+'Rescheduled \u2014 needs new date <span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+rescheds.length+'</span></div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     rescheds.forEach(function(t){
-      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       var days=_daysSince(t.reschedAtMs);
       var ageHtml='';
       if(days!==null){
@@ -14845,7 +14912,7 @@ function rndrSlog(){
       h+='<div style="background:#fff;border:1px solid var(--c-warning-bg);border-left:3px solid var(--c-warning-fg);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-md);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span>'+ageHtml+'</div>'+
         reasonHtml+
-        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+        (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
         ((currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar-days",14,{color:"#fff"})+'Program now</button>':'')+
       '</div>';
@@ -14862,11 +14929,11 @@ function rndrSlog(){
     h+='<div class="lbl" style="color:var(--c-purple-strong);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("sparkles",15,{style:"vertical-align:-2px"})+' New Spa <span style="background:var(--c-purple-strong);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+newSpas.length+'</span></div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     newSpas.forEach(function(t){
-      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       h+='<div style="background:#fff;border:1px solid var(--c-purple-bg);border-left:3px solid var(--c-purple-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="font-weight:800;font-size:var(--fs-md);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
-        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+        (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
       '</div>';
     });
@@ -14881,7 +14948,7 @@ function rndrSlog(){
     h+='<div class="lbl" style="color:var(--c-danger-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("repeat",16,{color:"var(--c-danger-fg)"})+'Repeats <span style="background:var(--c-danger-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+repeats.length+'</span></div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     repeats.forEach(function(t){
-      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       var techLine=(t.techs&&t.techs.length)?t.techs.join(", "):"";
       var hasDate=!!t.date;
       var accent=hasDate?"var(--c-success-fg)":"var(--c-danger-fg)";
@@ -14893,7 +14960,7 @@ function rndrSlog(){
             ?'<div style="font-size:var(--fs-sm);color:var(--c-success-fg);font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("calendar-days",11,{color:"var(--c-success-fg)"})+t.date+(t.arrival?' \u00B7 '+t.arrival:'')+'</div>'
             :'<div style="font-size:var(--fs-sm);color:var(--c-danger-fg);font-weight:700;margin-bottom:4px">\u26A0 Needs a date</div>')+
           (techLine?'<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:4px">\uD83D\uDC64 '+esc(techLine)+'</div>':(hasDate?'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);font-weight:700;margin-bottom:4px">\u26A0 No tech assigned yet</div>':''))+
-          (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+          (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
           (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
         '</div>'+
         (_canProgRep?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar",13,{color:"#fff"})+(hasDate?'Reschedule':'Program now')+'</button>':'')+
@@ -14917,11 +14984,11 @@ function rndrSlog(){
     h+='<div class="lbl" style="color:#854d0e;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("credit-card",16,{color:"#854d0e"})+'Pending Credit Card Requests <span style="background:#854d0e;color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+ccReqs.length+'</span></div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     ccReqs.forEach(function(t){
-      var addrLine=t.address?esc(t.address)+(t.city?', '+esc(t.city):''):'';
+      var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       h+='<div style="background:#fff;border:1px solid var(--c-warning-border);border-left:3px solid var(--c-warning-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="font-weight:800;font-size:var(--fs-md);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
-        (t.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(t.phone)+'</div>':'')+
+        (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
       '</div>';
     });
@@ -14934,7 +15001,7 @@ function rndrSlog(){
     items.forEach(t=>{
       const _wc=_warrantyMiniChip(t);
       const isDone=t.status==="done";const noTech=!t.techs||!t.techs.length;
-      h+=`<div class="zone-card-item" onclick="openTktDetail('${t.id}')" style="${t.isUrgent?"border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)":t.isNewSpa?"border-left:3px solid var(--c-purple-strong);background:var(--c-purple-bg)":t.autoFromResched?"border-left:3px solid var(--c-warning-fg);background:var(--c-warning-bg)":noTech?"border-left:3px solid var(--r)":""}${isDone?";opacity:.6":""}"><h6>${esc(t.customer)}${t.isUrgent?' <span style="color:var(--c-danger-strong);font-size:var(--fs-xs);font-weight:800">'+icon("flame",13,{style:"vertical-align:-1px"})+' URGENT</span>':''}${t.isNewSpa?' <span style="color:var(--c-purple-strong);font-size:var(--fs-xs);font-weight:800">'+icon("sparkles",13,{style:"vertical-align:-1px"})+' NEW SPA</span>':''}${t.isRepeat?' <span style="color:var(--r);font-size:var(--fs-xs);font-weight:700">'+icon("repeat",13,{style:"vertical-align:-1px"})+' REPEAT</span>':''}${t.autoFromResched?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:800">↻ RESCHEDULE</span>':''}${_isChemTicket(t)?' '+_chemChip(t,true):''}${ticketHasOpenTodo(t.id)?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700">'+icon("clipboard-list",13,{style:"vertical-align:-1px"})+' TO DO</span>':''}${t.payCheck?' <span style="color:var(--c-info-strong);font-size:var(--fs-xs);font-weight:700">✓ CHECK</span>':''}${_wc?' '+_wc:''}</h6><p>${(t.techs||[]).join(", ")||"Unassigned"} · ${t.date||""}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓":""}</p>${t.phone?`<p>${icon("phone",13,{style:"vertical-align:-2px"})} ${esc(t.phone)}</p>`:""}</div>`;
+      h+=`<div class="zone-card-item" onclick="openTktDetail('${t.id}')" style="${t.isUrgent?"border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)":t.isNewSpa?"border-left:3px solid var(--c-purple-strong);background:var(--c-purple-bg)":t.autoFromResched?"border-left:3px solid var(--c-warning-fg);background:var(--c-warning-bg)":noTech?"border-left:3px solid var(--r)":""}${isDone?";opacity:.6":""}"><h6>${esc(t.customer)}${t.isUrgent?' <span style="color:var(--c-danger-strong);font-size:var(--fs-xs);font-weight:800">'+icon("flame",13,{style:"vertical-align:-1px"})+' URGENT</span>':''}${t.isNewSpa?' <span style="color:var(--c-purple-strong);font-size:var(--fs-xs);font-weight:800">'+icon("sparkles",13,{style:"vertical-align:-1px"})+' NEW SPA</span>':''}${t.isRepeat?' <span style="color:var(--r);font-size:var(--fs-xs);font-weight:700">'+icon("repeat",13,{style:"vertical-align:-1px"})+' REPEAT</span>':''}${t.autoFromResched?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:800">↻ RESCHEDULE</span>':''}${_isChemTicket(t)?' '+_chemChip(t,true):''}${ticketHasOpenTodo(t.id)?' <span style="color:var(--c-warning-fg);font-size:var(--fs-xs);font-weight:700">'+icon("clipboard-list",13,{style:"vertical-align:-1px"})+' TO DO</span>':''}${t.payCheck?' <span style="color:var(--c-info-strong);font-size:var(--fs-xs);font-weight:700">✓ CHECK</span>':''}${_wc?' '+_wc:''}</h6><p>${(t.techs||[]).join(", ")||"Unassigned"} · ${t.date||""}${t.arrival?" · "+t.arrival:""}${isDone?" · ✓":""}</p>${t.phone?`<p>${icon("phone",13,{style:"vertical-align:-2px"})} ${esc(_sc.phone)}</p>`:""}</div>`;
     });
     h+=`</div></div>`;
   });
@@ -17392,6 +17459,36 @@ function rndrCalLanes(sun,byDate,today){
 // One day, an hour rail (7a–7p) down the left and one lane per technician (+ Unassigned).
 // Each stop is positioned by its arrival time and colored by tech. Un-timed stops sit in
 // a strip at the top of the lane. A red line marks "now" when viewing today. Tap to open.
+var _CAL_START=7,_CAL_END=19,_CAL_HPX=55;
+// Minutes a ticket occupies on the Route rail. Backward-compatible with the old
+// daySlots system: no durationMin yet → derive from allDay / daySlots, else 60.
+function _clip(x,n){x=String(x||"").replace(/\s+/g," ").trim();return x.length>n?x.slice(0,n-1)+"\u2026":x;}
+// Extra detail rows shown ONLY when a Route card is stretched — fills the space
+// with the ticket's own info instead of leaving it blank. More minutes = more rows.
+function _calCardExtra(t,durMin){
+  var rows=[];
+  var wt=(t.workTypes&&t.workTypes.length)?t.workTypes.join(", "):(t.type||"");
+  var issue=String(t.reportedIssue||"").trim();
+  var notes=String(t.notes||"").trim();
+  var spa=String(t.spaDesc||t.spaModel||t.model||"").trim();
+  var pl=(typeof _partsLabel==="function")?(_partsLabel(t)||""):"";
+  var email=String(t.email||"").trim();
+  if(wt)rows.push('\uD83E\uDDF0 '+esc(_clip(wt,60)));
+  if(durMin>=120){ if(issue)rows.push('\uD83D\uDDE3\uFE0F '+esc(_clip(issue,90))); else if(notes)rows.push('\uD83D\uDCDD '+esc(_clip(notes,90))); }
+  if(durMin>=240){ if(spa)rows.push('\uD83D\uDEC1 '+esc(_clip(spa,70))); if(pl)rows.push('\uD83D\uDD27 '+esc(_clip(pl,70))); }
+  if(durMin>=360){ if(notes&&notes!==issue)rows.push('\uD83D\uDCDD '+esc(_clip(notes,170))); if(email)rows.push('\u2709\uFE0F '+esc(email)); }
+  if(!rows.length)return "";
+  return '<div class="ctl-cardextra">'+rows.map(function(r){return '<div>'+r+'</div>';}).join("")+'</div>';
+}
+function _tDurationMin(t){
+  if(!t)return 60;
+  if(typeof t.durationMin==="number"&&t.durationMin>0)return t.durationMin;
+  var whole=(_CAL_END-_CAL_START)*60;
+  if(t.allDay)return whole;
+  if(t.daySlots&&t.daySlots>1)return Math.min(whole,t.daySlots*60);
+  return 60;
+}
+function _fmtDur(m){var h=Math.floor(m/60),mm=m%60;return (h?h+"h":"")+(mm?(h?" ":"")+mm+"m":"")||"0m";}
 function rndrCalTimeline(sel,byDate){
   var isTech=currentUser&&currentUser.role==="tech";
   var tkts=(byDate[sel]||[]);
@@ -17407,7 +17504,7 @@ function rndrCalTimeline(sel,byDate){
     document.getElementById("calGrid").innerHTML='<div class="empty-state" style="padding:30px"><div class="es-ico">'+icon("calendar-clock",28,{color:"var(--i3)"})+'</div><h3>No tickets for this day</h3><p>Pick another day, or use Team Wk to find a busy day.</p></div>';
     return;
   }
-  var START=7,END=19,HPX=55,GAP=8;var railTop=(END-START)*HPX;
+  var START=_CAL_START,END=_CAL_END,HPX=_CAL_HPX,GAP=8;var railTop=(END-START)*HPX;var canResize=currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");
   var todayDs=fmtD(new Date());
   // Command-center strip (admin/organizer): the day's load at a glance.
   var cmd="";
@@ -17431,11 +17528,11 @@ function rndrCalTimeline(sel,byDate){
     var sched=mine.filter(function(t){return /^\d{1,2}:\d{2}/.test(t.arrival||"")}).sort(function(a,b){return (a.arrival||"99:99").localeCompare(b.arrival||"99:99")});
     var unsched=mine.filter(function(t){return !/^\d{1,2}:\d{2}/.test(t.arrival||"")});
     var items=[];
-    unsched.forEach(function(t){items.push({t:t,top:0});});
+    unsched.forEach(function(t){items.push({t:t,top:0,sched:false});});
     sched.forEach(function(t){
       var aM=_calMins(t.arrival);
       var timeTop=((Math.max(0,Math.min(aM-(START*60),(END-START)*60-20)))/60)*HPX;
-      items.push({t:t,top:timeTop});
+      items.push({t:t,top:timeTop,sched:true});
     });
     return {l:l,isUn:isUn,items:items,count:mine.length};
   });
@@ -17451,7 +17548,13 @@ function rndrCalTimeline(sel,byDate){
     var lane='<div class="ctl-lane" style="height:'+railTop+'px" ondragover="event.preventDefault();this.classList.add(\'ctl-drop\')" ondragleave="this.classList.remove(\'ctl-drop\')" ondrop="this.classList.remove(\'ctl-drop\');calDropOnTech(event,\''+dropTarget+'\',\''+sel+'\')">';
     for(var H2=START;H2<=END;H2++){lane+='<div class="ctl-line" style="top:'+((H2-START)*HPX)+'px"></div>'}
     d.items.forEach(function(it){
-      lane+='<div class="ctl-slot" data-top="'+Math.round(it.top)+'" style="top:'+Math.round(it.top)+'px">'+calTktCard(it.t)+'</div>';
+      var durMin=_tDurationMin(it.t);
+      var durPx=Math.max(54,(durMin/60)*HPX);
+      var wrapStyle=it.sched?(' style="min-height:'+Math.round(durPx)+'px"'):'';
+      var handle=(it.sched&&canResize)?'<div class="ctl-resize" title="Arrastra para cambiar la duraci\u00f3n" onmousedown="_calResizeStart(event,\''+it.t.id+'\')" ontouchstart="_calResizeStart(event,\''+it.t.id+'\')"></div>':'';
+      var cardHtml=calTktCard(it.t);
+      if(it.sched&&durMin>=120){var _ex=_calCardExtra(it.t,durMin);if(_ex){var _k=cardHtml.lastIndexOf("</div>");if(_k>=0)cardHtml=cardHtml.slice(0,_k)+_ex+cardHtml.slice(_k);}}
+      lane+='<div class="ctl-slot" data-top="'+Math.round(it.top)+'" data-id="'+it.t.id+'" style="top:'+Math.round(it.top)+'px"><div class="ctl-rz"'+wrapStyle+'>'+cardHtml+handle+'</div></div>';
     });
     if(sel===todayDs){var now=new Date();var nowMins=(now.getHours()*60+now.getMinutes())-(START*60);if(nowMins>=0&&nowMins<=(END-START)*60)lane+='<div class="ctl-now" style="top:'+((nowMins/60)*HPX)+'px"></div>'}
     lane+='</div>';body+=lane;
@@ -17490,6 +17593,47 @@ function _layoutTimelineLanes(railTop,GAP){
     infos.forEach(function(lane){lane.style.height=maxH+"px"});
     var hoursEl=grid.querySelector(".ctl-hours");if(hoursEl)hoursEl.style.height=maxH+"px";
   }catch(e){}
+}
+function _calResizeStart(ev,id){
+  try{ev.preventDefault();ev.stopPropagation();}catch(_e){}
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer"))return;
+  var handle=ev.target;var wrap=handle&&handle.parentNode;if(!wrap)return;
+  var startY=(ev.touches&&ev.touches[0]?ev.touches[0].clientY:ev.clientY);
+  var startH=wrap.offsetHeight;
+  var whole=(_CAL_END-_CAL_START)*_CAL_HPX;var minH=_CAL_HPX/2; // 30 min floor
+  var lastMin=null;
+  document.body.style.userSelect="none";
+  function mv(e){
+    var y=(e.touches&&e.touches[0]?e.touches[0].clientY:e.clientY);
+    var h=Math.max(minH,Math.min(whole,startH+(y-startY)));
+    // snap to 15-min visual increments
+    var snap=Math.round((h/_CAL_HPX*60)/15)*15;lastMin=Math.max(30,Math.min((_CAL_END-_CAL_START)*60,snap));
+    wrap.style.minHeight=((lastMin/60)*_CAL_HPX)+"px";
+    if(e.cancelable)e.preventDefault();
+  }
+  function up(){
+    document.removeEventListener("mousemove",mv);document.removeEventListener("touchmove",mv);
+    document.removeEventListener("mouseup",up);document.removeEventListener("touchend",up);
+    document.body.style.userSelect="";
+    if(lastMin!=null)calSetDuration(id,lastMin);
+  }
+  document.addEventListener("mousemove",mv,{passive:false});
+  document.addEventListener("touchmove",mv,{passive:false});
+  document.addEventListener("mouseup",up);document.addEventListener("touchend",up);
+}
+async function calSetDuration(id,durMin){
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can change this","err");return}
+  if(!db)return;
+  var whole=(_CAL_END-_CAL_START)*60;
+  durMin=Math.max(30,Math.min(whole,Math.round(durMin/15)*15));
+  var upd={durationMin:durMin,allDay:durMin>=whole,daySlots:Math.max(1,Math.min(4,Math.round(durMin/180)))};
+  try{
+    await db.collection("tickets").doc(id).update(upd);
+    var _t=[...(typeof active!=="undefined"?active:[]),...(typeof done!=="undefined"?done:[])].find(function(x){return x.id===id});
+    if(_t){_t.durationMin=durMin;_t.allDay=upd.allDay;_t.daySlots=upd.daySlots;}
+    toast("\u23F1 Duraci\u00f3n: "+_fmtDur(durMin)+(durMin>=whole?" \u2014 todo el d\u00eda":""));
+    if(typeof rndrCal==="function")try{rndrCal()}catch(_e){}
+  }catch(e){toast("Error","err")}
 }
 function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
@@ -17708,7 +17852,7 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // positions this job takes. The card grows with the slot count so the day
   // visually reads as occupied (4 = whole day).
   if(_slots>1)h+=`<div class="cal-allday-banner">${icon("clock",11,{style:"vertical-align:-1px"})} ${_slots>=4?"ALL DAY — takes the whole day":"TAKES "+_slots+" OF 4 SLOTS"}</div>`;
-  if(canDismiss)h+=`<button onclick="calCycleDaySlots('${t.id}',event)" title="Day slots: ${_slots} of 4 — tap to change (1→2→3→4)" style="position:absolute;top:6px;right:34px;min-width:24px;height:24px;border:1.5px solid var(--ac);border-radius:7px;background:${_slots>1?"var(--ac)":"#fff"};color:${_slots>1?"#fff":"var(--ac)"};font-size:11px;font-weight:800;cursor:pointer;line-height:1;padding:0 4px;z-index:2">${icon("clock",12)}${_slots>1?_slots:""}</button>`;
+  
   if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">${icon("triangle-alert",10,{color:"#fff"})} NEEDS REPORT</span> `;if(reported)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-success-strong);color:#fff;display:inline-block;margin-right:4px">✓ REPORTED</span> `;if(reschedReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">↻ REPORTED · RESCHEDULED</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;{var _wc=_warrantyMiniChip(t);if(_wc)h+=_wc+' ';}{var _cm=_chemChip(t,true);if(_cm)h+=_cm+' ';}if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">${icon("flame",10,{color:"#fff"})} URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">${icon("sparkles",10,{color:"#fff"})} NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket — admin/organizer only (the UI also hides
@@ -18671,6 +18815,34 @@ function _spaMoveEstHTML(t){
     +L2("En QuickBooks ya hay un estimado listo. Crea la factura desde el estimado del cliente y cobra directamente.","A QuickBooks estimate is ready. Create the invoice from the customer\u2019s estimate and charge directly.")
     +'</div></div>';
 }
+function _compileCustomerStory(tickets){
+  var arr=(tickets||[]).slice().sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
+  var seen={},lines=[];
+  arr.forEach(function(t){
+    var raw=String(t.notes||"").replace(/\r/g,"").trim();
+    if(!raw)return;
+    raw.split(/\n+/).forEach(function(ln){
+      var line=ln.trim();if(!line)return;
+      var key=line.toLowerCase().replace(/\s+/g," ");
+      if(seen[key])return;
+      seen[key]=1;lines.push(line);
+    });
+  });
+  return {text:lines.join("\n"),count:lines.length};
+}
+
+function _custPhotoHistory(name,excludeId){
+  var k=(typeof _custGroupKey==="function")?_custGroupKey(name):name;
+  var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+  var out=[];
+  all.forEach(function(t){
+    if(((typeof _custGroupKey==="function")?_custGroupKey(t.customer):t.customer)!==k)return;
+    if(excludeId&&t.id===excludeId)return;
+    (t.media||[]).forEach(function(m){if(m&&m.type!=="pdf"&&(m.url||m.data))out.push({url:m.url||m.data,date:t.date||"",tech:(t.techs||[]).join(", ")||""});});
+  });
+  out.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
+  return out;
+}
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -18991,6 +19163,16 @@ function openTktDetail(id){
       s+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin:8px 0 4px">📷 Photos ('+_pm.length+')</div>';
       s+='<div class="tkt-media">'+_pm.map(function(m){return '<img src="'+esc(m.url||m.data||"")+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">';}).join("")+'</div>';
     }
+    // Customer PHOTO HISTORY — photos from this customer's OTHER visits, visible to techs too.
+    try{
+      var _ph=_custPhotoHistory(t.customer,t.id);
+      if(_ph.length){
+        s+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px">\uD83D\uDDBC\uFE0F Photo history \u00b7 other visits ('+_ph.length+')</div>';
+        s+='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">'+_ph.map(function(ph){
+          return '<div style="flex:none;width:90px"><img src="'+esc(ph.url)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="width:90px;height:90px;object-fit:cover;border-radius:9px;border:1px solid var(--ln);cursor:zoom-in;display:block"><div style="font-size:9px;color:var(--i3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ph.date||"")+(ph.tech?(" \u00b7 "+esc(ph.tech)):"")+'</div></div>';
+        }).join("")+'</div>';
+      }
+    }catch(_phe){}
     s+='</div>';
     h+=s;
   })();
@@ -20564,7 +20746,7 @@ function qbCustRenderDetail(customers){
       // ── MERGE by job (QB-style): a request (ACTIVE) and its completion (DONE)
       //    for the same customer+date+work-type collapse into ONE continuous line.
       //    Service History tab still shows every ticket individually.
-      var _story=_custCompiledStory(c.tickets);
+      var _story=_compileCustomerStory(c.tickets);
       if(!_story.text){
         h+='<div style="text-align:center;padding:34px 20px;color:var(--i3);font-size:var(--fs-base)">No notes yet for this customer.</div>';
       }else{
@@ -20765,6 +20947,17 @@ function selectCustSuggest(prefix,name){
   var spaEl=document.getElementById(prefix+"SpaDesc");if(spaEl&&c.spaDesc)spaEl.value=c.spaDesc;
   var notesEl=document.getElementById(prefix+"Notes");if(notesEl&&c.notes)notesEl.value=c.notes;
 }
+function _slCarryHistory(){
+  var name=((document.getElementById("slCustName")||{}).value||"").trim();if(!name)return;
+  var k=(typeof _custGroupKey==="function")?_custGroupKey(name):name;
+  var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+  var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
+  var st=_compileCustomerStory(mine);var box=document.getElementById("slNotes");if(!box)return;
+  var cur=(box.value||"").trim();
+  box.value=st.text+(cur?("\n"+cur):"\n");
+  try{box.focus();box.setSelectionRange(box.value.length,box.value.length);}catch(_e){}
+  if(typeof toast==="function")toast("Historia cargada \u2014 agrega tu nota abajo");
+}
 function slAutoFillCust(){var name=document.getElementById("slCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("slCustPhone").value)document.getElementById("slCustPhone").value=c.phone;if(c.phone2){var _p2=document.getElementById("slCustPhone2");if(_p2&&!_p2.value){_p2.value=c.phone2;slTogglePhone2(true)}}if(c.email){var _em=document.getElementById("slCustEmail");if(_em&&!_em.value)_em.value=c.email}if(c.address&&!document.getElementById("slCustAddr").value)document.getElementById("slCustAddr").value=c.address;if(c.city&&!document.getElementById("slCustCity").value)document.getElementById("slCustCity").value=c.city;if(c.zip&&!document.getElementById("slCustZip").value){document.getElementById("slCustZip").value=c.zip;slAutoZone()}if(c.spaDesc&&document.getElementById("slSpaDesc"))document.getElementById("slSpaDesc").value=c.spaDesc;
 // AUTO-WARRANTY: if the customer has a saved spa description, parse it and
 // pre-fill the warranty buttons. Skips when the user has already manually
@@ -20845,21 +21038,13 @@ function _slLoadHistory(){
     var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
     var doneTkts=mine.filter(function(x){return(x.status==="complete"||x.status==="done")&&x.date}).sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
     if(doneTkts.length){var _ld=doneTkts[doneTkts.length-1];_slLastSvcDate=_ld.date||"";_slLastParts=_partsLabel(_ld);if(typeof _spaUnderWarranty!=="function"||!_spaUnderWarranty(_ld)){var li=document.getElementById("slLastSvc");if(li&&!li.value){li.value=_ld.date;_slSvcCheck()}}}else{_slLastSvcDate="";_slLastParts="";}
-    var entries=mine.filter(function(x){return(x.notes&&x.notes.trim())||(x.reportedIssue&&x.reportedIssue.trim())||_partsLabel(x)}).map(function(x){
-      var rep=(x.reportedIssue&&x.reportedIssue.trim())?x.reportedIssue.trim():"";
-      var nt=(x.notes&&x.notes.trim())?x.notes.trim():"";
-      var pl=_partsLabel(x);
-      return{date:x.date||"",txt:(rep?("🗣️ "+rep+(nt?" — ":"")):"")+nt+(pl?((rep||nt?" · ":"")+"🔧 "+pl):"")};
-    }).sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).slice(0,12);
-    if(!entries.length){box.style.display="none";box.innerHTML=""}
+    var _story=_compileCustomerStory(mine);
+    if(!_story.text){box.style.display="none";box.innerHTML=""}
     else{
       box.style.display="block";
-      box.innerHTML='<div style="font-weight:800;font-size:var(--fs-xs);color:var(--i3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">🕘 History — '+entries.length+' note'+(entries.length===1?'':'s')+' (newest first)</div>'+entries.map(function(e){
-        // Highlight warranty lines (🛡 prefix) with a green tint so they stand out from the rest of the chatter
-        var t=esc(e.txt);
-        var htmlTxt=t.replace(/🛡[^\n]*?(?=\s·\s|$)/g,function(m){return '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:4px;font-weight:600">'+m+'</span>'});
-        return '<div style="padding:5px 0;border-bottom:1px solid var(--ln);font-size:var(--fs-sm);color:var(--i2);line-height:1.35"><span style="font-weight:700;color:var(--ink)">'+esc(e.date||"—")+'</span> · '+htmlTxt+'</div>';
-      }).join("");
+      box.innerHTML='<div style="font-weight:800;font-size:var(--fs-xs);color:var(--i3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">🕘 Customer history</div>'
+        +'<div style="font-size:var(--fs-sm);color:#2c3a42;line-height:1.55;white-space:pre-line;max-height:220px;overflow:auto">'+esc(_story.text)+'</div>'
+        +'<button type="button" onclick="_slCarryHistory()" style="margin-top:8px;font-size:var(--fs-xs);font-weight:700;color:var(--br);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:6px 11px;cursor:pointer">\u2193 Cargar historia al reporte</button>';
     }
     _slLoadWarranties(mine);
     _slLoadAccountStatus();
