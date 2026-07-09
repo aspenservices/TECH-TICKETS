@@ -9,7 +9,7 @@
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.2.8";
+const CACHE_VERSION = "v1.3.3";
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
