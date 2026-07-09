@@ -11664,6 +11664,8 @@ async function submitTkt(st){
       }
       var _off=!navigator.onLine;
       toast(st==="complete"?(_off?"Saved offline ✓ — will sync when back online":"Ticket sent ✓"):(_off?"Saved offline ↻ — will sync + added to Service Log":"Saved — Reschedule ↻ added to Service Log"),st==="complete"&&!_off?null:"warn");
+    // \u2b50 Ask the tech (their choice) whether to send the customer a Google review after completing.
+    if(st==="complete"){(function(_rvName){setTimeout(async function(){try{if(typeof confirmDialog==="function"&&await confirmDialog("\u00bfEnviar solicitud de Google review a "+_rvName+"?",{okText:"Enviar review",cancelText:"Ahora no"})){var _c=(typeof _convContact==="function")?_convContact(_rvName):null;requestReviewSMS(_rvName,(_c&&_c.phone)||"");}}catch(_e){}},450);})(cu);}
     }
     if(typeof clearDraft==="function")clearDraft();
     if(st==="complete"&&typeof celebrate==="function")celebrate({count:110});
@@ -12048,6 +12050,7 @@ function _convContact(name){
     if(ck===key&&(t.phone||t.email||t.address||t.customerPhone||t.customerEmail)){return {phone:t.phone||t.customerPhone||"",email:t.email||t.customerEmail||"",address:t.address||""};}
   }
   try{if(typeof _convState!=="undefined"&&_convState.events){for(var _j=0;_j<_convState.events.length;_j++){var _e=_convState.events[_j];if(_e&&_e.customerKey===key&&_e.meta&&(_e.meta.phone||_e.meta.address))return {phone:_e.meta.phone||"",email:"",address:_e.meta.address||""};}}}catch(_e2){}
+  try{if(typeof getCustData==="function"){var _gc=getCustData(name);if(_gc&&(_gc.phone||_gc.address||_gc.email))return {phone:_gc.phone||"",email:_gc.email||"",address:_gc.address||""};}}catch(_e3){}
   return {phone:"",email:"",address:""};
 }
 function _convAction(kind){
@@ -19005,8 +19008,10 @@ function openTktDetail(id){
   }
   h+='</div>';
   // Quick contact actions: Call + pre-written SMS templates
-  var _phClean=(t.phone||'').replace(/[^0-9+]/g,'');
-  if(t.phone&&_phClean){
+  var _phRaw=t.phone||'';
+  if(!_phRaw){try{var _gcp=(typeof getCustData==="function")?getCustData(t.customer):null;if(_gcp&&_gcp.phone)_phRaw=_gcp.phone;}catch(_e){}}
+  var _phClean=_phRaw.replace(/[^0-9+]/g,'');
+  if(_phClean){
     var _smsTech=(t.techs&&t.techs.length)?t.techs[0]:(currentUser?currentUser.name:'');
     var _signoff=" — "+_smsTech+", Aspen Spas";
     // Customer first name for a warmer greeting. Handles "Last, First" (the most
