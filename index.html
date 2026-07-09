@@ -20903,23 +20903,27 @@ async function custCreateTicket(){
     var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
     return k===selectedCustKey;
   });
-  if(!custTkts.length){
-    toast("No tickets found for this customer — cannot pre-fill","warn");
-    return;
-  }
-  var c={name:"",phone:"",phone2:"",email:"",address:"",city:"",zip:"",zone:""};
-  // Use the LONGEST customer-name variant as the canonical name (matches what
-  // the sidebar shows — "Ruck, Linda & Jim" beats just "Ruck, Linda").
+  // FIX (Jul 2026): build the new ticket from the on-screen customer form
+  // (the source of truth the user sees). This must work even when the customer
+  // has no tickets currently loaded in memory, or when the selected key was
+  // resolved via identity-matching to a different key space than _custGroupKey.
+  function _fv(id){var el=document.getElementById(id);return el?String(el.value||"").trim():"";}
+  var c={
+    name:_fv("custName"),phone:_fv("custPhone"),phone2:_fv("custPhone2"),email:_fv("custEmail"),
+    address:_fv("custAddr"),city:_fv("custCity"),zip:_fv("custZip"),zone:_fv("custZone")
+  };
+  // Fall back to ticket history only for fields the form left blank.
   custTkts.forEach(function(t){
-    if(!c.name||(t.customer&&t.customer.length>c.name.length))c.name=t.customer;
-    if(t.phone&&!c.phone)c.phone=t.phone;
-    if(t.phone2&&!c.phone2)c.phone2=t.phone2;
-    if(t.email&&!c.email)c.email=t.email;
-    if(t.address&&!c.address)c.address=t.address;
-    var _ec=effectiveCity(t);if(_ec&&!c.city)c.city=_ec;
-    if(t.zip&&!c.zip)c.zip=t.zip;
-    var _ez=effectiveZone(t);if(_ez&&!c.zone)c.zone=_ez;
+    if(!c.name&&t.customer)c.name=t.customer;
+    if(!c.phone&&t.phone)c.phone=t.phone;
+    if(!c.phone2&&t.phone2)c.phone2=t.phone2;
+    if(!c.email&&t.email)c.email=t.email;
+    if(!c.address&&t.address)c.address=t.address;
+    var _ec=effectiveCity(t);if(!c.city&&_ec)c.city=_ec;
+    if(!c.zip&&t.zip)c.zip=t.zip;
+    var _ez=effectiveZone(t);if(!c.zone&&_ez)c.zone=_ez;
   });
+  if(!c.name){toast("Open a customer first","warn");return;}
   // Gather all notes from history
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
