@@ -20535,6 +20535,25 @@ function qbCustRenderDetail(customers){
     });
     return out;
   }
+  // ONE continuous customer story (QB-style). Every ticket's notes are compiled
+  // into a single chronological history; lines already carried forward by prior
+  // tickets are de-duplicated so nothing repeats. Each tech's line keeps the date
+  // they wrote — nothing else added.
+  function _custCompiledStory(tickets){
+    var arr=(tickets||[]).slice().sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
+    var seen={},lines=[];
+    arr.forEach(function(t){
+      var raw=String(t.notes||"").replace(/\r/g,"").trim();
+      if(!raw)return;
+      raw.split(/\n+/).forEach(function(ln){
+        var line=ln.trim();if(!line)return;
+        var key=line.toLowerCase().replace(/\s+/g," ");
+        if(seen[key])return;
+        seen[key]=1;lines.push(line);
+      });
+    });
+    return {text:lines.join("\n"),count:lines.length};
+  }
   // ── TAB BODY
   h+='<div class="qb-cust-tab-body">';
   if(qbCustTab==="info"){
@@ -20545,32 +20564,14 @@ function qbCustRenderDetail(customers){
       // ── MERGE by job (QB-style): a request (ACTIVE) and its completion (DONE)
       //    for the same customer+date+work-type collapse into ONE continuous line.
       //    Service History tab still shows every ticket individually.
-      var _jobs=_custMergeJobs(sorted);
-      var _log=_jobs.slice().sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
-      h+='<div style="border:1px solid var(--ln);border-radius:12px;overflow:hidden;background:var(--cd)">';
-      _log.forEach(function(t,idx){
-        var isCanceled=t.status==="canceled",isDone=t.status==="done";
-        var techs=(t.techs||[]).join(", ")||"\u2014";
-        var wt=(t.workTypes||[]).join(", ");
-        var idJS=String(t.id||'').replace(/'/g,"\\'");
-        var tag=isCanceled?'<span style="font-size:10px;font-weight:800;color:var(--c-warning-fg);letter-spacing:.3px">CANCELED</span>':(isDone?'<span style="font-size:10px;font-weight:800;color:var(--c-success-fg);letter-spacing:.3px">DONE</span>':'<span style="font-size:10px;font-weight:800;color:var(--ac);letter-spacing:.3px">ACTIVE</span>');
-        var qb=(t&&t.qbCopied)?'<span style="font-size:10px;color:var(--i3)">\u00b7 in QB</span>':'';
-        var visits=(t._mergedCount>1)?'<span style="font-size:10px;color:var(--i3)">\u00b7 '+t._mergedCount+' visits</span>':'';
-        var warr=_svcWarrantyBadge(t)||'';
-        var noteTxt=String(t.notes||"").trim();
-        h+='<div onclick="_custNoteToggle(\''+idJS+'\')" style="padding:12px 14px;'+(idx?'border-top:1px solid var(--ln);':'')+'cursor:pointer;'+(isDone?'background:rgba(46,125,70,.045);':'')+'">';
-        h+='<div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:4px">';
-        h+='<span style="font-weight:800;color:var(--ink);font-size:13px">'+esc(t.date||"\u2014")+'</span>';
-        h+=_techAvatars(t,15)+'<span style="font-size:12.5px;color:var(--i2);font-weight:600">'+esc(techs)+'</span>';
-        if(wt)h+='<span style="font-size:12px;color:var(--i3)">\u00b7 '+esc(wt)+'</span>';
-        h+=tag+qb+visits;
-        h+='</div>';
-        if(noteTxt)h+='<div style="font-size:13.5px;color:#374850;line-height:1.55;white-space:pre-line">'+esc(noteTxt)+'</div>';
-        if(warr)h+='<div style="margin-top:6px">'+warr+'</div>';
-        h+='<div id="cnb_'+esc(t.id||"")+'" style="display:none;margin-top:10px;border-top:1px dashed var(--ln);padding-top:10px">'+_c360ExpandBodyHTML(t)+'</div>';
-        h+='</div>';
-      });
-      h+='</div>';
+      var _story=_custCompiledStory(c.tickets);
+      if(!_story.text){
+        h+='<div style="text-align:center;padding:34px 20px;color:var(--i3);font-size:var(--fs-base)">No notes yet for this customer.</div>';
+      }else{
+        h+='<div style="border:1px solid var(--ln);border-radius:12px;background:var(--cd);padding:15px 16px">'
+          +'<div style="font-size:13.5px;color:#2c3a42;line-height:1.65;white-space:pre-line">'+esc(_story.text)+'</div>'
+          +'</div>';
+      }
     }
   }else if(qbCustTab==="photos"){
     if(!_allPhotos.length){
