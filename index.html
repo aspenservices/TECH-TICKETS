@@ -2868,7 +2868,8 @@ body.dark-mode .bottom-nav{background:rgba(22,22,24,.62)}
 </div>
 
 <!-- ══ ACTIVE ══ -->
-<div class="wrap" id="pg1" style="max-width:none"><div id="dailySummary" style="margin:0 0 12px"></div><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="dailyFilters" style="margin:0 0 8px"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div></div></div>
+<div class="wrap" id="pg1" style="max-width:none">
+  <div id="dailyCapacity" style="margin-bottom:12px"></div><div id="dailySummary" style="margin:0 0 12px"></div><div id="welcomeKPIs" class="kpi-wrap" style="display:none"></div><div class="search-wrap"><input class="search-bar" id="searchActive" placeholder="Search tickets..." oninput="rndrA()"></div><div id="qbCopyToday" style="display:none;margin:0 0 12px;padding:8px 14px;background:var(--c-money-bg);color:var(--c-money-fg);border-radius:10px;font-size:var(--fs-sm);font-weight:700;display:inline-flex;align-items:center;gap:8px"></div><div id="techReminder"></div><div id="dailyFilters" style="margin:0 0 8px"></div><div id="pcDailyBar" style="margin:0 0 10px"></div><div id="ticketsSplit"><div id="aList"></div></div></div>
 <!-- ══ COMPLETED ══ -->
 <div class="wrap" id="pg2"><div class="search-wrap"><input class="search-bar" id="searchDone" placeholder="Search completed tickets..." oninput="rndrD()"></div><div id="cList"></div></div>
 
@@ -3060,7 +3061,7 @@ body.dark-mode .bottom-nav{background:rgba(22,22,24,.62)}
 <div class="wrap" id="pg3">
   <!-- METRICS DASHBOARD (Jul 2026) — read-only, computed from loaded tickets, zero reads -->
   <div id="aspenMetrics"></div>
-  <div id="auditLogPanel" style="background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:var(--fs-md);font-weight:800;color:var(--br)">📋 Audit log</div><button onclick="_auditLoad()" style="margin-left:auto;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:7px 12px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">Cargar últimos 100</button></div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">Quién canceló o borró tickets · se carga bajo demanda</div><div id="auditLogBody" style="margin-top:10px"></div></div>
+  <div id="auditLogPanel" style="background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:var(--fs-md);font-weight:800;color:var(--br)">📋 Audit log</div><button onclick="_auditLoad()" style="margin-left:auto;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:7px 12px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">Cargar últimos 100</button></div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">Cancelaciones · borrados · overrides de garantía · acciones masivas · bajo demanda</div><div id="auditLogBody" style="margin-top:10px"></div></div>
   <!-- Welcome dashboard with animated count-up KPIs (rendered by rndrAdminWelcome) -->
   <div id="adminWelcome"></div>
   <!-- DATA SAFETY (Jul 2026): one-tap full JSON snapshot. Everything the app
@@ -3418,6 +3419,7 @@ body.dark-mode .bottom-nav{background:rgba(22,22,24,.62)}
 
 <!-- ══ CALENDAR PAGE ══ -->
 <div class="wrap" id="pg4">
+  <div id="calCapacity" style="margin-bottom:12px"></div>
   <div class="cal-wrap">
     <div class="cal-main">
       <div id="calCcReminders"></div>
@@ -4780,6 +4782,7 @@ function _frMaybeLogOverride(customer,finalLabel,finalHas){
     if(WAR_LOG.length>300)WAR_LOG.length=300;
     saveWarrantyLog();
     try{rndrWarrantyLog()}catch(_e){}
+    try{_audit("warranty",{customer:(_frOverridePending&&_frOverridePending.customer)||customer||"",note:autoLabel+" → "+(finalLabel||"N/W")});}catch(_a){}
   }
   _frOverridePending=null;
 }
@@ -5759,8 +5762,11 @@ function _metricsRender(){
     var completed=all.filter(function(t){return (t.status==="done"||t.fieldReportSubmitted)&&t.status!=="canceled";});
     function dOf(t){var v=(t.date||"").trim();if(!v)return null;var dt=new Date(v+"T00:00:00");return isNaN(dt)?null:dt;}
     var now=new Date();
-    var mStart=new Date(now.getFullYear(),now.getMonth(),1);
-    var monthT=completed.filter(function(t){var dt=dOf(t);return dt&&dt>=mStart;});
+    var _gp=(window._admPeriod||"month");
+    var mStart=null;
+    if(_gp==="month")mStart=new Date(now.getFullYear(),now.getMonth(),1);
+    else if(_gp==="week"){mStart=new Date(now);mStart.setDate(now.getDate()-now.getDay());mStart.setHours(0,0,0,0);}
+    var monthT=completed.filter(function(t){var dt=dOf(t);return dt&&(!mStart||dt>=mStart);});
     var monthMoney=monthT.reduce(function(sm,t){return sm+_metricsMoney(t);},0);
     var reworks=monthT.filter(function(t){return Number(t.visitNum)===4||Number(t.visitNum)===2;}).length;
     var ftfRate=monthT.length?Math.round((1-reworks/monthT.length)*100):0;
@@ -5795,11 +5801,138 @@ function _metricsRender(){
     box.innerHTML=h;
   }catch(e){try{var b=document.getElementById("aspenMetrics");if(b)b.innerHTML="";}catch(_){}console.warn("[metrics]",e);}
 }
+function _adminGroup(key,title,openDef,ids){
+  var pg=document.getElementById("pg3");if(!pg)return null;
+  var g=document.createElement("div");g.id="adminGrp"+key;g.style.cssText="margin:0 0 14px;border:1px solid var(--ln);border-radius:16px;background:var(--cd);overflow:hidden";
+  var stored=null;try{stored=localStorage.getItem("adminGrp"+key)}catch(_e){}
+  var isOpen=stored===null?openDef:stored==="1";
+  var hd=document.createElement("div");hd.style.cssText="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;font-weight:800;color:var(--br);text-transform:uppercase;letter-spacing:.6px;font-size:var(--fs-sm);user-select:none";
+  hd.innerHTML="<span>"+title+"</span><span id=\"adminGrpArr"+key+"\" style=\"margin-left:auto;transition:transform .2s;color:var(--i3)\">▾</span>";
+  var bd=document.createElement("div");bd.id="adminGrpBody"+key;bd.style.cssText="padding:0 12px 12px";
+  hd.onclick=function(){var vis=bd.style.display!=="none";bd.style.display=vis?"none":"";var ar=document.getElementById("adminGrpArr"+key);if(ar)ar.style.transform=vis?"rotate(-90deg)":"";try{localStorage.setItem("adminGrp"+key,vis?"0":"1")}catch(_e){}};
+  if(!isOpen){bd.style.display="none";var _a0=hd.querySelector("#adminGrpArr"+key);if(_a0)_a0.style.transform="rotate(-90deg)";}
+  g.appendChild(hd);g.appendChild(bd);pg.appendChild(g);
+  (ids||[]).forEach(function(id){var el=document.getElementById(id);if(!el)return;var card=el.closest(".card")||el;bd.appendChild(card);card.style.marginBottom="12px";});
+  return bd;
+}
+async function _brainMapRender(){
+  // Retired (Jul 2026, Alberto): the animated 3D canvas made the app feel heavy.
+  try{if(window._brainRAF)cancelAnimationFrame(window._brainRAF);}catch(_e){}
+  var box=document.getElementById("brainMapBox");if(box)box.innerHTML="";
+}
+function _admCollapsify(card,key){
+  try{
+    if(!card||card._cz)return;card._cz=1;
+    card.style.position="relative";
+    var btn=document.createElement("button");btn.className="admCzBtn";btn.innerHTML="▾";btn.title="Contraer / desplegar";
+    var coll=false;try{coll=localStorage.getItem("admColl_"+key)==="1";}catch(_e){}
+    function apply(){card.classList.toggle("admCollapsed",coll);btn.style.transform=coll?"rotate(-90deg)":"";}
+    apply();
+    btn.onclick=function(e){e.stopPropagation();coll=!coll;apply();try{localStorage.setItem("admColl_"+key,coll?"1":"0")}catch(_e){}};
+    card.appendChild(btn);
+  }catch(_e){}
+}
+function _admSetPeriod(pp){
+  try{window._admPeriod=pp;localStorage.setItem("admPeriod",pp);}catch(_e){window._admPeriod=pp;}
+  try{_ftfPeriod=pp;}catch(_e){}
+  try{var sel=document.getElementById("adminStatPeriod");if(sel)sel.value=pp;}catch(_e){}
+  try{rndrAdminFTF()}catch(_e){}
+  try{rndrAdminStats();if(typeof _statVisitCompact==="function")_statVisitCompact();}catch(_e){}
+  try{_metricsRender()}catch(_e){}
+  try{document.querySelectorAll("#admPeriodPills button").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-p")===pp);});}catch(_e){}
+}
+function _adminOrganize(){
+  // ADMIN CEO v4 (Jul 2026): sticky nav + editorial columns + global period +
+  // universal card collapse. Tech/Users/Zips en Sistema. Logout/Auto-cleanup ocultos.
+  try{
+    if(window._adminOrganized)return;
+    var pg=document.getElementById("pg3");if(!pg)return;
+    if(!document.getElementById("adminCeoCss")){
+      var css=document.createElement("style");css.id="adminCeoCss";
+      css.textContent=".welcome-hero>div:first-child{font-size:34px!important;letter-spacing:-.6px!important;}"
+        +"#pg3 .kpi-card{border-radius:18px!important;box-shadow:0 8px 26px rgba(19,42,60,.10)!important;transition:transform .15s;}"
+        +"#pg3 .kpi-card:hover{transform:translateY(-2px);}"
+        +".admLayout{display:grid;grid-template-columns:188px minmax(0,1fr);gap:24px;align-items:start;}"
+        +".admNav{position:sticky;top:10px;display:flex;flex-direction:column;gap:3px;z-index:20;}"
+        +".admNav a{padding:10px 13px;border-radius:11px;font-size:var(--fs-sm);font-weight:700;color:var(--i2);cursor:pointer;display:flex;gap:9px;align-items:center;user-select:none;}"
+        +".admNav a.on{background:var(--cd);color:var(--ink);box-shadow:0 2px 10px rgba(30,25,15,.10);border:1px solid var(--ln);}"
+        +"#admPeriodPills{display:flex;gap:4px;background:var(--c-ash-2,#eee8dd);border-radius:11px;padding:4px;margin-bottom:10px;}"
+        +"#admPeriodPills button{flex:1;border:none;background:transparent;padding:8px 4px;border-radius:8px;font-weight:800;font-size:var(--fs-xs);color:var(--i2);cursor:pointer;}"
+        +"#admPeriodPills button.on{background:var(--cd);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.12);}"
+        +".admSec{margin-bottom:36px;}"
+        +".admSecHdr{font-size:19px;font-weight:800;letter-spacing:-.3px;color:var(--ink);}"
+        +".admSecSub{font-size:12.5px;color:var(--i3);margin:2px 0 14px;}"
+        +".admCols{column-count:2;column-gap:14px;}"
+        +".admCols>*{break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 14px!important;display:block;width:100%;}"
+        +".admOne>*{margin:0 0 14px!important;}"
+        +".admCzBtn{position:absolute;top:9px;right:9px;z-index:6;width:26px;height:26px;border-radius:8px;border:1px solid var(--ln);background:var(--cd);color:var(--i3);font-weight:800;cursor:pointer;transition:transform .15s;line-height:1;}"
+        +".admCollapsed{max-height:58px;overflow:hidden;}"
+        +".admCollapsed::after{content:\"\";position:absolute;left:0;right:0;bottom:0;height:16px;background:linear-gradient(rgba(255,255,255,0),var(--cd));}"
+        +"#adminStatPeriod{display:none!important;}"
+        +"[id^=admin][id$=Arrow]{display:none!important;}"
+        +"@media(max-width:920px){.admLayout{grid-template-columns:1fr;}.admNav{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px;align-items:center;}.admNav a{white-space:nowrap;}#admPeriodPills{margin:0 8px 0 0;flex:none;}.admCols{column-count:1;}}";
+      document.head.appendChild(css);
+    }
+    ["billingRoundBody","warLogBody","adminSpaWorklist","adminOrphans","svcWarrantyPanel"].forEach(function(id){var el=document.getElementById(id);if(el){var c=el.closest(".card")||el;c.style.display="none";}});
+    ["Tech","User","Zip","StatTech","StatVisit"].forEach(function(k){try{localStorage.setItem("admin"+k+"Collapsed","0")}catch(_e){}});
+    try{_applyAdminCollapse()}catch(_e){}
+    try{window.adminToggleSection=function(){}}catch(_e){}
+    var SECS=[
+      {k:"Resumen",ico:"📊",sub:"Lo esencial de hoy y del mes",ids:["adminWelcome"],one:true},
+      {k:"Dinero",ico:"💰",sub:"Facturación y métricas",ids:["aspenMetrics"],one:true},
+      {k:"Equipo",ico:"🏆",sub:"Rendimiento del equipo",ids:["adminFTF","adminStatTechBody"]},
+      {k:"Reportes",ico:"🛡️",sub:"Tipos de visita y garantías",ids:["adminStatVisitBody","warByYearCard"]},
+      {k:"Cerebro",ico:"🧠",sub:"Actividad cross-app y auditoría",ids:["adminBrainBody","auditLogPanel"]},
+      {k:"Sistema",ico:"⚙️",sub:"Equipo, zonas, operación y configuración",ids:["adminCapacity","adminTechBody","adminUserBody","adminZipBody","adminRepeatResched","adminFollowUps","backupCard","billingExportCard","aiKeyStatus"]}
+    ];
+    var lay=document.createElement("div");lay.className="admLayout";
+    var nav=document.createElement("div");nav.className="admNav";
+    var content=document.createElement("div");content.style.minWidth="0";
+    lay.appendChild(nav);lay.appendChild(content);pg.appendChild(lay);
+    var pills=document.createElement("div");pills.id="admPeriodPills";
+    [["week","Semana"],["month","Mes"],["all","Todo"]].forEach(function(pdef){var b=document.createElement("button");b.setAttribute("data-p",pdef[0]);b.textContent=pdef[1];b.onclick=function(){_admSetPeriod(pdef[0]);};pills.appendChild(b);});
+    nav.appendChild(pills);
+    SECS.forEach(function(sc){
+      var a=document.createElement("a");a.setAttribute("data-k",sc.k);a.innerHTML=sc.ico+" "+sc.k;
+      a.onclick=function(){var el=document.getElementById("admSec"+sc.k);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
+      nav.appendChild(a);
+      var sec=document.createElement("div");sec.className="admSec";sec.id="admSec"+sc.k;sec.setAttribute("data-k",sc.k);
+      sec.innerHTML='<div class="admSecHdr">'+sc.ico+" "+sc.k+'</div><div class="admSecSub">'+sc.sub+'</div>';
+      var body=document.createElement("div");body.className=sc.one?"admOne":"admCols";
+      sec.appendChild(body);content.appendChild(sec);
+      sc.ids.forEach(function(id){var el=document.getElementById(id);if(!el)return;var card=el.closest(".card")||el;body.appendChild(card);_admCollapsify(card,id);});
+    });
+    Array.prototype.forEach.call(pg.children,function(ch){if(ch===lay)return;if(ch&&ch.style)ch.style.display="none";});
+    try{
+      var io=new IntersectionObserver(function(ents){
+        ents.forEach(function(en){
+          if(en.isIntersecting){var k=en.target.getAttribute("data-k");
+            nav.querySelectorAll("a").forEach(function(aa){aa.classList.toggle("on",aa.getAttribute("data-k")===k);});}
+        });
+      },{rootMargin:"-15% 0px -70% 0px"});
+      content.querySelectorAll(".admSec").forEach(function(el){io.observe(el);});
+      var f=nav.querySelector("a");if(f)f.classList.add("on");
+    }catch(_io){}
+    window._adminOrganized=true;
+    var savedP="month";try{savedP=localStorage.getItem("admPeriod")||"month";}catch(_e){}
+    _admSetPeriod(savedP);
+  }catch(e){console.warn("[admin organize]",e);}
+}
+function _adminNavShow(k){
+  try{
+    ["Resumen","Equipo","Garantias","Cerebro","Sistema"].forEach(function(t){
+      var sc2=document.getElementById("admSec"+t);if(sc2)sc2.classList.toggle("on",t===k);
+      var b2=document.getElementById("admNavBtn"+t);if(b2)b2.classList.toggle("on",t===k);
+    });
+    try{localStorage.setItem("adminNav",k);}catch(_e){}
+  }catch(_e){}
+}
+
 function rndrAdmin(){
   // Re-run dispatch cleanup when admin opens this tab. Debounced to 30s so
   // rapid tab-switching doesn't hammer Firestore.
   try{_runDispatchCleanup({silent:true,force:false})}catch(e){console.warn("[admin cleanup]",e)}
-  rndrAdminWelcome();try{_metricsRender()}catch(_me){}rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();rndrBillingCard();rndrWarrantyLog();rndrSpaDataWorklist();rndrWarByYear();_applyAdminCollapse();
+  rndrAdminWelcome();try{_metricsRender()}catch(_me){}rndrAdminCapacity();rndrAdminOrphans();rndrAdminFTF();rndrAdminRepeatResched();rndrAdminFollowUps();rndrSvcWarranty();rndrAdminTechs();rndrAdminUsers();rndrAdminZips();rndrAdminStats();try{_statVisitCompact()}catch(_sv){}rndrBillingCard();rndrWarrantyLog();rndrSpaDataWorklist();rndrWarByYear();_applyAdminCollapse();try{_adminOrganize()}catch(_oe){}
   try{renderAIKeyStatus()}catch(_e){}
 }
 
@@ -5947,6 +6080,54 @@ function _sharedReportVictims(){
   });
   return victims;
 }
+var _lastOrphanHealAt=0;
+async function _autoHealOrphans(){
+  // ROOT FIX (Jul 2026, Alberto): orphan dispatches (closed without a real matching
+  // field report) are now healed AUTOMATICALLY the moment they appear — same
+  // detection the old admin panel used, same fresh-read hardening as the victim
+  // healer, every heal recorded in the Audit log. The admin panel is retired.
+  try{
+    if(!db)return 0;
+    if(!currentUser||currentUser.role==="tech")return 0;
+    if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return 0;
+    if(Date.now()-_lastOrphanHealAt<60000)return 0;
+    _lastOrphanHealAt=Date.now();
+    var idx=_buildFieldReportIndex();
+    var _pool=[].concat(active||[],done||[]);
+    var _closed=_pool.filter(function(t){return t.source==="dispatch"&&t.fieldReportSubmitted&&t.status!=="canceled"&&!t.cleanupExempt;});
+    var orphans=_closed.filter(function(t){
+      var cust=_custGroupKey(t.customer);var dt=(t.date||"").trim();
+      if(cust&&dt&&idx.fieldReportKeys.has(cust+"|"+dt))return false;
+      var dispatchCreatedMs=_ticketCreatedMs(t);var todayStr=fmtD(new Date());
+      if(cust&&dt&&_hasMatchingReport(cust,dt,dispatchCreatedMs,idx.customerReports,todayStr))return false;
+      return true;
+    }).slice(0,15);
+    var healed=0;
+    for(var i=0;i<orphans.length;i++){
+      var v=orphans[i];
+      try{
+        var snap=await db.collection("tickets").doc(v.id).get();
+        if(!snap.exists)continue;
+        var d=snap.data()||{};
+        if(d.fieldReportSubmitted!==true)continue;
+        if(d.status==="canceled")continue;
+        if(d.cleanupExempt===true)continue;
+        await db.collection("tickets").doc(v.id).update({
+          fieldReportSubmitted:false,
+          cleanupExempt:true,
+          restoredBy:"auto-orphan-restore",
+          fieldReportId:firebase.firestore.FieldValue.delete(),
+          fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
+          cleanedUpBy:firebase.firestore.FieldValue.delete()
+        });
+        try{_audit("orphan-heal",{ticketId:v.id,customer:v.customer||"",note:"auto-restored to calendar (closed without matching report)"});}catch(_a){}
+        healed++;
+      }catch(_ve){console.warn("[orphan-heal]",v.id,_ve);}
+    }
+    if(healed)console.log("[orphan-heal] restored",healed);
+    return healed;
+  }catch(e){console.warn("[orphan-heal]",e);return 0;}
+}
 var _lastVictimHealAt=0;
 async function _autoHealSharedVictims(){
   try{
@@ -6000,15 +6181,20 @@ function _capNextDay(){var d=new Date(_capGetDate()+"T12:00:00");d.setDate(d.get
 function _capResetToday(){_capSetDate(fmtD(new Date()))}
 
 function rndrAdminCapacity(){
-  var el=document.getElementById("adminCapacity");if(!el)return;
-  if(!isAdmin){el.innerHTML="";return}
-  if(typeof heatmapHTML!=="function"){el.innerHTML="";return}
-  var allTkts=[].concat(active||[],done||[]);
-  el.innerHTML=heatmapHTML(allTkts,_capGetDate());
+  // Mirrors (Jul 2026): the same Daily Capacity banner also renders at the top of
+  // Calendar and Daily so managers (Alberto/Nela) see who still owes reports.
+  var html=null;
+  ["adminCapacity","calCapacity","dailyCapacity"].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    var mgr=(typeof currentUser!=="undefined"&&currentUser&&currentUser.role!=="tech");
+    if(!mgr||typeof heatmapHTML!=="function"){el.innerHTML="";return;}
+    if(html===null){var allTkts=[].concat(active||[],done||[]);html=heatmapHTML(allTkts,_capGetDate());}
+    el.innerHTML=html;
+  });
 }
 // Apply collapsed state on render based on localStorage (default: Tech/User collapsed, Stats expanded)
 function _applyAdminCollapse(){
-  [{k:"Tech",def:true},{k:"User",def:true},{k:"Zip",def:true},{k:"StatTech",def:false},{k:"StatVisit",def:false}].forEach(function(o){
+  [{k:"Tech",def:true},{k:"User",def:true},{k:"Zip",def:true},{k:"StatTech",def:false},{k:"StatVisit",def:true}].forEach(function(o){
     var body=document.getElementById("admin"+o.k+"Body");
     var arr=document.getElementById("admin"+o.k+"Arrow");
     if(!body||!arr)return;
@@ -6264,7 +6450,7 @@ var _obTimer=null,_obDelay=15000;
 async function _obTick(){try{var n=await _obCount();if(n>0){if(typeof navigator==="undefined"||navigator.onLine!==false){await _obRetryNow();}await _obUpdateChip(false);_obDelay=Math.min(Math.round(_obDelay*1.6),120000);}else{_obDelay=15000;await _obUpdateChip(false);}}catch(_e){}clearTimeout(_obTimer);_obTimer=setTimeout(_obTick,_obDelay);}
 function _tktCust(id){try{var t=[].concat(active||[],done||[]).find(function(x){return String(x.id)===String(id);});return t?(t.customer||""):"";}catch(_e){return "";}}
 function _audit(action,opts){try{if(!db)return;opts=opts||{};db.collection("auditLog").add({at:firebase.firestore.FieldValue.serverTimestamp(),atMs:Date.now(),by:(currentUser&&currentUser.name)||"?",action:String(action||""),ticketId:opts.ticketId||"",customer:opts.customer||"",note:opts.note||""}).catch(function(){});}catch(_e){}}
-async function _auditLoad(){var box=document.getElementById("auditLogBody");if(!box)return;box.innerHTML='<div style="color:var(--i3);padding:8px 0">Cargando…</div>';try{if(!db){box.innerHTML="";return;}var snap=await db.collection("auditLog").orderBy("atMs","desc").limit(100).get();var rows=snap.docs.map(function(d){return d.data();});if(!rows.length){box.innerHTML='<div style="color:var(--i3);padding:8px 0">Sin registros aún.</div>';return;}box.innerHTML=rows.map(function(r){var when=r.atMs?new Date(r.atMs).toLocaleString():"";var col=r.action==="deleted"?"var(--c-danger-fg)":(r.action==="canceled"?"var(--c-warning-fg)":"var(--i2)");return '<div style="display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--ln);font-size:var(--fs-sm);align-items:baseline"><span style="color:var(--i3);min-width:118px;font-size:var(--fs-xs)">'+esc(when)+'</span><span style="font-weight:800;color:'+col+';min-width:70px;text-transform:uppercase;font-size:var(--fs-xs)">'+esc(r.action||"")+'</span><span style="flex:1;color:var(--ink);min-width:0">'+esc(r.customer||"")+(r.note?' — '+esc(r.note):'')+'</span><span style="color:var(--i3)">'+esc(r.by||"")+'</span></div>';}).join("");}catch(e){box.innerHTML='<div style="color:var(--c-danger-fg);padding:8px 0">Error</div>';}}
+async function _auditLoad(){var box=document.getElementById("auditLogBody");if(!box)return;box.innerHTML='<div style="color:var(--i3);padding:8px 0">Cargando…</div>';try{if(!db){box.innerHTML="";return;}var snap;try{snap=await db.collection("auditLog").orderBy("atMs","desc").limit(100).get();}catch(_oe){snap=await db.collection("auditLog").limit(100).get();}var rows=snap.docs.map(function(d){return d.data();});rows.sort(function(x,y){return (y.atMs||0)-(x.atMs||0);});if(!rows.length){box.innerHTML='<div style="color:var(--i3);padding:8px 0">Sin registros aún.</div>';return;}box.innerHTML=rows.map(function(r){var when=r.atMs?new Date(r.atMs).toLocaleString():"";var col=r.action==="deleted"?"var(--c-danger-fg)":(r.action==="canceled"?"var(--c-warning-fg)":"var(--i2)");return '<div style="display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--ln);font-size:var(--fs-sm);align-items:baseline"><span style="color:var(--i3);min-width:118px;font-size:var(--fs-xs)">'+esc(when)+'</span><span style="font-weight:800;color:'+col+';min-width:70px;text-transform:uppercase;font-size:var(--fs-xs)">'+esc(r.action||"")+'</span><span style="flex:1;color:var(--ink);min-width:0">'+esc(r.customer||"")+(r.note?' — '+esc(r.note):'')+'</span><span style="color:var(--i3)">'+esc(r.by||"")+'</span></div>';}).join("");}catch(e){box.innerHTML='<div style="color:var(--c-danger-fg);padding:8px 0">Error</div>';}}
 function _reviewCustTickets(name){
   var k=(typeof _custGroupKey==="function")?_custGroupKey(name):String(name||"").toLowerCase();
   var ct=[].concat(active||[],done||[]).filter(function(t){var kk=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").toLowerCase();return kk===k&&(t.status==="done"||t.fieldReportSubmitted);});
@@ -6364,11 +6550,38 @@ function _dmEnsureDom(){
   _dmMakeDraggable(fab);
   var panel=document.createElement("div");
   panel.id="dmPanel";
-  panel.style.cssText="position:fixed;right:12px;bottom:150px;width:min(340px,calc(100vw - 24px));max-height:min(480px,calc(100dvh - 170px));background:#fff;border:1px solid var(--ln);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.22);z-index:4400;display:none;flex-direction:column;overflow:hidden";
-  panel.innerHTML='<div id="dmHead" style="display:flex;align-items:center;gap:8px;padding:11px 13px;background:var(--br);color:#fff"></div>'
+  panel.style.cssText="position:fixed;right:12px;bottom:150px;width:min(360px,calc(100vw - 24px));height:min(500px,calc(100dvh - 170px));background:rgba(250,248,244,.72);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);border:1px solid rgba(255,255,255,.55);border-radius:20px;box-shadow:0 22px 60px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.5);z-index:4400;display:none;flex-direction:column;overflow:hidden";
+  panel.innerHTML='<div id="dmHead" style="display:flex;align-items:center;gap:8px;padding:11px 13px;background:rgba(19,42,60,.68);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#fff"></div>'
     +'<div id="dmBody" style="flex:1;overflow:auto;min-height:200px"></div>'
     +'<div id="dmFoot" style="border-top:1px solid var(--ln)"></div>';
   document.body.appendChild(panel);
+  try{_dmGlassInit(panel)}catch(_gz){}
+}
+function _dmGlassInit(panel){
+  if(!panel||panel._rz)return;panel._rz=1;
+  try{var w=localStorage.getItem("dmW"),h2=localStorage.getItem("dmH");if(w)panel.style.width=Math.min(Number(w),window.innerWidth-24)+"px";if(h2)panel.style.height=Math.min(Number(h2),window.innerHeight-40)+"px";}catch(_e){}
+  var grip=document.createElement("div");grip.id="dmGrip";grip.title="Arrastra para redimensionar · doble toque = expandir";
+  grip.style.cssText="position:absolute;top:0;left:0;width:34px;height:34px;cursor:nwse-resize;z-index:12;touch-action:none;display:flex;align-items:flex-start;justify-content:flex-start;padding:7px";
+  grip.innerHTML='<span style="width:14px;height:14px;border-top:2.5px solid rgba(255,255,255,.85);border-left:2.5px solid rgba(255,255,255,.85);border-radius:4px 0 0 0;display:block"></span>';
+  panel.appendChild(grip);
+  var sx,sy,sw,sh,moved;
+  grip.addEventListener("pointerdown",function(e){
+    e.preventDefault();grip.setPointerCapture(e.pointerId);moved=false;
+    sx=e.clientX;sy=e.clientY;var r=panel.getBoundingClientRect();sw=r.width;sh=r.height;panel.style.maxHeight="none";
+    function mv(ev){var dx=sx-ev.clientX,dy=sy-ev.clientY;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+      panel.style.width=Math.min(Math.max(sw+dx,300),window.innerWidth-24)+"px";
+      panel.style.height=Math.min(Math.max(sh+dy,340),window.innerHeight-40)+"px";}
+    function up(){grip.removeEventListener("pointermove",mv);grip.removeEventListener("pointerup",up);
+      try{var r2=panel.getBoundingClientRect();localStorage.setItem("dmW",Math.round(r2.width));localStorage.setItem("dmH",Math.round(r2.height));}catch(_e){}}
+    grip.addEventListener("pointermove",mv);grip.addEventListener("pointerup",up);
+  });
+  var lastTap=0;
+  grip.addEventListener("pointerup",function(){var t=Date.now();if(t-lastTap<350){_dmToggleExpand(panel);}lastTap=t;});
+}
+function _dmToggleExpand(panel){
+  if(!panel)panel=document.getElementById("dmPanel");if(!panel)return;
+  if(panel._big){panel.style.width=(panel._pw||360)+"px";panel.style.height=(panel._ph||500)+"px";panel._big=false;}
+  else{var r=panel.getBoundingClientRect();panel._pw=Math.round(r.width);panel._ph=Math.round(r.height);panel.style.maxHeight="none";panel.style.width=Math.min(window.innerWidth-24,860)+"px";panel.style.height=(window.innerHeight-40)+"px";panel._big=true;}
 }
 function _dmInit(){
   if(!currentUser){ // logout — teardown
@@ -6419,29 +6632,35 @@ function _dmRoster(){
 function _dmRenderList(){
   _dm.view="list";_dm.peer=null;
   if(_dm.unsubMsgs){try{_dm.unsubMsgs();}catch(_e){}_dm.unsubMsgs=null;}
-  document.getElementById("dmHead").innerHTML='<span style="font-weight:800">\uD83D\uDCAC Messages</span><button onclick="closeTeamChat()" style="margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer">\u00d7</button>';
+  document.getElementById("dmHead").innerHTML='<span style="font-weight:800;letter-spacing:.3px">💬 Mensajes</span><button onclick="closeTeamChat()" style="margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer">×</button>';
   var me=currentUser&&currentUser.name;
-  var h='<div onclick="_dmOpenGroup()" style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--ln);cursor:pointer">'
-    +'<div style="width:38px;height:38px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">\uD83D\uDC65</div>'
-    +'<div style="min-width:0;flex:1"><div style="font-weight:700;color:var(--i1)">Team (everyone)</div><div style="font-size:var(--fs-xs);color:var(--i3)">Group channel</div></div></div>';
-  _dm.threads.forEach(function(t){
+  var PAL=["#134A63","#1C8FA8","#B5733A","#2E8B57","#7A4FBF","#C0492F","#B58A1C","#4F6D7A"];
+  function colOf(n){var hh=0;n=String(n||"");for(var i2=0;i2<n.length;i2++)hh=(hh*31+n.charCodeAt(i2))>>>0;return PAL[hh%PAL.length];}
+  function ini(n){var pp=String(n||"?").trim().split(/\s+/);return ((pp[0]||"?")[0]+((pp[1]||"")[0]||"")).toUpperCase();}
+  function isOn(nm){try{return !!_presIsOnline(_presenceUsers[nm]);}catch(_e){return false;}}
+  var roster=_dmRoster();
+  var h='<div style="padding:12px 12px 2px"><div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Nuevo mensaje</div>'
+   +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">'
+   +roster.map(function(n){return '<div data-p="'+esc(n)+'" onclick="_dmOpenThread(this.dataset.p)" style="flex:none;width:58px;text-align:center;cursor:pointer;position:relative"><div style="width:48px;height:48px;margin:0 auto;border-radius:50%;background:'+colOf(n)+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.14)'+(isOn(n)?';outline:2.5px solid #2fbf71;outline-offset:2px':'')+'">'+esc(ini(n))+'</div>'+(isOn(n)?'<span style="position:absolute;top:36px;right:4px;width:12px;height:12px;border-radius:50%;background:#2fbf71;border:2.5px solid #fff"></span>':'')+'<div style="font-size:10.5px;color:var(--i2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(n)+'</div></div>';}).join("")
+   +'</div></div>';
+  h+='<div onclick="_dmOpenGroup()" style="display:flex;gap:12px;align-items:center;margin:2px 12px 10px;padding:12px 13px;border-radius:14px;cursor:pointer;background:linear-gradient(135deg,#134A63,#1C8FA8);color:#fff;box-shadow:0 3px 10px rgba(19,74,99,.25)">'
+   +'<div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:20px">👥</div>'
+   +'<div style="min-width:0;flex:1"><div style="font-weight:800">Team (everyone)</div><div style="font-size:var(--fs-xs);opacity:.85">Canal del equipo</div></div><span style="opacity:.7;font-size:18px">›</span></div>';
+  var th=(_dm.threads||[]).slice().sort(function(a,b2){var ta=a.last&&a.last.ts&&a.last.ts.toMillis?a.last.ts.toMillis():0;var tb=b2.last&&b2.last.ts&&b2.last.ts.toMillis?b2.last.ts.toMillis():0;return tb-ta;});
+  if(th.length)h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin:4px 16px 4px">Conversaciones</div>';
+  th.forEach(function(t){
     var other=(t.users||[]).find(function(u){return u!==me;})||"?";
     var un=(t.unread&&t.unread[me])||0;
-    var last=t.last||{};
-    var when="";try{if(last.ts&&last.ts.toDate)when=_brainRel(last.ts);}catch(_e){}
-    h+='<div data-p="'+esc(other)+'" onclick="_dmOpenThread(this.dataset.p)" style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--ln);cursor:pointer">'
-      +'<div style="width:38px;height:38px;border-radius:50%;background:var(--br);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">'+esc(String(other).slice(0,2).toUpperCase())+'</div>'
-      +'<div style="min-width:0;flex:1"><div style="display:flex;justify-content:space-between;gap:6px"><span style="font-weight:700;color:var(--i1)">'+esc(other)+'</span><span style="font-size:var(--fs-xs);color:var(--i3);flex:none">'+esc(when)+'</span></div>'
-      +'<div style="font-size:var(--fs-sm);color:var(--i3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(last.from===me?"You: ":"")+esc(last.text||"")+'</div></div>'
-      +(un?'<span style="flex:none;background:#C0492F;color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;padding:0 5px;line-height:20px;text-align:center">'+un+'</span>':"")
+    var last=t.last||{};var when="";try{if(last.ts&&last.ts.toDate)when=_brainRel(last.ts);}catch(_e){}
+    h+='<div data-p="'+esc(other)+'" onclick="_dmOpenThread(this.dataset.p)" style="display:flex;gap:12px;align-items:center;margin:0 8px;padding:11px 8px;cursor:pointer;border-bottom:1px solid var(--ln)">'
+      +'<div style="position:relative;flex:none"><div style="width:46px;height:46px;border-radius:50%;background:'+colOf(other)+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">'+esc(ini(other))+'</div>'+(un?'<span style="position:absolute;top:-3px;right:-3px;background:#C0492F;color:#fff;font-size:10.5px;font-weight:800;min-width:18px;height:18px;border-radius:9px;padding:0 4px;line-height:18px;text-align:center;border:2px solid var(--cd)">'+un+'</span>':'')+(isOn(other)?'<span style="position:absolute;bottom:-1px;right:-1px;width:13px;height:13px;border-radius:50%;background:#2fbf71;border:2.5px solid #fff"></span>':'')+'</div>'
+      +'<div style="min-width:0;flex:1"><div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:'+(un?'800':'700')+';color:var(--i1)">'+esc(other)+'</span><span style="margin-left:auto;font-size:var(--fs-xs);color:var(--i3);white-space:nowrap">'+esc(when)+'</span></div>'
+      +'<div style="font-size:var(--fs-sm);color:'+(un?'var(--ink)':'var(--i3)')+';font-weight:'+(un?'600':'400')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(last.from===me?"Tú: ":"")+esc(last.text||"")+'</div></div>'
       +'</div>';
   });
+  if(!th.length)h+='<div style="padding:18px;text-align:center;color:var(--i3);font-size:var(--fs-sm)">Sin conversaciones aún — toca un avatar arriba para empezar.</div>';
   document.getElementById("dmBody").innerHTML=h;
-  var roster=_dmRoster();
-  document.getElementById("dmFoot").innerHTML='<div style="display:flex;gap:8px;padding:10px 12px;align-items:center">'
-    +'<select id="dmNewPeer" style="flex:1;padding:9px 10px;border:1px solid var(--ln);border-radius:9px;font-size:var(--fs-sm);background:var(--bg)"><option value="">'+(roster.length?"New message to\u2026":"No other users found")+'</option>'
-    +roster.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join("")
-    +'</select><button onclick="var v=document.getElementById(\'dmNewPeer\').value;if(v)_dmOpenThread(v)" style="background:var(--br);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-weight:700;font-size:var(--fs-sm);cursor:pointer">Start</button></div>';
+  document.getElementById("dmFoot").innerHTML="";
 }
 function _dmMsgHtml(m,me){
   var mine=m.from===me;var when="";try{if(m.ts&&m.ts.toDate)when=m.ts.toDate().toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(_e){}
@@ -7541,7 +7760,8 @@ async function _runDispatchCleanup(opts){
   _lastCleanupAt=Date.now();
   // Layer 3: heal any "shared report" victims already in the data (runs under
   // the same admin/online guards; has its own 30s debounce).
-  try{await _autoHealSharedVictims()}catch(_hv){}
+  try{await _autoHealSharedVictims()}catch(_vh){}
+  try{await _autoHealOrphans()}catch(_hv){}
   if(!stale.length)return{cleaned:0,failed:0,scanned:0};
   if(!opts.silent)console.log("[cleanup] Cleaning "+stale.length+" stale dispatch ticket(s)");
   var ok=0,fail=0;
@@ -7721,6 +7941,37 @@ function downloadFullBackup(){
     toast("Backup downloaded ✓");
   }catch(e){toast("Backup failed: "+e.message,"err")}
 }
+function _ftfTeamStats(start,end){
+  // Same rules as the FTF v2 panel: jobs = completed 1st visits in [start,end);
+  // a job bounces if a 2nd Visit/Repeat of the same customer lands 1-45d after it,
+  // or the job itself was rescheduled.
+  function dd(a,b2){var da=new Date(String(a)+"T00:00:00"),db2=new Date(String(b2)+"T00:00:00");if(isNaN(da)||isNaN(db2))return null;return Math.round((db2-da)/86400000);}
+  var all=[].concat(active||[],done||[]);
+  var jobs=all.filter(function(t){
+    if(!t||t.source==="dispatch")return false;
+    if((Number(t.visitNum)||1)!==1)return false;
+    if(t.status!=="complete"&&t.status!=="done"&&t.status!=="reschedule")return false;
+    var d2=t.date||"";
+    if(start&&d2<start)return false;
+    if(end&&d2>=end)return false;
+    return true;
+  });
+  var fups=all.filter(function(t){var v=Number(t.visitNum);return (v===2||v===4)&&t.status!=="canceled";});
+  var bounced={};
+  fups.forEach(function(f){
+    var fk=(typeof _custGroupKey==="function")?_custGroupKey(f.customer):String(f.customer||"").toLowerCase();
+    var best=null,bestD=999;
+    jobs.forEach(function(jb){
+      var jk=(typeof _custGroupKey==="function")?_custGroupKey(jb.customer):String(jb.customer||"").toLowerCase();
+      if(jk!==fk)return;var df=dd(jb.date,f.date);
+      if(df===null||df<=0||df>45)return;
+      if(df<bestD){bestD=df;best=jb;}
+    });
+    if(best)bounced[best.id]=1;
+  });
+  var b=0;jobs.forEach(function(jb){if(bounced[jb.id]||jb.status==="reschedule")b++;});
+  return {jobs:jobs.length,bounces:b,rate:jobs.length?Math.round((1-b/jobs.length)*100):100};
+}
 function rndrAdminWelcome(){
   var el=document.getElementById("adminWelcome");if(!el)return;
   if(!isAdmin){el.innerHTML="";return}
@@ -7728,31 +7979,33 @@ function rndrAdminWelcome(){
   try{_fieldErrorsBadge()}catch(_e){}
   var todayStr=(typeof fmtD==="function")?fmtD(new Date()):"";
   // KPIs
-  var todayStops=active.filter(function(t){return t&&(t.date||"")===todayStr&&t.status!=="canceled"}).length;
-  var completedToday=done.filter(function(t){return t&&_isTodayTs(t.completedAt)}).length;
-  var pendingDispatch=active.filter(function(t){return t&&t.source==="dispatch"&&t.status==="pending"}).length;
+  // KPI FIX (Jul 2026): stops = dispatch visits only (matches Daily Capacity);
+  // completed = real field reports dated today; pending = OPEN dispatches only
+  // (served dispatches with a submitted report no longer inflate the number).
+  var todayStops=active.filter(function(t){return t&&t.source==="dispatch"&&(t.date||"")===todayStr&&t.status!=="canceled"}).length;
+  var completedToday=[].concat(active,done).filter(function(t){return t&&t.source!=="dispatch"&&(t.date||"")===todayStr&&(t.status==="complete"||t.status==="done")}).length;
+  var pendingDispatch=active.filter(function(t){return t&&t.source==="dispatch"&&t.status==="pending"&&!t.fieldReportSubmitted}).length;
   // Team first-time-fix rate (this month) — same logic as the FTF panel
   var now=new Date();var monthStart=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
   // Last-month boundary (computed from existing tickets — no stored history needed)
   var _lm=new Date(now.getFullYear(),now.getMonth()-1,1);
   var lastMonthStart=_lm.getFullYear()+"-"+String(_lm.getMonth()+1).padStart(2,"0")+"-01";
-  var fixed=0,resched=0,billSum=0,billCount=0;          // this month
-  var pFixed=0,pResched=0,pBillSum=0,pBillCount=0;       // last month (for trends)
+  // FTF v2 (bounce-aware) + Avg Ticket from the billing engine (recomputed $),
+  // not the stale client-written t.total.
+  var resched=0,billSum=0,billCount=0,pResched=0,pBillSum=0,pBillCount=0;
   [].concat(active,done).forEach(function(t){
     if(!t||t.source==="dispatch")return;
     if(t.status!=="complete"&&t.status!=="done"&&t.status!=="reschedule")return;
-    var _d=t.date||"";
-    if(_d>=monthStart){
-      if(t.status==="reschedule"){resched++;}
-      else{fixed++;var _tot=Number(t.total)||0;if(_tot>0){billSum+=_tot;billCount++;}}
-    }else if(_d>=lastMonthStart&&_d<monthStart){
-      if(t.status==="reschedule"){pResched++;}
-      else{pFixed++;var _pt=Number(t.total)||0;if(_pt>0){pBillSum+=_pt;pBillCount++;}}
-    }
+    var _d=t.date||"";var inCur=_d>=monthStart,inPrev=(_d>=lastMonthStart&&_d<monthStart);
+    if(!inCur&&!inPrev)return;
+    if(t.status==="reschedule"){if(inCur)resched++;else pResched++;return;}
+    var _m=(typeof _metricsMoney==="function")?_metricsMoney(t):(Number(t.total)||0);
+    if(_m>0){if(inCur){billSum+=_m;billCount++;}else{pBillSum+=_m;pBillCount++;}}
   });
-  var ftfTot=fixed+resched,ftf=ftfTot?Math.round(fixed/ftfTot*100):0;
+  var _fs=_ftfTeamStats(monthStart,null),_pfs=_ftfTeamStats(lastMonthStart,monthStart);
+  var ftfTot=_fs.jobs,ftf=_fs.rate;
+  var pFtfTot=_pfs.jobs,pFtf=_pfs.rate,pFixed=_pfs.jobs-_pfs.bounces;
   var avgTicket=billCount?Math.round(billSum/billCount):0;
-  var pFtfTot=pFixed+pResched,pFtf=pFtfTot?Math.round(pFixed/pFtfTot*100):0;
   var pAvgTicket=pBillCount?Math.round(pBillSum/pBillCount):0;
   var qbToday=(typeof _getQbCopyCount==="function")?_getQbCopyCount():0;
   var name=(currentUser&&currentUser.name)?currentUser.name:"there";
@@ -7820,63 +8073,79 @@ function rndrAdminWelcome(){
 // diagnoses are off, or training is needed.
 var _ftfPeriod="month";
 function setFtfPeriod(p){_ftfPeriod=p;rndrAdminFTF()}
+function _statVisitCompact(){
+  try{
+    var host=document.getElementById("adminStatVisits");if(!host)return;
+    if(host.querySelector("details[data-wdet]"))return;
+    var target=null;
+    host.querySelectorAll("div").forEach(function(d2){if(target)return;var st=d2.getAttribute("style")||"";if(st.indexOf("#0e7490")>=0&&st.indexOf("border-left")>=0&&d2.textContent.indexOf("Warranty issues by category")>=0)target=d2;});
+    if(!target)return;
+    var det=document.createElement("details");det.setAttribute("data-wdet","1");det.style.marginTop="8px";
+    var sum=document.createElement("summary");sum.style.cssText="cursor:pointer;font-size:var(--fs-sm);font-weight:800;color:#0e7490;padding:6px 2px";sum.textContent="🔎 Ver detalle de garantías (categorías y años)";
+    target.parentNode.insertBefore(det,target);det.appendChild(sum);det.appendChild(target);
+  }catch(_e){}
+}
 function rndrAdminFTF(){
+  // FTF v2 (Jul 2026): a job only counts as "fixed first time" if NO follow-up
+  // (2nd Visit or Repeat for the same customer) happens within 45 days, and it
+  // was not rescheduled. The bounce is attributed to the tech of the ORIGINAL visit.
   var el=document.getElementById("adminFTF");if(!el)return;
   if(!isAdmin){el.innerHTML="";return}
   var now=new Date();var startDate="";
   if(_ftfPeriod==="month"){startDate=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01"}
   else if(_ftfPeriod==="week"){var w=new Date(now);w.setDate(w.getDate()-w.getDay());startDate=fmtD(w)}
-  // Only real field visits (not dispatch placeholders), within the period.
-  var pool=[...active,...done].filter(function(t){
+  function dd(a,b2){var da=new Date(String(a)+"T00:00:00"),db2=new Date(String(b2)+"T00:00:00");if(isNaN(da)||isNaN(db2))return null;return Math.round((db2-da)/86400000);}
+  var all=[].concat(active||[],done||[]);
+  // jobs = completed 1st visits (real reports), in period
+  var jobs=all.filter(function(t){
     if(!t||t.source==="dispatch")return false;
+    var v=Number(t.visitNum)||1;if(v!==1)return false;
     if(t.status!=="complete"&&t.status!=="done"&&t.status!=="reschedule")return false;
     if(startDate&&(t.date||"")<startDate)return false;
     return true;
   });
+  // follow-ups = ANY 2nd Visit or Repeat, any period (they can land after the job)
+  var fups=all.filter(function(t){var v=Number(t.visitNum);return (v===2||v===4)&&t.status!=="canceled";});
+  // attribute each follow-up to the NEAREST prior 1st-visit job of the same customer within 45d
+  var bounced={}; // jobId -> follow-up info
+  fups.forEach(function(f){
+    var fk=(typeof _custGroupKey==="function")?_custGroupKey(f.customer):String(f.customer||"").toLowerCase();
+    var best=null,bestD=999;
+    jobs.forEach(function(jb){
+      var jk=(typeof _custGroupKey==="function")?_custGroupKey(jb.customer):String(jb.customer||"").toLowerCase();
+      if(jk!==fk)return;
+      var df=dd(jb.date,f.date);
+      if(df===null||df<=0||df>45)return;
+      if(df<bestD){bestD=df;best=jb;}
+    });
+    if(best&&!bounced[best.id])bounced[best.id]={type:(Number(f.visitNum)===4?"Repeat":"2nd Visit"),days:bestD,customer:f.customer||""};
+  });
   var byTech={};
-  pool.forEach(function(t){
-    (t.techs||[]).forEach(function(tn){
+  jobs.forEach(function(jb){
+    var isB=!!bounced[jb.id]||jb.status==="reschedule";
+    (jb.techs||[]).forEach(function(tn){
       if(typeof HIDDEN_TECHS!=="undefined"&&HIDDEN_TECHS.has&&HIDDEN_TECHS.has(tn))return;
-      if(!byTech[tn])byTech[tn]={fixed:0,resched:0};
-      if(t.status==="reschedule")byTech[tn].resched++;else byTech[tn].fixed++;
+      if(!byTech[tn])byTech[tn]={jobs:0,bounces:0,names:[]};
+      byTech[tn].jobs++;
+      if(isB){byTech[tn].bounces++;var bi=bounced[jb.id];byTech[tn].names.push((jb.customer||"")+(bi?(" ("+bi.type+" +"+bi.days+"d)"):" (resched)"));}
     });
   });
-  var techs=Object.keys(byTech).sort(function(a,b){
-    var ra=byTech[a].fixed+byTech[a].resched,rb=byTech[b].fixed+byTech[b].resched;
-    var pa=ra?byTech[a].fixed/ra:0,pb=rb?byTech[b].fixed/rb:0;
-    return pb-pa;
-  });
+  var techs=Object.keys(byTech).sort(function(a,b2){var A=byTech[a],B=byTech[b2];var pa=A.jobs?1-A.bounces/A.jobs:0,pb=B.jobs?1-B.bounces/B.jobs:0;if(pb!==pa)return pb-pa;return B.jobs-A.jobs;});
+  var tj=0,tb=0;techs.forEach(function(k){tj+=byTech[k].jobs;tb+=byTech[k].bounces;});
+  var teamR=tj?Math.round((1-tb/tj)*100):100;
   var perLabel=_ftfPeriod==="month"?"This month":_ftfPeriod==="week"?"This week":"All time";
-  function pillBtn(val,label){return '<button onclick="setFtfPeriod(\''+val+'\')" style="padding:4px 10px;border:1px solid var(--ln);border-radius:6px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;background:'+(_ftfPeriod===val?'var(--ac)':'var(--bg)')+';color:'+(_ftfPeriod===val?'#fff':'var(--i2)')+'">'+label+'</button>'}
-  // AUDIT Jun 2026: foldable like the other Admin sections. State survives
-  // re-renders via localStorage (details resets when innerHTML is rebuilt).
-  var _ftfOpen="0"!==(function(){try{return localStorage.getItem("adminFTFOpen")||"0"}catch(_e){return "0"}})();
-  var h='<div class="card" style="margin:0"><details class="adm-fold"'+(_ftfOpen?' open':'')+' ontoggle="try{localStorage.setItem(\'adminFTFOpen\',this.open?\'1\':\'0\')}catch(_e){}">';
-  h+='<summary><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83C\uDFAF</span><span style="font-size:var(--fs-base);font-weight:800;color:var(--br);letter-spacing:.4px;text-transform:uppercase">First-Time Fix Rate</span></div><span class="adm-fold-arrow">\u25BC</span></summary>';
-  h+='<div class="adm-fold-body">';
-  h+='<div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:10px">'+pillBtn("month","Month")+pillBtn("week","Week")+pillBtn("all","All")+'</div>';
-  if(!techs.length){
-    h+='<div style="text-align:center;padding:24px;color:var(--i3);font-size:var(--fs-sm)">No completed or rescheduled visits in this period yet.</div>';
-  }else{
-    // Team total
-    var tF=0,tR=0;techs.forEach(function(tn){tF+=byTech[tn].fixed;tR+=byTech[tn].resched});
-    var tTot=tF+tR,tRate=tTot?Math.round(tF/tTot*100):0;
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:8px 12px;background:var(--c-ash-2);border-radius:8px">';
-    h+='<span style="font-size:var(--fs-sm);font-weight:700;color:var(--i2)">TEAM \u2014 '+perLabel+'</span>';
-    h+='<span style="font-size:var(--fs-md);font-weight:800;color:'+(tRate>=85?'var(--c-success-strong)':tRate>=70?'var(--c-warning-fg)':'var(--c-danger-strong)')+'">'+tRate+'% <span style="font-weight:600;color:var(--i3);font-size:var(--fs-sm)">('+tF+' fixed / '+tR+' resched)</span></span>';
-    h+='</div>';
-    techs.forEach(function(tn){
-      var d=byTech[tn],tot=d.fixed+d.resched,rate=tot?Math.round(d.fixed/tot*100):0;
-      var col=rate>=85?'var(--c-success-strong)':rate>=70?'var(--c-warning-fg)':'var(--c-danger-strong)';
-      h+='<div style="margin-bottom:12px">';
-      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:var(--fs-md);font-weight:700;color:var(--ink)">'+esc(tn)+'</span><span style="font-size:var(--fs-md);font-weight:800;color:'+col+'">'+rate+'%</span></div>';
-      h+='<div style="height:8px;background:var(--c-ash-2);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+rate+'%;background:'+col+';border-radius:99px;transition:width .3s"></div></div>';
-      h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px">'+d.fixed+' fixed first time \u00B7 '+d.resched+' rescheduled \u00B7 '+tot+' total</div>';
-      h+='</div>';
-    });
-    h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:8px;font-style:italic">Higher is better. Low rates often mean missing parts, off diagnoses, or access issues \u2014 see the Repeated Reschedules panel below.</div>';
-  }
-  h+='</div></details>'; // close adm-fold-body + details
+  function pillBtn(val,label){var on=_ftfPeriod===val;return '<button onclick="setFtfPeriod(\''+val+'\')" style="padding:4px 12px;border:1px solid '+(on?"var(--br)":"var(--ln)")+';border-radius:8px;background:'+(on?"var(--br)":"var(--bg)")+';color:'+(on?"#fff":"var(--i2)")+';font-weight:700;font-size:var(--fs-sm);cursor:pointer">'+label+'</button>';}
+  var h='<div class="card" style="padding:14px">';
+  h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="font-weight:800;color:var(--br)">🎯 First-time fix</span><span style="margin-left:auto;font-size:var(--fs-xs);color:var(--i3);font-weight:800;text-transform:uppercase;letter-spacing:.4px">'+perLabel+'</span></div>';
+  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:10px">Un trabajo cuenta como resuelto a la 1ª SOLO si no hubo 2nd Visit ni Repeat del mismo cliente en 45 días · el rebote se atribuye al técnico de la visita original</div>';
+  var tc=teamR>=90?"var(--c-success-strong)":(teamR>=75?"var(--c-warning-strong)":"var(--c-danger-fg)");
+  h+='<div style="background:var(--c-ash-2);border-radius:10px;padding:10px 13px;display:flex;align-items:baseline;gap:10px;margin-bottom:12px"><span style="font-weight:800">EQUIPO · '+perLabel+'</span><span style="margin-left:auto;font-size:20px;font-weight:800;color:'+tc+'">'+teamR+'%</span><span style="font-size:var(--fs-sm);color:var(--i3)">('+(tj-tb)+' ok / '+tb+' rebotes)</span></div>';
+  techs.forEach(function(k){var d2=byTech[k];var r=d2.jobs?Math.round((1-d2.bounces/d2.jobs)*100):100;var col=r>=90?"var(--c-success-strong)":(r>=75?"var(--c-warning-strong)":"var(--c-danger-fg)");
+    h+='<div style="margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:800">'+esc(k)+'</span><span style="margin-left:auto;font-weight:800;color:'+col+'">'+r+'%</span></div>';
+    h+='<div style="height:8px;background:var(--c-ash-2);border-radius:4px;overflow:hidden;margin:4px 0"><div style="width:'+r+'%;height:100%;background:'+col+'"></div></div>';
+    h+='<div style="font-size:var(--fs-xs);color:var(--i3)">'+d2.jobs+' trabajos · '+d2.bounces+' rebote'+(d2.bounces!==1?"s":"")+(d2.names.length?(' — '+esc(d2.names.slice(0,3).join(", "))+(d2.names.length>3?"…":"")):"")+'</div></div>';
+  });
+  if(!techs.length)h+='<div style="color:var(--i3);font-size:var(--fs-sm)">Sin trabajos en el periodo.</div>';
   h+='</div>';
   el.innerHTML=h;
 }
@@ -13188,7 +13457,8 @@ function _porCobrarData(){
     if(t.source==="dispatch")continue;                         // not real field work
     var finished=(t.status==="complete"||t.status==="done");
     if(!finished)continue;
-    var tot=Number(t.total)||0;
+    if(t.paid)continue; // KPI FIX (Jul 2026): the tech-marked ✅ Paid flag counts as collected (checks/QB payments, not just in-app card charges)
+    var tot=(typeof _metricsMoney==="function")?_metricsMoney(t):(Number(t.total)||0);
     if(tot<=0)continue;
     var collected=_pcCollected(t);
     var saldo=tot-collected;
@@ -14599,6 +14869,7 @@ function fmtDayLabel(dateStr){
 function daySepHTML(label){return`<div class="day-sep"><div class="day-line"></div><div class="day-lbl">${label}</div><div class="day-line"></div></div>`}
 
 function rndrA(){
+  try{rndrAdminCapacity()}catch(_cc){}
   const el=document.getElementById("aList");
   try{_renderQbCopyBadge()}catch(_e){}
   try{_renderWelcomeKPIs()}catch(_e){}
@@ -14885,7 +15156,7 @@ async function _boardBulkAssign(tech){
   if(!db){toast("Firebase not configured","err");return;}
   var prev=[];
   ids.forEach(function(id){var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});if(t)prev.push({id:id,techs:(t.techs||[]).slice()});});
-  var ok=await _batchUpdateTickets(prev.map(function(p){return {id:p.id,data:{techs:[tech]}};}));
+  var ok=await _batchUpdateTickets(prev.map(function(p){return {id:p.id,data:{techs:[tech]}};}));try{_audit("bulk-assign",{note:ok+" tickets → "+tech});}catch(_a){}
   _boardClearSel();
   if(typeof _haptic==="function")_haptic(18);
   _undoBar(ok+" assigned to "+tech,"Undo all",function(){
@@ -14901,7 +15172,7 @@ async function _boardBulkDone(){
   if(!db){toast("Firebase not configured","err");return;}
   var prev=[];
   ids.forEach(function(id){var t=[].concat(active,done).find(function(x){return String(x.id)===String(id);});if(t)prev.push({id:id,status:(t.status||"complete"),completedAt:(t.completedAt||null)});});
-  var now=new Date().toLocaleString();var ok=await _batchUpdateTickets(prev.map(function(p){return {id:p.id,data:{status:"done",completedAt:now}};}));
+  var now=new Date().toLocaleString();var ok=await _batchUpdateTickets(prev.map(function(p){return {id:p.id,data:{status:"done",completedAt:now}};}));try{_audit("bulk-done",{note:ok+" tickets"});}catch(_a){}
   _boardClearSel();
   if(typeof _haptic==="function")_haptic(22);
   _undoBar(ok+" marked done","Undo all",function(){
@@ -17214,7 +17485,8 @@ function _isVisibleDispatch(t,idx,today,isTech){
 
 function _calMonths(){var es=(typeof APP_LANG!=="undefined"&&APP_LANG==="es");return es?["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]:["January","February","March","April","May","June","July","August","September","October","November","December"];}
 function _calDOW(full){var es=(typeof APP_LANG!=="undefined"&&APP_LANG==="es");if(full)return es?["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"]:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];return es?["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];}
-function rndrCal(){if(!calYear)calInit();const MN=_calMonths();const isTech=currentUser&&currentUser.role==="tech";const q=(document.getElementById("searchCal")||{}).value||"";
+function rndrCal(){
+  try{rndrAdminCapacity()}catch(_cc){}if(!calYear)calInit();const MN=_calMonths();const isTech=currentUser&&currentUser.role==="tech";const q=(document.getElementById("searchCal")||{}).value||"";
 // For techs, we hide dispatch tickets that have already been handled (report submitted or ticket marked done).
 const today=fmtD(new Date());
 // Customer-name matching uses the family-name-aware helper _custGroupKey
@@ -20644,6 +20916,7 @@ let selectedCustKey=null;
 let qbCustTab="info"; // 'info' | 'spa' | 'history'
 
 function rndrCust(){
+  try{if(typeof rndrSpaDataWorklist==="function")rndrSpaDataWorklist()}catch(_e){}
   try{rndrSpaDataWorklist()}catch(_e){}
   const q=(document.getElementById("searchCust")||{}).value||"";
   const sortMode=(document.getElementById("qbCustSort")||{}).value||"name";
@@ -22604,6 +22877,9 @@ function _getCurrentGPS(){
 // Returns {lat,lng} or null if address is not geocodable.
 async function _ticketAddressCoords(t){
   if(!t)return null;
+  // FIX (Jul 2026): a manual Re-geocode saves addrLat/addrLng on the ticket —
+  // those corrected coords must win over the localStorage geocode cache.
+  if(typeof t.addrLat==="number"&&typeof t.addrLng==="number")return {lat:t.addrLat,lng:t.addrLng};
   // First try the existing geocoder which has cache
   try{
     if(typeof geocodeTicket==="function"){
@@ -23427,7 +23703,7 @@ async function _loadCheckinVerify(){
     if(dist<0){badge="? No address";bg="#f3f4f6";bd="#9ca3af";fg="#374151"}
     else if(dist<=CHECKIN_GEOFENCE_OK_M){badge="✓ "+dist+"m · verified";bg="var(--c-success-bg)";bd="var(--c-success-strong)";fg="#14532d"}
     else if(dist<=CHECKIN_GEOFENCE_WARN_M){badge="△ "+dist+"m · borderline";bg="#fef9c3";bd="#eab308";fg="#713f12"}
-    else{const km=(dist>=1000)?(dist/1000).toFixed(1)+" km":dist+"m";badge="✕ "+km+" · out of range";bg="var(--c-danger-bg)";bd="var(--c-danger-strong)";fg="var(--c-danger-fg)";isRed=true}
+    else{const km=(dist>=1000)?(dist/1000).toFixed(1)+" km":dist+"m";badge="✕ "+km+(dist>2000?" · revisar dirección":" · out of range");bg="var(--c-danger-bg)";bd="var(--c-danger-strong)";fg="var(--c-danger-fg)";isRed=true}
 
     const tName=t.checkInBy||t.tech||"(unknown)";
     const inTime=t.checkInAt?new Date(t.checkInAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):"—";
@@ -23440,17 +23716,18 @@ async function _loadCheckinVerify(){
     // Re-geocode button only shown when out-of-range AND customer has an address
     // (the bad customer address coords are usually why the distance is huge).
     const regeoBtn=(isRed&&t.address)?'<button onclick="event.stopPropagation();_regeocodeAndRefresh(\''+esc(t.id)+'\',this)" style="padding:5px 10px;background:#fff;color:var(--c-info-strong);border:1.5px solid var(--c-info-border);border-radius:8px;font-size:var(--fs-sm);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap" title="Re-fetch the customer address coordinates and recompute distance">↻ Re-geocode</button>':"";
+    const geoHint=(isRed&&dist>2000)?'<div style="font-size:var(--fs-xs);color:var(--c-danger-fg);max-width:240px;text-align:right;margin-top:4px;line-height:1.35">⚠ A esta distancia casi siempre es la dirección mal geocodificada, no el técnico — usa Re-geocode</div>':"";
 
     html+='<div onclick="(typeof openTktDetail===\'function\')&&openTktDetail(\''+esc(t.id)+'\')" style="background:#fff;border:1.5px solid var(--ln);border-left:5px solid '+bd+';border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'\'">'+
       '<div style="padding:12px 14px;display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">'+
         '<div style="flex:1;min-width:220px">'+
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px"><span style="font-weight:700;font-size:var(--fs-md);color:var(--i1)">'+esc(t.customer||"(no customer)")+'</span>'+onSiteBadge+'</div>'+
           '<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:6px">'+esc(tName)+' · in '+esc(inTime)+(outTime?' · out '+esc(outTime):'')+(duration!=null?' · '+duration+' min':"")+'</div>'+
-          '<div style="font-size:var(--fs-sm);color:var(--i2);line-height:1.4">'+esc(t.address||"(no registered address)")+'</div>'+
+          '<div style="font-size:var(--fs-sm);color:var(--i2);line-height:1.4">'+esc(t.address||"(no registered address)")+'</div>'+((t.address&&!t.city&&!t.zip)?'<div style="display:inline-block;margin-top:3px;font-size:var(--fs-xs);font-weight:700;background:#fff4e0;color:#8a5a20;border-radius:6px;padding:2px 7px">⚠ dirección sin ciudad/ZIP — geocode poco confiable</div>':"")+
         '</div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
           '<div style="display:inline-flex;align-items:center;padding:6px 12px;background:'+bg+';border:1.5px solid '+bd+';border-radius:20px;color:'+fg+';font-size:var(--fs-sm);font-weight:700;white-space:nowrap">'+esc(badge)+'</div>'+
-          regeoBtn+
+          regeoBtn+geoHint+
         '</div>'+
       '</div>'+
       // Mini-map: stop click propagation so dragging/zooming the map doesn\'t open the ticket
@@ -23483,54 +23760,32 @@ async function _loadCheckinVerify(){
 async function _regeocodeAndRefresh(ticketId,btnEl){
   if(!db){toast("No DB","err");return}
   if(btnEl){btnEl.disabled=true;btnEl.textContent="Working…"}
+  function _rearm(){if(btnEl){btnEl.disabled=false;btnEl.textContent="↻ Re-geocode"}}
   try{
     const doc=await db.collection("tickets").doc(ticketId).get();
-    if(!doc.exists){toast("Ticket gone","err");if(btnEl)btnEl.disabled=false;return}
+    if(!doc.exists){toast("Ticket gone","err");_rearm();return}
     const t=Object.assign({id:doc.id},doc.data());
-    if(!t.address){toast("No address to geocode","warn");if(btnEl)btnEl.disabled=false;return}
-    // Try the existing geocoder helper if available; otherwise fall back to a
-    // direct fetch via the same LocationIQ key used elsewhere in this file.
+    if(!t.address&&!t.zip&&!t.city){toast("No address to geocode","warn");_rearm();return}
+    // FIX (Jul 2026): the old version depended on google.maps.Geocoder — never
+    // loaded in this Leaflet/OSM app — so this button ALWAYS failed. It now uses
+    // the app\u2019s own Photon→Nominatim ladder, clearing the stale cache first so
+    // a previously-wrong result can\u2019t come back from localStorage.
+    try{var _st=(typeof _extractStreetFromAddr==="function")?_extractStreetFromAddr(t.address):"";_invalidateGeoCacheFor(_st||t.address);}catch(_e){}
     let coords=null;
-    if(typeof _revGeocode==="function"){
-      // _revGeocode is reverse — we need forward. Use Google Maps geocoder if loaded.
-    }
+    try{coords=await geocodeTicket(t);}catch(_e){}
+    if(!coords&&t.address){try{coords=await geocodeAddress(t.address);}catch(_e){}}
     if(!coords&&typeof google!=="undefined"&&google.maps&&google.maps.Geocoder){
-      coords=await new Promise(function(res){
-        try{
-          const gc=new google.maps.Geocoder();
-          gc.geocode({address:t.address},function(results,status){
-            if(status==="OK"&&results&&results[0]){
-              const loc=results[0].geometry.location;
-              res({lat:loc.lat(),lng:loc.lng()});
-            }else{res(null)}
-          });
-        }catch(_e){res(null)}
-      });
+      coords=await new Promise(function(res){try{new google.maps.Geocoder().geocode({address:t.address},function(r2,st2){if(st2==="OK"&&r2&&r2[0]){var lo=r2[0].geometry.location;res({lat:lo.lat(),lng:lo.lng()});}else res(null);});}catch(_e){res(null)}});
     }
-    if(!coords){
-      toast("Geocode failed — check address","err");
-      if(btnEl){btnEl.disabled=false;btnEl.textContent="↻ Re-geocode"}
-      return;
-    }
-    // Recompute distance against the existing check-in coords
+    if(!coords){toast("Geocode failed — completa la dirección (ciudad + ZIP ayudan)","err");_rearm();return}
     let newDist=-1;
-    if(t.checkInLat!=null&&t.checkInLng!=null&&typeof _haversineMeters==="function"){
-      newDist=Math.round(_haversineMeters(t.checkInLat,t.checkInLng,coords.lat,coords.lng));
-    }
+    if(t.checkInLat!=null&&t.checkInLng!=null&&typeof _haversineMeters==="function"){newDist=Math.round(_haversineMeters(t.checkInLat,t.checkInLng,coords.lat,coords.lng));}
     const updates={addrLat:coords.lat,addrLng:coords.lng,addrGeocodedAt:new Date().toISOString()};
-    if(newDist>=0){
-      updates.checkInDist=newDist;
-      updates.checkInVerified=(newDist<=CHECKIN_GEOFENCE_OK_M);
-    }
+    if(newDist>=0){updates.checkInDist=newDist;updates.checkInVerified=(newDist<=CHECKIN_GEOFENCE_OK_M);}
     await db.collection("tickets").doc(ticketId).update(updates);
     toast("Re-geocoded ✓ "+(newDist>=0?(newDist+"m"):""));
-    // Refresh the view to reflect the new verdict
     _loadCheckinVerify();
-  }catch(e){
-    console.warn("re-geocode failed:",e);
-    toast("Re-geocode failed","err");
-    if(btnEl){btnEl.disabled=false;btnEl.textContent="↻ Re-geocode"}
-  }
+  }catch(e){console.warn("re-geocode failed:",e);toast("Re-geocode failed","err");_rearm();}
 }
 
 function _verifyKpi(icon,label,bg,fg,bd,count){
@@ -23540,37 +23795,54 @@ function _verifyKpi(icon,label,bg,fg,bd,count){
   '</div>';
 }
 
+async function _renderVerifyOneMap(t,i){
+  const el=document.getElementById("checkinVerifyMap_"+i);
+  if(!el||!t||!t.checkInLat||!t.checkInLng)return;
+  let custCoords=null;
+  try{custCoords=await _ticketAddressCoords(t)}catch(_e){}
+  try{
+    const techLatLng=[t.checkInLat,t.checkInLng];
+    const map=L.map(el,{zoomControl:false,attributionControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,touchZoom:false}).setView(techLatLng,14);
+    _checkinVerifyMiniMaps.push(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);
+    L.marker(techLatLng,{icon:L.divIcon({className:"",iconSize:[22,22],iconAnchor:[11,11],html:'<div style="width:22px;height:22px;background:#ea580c;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #ea580c88,0 2px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:var(--fs-sm);font-weight:800">T</div>'})}).addTo(map).bindTooltip("Tech check-in — "+(t.checkInBy||""),{permanent:false,sticky:true});
+    if(custCoords){
+      L.marker([custCoords.lat,custCoords.lng],{icon:L.divIcon({className:"",iconSize:[22,22],iconAnchor:[11,11],html:'<div style="width:22px;height:22px;background:var(--c-info-strong);border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--c-info-strong)88,0 2px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:var(--fs-sm);font-weight:800">C</div>'})}).addTo(map).bindTooltip("Customer address — "+(t.customer||""),{permanent:false,sticky:true});
+      const dist=(typeof t.checkInDist==="number")?t.checkInDist:-1;
+      const lineColor=(dist<0||dist>CHECKIN_GEOFENCE_WARN_M)?"var(--c-danger-strong)":(dist>CHECKIN_GEOFENCE_OK_M?"#eab308":"var(--c-success-strong)");
+      L.polyline([techLatLng,[custCoords.lat,custCoords.lng]],{color:lineColor,weight:3,opacity:.8,dashArray:"6,6"}).addTo(map);
+      const bounds=L.latLngBounds([techLatLng,[custCoords.lat,custCoords.lng]]).pad(0.4);
+      map.fitBounds(bounds);
+    }
+  }catch(e){console.warn("mini-map render failed for ticket",t.id,e)}
+}
+async function _verifyShowMap(i){
+  try{
+    const t=(_checkinVerifyLast||[])[i];if(!t)return;
+    const el=document.getElementById("checkinVerifyMap_"+i);if(!el)return;
+    el.innerHTML="";el.style.height="180px";el.style.cursor="grab";
+    await _renderVerifyOneMap(t,i);
+  }catch(_e){}
+}
 async function _renderVerifyMiniMaps(tickets){
   if(typeof L==="undefined")return;
+  try{_checkinVerifyLast=tickets}catch(_e){}
+  // PERF (Jul 2026): verified (green, checked-out) rows no longer auto-build a
+  // Leaflet map + OSM tiles + a possible network geocode each — they get a
+  // one-tap "Ver mapa" placeholder instead. Red/yellow/on-site render as before.
   for(let i=0;i<tickets.length;i++){
     const t=tickets[i];
-    const mapId="checkinVerifyMap_"+i;
-    const el=document.getElementById(mapId);
+    const el=document.getElementById("checkinVerifyMap_"+i);
     if(!el)continue;
     if(!t.checkInLat||!t.checkInLng)continue;
-    // Get customer address coords (from geocoder cache or live geocode)
-    let custCoords=null;
-    try{custCoords=await _ticketAddressCoords(t)}catch(_e){}
-    // Build map
-    try{
-      const techLatLng=[t.checkInLat,t.checkInLng];
-      const map=L.map(el,{zoomControl:false,attributionControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,touchZoom:false}).setView(techLatLng,14);
-      _checkinVerifyMiniMaps.push(map);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);
-      // Tech check-in pin (orange)
-      L.marker(techLatLng,{icon:L.divIcon({className:"",iconSize:[22,22],iconAnchor:[11,11],html:'<div style="width:22px;height:22px;background:#ea580c;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #ea580c88,0 2px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:var(--fs-sm);font-weight:800">T</div>'})}).addTo(map).bindTooltip("Tech check-in — "+t.checkInBy||"",{permanent:false,sticky:true});
-      // Customer pin (blue), if we have coords
-      if(custCoords){
-        L.marker([custCoords.lat,custCoords.lng],{icon:L.divIcon({className:"",iconSize:[22,22],iconAnchor:[11,11],html:'<div style="width:22px;height:22px;background:var(--c-info-strong);border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--c-info-strong)88,0 2px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:var(--fs-sm);font-weight:800">C</div>'})}).addTo(map).bindTooltip("Customer address — "+(t.customer||""),{permanent:false,sticky:true});
-        // Line between them, color by distance bucket
-        const dist=(typeof t.checkInDist==="number")?t.checkInDist:-1;
-        const lineColor=(dist<0||dist>CHECKIN_GEOFENCE_WARN_M)?"var(--c-danger-strong)":(dist>CHECKIN_GEOFENCE_OK_M?"#eab308":"var(--c-success-strong)");
-        L.polyline([techLatLng,[custCoords.lat,custCoords.lng]],{color:lineColor,weight:3,opacity:.8,dashArray:"6,6"}).addTo(map);
-        // Fit both
-        const bounds=L.latLngBounds([techLatLng,[custCoords.lat,custCoords.lng]]).pad(0.4);
-        map.fitBounds(bounds);
-      }
-    }catch(e){console.warn("mini-map render failed for ticket",t.id,e)}
+    const dist=(typeof t.checkInDist==="number")?t.checkInDist:-1;
+    const green=(dist>=0&&dist<=CHECKIN_GEOFENCE_OK_M&&t.checkOutAt);
+    if(green){
+      el.style.height="52px";el.style.cursor="pointer";
+      el.innerHTML='<div style="height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg)"><button onclick="event.stopPropagation();_verifyShowMap('+i+')" style="background:var(--cd);border:1px solid var(--ln);border-radius:9px;padding:7px 14px;font-size:var(--fs-sm);font-weight:700;color:var(--i2);cursor:pointer">🗺️ Ver mapa</button></div>';
+      continue;
+    }
+    await _renderVerifyOneMap(t,i);
   }
 }
 
