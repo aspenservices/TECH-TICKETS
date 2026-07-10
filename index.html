@@ -19038,6 +19038,68 @@ function _c360Kpi(label,val){
 // Shared expandable body for Customer 360 — reused by BOTH the Service History
 // cards and the Notes tab so they look/behave identically: technician report +
 // photos + PDFs + parts + an explicit "Open full ticket" button. No modal.
+function openReportModalById(id){
+  // Restored (Jul 2026): the customer-report sender lost its home when the
+  // Completed tab was retired — now reachable from the customer\u2019s Service History.
+  try{
+    var j=(done||[]).findIndex(function(x){return x&&String(x.id)===String(id);});
+    if(j>=0)return openReportModal(true,j);
+    var k=(active||[]).findIndex(function(x){return x&&String(x.id)===String(id);});
+    if(k>=0)return openReportModal(false,k);
+    toast("Ticket not loaded","warn");
+  }catch(_e){}
+}
+async function _visitPhotosDownload(id){
+  try{
+    var t=[].concat(done||[],active||[]).find(function(x){return x&&String(x.id)===String(id);});
+    if(!t){toast("Ticket not loaded","warn");return}
+    var items=[];
+    (t.photoUrls||[]).forEach(function(u){if(u)items.push({url:u});});
+    (t.media||[]).filter(function(m){return m&&m.type!=="pdf"}).forEach(function(m){if(m.url)items.push({url:m.url});else if(m.data||m.dataUrl)items.push({data:m.data||m.dataUrl});});
+    if(!items.length){toast("No photos on this visit","warn");return}
+    toast("Descargando "+items.length+" foto(s)…");
+    var base=String(t.customer||"visita").replace(/[^A-Za-z0-9]+/g,"_").slice(0,30)+"_"+(t.date||"");
+    for(var i2=0;i2<items.length;i2++){
+      var it=items[i2];
+      try{
+        var href;
+        if(it.data){href=it.data;}
+        else{var r=await fetch(it.url);var b=await r.blob();href=URL.createObjectURL(b);}
+        var a=document.createElement("a");a.href=href;a.download=base+"_"+(i2+1)+".jpg";document.body.appendChild(a);a.click();a.remove();
+        if(!it.data){(function(u){setTimeout(function(){try{URL.revokeObjectURL(u)}catch(_e){}},5000);})(href);}
+        await new Promise(function(rs){setTimeout(rs,380)});
+      }catch(e){try{window.open(it.url,"_blank")}catch(_e){}}
+    }
+    toast("Fotos descargadas ✓ adjúntalas a tu mensaje");
+  }catch(e){console.warn("photo dl",e);toast("Download failed","err");}
+}
+function _visitClientPDF(id){
+  // Professional client-facing report: brand header + the SAME full visit body
+  // shown in Service History (billing, notes, photos) + footer → print / Save as PDF.
+  try{
+    var t=[].concat(done||[],active||[]).find(function(x){return x&&String(x.id)===String(id);});
+    if(!t){toast("Ticket not loaded","warn");return}
+    var body="";try{body=_c360ExpandBodyHTML(t);}catch(_e){body="";}
+    var w=window.open("","_blank");
+    if(!w){toast("Popup blocked — allow popups for this site","warn");return}
+    var css=":root{--cd:#fff;--bg:#faf7f2;--ln:#e4ddd2;--ink:#26221C;--i1:#26221C;--i2:#5c564c;--i3:#8b8478;--br:#134A63;--ac:#1C8FA8;--acl:#e7f2f6;--acd:#0f5b6e;--c-success-bg:#e9f5ee;--c-success-fg:#1f5c3d;--c-success-strong:#2E8B57;--c-warning-bg:#fff4e0;--c-warning-fg:#8a5a20;--c-warning-strong:#c47f17;--c-danger-bg:#fdecec;--c-danger-fg:#a33;--c-danger-strong:#C0492F;--c-info-strong:#2563eb;--c-ash-2:#efe9df;--fs-xs:11px;--fs-sm:13px;--fs-md:15px;--fs-lg:17px;--fs-xl:20px}"
+      +"*{box-sizing:border-box;font-family:-apple-system,'Segoe UI',sans-serif}body{margin:0 auto;padding:28px;color:#26221C;max-width:820px;background:#fff}"
+      +"button{display:none!important}img{max-width:100%;border-radius:8px}"
+      +".hd{display:flex;align-items:baseline;gap:10px;border-bottom:3px solid #134A63;padding-bottom:12px;margin-bottom:6px}"
+      +".hd b{font-size:26px;letter-spacing:1px;color:#134A63}.hd .cp{color:#B5733A;font-weight:800;font-size:26px}"
+      +".sub{color:#8b8478;font-size:13px;margin-bottom:18px}"
+      +".ft{margin-top:26px;border-top:1px solid #e4ddd2;padding-top:12px;color:#8b8478;font-size:12px;text-align:center;line-height:1.6}"
+      +"@media print{body{padding:6px}}";
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Aspen Spas — Service Report — '+esc(t.customer||"")+'</title><style>'+css+'</style></head><body>'
+      +'<div class="hd"><b>ASPEN</b><span class="cp">SPAS</span><span style="margin-left:auto;font-size:13px;color:#8b8478;font-weight:600">Service Visit Report</span></div>'
+      +'<div class="sub">'+esc(t.customer||"")+' · '+esc(t.date||"")+((t.techs&&t.techs.length)?(' · Technician: '+esc(t.techs.join(", "))):"")+'</div>'
+      +body
+      +'<div class="ft">Aspen Spas St. Louis · 4609 McRee Ave, St. Louis, MO 63110 · (314) 776-5050 · service1@aspenspas.com<br>Thank you for choosing Aspen Spas — we appreciate your business!</div>'
+      +'</body></html>');
+    w.document.close();
+    setTimeout(function(){try{w.focus();w.print();}catch(_e){}},900);
+  }catch(e){console.warn("pdf",e);toast("PDF failed","err");}
+}
 function _c360ExpandBodyHTML(t){
   // FULL field report exactly as the tech submitted it — shown inline on expand.
   var media=Array.isArray(t.media)?t.media:[];
@@ -19055,6 +19117,16 @@ function _c360ExpandBodyHTML(t){
   var laborAmt=lb?(lb.amount||0):0;
   function rw(lbl,val){return '<div style="display:flex;gap:8px;font-size:var(--fs-sm);margin-bottom:3px"><span style="color:var(--i3);min-width:88px">'+lbl+'</span><span style="color:var(--ink);font-weight:600;flex:1;min-width:0">'+val+'</span></div>';}
   var h='';
+  // ── client-report actions (restored Jul 2026: lived on the retired Completed tab) ──
+  try{
+    if(typeof _canSendCustomerReport==="function"&&_canSendCustomerReport()){
+      h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+        +'<button onclick="event.stopPropagation();openReportModalById(\''+t.id+'\')" style="background:var(--ac);border:none;border-radius:10px;padding:9px 14px;font-size:var(--fs-sm);font-weight:800;color:#fff;cursor:pointer">📤 Enviar al cliente</button>'
+        +'<button onclick="event.stopPropagation();_visitClientPDF(\''+t.id+'\')" style="background:var(--cd);border:1.5px solid var(--ln);border-radius:10px;padding:9px 14px;font-size:var(--fs-sm);font-weight:800;color:var(--i1);cursor:pointer">📄 PDF profesional</button>'
+        +(photoSrcs.length?'<button onclick="event.stopPropagation();_visitPhotosDownload(\''+t.id+'\')" style="background:var(--cd);border:1.5px solid var(--ln);border-radius:10px;padding:9px 14px;font-size:var(--fs-sm);font-weight:800;color:var(--i1);cursor:pointer">📷 Fotos ('+photoSrcs.length+')</button>':'')
+        +'</div>';
+    }
+  }catch(_ra){}
   // ── meta grid ──
   h+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin-bottom:10px">';
   h+=rw("Date",esc(t.date||"\u2014"));
