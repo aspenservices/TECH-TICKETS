@@ -12642,6 +12642,25 @@ function _daysSince(ms){
 // hand. This helper guarantees a pending dispatch ticket exists so the office
 // always sees a "needs a new date" call. It is idempotent (won't create
 // duplicates) and de-duplicates against any dispatch the report was filed from.
+function _custBestSpaDesc(custName,excludeId){
+  // FIX (Jul 2026, Alberto): rescheduled calls were arriving with an EMPTY
+  // SPA INFO box — field reports rarely carry spaDesc. This pulls the most
+  // recent non-empty spa description from the customer\u2019s entire history.
+  try{
+    var key=(typeof _custGroupKey==="function")?_custGroupKey(custName):String(custName||"").toLowerCase();
+    if(!key)return "";
+    var best="",bestMs=-1;
+    [].concat(active||[],done||[]).forEach(function(x){
+      if(!x||x.id===excludeId)return;
+      var k2=(typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").toLowerCase();
+      if(k2!==key)return;
+      var sd=(x.spaDesc||"").trim();if(!sd)return;
+      var ms=Number(x.createdAtMs)||(x.date?(Date.parse(x.date+"T12:00:00")||0):0);
+      if(ms>=bestMs){bestMs=ms;best=sd;}
+    });
+    return best;
+  }catch(_e){return "";}
+}
 async function _autoCreateReschedDispatch(srcDocId,srcData){
   if(!db||!srcData||!srcData.customer)return;
   try{
@@ -12748,6 +12767,8 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
         date:"",status:"pending",techs:[],autoFromResched:true,
         reschedFromId:srcDocId,notes:mergedNotes,reschedAt:stamp,reschedAtMs:stampMs,
         reschedReason:reason||"",reschedNote:reasonNote||"",
+        // FIX (Jul 2026): never resurface a call with empty SPA INFO
+        spaDesc:(((openDisp.spaDesc||"").trim())?openDisp.spaDesc:(((srcData.spaDesc||"").trim())?srcData.spaDesc:_custBestSpaDesc(cust,srcDocId))),
         // AUDIT FIX (Jun 2026 — reschedule-orphan race): if auto-cleanup closed
         // this dispatch milliseconds before we reuse it (it saw the reschedule
         // report as a same-day fulfilment), the resurfaced call kept
@@ -12759,6 +12780,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
         cleanedUpBy:firebase.firestore.FieldValue.delete()
       });
       try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:openDisp.id})}catch(_e){}
+      try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:cust,app:"tickets",type:"ticket.rescheduled",title:"↻ Rescheduled"+(reason?" — "+reason:""),actor:techStr||""});}catch(_be){}
       if(_estCarry.estimate){
         try{
           var _upd=Object.assign({},_estCarry);
@@ -12809,7 +12831,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       date:"",techs:[],workTypes:wt,
       warranty:{has:w.has===true?true:w.has===false?false:null,model:w.model||"",year:w.year||0,type:w.type||"rda",label:w.label||"N/W"},
       visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
-      spaDesc:srcData.spaDesc||"",notes:newNotes,
+      spaDesc:(((srcData.spaDesc||"").trim())?srcData.spaDesc:_custBestSpaDesc(cust,srcDocId)),notes:newNotes,
       phone:(cd&&cd.phone)||srcData.phone||"",phone2:(cd&&cd.phone2)||srcData.phone2||"",
       email:(cd&&cd.email)||srcData.email||"",
       address:(cd&&cd.address)||srcData.address||"",city:(cd&&cd.city)||srcData.city||"",
@@ -12834,6 +12856,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       submitted:stamp
     },{merge:true});
     try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:docRef.id})}catch(_e){}
+    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:cust,app:"tickets",type:"ticket.rescheduled",title:"↻ Rescheduled"+(reason?" — "+reason:""),actor:techStr||""});}catch(_be){}
     if(_estCarry.estimate){
       try{await docRef.update(Object.assign({media:_estPdfMedia},_estCarry))}catch(_ee){console.warn("[resched estimate carry fresh]",_ee)}
     }
