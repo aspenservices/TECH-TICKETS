@@ -4783,6 +4783,7 @@ function _frMaybeLogOverride(customer,finalLabel,finalHas){
     saveWarrantyLog();
     try{rndrWarrantyLog()}catch(_e){}
     try{_audit("warranty",{customer:(_frOverridePending&&_frOverridePending.customer)||customer||"",note:autoLabel+" → "+(finalLabel||"N/W")});}catch(_a){}
+    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:(_frOverridePending&&_frOverridePending.customer)||customer||"",app:"tickets",type:"warranty.override",title:"🛡️ Warranty override: "+autoLabel+" → "+(finalLabel||"N/W"),actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}catch(_be){}
   }
   _frOverridePending=null;
 }
@@ -5820,6 +5821,42 @@ async function _brainMapRender(){
   try{if(window._brainRAF)cancelAnimationFrame(window._brainRAF);}catch(_e){}
   var box=document.getElementById("brainMapBox");if(box)box.innerHTML="";
 }
+var BRAIN_MANIFEST={version:"v1 · Jul 2026",caps:[
+  ["🪪","Identidad compartida","Reconoce al mismo cliente en las 3 apps"],
+  ["📅","Timeline cross-app","Historia unificada por cliente"],
+  ["📝","Notas compartidas","Una nota se ve en las tres apps"],
+  ["🔔","Alertas proactivas","Seguimientos, crónicos, reviews"],
+  ["👤","Perfil 360","Resumen vivo de cada cliente"],
+  ["📖","Memoria de eventos","Este catálogo — todo lo que registra"]
+],events:[
+  ["📋","ticket.created","Se crea un service call","Tickets"],
+  ["📅","appointment.scheduled","Cita agendada / técnico asignado","Tickets"],
+  ["✅","ticket.closed","Servicio completado","Tickets"],
+  ["⛔","ticket.canceled","Visita cancelada (con motivo)","Tickets"],
+  ["↻","ticket.rescheduled","Reagendado (con motivo)","Tickets"],
+  ["⭐","review.sent","Se pidió review de Google","Tickets"],
+  ["📤","report.sent","Reporte enviado al cliente (email/SMS/PDF)","Tickets"],
+  ["💳","payment.marked","Ticket marcado como pagado","Tickets"],
+  ["🖊️","estimate.approved","Estimate firmado por el cliente","Tickets"],
+  ["✏️","customer.updated","Datos del cliente editados","Tickets"],
+  ["🛡️","warranty.override","Garantía anulada manualmente","Tickets"],
+  ["📝","note","Nota compartida entre apps","Todas"],
+  ["🚚","delivery.completed","Entrega de spa","Delivery"],
+  ["🧪","chemical.visit","Visita de mantenimiento químico","Chemical"]
+]};
+function _brainManifestRender(){
+  var box=document.getElementById("brainManifest");if(!box)return;
+  var h='<div class="card" style="padding:16px 18px">';
+  h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px"><span style="font-weight:800;color:var(--br)">🧠 Manifiesto del cerebro</span><span style="font-size:var(--fs-xs);color:var(--i3);font-weight:700">'+BRAIN_MANIFEST.version+'</span><span id="brainManiCount" style="margin-left:auto;font-size:var(--fs-xs);color:var(--i3)"></span></div>';
+  h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:10px">Qué sabe hacer y qué recuerda — se actualiza con cada capacidad nueva</div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+BRAIN_MANIFEST.caps.map(function(c){return '<span title="'+esc(c[2])+'" style="background:var(--acl);border:1px solid var(--ac);color:var(--acd);border-radius:999px;padding:4px 11px;font-size:var(--fs-xs);font-weight:800">'+c[0]+" "+esc(c[1])+'</span>';}).join("")+'</div>';
+  h+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Eventos que registra</div>';
+  h+=BRAIN_MANIFEST.events.map(function(ev){return '<div style="display:flex;gap:9px;align-items:baseline;padding:6px 0;border-top:1px solid var(--ln);font-size:var(--fs-sm)"><span style="width:22px;text-align:center">'+ev[0]+'</span><code style="font-size:var(--fs-xs);background:var(--c-ash-2);border-radius:5px;padding:1px 6px;font-weight:700">'+esc(ev[1])+'</code><span style="flex:1;color:var(--i2)">'+esc(ev[2])+'</span><span style="font-size:var(--fs-xs);color:var(--i3);font-weight:700">'+esc(ev[3])+'</span></div>';}).join("");
+  h+='</div>';
+  box.innerHTML=h;
+  try{if(db){db.collection("events").count().get().then(function(a){var n=a&&a.data&&a.data().count;var t=document.getElementById("brainManiCount");if(t&&n!=null)t.textContent=n+" eventos recordados";}).catch(function(){});}}catch(_e){}
+  try{_admCollapsify(box.firstElementChild,"brainManifest");}catch(_e){}
+}
 function _admCollapsify(card,key){
   try{
     if(!card||card._cz)return;card._cz=1;
@@ -5902,6 +5939,10 @@ function _adminOrganize(){
       sec.appendChild(body);content.appendChild(sec);
       sc.ids.forEach(function(id){var el=document.getElementById(id);if(!el)return;var card=el.closest(".card")||el;body.appendChild(card);_admCollapsify(card,id);});
     });
+    try{
+      var cb=document.querySelector("#admSecCerebro .admCols");
+      if(cb){var mf=document.createElement("div");mf.id="brainManifest";cb.insertBefore(mf,cb.firstChild);_brainManifestRender();}
+    }catch(_mf){}
     Array.prototype.forEach.call(pg.children,function(ch){if(ch===lay)return;if(ch&&ch.style)ch.style.display="none";});
     try{
       var io=new IntersectionObserver(function(ents){
@@ -8946,6 +8987,26 @@ function initFirebase(){
     // with identical data): the document SET didn't change — we already refreshed
     // the badge above, so skip the heavy rebuild + cleanup + heal + re-render below.
     if(_dataLoaded && snap.docChanges().length===0) return;
+    // BRAIN (Jul 2026): "appointment.scheduled" — detected here in the listener,
+    // the single choke point that sees EVERY write path (editor, calendar, drag).
+    // Only the client that made the write logs it (hasPendingWrites), dedup’d by
+    // id+date+techs so it can never duplicate.
+    try{
+      snap.docChanges().forEach(function(chg){
+        if(chg.type!=="modified")return;
+        if(!chg.doc.metadata.hasPendingWrites)return;
+        var nw=chg.doc.data();var pv=_liveDocs.get(chg.doc.id);
+        if(!pv||!nw)return;
+        if(nw.source!=="dispatch")return;
+        if(!nw.date)return;
+        if(nw.status==="canceled"||nw.fieldReportSubmitted)return;
+        var techsNow=(nw.techs||[]).join(", ");
+        var dateChanged=(pv.date||"")!==(nw.date||"");
+        var techsChanged=((pv.techs||[]).join(", "))!==techsNow;
+        if(!dateChanged&&!techsChanged)return;
+        if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:nw.customer||"",app:"tickets",type:"appointment.scheduled",title:"📅 Scheduled "+nw.date+(techsNow?(" · "+techsNow):""),actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",dedup:"sched|"+chg.doc.id+"|"+(nw.date||"")+"|"+techsNow});
+      });
+    }catch(_sc){}
     _liveDocs=new Map();
     snap.forEach(doc=>{_liveDocs.set(doc.id,{id:doc.id,...doc.data()});});
     _mergeTicketSources();
@@ -14878,6 +14939,7 @@ async function markReportSent(ticketId,method){
       reportMethod:method||"unknown",
       reportSentBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)?currentUser.name:""
     });
+    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:(typeof _tktCust==="function"?_tktCust(ticketId):""),app:"tickets",type:"report.sent",title:"📤 Report sent to customer ("+(method||"")+")",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}catch(_be){}
   }catch(e){console.warn("markReportSent failed:",e)}
 }
 
@@ -16575,6 +16637,7 @@ async function loadCustEstimate(){
 // tech are never clobbered. Used by BOTH the remote (customer) and on-device
 // (tech) sign paths so the round-trip is duplicate-proof everywhere.
 async function _attachApprovedEstimate(fromId,fields,estAttach){
+  try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:(typeof _tktCust==="function"?_tktCust(fromId):""),app:"tickets",type:"estimate.approved",title:"🖊️ Estimate approved & signed",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",dedup:"est|"+fromId});}catch(_be){}
   const _ref=db.collection("tickets").doc(fromId);
   await db.runTransaction(async function(tx){
     const _s=await tx.get(_ref);
@@ -18350,6 +18413,7 @@ async function togglePaid(id,currentlyPaid){
   var newVal=!currentlyPaid;
   try{
     await db.collection("tickets").doc(id).update({paid:newVal,paidAt:newVal?new Date().toLocaleString():null});
+    try{if(newVal&&typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:(typeof _tktCust==="function"?_tktCust(id):""),app:"tickets",type:"payment.marked",title:"💳 Marked as Paid",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",dedup:"pay|"+id});}catch(_be){}
     toast(newVal?"Marked as Paid 💰":"Marked as unpaid");
     if(newVal){
       try{
@@ -19121,6 +19185,7 @@ function _visitClientPDF(id){
       +'</body></html>');
     w.document.close();
     setTimeout(function(){try{w.focus();w.print();}catch(_e){}},900);
+    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:t.customer||"",app:"tickets",type:"report.sent",title:"📄 PDF report generated for customer",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}catch(_be){}
   }catch(e){console.warn("pdf",e);toast("PDF failed","err");}
 }
 function _c360ExpandBodyHTML(t){
@@ -21448,6 +21513,7 @@ async function custSaveInfo(){
   allTkts.forEach(function(t){if(_ticketMatchesSelected(t)){var ref=db.collection("tickets").doc(t.id);batch.update(ref,updateObj);count++}});
   try{
     await batch.commit();
+    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:newName||selectedCustKey||"",app:"tickets",type:"customer.updated",title:"✏️ Customer info updated",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}catch(_be){}
     // Drop stale geocode entries so Maps shows the corrected location on next render
     if(addressChanged){
       var removed=0;
