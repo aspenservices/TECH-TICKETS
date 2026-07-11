@@ -25765,8 +25765,6 @@ function showTicketDetail(p,i){
 })();
 </script>
 
-
-
 <!-- ════════════════════════════════════════════════════════════════════════
      ASPEN BILLING SPRINT (Jul 2026) — ADDITIVE & fully reversible.
      Paste this whole block right before </body>. Delete the block to revert.
@@ -26327,6 +26325,17 @@ window.bsCopySummary=async function(){
   try{await navigator.clipboard.writeText(txt);}catch(e){}
   try{toast("Resumen copiado ✓");}catch(e){}
 };
+/* Version badge: the service worker announces its CACHE_VERSION on activate. */
+try{
+  if(navigator.serviceWorker){
+    navigator.serviceWorker.addEventListener("message",function(ev){
+      if(ev.data&&ev.data.type==="SW_ACTIVATED"){
+        try{localStorage.setItem("aspVer",String(ev.data.version||""));}catch(e){}
+        try{toast(TT("App actualizada · ","App updated · ")+(ev.data.version||"")+" ✓");}catch(e){}
+      }
+    });
+  }
+}catch(e){}
 document.addEventListener("keydown",function(e){
   var ov=document.getElementById("bsOv");
   if(!ov||ov.style.display!=="flex")return;
@@ -26393,7 +26402,9 @@ function renderDigest(p){
   var uname=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
   el.innerHTML='<div style="border:1.5px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--card,#fff)">'
     +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:13px">'+bico("sun",14)+' Tu día'+(uname?", "+esc3(uname):"")+'</b><span style="margin-left:auto;display:inline-flex;gap:2px;align-items:center"><button onclick="bsFs(1)" title="Letra normal" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:10px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsFs(2)" title="Letra mediana" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsFs(3)" title="Letra grande" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:14px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsSkinToggle()" title="Tema Aspen on/off" style="border:none;background:none;font-size:14px;cursor:pointer">🎨</button></span><button onclick="bsDigestHide()" title="Ocultar por hoy" style="border:none;background:none;color:var(--i3,#999);cursor:pointer;font-size:16px;line-height:1;margin-left:2px">×</button></div>'
-    +rows.join("")+'</div>';
+    +rows.join("")
+    +(function(){try{var v=localStorage.getItem("aspVer");return v?'<div style="font-size:9.5px;color:var(--i3,#8a8073);margin-top:6px;text-align:right">'+esc3(v)+'</div>':"";}catch(e){return "";}})()
+    +'</div>';
 }
 window.bsDigestHide=function(){try{localStorage.setItem(_bsDigestKey(),"1");}catch(e){}var el=document.getElementById("bsDigest");if(el)el.style.display="none";};
 
@@ -26632,6 +26643,7 @@ function show(){
       +'<div style="font-size:17px;font-weight:800;margin-bottom:4px">'+TT("Cola en cero — buen trabajo","Queue at zero — well done")+'</div>'
       +'<div style="font-size:13px;color:var(--i3,#8a8073);font-weight:600">'+c.d+' '+TT("resueltas","done")+' · '+c.s+' '+TT("saltadas","skipped")+'</div>'
       +(bl.length?'<div style="font-size:14px;font-weight:800;margin-top:4px">'+TT("Esta sesión: ","This session: ")+bl.length+' · $'+bl.reduce(function(s2,x){return s2+x.tot;},0).toFixed(2)+' pre-tax</div><button class="bs-endbtn" onclick="bsCopySummary()">'+bico("clipboard",13)+' '+TT("Copiar resumen del día","Copy day summary")+'</button>':'')
+      +(c.d>0?'<button class="bs-endbtn" onclick="bsIIF()">'+bico("file-download",14)+' '+TT("Descargar lote de prueba QB — 3 facturas (.iif)","Download QB test batch — 3 invoices (.iif)")+'</button>':'')
       +(c.s?'<button class="bs-endbtn" onclick="bsReviewSkipped()">↻ '+TT("Repasar las ","Review ")+c.s+' '+TT("saltadas","skipped")+'</button>':'')
       +'<button class="bs-endbtn" onclick="bsList()">'+bico("list",14)+' '+TT("Ver lista completa","Full list")+'</button>'
       +'<button class="bs-endbtn" onclick="bsClose()">'+TT("Cerrar","Close")+'</button></div>';
@@ -26694,6 +26706,47 @@ function show(){
   try{var _sh=document.getElementById("bsShortTxt");if(_sh)_sh.value=qbShortFor(t);}catch(e){}
   try{document.querySelector("#bsOv .bs-box").scrollTop=0;}catch(e){}
 }
+/* ── FASE A · LOTE IIF PARA QB DESKTOP (Jul 2026) — genera un archivo .iif
+   con las primeras 3 facturas APROBADAS HOY (pasaron los 3 checks y se
+   marcaron Facturada). Todo local: cero AI, cero Firebase, cero red.
+   ⚠ Los dos nombres de cuenta de abajo deben coincidir con el chart of
+   accounts de QB — el primer import de prueba dirá si hay que ajustarlos. ── */
+function _iifNum(x){return (Math.round(x*100)/100).toFixed(2);}
+function _iifTxt(v){return String(v||"").replace(/[\t\r]+/g," ").replace(/\n+/g," • ").trim();}
+function _iifDate(d){try{var p=String(d||"").split("-");if(p.length===3)return parseInt(p[1],10)+"/"+parseInt(p[2],10)+"/"+p[0];}catch(e){}return d||"";}
+window.bsIIF=function(){
+  var IIF_AR="Accounts Receivable";
+  var IIF_INCOME="Service Income";
+  var d0=new Date();var todLocale=(d0.getMonth()+1)+"/"+d0.getDate()+"/"+d0.getFullYear();
+  var done=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.qbCopied&&String(t.qbCopiedAt||"").indexOf(todLocale)===0;}).slice(0,3);
+  if(!done.length){try{toast(TT("Aún no hay facturas aprobadas hoy","No billed invoices today yet"),"warn");}catch(e){}return;}
+  var rows=["!TRNS\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO","!SPL\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO\tINVITEM\tQNTY\tPRICE\tTAXABLE","!ENDTRNS"];
+  var skipped=[];
+  done.forEach(function(t){
+    var lines=[];try{lines=(qbLinesFor(t)||{}).lines||[];}catch(e){}
+    var spl=[],tot=0;
+    lines.forEach(function(Ln,ix){
+      var pr=NaN;try{pr=parseFloat(String(Ln.r).replace(/[^0-9.\-]/g,""));}catch(e){}
+      var q=parseFloat(Ln.q)||0;
+      if(!isFinite(pr)||!q){if(String(Ln.r).indexOf("$")<0)skipped.push((t.customer||"")+": "+Ln.i);return;}
+      var amt=+(q*pr).toFixed(2);tot=+(tot+amt).toFixed(2);
+      var isPart=!/^Service|^Discount/i.test(Ln.i);
+      var memo=(ix===0)?_iifTxt(qbTextFor(t)):_iifTxt(Ln.n||Ln.i);
+      spl.push("SPL\tINVOICE\t"+_iifDate(t.date)+"\t"+IIF_INCOME+"\t"+_iifTxt(t.customer)+"\t-"+_iifNum(amt)+"\t"+memo+"\t"+_iifTxt(Ln.i)+"\t-"+q+"\t"+_iifNum(pr)+"\t"+(isPart?"Y":"N"));
+    });
+    if(!spl.length){skipped.push((t.customer||"")+": "+TT("sin líneas numéricas","no numeric lines"));return;}
+    rows.push("TRNS\tINVOICE\t"+_iifDate(t.date)+"\t"+IIF_AR+"\t"+_iifTxt(t.customer)+"\t"+_iifNum(tot)+"\t"+_iifTxt(qbShortFor(t)));
+    rows.push.apply(rows,spl);
+    rows.push("ENDTRNS");
+  });
+  var iif=rows.join("\r\n")+"\r\n";
+  var blob=new Blob([iif],{type:"text/plain"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="aspen-qb-lote-prueba-"+((typeof fmtD==="function")?fmtD(new Date()):"hoy")+".iif";
+  a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  try{toast(TT("Lote descargado — en QB: File → Utilities → Import → IIF Files","Batch downloaded — QB: File → Utilities → Import → IIF Files"));}catch(e){}
+  if(skipped.length){try{toast(TT("Quedó fuera (a mano): ","Left out (manual): ")+skipped.slice(0,3).join(" · "),"warn");}catch(e){}}
+};
 window.bsCk=function(k){var t=Q[idx];if(!t)return;var c2=ck[t.id];if(!c2)return;c2[k]=!c2[k];show();};
 
 window.bsList=function(){

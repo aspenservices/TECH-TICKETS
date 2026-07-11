@@ -9,7 +9,7 @@
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.6.4";
+const CACHE_VERSION = "v1.7.0";
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
@@ -65,6 +65,12 @@ self.addEventListener("activate", function (event) {
   );
   // Take control of all open tabs immediately
   self.clients.claim();
+  // Announce the active version to every open tab (shown in the digest footer).
+  self.clients.matchAll({ type: "window" }).then(function (cs) {
+    cs.forEach(function (c) {
+      c.postMessage({ type: "SW_ACTIVATED", version: CACHE_VERSION });
+    });
+  });
 });
 
 // ─── FETCH: Serve from cache, fall back to network ──────────────────
