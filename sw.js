@@ -1,3 +1,25 @@
+/* ═══ FCM push nivel 2 (Jul 2026): recibe con la app CERRADA ═══ */
+try{
+  importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
+  firebase.initializeApp({
+    apiKey:'AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc',
+    authDomain:'tech-tickets-a9485.firebaseapp.com',
+    projectId:'tech-tickets-a9485',
+    storageBucket:'tech-tickets-a9485.firebasestorage.app',
+    messagingSenderId:'680308339087',
+    appId:'1:680308339087:web:3d18766c4b0e465a1a9bfa'
+  });
+  var _msg=firebase.messaging();
+  _msg.onBackgroundMessage(function(payload){
+    try{
+      var d=(payload&&payload.data)||{};
+      var title=d.title||('\uD83D\uDCAC '+(d.peer||'Mensaje'));
+      var body=d.body||'Nuevo mensaje';
+      self.registration.showNotification(title,{body:body,tag:'dm-'+(d.peer||'x'),renotify:true,vibrate:[100,50,100],data:{peer:d.peer||''}});
+    }catch(_e){}
+  });
+}catch(e){/* messaging no disponible: el SW sigue funcionando normal */}
+
 /**
  * Aspen Spas - Service Ticket System
  * Service Worker for offline support (PWA)
@@ -9,7 +31,7 @@
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.7.0";
+const CACHE_VERSION = "v1.7.3";
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
@@ -65,12 +87,6 @@ self.addEventListener("activate", function (event) {
   );
   // Take control of all open tabs immediately
   self.clients.claim();
-  // Announce the active version to every open tab (shown in the digest footer).
-  self.clients.matchAll({ type: "window" }).then(function (cs) {
-    cs.forEach(function (c) {
-      c.postMessage({ type: "SW_ACTIVATED", version: CACHE_VERSION });
-    });
-  });
 });
 
 // ─── FETCH: Serve from cache, fall back to network ──────────────────
@@ -215,4 +231,25 @@ self.addEventListener("message", function (event) {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+
+// ═══ DM notifications: tap → focus app & open that thread (Jul 2026) ═══
+self.addEventListener('notificationclick',function(e){
+  e.notification.close();
+  var peer=(e.notification.data&&e.notification.data.peer)||'';
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
+    for(var i=0;i<cs.length;i++){var c=cs[i];
+      if('focus' in c){c.focus();try{c.postMessage({type:'openDm',peer:peer})}catch(_e){}return;}
+    }
+    if(clients.openWindow)return clients.openWindow('./');
+  }));
+});
+
+
+/* Version badge: anunciar CACHE_VERSION a las ventanas al activar (Jul 2026) */
+self.addEventListener('activate',function(e){
+  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
+    cs.forEach(function(c){try{c.postMessage({type:'SW_ACTIVATED',version:CACHE_VERSION})}catch(_e){}});
+  }));
 });
