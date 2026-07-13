@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2783,6 +2783,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 #custProTable .cptPg.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 </style>
 <style id="mobNavCss">
+/* App nativa (Jul 2026): sin pinch-zoom ni doble-tap-zoom en teléfonos. */
+@media(max-width:1023px){
+  html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  html{overflow-x:hidden}
+}
 /* ═══ ADS móvil (Jul 2026): navegación inferior estilo app nativa ═══ */
 #mobNav{display:none}
 #mobSheet{position:fixed;inset:0;z-index:1300;display:none}
@@ -9210,6 +9215,11 @@ async function _loadTicketArchive(){
 // ═══ FIREBASE REALTIME ═══
 function initFirebase(){
   if(!db)return;
+  // COST GUARD (Jul 2026): esta función crea TODOS los listeners globales
+  // (tickets, todos, timeOff, cross_app_events). Una segunda llamada duplicaría
+  // cada listener — y con ellos las lecturas facturables, para siempre.
+  if(window._fbListenersOn)return;
+  window._fbListenersOn=true;
   // COST FIX (Jul 2026): windowed listener (see helpers above). Old open
   // tickets arrive via _sweepStaleActive; full history via _loadTicketArchive.
   setTimeout(function(){try{_sweepStaleActive()}catch(_e){}},6000);
@@ -11043,7 +11053,7 @@ function _presInitials(name){
   var p=(name||"?").trim().split(/\s+/);
   return (p.length>=2?(p[0][0]+p[p.length-1][0]):(p[0]||"?").slice(0,2)).toUpperCase();
 }
-function _presIsOnline(rec){return rec&&rec.online&&(Date.now()-(rec.ts||0)<70000)}
+function _presIsOnline(rec){return rec&&rec.online&&(Date.now()-(rec.ts||0)<150000)} // umbral 150s: tolera un latido perdido
 // Cluster of tech avatars for a ticket (reused in cards, history, calendar)
 function _techAvatars(t,size){return ((t&&t.techs)||[]).map(function(n){return _avatarHTML(n,size||16)}).join("")}
 // Reusable colored avatar (initials) — same color logic as the login screen (#1)
@@ -11073,6 +11083,9 @@ function _presenceStart(){
 // Write/refresh my own heartbeat
 function _presenceBeat(){
   if(!db||!currentUser)return;
+  // COST (Jul 2026): no escribir con la app en segundo plano (el teléfono en el
+  // bolsillo escribía cada 25s toda la jornada). _presVis re-late al volver.
+  try{if(document.visibilityState!=="visible")return;}catch(_e){}
   try{
     db.collection("presence").doc(_presNameId(currentUser.name)).set({
       name:currentUser.name,role:currentUser.role||"",online:true,ts:Date.now()
@@ -11082,7 +11095,7 @@ function _presenceBeat(){
 function _presenceOnLogin(){
   _presenceBeat();
   if(_presenceHbTimer)clearInterval(_presenceHbTimer);
-  _presenceHbTimer=setInterval(_presenceBeat,25000);
+  _presenceHbTimer=setInterval(_presenceBeat,60000); // COST: 25s -> 60s (-58% escrituras)
   // Mark offline if the tab is hidden/closed (best-effort)
   document.addEventListener("visibilitychange",_presVis);
   window.addEventListener("beforeunload",_presBye);
@@ -16987,7 +17000,11 @@ const TECH_COLORS=["var(--ac)","var(--br)","var(--c-info-strong)","var(--c-money
 const ZONE_COLORS={"City":{"bg":"#E6F1FB","text":"#0C447C"},"West":{"bg":"#EAF3DE","text":"#27500A"},"North":{"bg":"#FAEEDA","text":"#633806"},"44 West":{"bg":"#FAECE7","text":"#712B13"},"St. Charles":{"bg":"#EEEDFE","text":"#3C3489"},"55 South":{"bg":"#FBEAF0","text":"#72243E"},"21/30":{"bg":"#E1F5EE","text":"#085041"},"Route 3 (Illinois)":{"bg":"#F1EFE8","text":"#2C2C2A"},"55 North (Illinois)":{"bg":"#E1F5EE","text":"#085041"},"64 East (Illinois)":{"bg":"#FCEBEB","text":"#791F1F"}};
 const ZIP_ZONES={"63101":"City","63102":"City","63103":"City","63104":"City","63105":"City","63106":"City","63107":"City","63108":"City","63109":"City","63110":"City","63112":"City","63113":"City","63115":"City","63116":"City","63117":"City","63118":"City","63139":"City","63130":"City","63124":"West","63131":"West","63132":"West","63141":"West","63143":"West","63144":"West","63043":"West","63005":"West","63017":"West","63038":"West","63040":"West","63011":"West","63021":"West","63069":"West","63146":"West","63119":"West","63122":"West","63126":"West","63127":"West","63025":"West","63088":"West","63049":"West","63051":"21/30","63016":"21/30","63114":"North","63120":"North","63121":"North","63133":"North","63134":"North","63135":"North","63140":"North","63136":"North","63137":"North","63138":"North","63147":"North","63074":"North","63044":"North","63031":"North","63034":"North","63042":"North","63033":"North","63341":"St. Charles","63390":"St. Charles","63304":"St. Charles","63303":"St. Charles","63301":"St. Charles","63376":"St. Charles","63368":"St. Charles","63367":"St. Charles","63366":"St. Charles","63385":"St. Charles","63383":"St. Charles","63379":"St. Charles","63362":"St. Charles","63369":"St. Charles","63359":"St. Charles","63123":"55 South","63125":"55 South","63128":"55 South","63129":"55 South","63010":"55 South","63052":"55 South","63012":"55 South","63070":"55 South","63028":"55 South","63048":"55 South","63628":"55 South","63020":"55 South","63670":"55 South","63050":"55 South","63111":"55 South","63601":"55 South","63640":"55 South","63673":"55 South","63014":"55 South","62206":"Route 3 (Illinois)","62240":"Route 3 (Illinois)","62239":"Route 3 (Illinois)","62236":"Route 3 (Illinois)","62260":"Route 3 (Illinois)","62285":"Route 3 (Illinois)","62298":"Route 3 (Illinois)","62244":"Route 3 (Illinois)","62278":"Route 3 (Illinois)","62243":"Route 3 (Illinois)","62255":"Route 3 (Illinois)","62217":"Route 3 (Illinois)","62286":"Route 3 (Illinois)","62939":"Route 3 (Illinois)","62864":"Route 3 (Illinois)","62216":"Route 3 (Illinois)","62035":"55 North (Illinois)","62002":"55 North (Illinois)","62024":"55 North (Illinois)","62095":"55 North (Illinois)","62084":"55 North (Illinois)","62087":"55 North (Illinois)","62063":"55 North (Illinois)","62012":"55 North (Illinois)","62010":"55 North (Illinois)","62046":"55 North (Illinois)","62069":"55 North (Illinois)","62088":"55 North (Illinois)","62009":"55 North (Illinois)","62033":"55 North (Illinois)","62626":"55 North (Illinois)","62056":"55 North (Illinois)","62049":"55 North (Illinois)","62052":"55 North (Illinois)","62246":"55 North (Illinois)","62254":"55 North (Illinois)","62281":"55 North (Illinois)","62249":"55 North (Illinois)","62294":"55 North (Illinois)","62062":"55 North (Illinois)","62034":"55 North (Illinois)","62025":"55 North (Illinois)","62234":"55 North (Illinois)","62080":"55 North (Illinois)","62471":"55 North (Illinois)","62040":"64 East (Illinois)","62232":"64 East (Illinois)","62208":"64 East (Illinois)","62226":"64 East (Illinois)","62220":"64 East (Illinois)","62221":"64 East (Illinois)","62061":"64 East (Illinois)","62269":"64 East (Illinois)","62293":"64 East (Illinois)","62230":"64 East (Illinois)","62271":"64 East (Illinois)","62258":"64 East (Illinois)","62801":"64 East (Illinois)","62223":"64 East (Illinois)"};
 const ZIP_CITIES={"63114":"Overland","63031":"Florissant","63135":"Ferguson","63123":"Affton","63129":"Oakville","63010":"Arnold","63005":"Chesterfield","63011":"Ballwin","63301":"St. Charles","63376":"St. Peters","63366":"O'Fallon","63385":"Wentzville","63122":"Kirkwood","63119":"Webster Groves","63126":"Crestwood","63128":"Concord","63125":"Mehlville"};
-function calAutoZone(){const zip=document.getElementById("calCustZip").value.trim();const badge=document.getElementById("calZoneBadge");const zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";const city=ZIP_CITIES[zip]||customZips[zip+"_city"]||"";if(zip.length===5&&zone){const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};badge.style.display="block";badge.innerHTML='<span style="padding:5px 12px;border-radius:8px;font-size:var(--fs-sm);font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span>';if(!document.getElementById("calCustCity").value&&city)document.getElementById("calCustCity").value=city}else if(zip.length===5){badge.style.display="block";badge.innerHTML='<input id="calManualZone" placeholder="Enter zone" class="time-input" style="width:120px;font-size:var(--fs-sm)">'}else{badge.style.display="none"}}
+function calAutoZone(){
+  // Defensivo (Jul 2026): estos campos son del modal viejo; si no existen, salir.
+  var _zi=document.getElementById("calCustZip"),_zb=document.getElementById("calZoneBadge");
+  if(!_zi||!_zb)return;
+  const zip=_zi.value.trim();const badge=_zb;const zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";const city=ZIP_CITIES[zip]||customZips[zip+"_city"]||"";if(zip.length===5&&zone){const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};badge.style.display="block";badge.innerHTML='<span style="padding:5px 12px;border-radius:8px;font-size:var(--fs-sm);font-weight:600;background:'+zc.bg+';color:'+zc.text+'">'+zone+'</span>';if(!document.getElementById("calCustCity").value&&city)document.getElementById("calCustCity").value=city}else if(zip.length===5){badge.style.display="block";badge.innerHTML='<input id="calManualZone" placeholder="Enter zone" class="time-input" style="width:120px;font-size:var(--fs-sm)">'}else{badge.style.display="none"}}
 let customZips={};
 // Resolve the effective zone for a ticket at render time:
 //  1. ZIP_ZONES (built-in) — wins always
@@ -18425,7 +18442,16 @@ async function calSetDuration(id,durMin){
     if(typeof rndrCal==="function")try{rndrCal()}catch(_e){}
   }catch(e){toast("Error","err")}
 }
-function calSelectDay(ds){calSelectedDate=ds;rndrCal();document.getElementById("calDate").value=ds}
+function calSelectDay(ds){
+  // BUG FIX (Jul 2026): #calDate pertenecía a un modal viejo que ya no existe.
+  // Cada clic en un día lanzaba TypeError — y el reporter global lo escribía en
+  // client_errors, gastando el cupo de 5 errores/sesión y tapando los fallos
+  // REALES de los técnicos en el panel de Admin.
+  calSelectedDate=ds;
+  rndrCal();
+  var _cd=document.getElementById("calDate");
+  if(_cd)_cd.value=ds;
+}
 function rndrCalList(allTkts,filterTech,q){const prefix=calYear+"-"+String(calMonth+1).padStart(2,"0");let filtered=allTkts.filter(t=>t.date&&t.date.startsWith(prefix));if(filterTech)filtered=filtered.filter(t=>(t.techs||[]).includes(filterTech));if(q)filtered=filtered.filter(t=>tktMatchesSearch(t,q));filtered.sort((a,b)=>{const dc=(a.date||"").localeCompare(b.date||"");if(dc!==0)return dc;return(a.arrival||"99:99").localeCompare(b.arrival||"99:99")});if(!filtered.length){document.getElementById("calGrid").innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">No tickets this month</div>';return}let h="";let lastDate="";let openSection=false;filtered.forEach(t=>{if(t.date!==lastDate){if(openSection){h+='</div>';openSection=false}lastDate=t.date;const d=new Date(t.date+"T12:00:00");h+=daySepHTML(d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}));h+='<div ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+t.date+'\')" style="padding:4px;border-radius:8px;transition:background .15s">';openSection=true}h+=calTktCard(t)});if(openSection)h+='</div>';document.getElementById("calGrid").innerHTML=h}
 function _qbHistBadge(t){return t&&t.qbCopied?'<span class="qb-note-status" style="background:var(--c-money-bg);color:var(--c-money-fg)" title="Copied to QuickBooks'+(t.qbCopiedAt?' · '+t.qbCopiedAt:'')+'">📋 IN QB</span>':''}
 // Replacement warranty badge. On out-of-warranty spas where a part was replaced:
@@ -21315,9 +21341,39 @@ function startEstimateFrom(id){
 let selectedCustKey=null;
 let qbCustTab="info"; // 'info' | 'spa' | 'history'
 
+/* ═══ Gestos de app nativa (Jul 2026) ═══
+   iOS ignora user-scalable=no en Safari, así que apagamos el pinch y el
+   doble-tap a mano. Excepciones: el panel de chat (usa doble-tap en su grip)
+   y los campos de texto (doble-tap = seleccionar palabra). */
+(function(){
+  try{
+    function _mobile(){return window.innerWidth<=1023;}
+    function _exempt(el){
+      try{
+        if(!el||!el.closest)return false;
+        if(el.closest("#dmPanel"))return true;
+        if(el.closest("input,textarea,select,[contenteditable='true']"))return true;
+      }catch(_e){}
+      return false;
+    }
+    ["gesturestart","gesturechange","gestureend"].forEach(function(ev){
+      document.addEventListener(ev,function(e){if(_mobile()&&!_exempt(e.target))e.preventDefault();},{passive:false});
+    });
+    var _lastTap=0;
+    document.addEventListener("touchend",function(e){
+      if(!_mobile()||_exempt(e.target)){_lastTap=Date.now();return;}
+      var now=Date.now();
+      if(now-_lastTap<=320&&e.cancelable)e.preventDefault();
+      _lastTap=now;
+    },{passive:false});
+  }catch(_e){}
+})();
 /* ═══ ADS móvil · bottom navigation (Jul 2026) ═══ */
 var _MN_ICO={tab0:"📝",tab1:"📋",tab2:"✅",tab3:"👑",tab4:"📅",tab5:"🧾",tab6:"👥",tab7:"🗺️",tab8:"🔔",tab9:"💼",tab10:"🧰",tab11:"📓",tab12:"📞",tab13:"💬"};
-var _MN_LBL={tab0:"Reporte",tab1:"Daily",tab2:"Done",tab3:"Admin",tab4:"Agenda",tab5:"Registro",tab6:"Clientes",tab7:"Mapas",tab8:"Alertas",tab9:"Apps",tab10:"Tools",tab11:"Journal",tab12:"Coach",tab13:"Chat"};
+var _MN_LBL={tab0:["Reporte","Report"],tab1:["Daily","Daily"],tab2:["Listos","Done"],tab3:["Admin","Admin"],tab4:["Agenda","Calendar"],tab5:["Registro","Log"],tab6:["Clientes","Customers"],tab7:["Mapas","Maps"],tab8:["Alertas","Alerts"],tab9:["Apps","My Apps"],tab10:["Tools","Tools"],tab11:["Journal","Journal"],tab12:["Coach","Coaching"],tab13:["Chat","Chat"]};
+/* Una sola fuente de verdad para las etiquetas: respeta el idioma de la app y
+   evita el emoji duplicado (varios tabs ya traen el emoji en su texto). */
+function _mnLbl(id){var pr=_MN_LBL[id];if(!pr)return String(id);try{return TT(pr[0],pr[1]);}catch(_e){return pr[1];}}
 var _MN_PIN=["tab0","tab1","tab4","tab5","tab6","tab8","tab3","tab13","tab7","tab10","tab9","tab12","tab11","tab2"];
 function _mobNavBuild(){
   try{
@@ -21329,6 +21385,12 @@ function _mobNavBuild(){
       sh.innerHTML='<div class="mnBk" onclick="_mobSheetHide()"></div><div class="mnCard" id="mobSheetCard"></div>';
       document.body.appendChild(sh);
     }
+    // Nunca sobre la pantalla de login.
+    var ls=document.getElementById("loginScreen");
+    var loggedIn=(typeof currentUser!=="undefined"&&currentUser);
+    var loginVisible=false;
+    try{loginVisible=!!(ls&&getComputedStyle(ls).display!=="none");}catch(_e){}
+    if(!loggedIn||loginVisible){bar.style.display="none";_mobSheetHide();return;}
     var tabs=[];document.querySelectorAll("#tabBar .tab").forEach(function(t){if(!t.classList.contains("hidden")&&t.id)tabs.push(t.id);});
     if(!tabs.length){bar.style.display="none";return;}
     var ordered=_MN_PIN.filter(function(id){return tabs.indexOf(id)>=0;});
@@ -21339,14 +21401,15 @@ function _mobNavBuild(){
     pins.forEach(function(id){
       var n=Number(id.replace("tab",""));
       var bdg=document.getElementById("bdg"+n);var bv=(bdg&&bdg.style.display!=="none")?bdg.textContent:"";
-      h+='<button class="mnItem'+(cur===n?" on":"")+'" onclick="showTab('+n+')"><span class="mnIco">'+(_MN_ICO[id]||"▫️")+'</span><span>'+(_MN_LBL[id]||id)+'</span>'+(bv?'<span class="mnBdg">'+bv+'</span>':'')+'</button>';
+      h+='<button class="mnItem'+(cur===n?" on":"")+'" onclick="showTab('+n+')"><span class="mnIco">'+(_MN_ICO[id]||"▫️")+'</span><span>'+_mnLbl(id)+'</span>'+(bv?'<span class="mnBdg">'+bv+'</span>':'')+'</button>';
     });
     if(rest.length){
       var restActive=rest.some(function(id){return Number(id.replace("tab",""))===cur;});
-      h+='<button class="mnItem'+(restActive?" on":"")+'" onclick="_mobSheetShow()"><span class="mnIco">•••</span><span>Más</span></button>';
+      h+='<button class="mnItem'+(restActive?" on":"")+'" onclick="_mobSheetShow()"><span class="mnIco">•••</span><span>'+TT("Más","More")+'</span></button>';
     }
     bar.innerHTML=h;bar.style.display="flex";
     window._mnRest=rest;
+    setTimeout(_mnFixFab,0);
   }catch(_e){}
 }
 function _mobSheetShow(){
@@ -21355,7 +21418,7 @@ function _mobSheetShow(){
     var h="";
     (window._mnRest||[]).forEach(function(id){
       var n=Number(id.replace("tab",""));
-      var t=document.getElementById(id);var lbl=t?t.textContent.replace(/\s*\d+\s*$/,"").trim():(_MN_LBL[id]||id);
+      var lbl=_mnLbl(id);
       var bdg=document.getElementById("bdg"+n);var bv=(bdg&&bdg.style.display!=="none")?bdg.textContent:"";
       h+='<div class="mnRow" onclick="_mobSheetHide();showTab('+n+')"><span style="font-size:20px">'+(_MN_ICO[id]||"▫️")+'</span><span style="flex:1">'+lbl+'</span>'+(bv?'<span class="mnBdg" style="position:static">'+bv+'</span>':'')+'</div>';
     });
@@ -21363,6 +21426,19 @@ function _mobSheetShow(){
   }catch(_e){}
 }
 function _mobSheetHide(){var sh=document.getElementById("mobSheet");if(sh)sh.style.display="none";}
+function _mnFixFab(){
+  // El botón flotante del chat vivía a 88px del borde: la barra inferior nueva
+  // (70px + safe-area) lo tapaba. Lo subimos justo por encima, sin pisar la
+  // posición del usuario si él ya lo había puesto más arriba.
+  try{
+    if(window.innerWidth>1023)return;
+    var fab=document.getElementById("dmFab"),nav=document.getElementById("mobNav");
+    if(!fab||!nav||nav.style.display==="none")return;
+    var need=Math.round(nav.getBoundingClientRect().height)+14;
+    var cur=parseInt(fab.style.bottom)||88;
+    if(cur<need)fab.style.bottom=need+"px";
+  }catch(_e){}
+}
 setTimeout(function(){
   try{
     var _o=window.showTab;
@@ -27077,7 +27153,7 @@ function renderBtn(){
   nb.innerHTML=bico("layout-dashboard",14)+" Vista Nela — board por etapa de facturación";
   try{nvRender();}catch(e){}
 }
-setInterval(function(){try{renderBtn();}catch(e){}},4000);
+setInterval(function(){try{if(document.visibilityState==="visible")renderBtn();}catch(e){}},4000);
 setTimeout(function(){try{renderBtn();}catch(e){}},2500);
 
 /* ── Overlay ── (Jul 2026 v2: back navigation, un-mark, queue list view) */
