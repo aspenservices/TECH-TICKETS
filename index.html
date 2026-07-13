@@ -6745,13 +6745,23 @@ function _dmMakeDraggable(fab){
 function _dmPositionPanel(){
   var fab=document.getElementById("dmFab"),panel=document.getElementById("dmPanel");
   if(!fab||!panel)return;
+  if((panel.dataset.mode||"panel")!=="panel")return;   // dock y full se posicionan solos
   var fr=parseInt(fab.style.right)||14, fb=parseInt(fab.style.bottom)||88;
-  // panel sits just above the bubble, aligned to the same right edge, clamped to viewport
-  panel.style.right=Math.min(window.innerWidth-40, fr)+"px";
-  panel.style.bottom=(fb+fab.offsetHeight+10)+"px";
+  var w=panel.offsetWidth||DM_DEF_W, h=panel.offsetHeight||DM_DEF_H;
+  // panel sits just above the bubble, aligned to the same right edge...
+  var r=Math.max(8,Math.min(window.innerWidth-40,fr));
+  var b=fb+fab.offsetHeight+10;
+  // ...pero SIEMPRE dentro del viewport: si no cabe, se pega arriba dejando 12px.
+  // Esto es lo que impide que la cabecera y la manija de resize salgan de pantalla.
+  var maxB=window.innerHeight-h-12;
+  if(b>maxB)b=Math.max(12,maxB);
+  if(r+w>window.innerWidth-12)r=Math.max(8,window.innerWidth-w-12);
+  panel.style.right=r+"px";
+  panel.style.bottom=b+"px";
 }
 function _dmEnsureDom(){
   if(document.getElementById("dmFab"))return;
+  _dmInjectCss();
   var fab=document.createElement("button");
   fab.id="dmFab";
   fab.style.cssText="position:fixed;right:14px;bottom:88px;width:54px;height:54px;border-radius:50%;border:none;background:var(--br);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(19,74,99,.35);z-index:4400;display:none;align-items:center;justify-content:center";
@@ -6766,6 +6776,8 @@ function _dmEnsureDom(){
     +'<div id="dmFoot" style="border-top:1px solid var(--ln)"></div>';
   document.body.appendChild(panel);
   try{_dmGlassInit(panel)}catch(_gz){}
+  try{_dmWireGlobal()}catch(_gw){}
+  try{_dmApplyMode(_dmGetMode(),false)}catch(_ga){}
   try{
     if(navigator.serviceWorker&&!window._dmSwMsgWired){
       window._dmSwMsgWired=1;
@@ -6834,10 +6846,174 @@ function _dmNotifAsk(btn){
     });
   }catch(_e){}
 }
+/* ═══ CHAT DOCK · v1.8.0 (Jul 2026) — window manager del panel de mensajes ═══
+   Modos:
+     "panel" → flotante sobre la app, redimensionable (por defecto)
+     "dock"  → columna fija a la derecha; el body se encoge con padding-right,
+               igual que el riel lateral ya hace con padding-left. Chat y ticket
+               visibles a la vez.
+     "full"  → pantalla completa (único modo en móvil, <900px)
+
+   BUG CORREGIDO: el doble toque llamaba a _dmToggleExpand() y, acto seguido, el
+   pointerup del resize medía el panel YA expandido y guardaba dmW=860 /
+   dmH=alto-de-pantalla en localStorage. Al recargar, el panel abría gigante con
+   su manija fuera del viewport y la bandera _big (que vivía en memoria) perdida:
+   imposible volver. Ahora se persiste el MODO —no los píxeles—, el tamaño
+   flotante se limita SIEMPRE al viewport, y solo se guarda si hubo arrastre real. */
+var DM_MODES = ["panel", "dock", "full"];
+var DM_MIN_W = 320, DM_MIN_H = 340, DM_DEF_W = 380, DM_DEF_H = 520, DM_DOCK_DEF = 400;
+
+function _dmIsMobile(){ return window.innerWidth < 900; }
+function _dmGetMode(){
+  if(_dmIsMobile())return "full";
+  var m=null;try{m=localStorage.getItem("dmMode");}catch(_e){}
+  return DM_MODES.indexOf(m)>=0?m:"panel";
+}
+function _dmSaveMode(m){try{localStorage.setItem("dmMode",m);}catch(_e){}}
+
+/* Tamaño del modo flotante — siempre dentro del viewport, así la cabecera y la
+   manija quedan SIEMPRE alcanzables por más basura que haya en localStorage. */
+function _dmFloatSize(){
+  var w=DM_DEF_W,h=DM_DEF_H;
+  try{
+    var sw=parseInt(localStorage.getItem("dmW"),10),sh=parseInt(localStorage.getItem("dmH"),10);
+    if(sw)w=sw; if(sh)h=sh;
+  }catch(_e){}
+  var maxW=window.innerWidth-24, maxH=window.innerHeight-40;
+  return {w:Math.max(DM_MIN_W,Math.min(w,maxW)), h:Math.max(DM_MIN_H,Math.min(h,maxH))};
+}
+function _dmDockW(){
+  var w=DM_DOCK_DEF;
+  try{var s=parseInt(localStorage.getItem("dmDockW"),10);if(s)w=s;}catch(_e){}
+  return Math.max(DM_MIN_W,Math.min(w,Math.round(window.innerWidth*0.55)));
+}
+function _dmResetSize(){
+  try{localStorage.removeItem("dmW");localStorage.removeItem("dmH");}catch(_e){}
+  _dmApplyMode("panel",true);
+  if(typeof toast==="function")toast("Tamaño restablecido");
+}
+
+/* CSS del chat (dock/full, manija, controles). Se inyecta una sola vez. */
+function _dmInjectCss(){
+  if(document.getElementById("dmDockCss"))return;
+  var s=document.createElement("style");s.id="dmDockCss";
+  s.textContent=
+     'body.dm-docked{padding-right:var(--dmDockW,400px);transition:padding-right .2s ease}'
+    +'@media (min-width:1024px){'
+    +'body.dm-docked #ticketDetail{right:var(--dmDockW,400px)}'
+    +'body.dm-docked #ticketDetailBack{right:var(--dmDockW,400px)}}'
+    +'#dmPanel[data-mode="dock"],#dmPanel[data-mode="full"]{background:var(--cd)!important;'
+    +'backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:none!important}'
+    +'#dmPanel[data-mode="dock"]{border-left:1px solid var(--ln)!important;box-shadow:-14px 0 40px rgba(0,0,0,.18)!important}'
+    +'#dmPanel[data-mode="full"]{box-shadow:none!important}'
+    +'#dmPanel[data-mode="dock"] #dmHead,#dmPanel[data-mode="full"] #dmHead{background:#132A3C!important;'
+    +'backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'
+    /* !important: el grip y su span llevan estilos inline (cssText), y sin esto
+       el modo dock seguiría mostrando la manija de esquina en vez del borde. */
+    +'#dmPanel[data-mode="dock"] #dmGrip{top:0!important;left:0!important;width:8px!important;'
+    +'height:100%!important;padding:0!important;cursor:ew-resize!important;border-radius:0!important;'
+    +'align-items:center!important;justify-content:center!important}'
+    +'#dmPanel[data-mode="dock"] #dmGrip span{width:3px!important;height:36px!important;border:none!important;'
+    +'border-radius:3px!important;background:rgba(0,0,0,.18)!important}'
+    +'#dmPanel[data-mode="full"] #dmGrip{display:none!important}'
+    +'.dmCtrls{margin-left:auto;display:flex;gap:5px;align-items:center}'
+    +'.dmCtrl{width:27px;height:27px;border:none;border-radius:8px;background:rgba(255,255,255,.14);color:#fff;'
+    +'font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;'
+    +'transition:background .15s}'
+    +'.dmCtrl:hover{background:rgba(255,255,255,.30)}'
+    +'@media (max-width:899px){.dmCtrl.deskOnly{display:none}}';
+  document.head.appendChild(s);
+}
+
+/* Controles de cabecera — compartidos por las 3 vistas (lista, hilo, equipo). */
+function _dmCtrls(){
+  var p=document.getElementById("dmPanel"),m=(p&&p.dataset.mode)||"panel";
+  var dIco=(m==="dock")?"\u21E4":"\u21E5", dTit=(m==="dock")?"Desacoplar":"Acoplar a la derecha";
+  var fIco=(m==="full")?"\u2921":"\u26F6", fTit=(m==="full")?"Salir de pantalla completa":"Pantalla completa";
+  return '<span class="dmCtrls">'
+    +'<button class="dmCtrl deskOnly" id="dmBtnDock" onclick="_dmToggleDock()" title="'+dTit+'">'+dIco+'</button>'
+    +'<button class="dmCtrl deskOnly" id="dmBtnFull" onclick="_dmToggleFull()" title="'+fTit+'">'+fIco+'</button>'
+    +'<button class="dmCtrl" onclick="closeTeamChat()" title="Cerrar (Esc)">\u00D7</button>'
+    +'</span>';
+}
+function _dmSyncCtrls(){
+  var p=document.getElementById("dmPanel");if(!p)return;
+  var m=p.dataset.mode||"panel";
+  var d=document.getElementById("dmBtnDock"),f=document.getElementById("dmBtnFull");
+  if(d){d.textContent=(m==="dock")?"\u21E4":"\u21E5";d.title=(m==="dock")?"Desacoplar":"Acoplar a la derecha";}
+  if(f){f.textContent=(m==="full")?"\u2921":"\u26F6";f.title=(m==="full")?"Salir de pantalla completa":"Pantalla completa";}
+}
+
+function _dmApplyMode(mode,save){
+  var p=document.getElementById("dmPanel");if(!p)return;
+  if(_dmIsMobile())mode="full";
+  if(DM_MODES.indexOf(mode)<0)mode="panel";
+  if(save)_dmSaveMode(mode);
+  p.dataset.mode=mode;
+  var fab=document.getElementById("dmFab"), st=p.style, open=(st.display==="flex");
+  st.maxHeight="none";
+  st.transition="width .2s ease,height .2s ease,right .2s ease,bottom .2s ease";
+  if(mode==="dock"){
+    var w=_dmDockW();
+    document.documentElement.style.setProperty("--dmDockW",w+"px");
+    if(open)document.body.classList.add("dm-docked");
+    st.left="auto";st.right="0px";st.top="0px";st.bottom="0px";
+    st.width=w+"px";st.height="auto";st.borderRadius="0";
+    if(fab)fab.style.display="none";
+  }else if(mode==="full"){
+    document.body.classList.remove("dm-docked");
+    st.left="0px";st.right="0px";st.top="0px";st.bottom="0px";
+    st.width="auto";st.height="auto";st.borderRadius="0";
+    if(fab)fab.style.display="none";
+  }else{
+    document.body.classList.remove("dm-docked");
+    var s=_dmFloatSize();
+    st.left="auto";st.top="auto";
+    st.width=s.w+"px";st.height=s.h+"px";st.borderRadius="20px";
+    if(fab&&currentUser)fab.style.display="flex";
+    _dmPositionPanel();
+  }
+  _dmSyncCtrls();
+}
+function _dmToggleDock(){
+  var p=document.getElementById("dmPanel");if(!p)return;
+  _dmApplyMode((p.dataset.mode==="dock")?"panel":"dock",true);
+}
+function _dmToggleFull(){
+  var p=document.getElementById("dmPanel");if(!p)return;
+  _dmApplyMode((p.dataset.mode==="full")?"panel":"full",true);
+}
+
+/* Esc cierra el chat · al redimensionar la ventana se re-aplica el modo (re-clamp). */
+function _dmWireGlobal(){
+  if(window._dmWired)return;window._dmWired=1;
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Escape")return;
+    var p=document.getElementById("dmPanel");
+    if(p&&p.style.display==="flex")closeTeamChat();
+  });
+  var t=null;
+  window.addEventListener("resize",function(){
+    clearTimeout(t);
+    t=setTimeout(function(){
+      var p=document.getElementById("dmPanel");
+      if(p&&p.style.display==="flex")_dmApplyMode(_dmGetMode(),false);
+    },160);
+  });
+}
+
 function _dmGlassInit(panel){
   if(!panel||panel._rz)return;panel._rz=1;
-  try{var w=localStorage.getItem("dmW"),h2=localStorage.getItem("dmH");if(w)panel.style.width=Math.min(Number(w),window.innerWidth-24)+"px";if(h2)panel.style.height=Math.min(Number(h2),window.innerHeight-40)+"px";}catch(_e){}
-  var grip=document.createElement("div");grip.id="dmGrip";grip.title="Arrastra para redimensionar · doble toque = expandir";
+  /* Migración única: borra el tamaño gigante que el bug del doble toque dejó
+     guardado (dmW=860 / dmH=alto de pantalla). Se ejecuta una sola vez por equipo. */
+  try{
+    if(!localStorage.getItem("dmFix18")){
+      localStorage.removeItem("dmW");localStorage.removeItem("dmH");
+      localStorage.setItem("dmFix18","1");
+    }
+  }catch(_e){}
+  var grip=document.createElement("div");grip.id="dmGrip";
+  grip.title="Arrastra para redimensionar \u00b7 doble clic = tama\u00f1o por defecto";
   grip.style.cssText="position:absolute;top:0;left:0;width:34px;height:34px;cursor:nwse-resize;z-index:12;touch-action:none;display:flex;align-items:flex-start;justify-content:flex-start;padding:7px";
   grip.innerHTML='<span style="width:14px;height:14px;border-top:2.5px solid rgba(255,255,255,.85);border-left:2.5px solid rgba(255,255,255,.85);border-radius:4px 0 0 0;display:block"></span>';
   panel.appendChild(grip);
@@ -6845,28 +7021,46 @@ function _dmGlassInit(panel){
     if(("Notification" in window)&&Notification.permission==="default"&&!document.getElementById("dmNotifBar")){
       var nb=document.createElement("div");nb.id="dmNotifBar";
       nb.style.cssText="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--acl);border-bottom:1px solid var(--ln);font-size:var(--fs-xs);font-weight:700;color:var(--acd)";
-      nb.innerHTML='<span style="flex:1">🔔 ¿Avisarte cuando llegue un mensaje?</span><button onclick="_dmNotifAsk(this)" style="background:var(--ac);border:none;border-radius:8px;padding:6px 11px;font-size:var(--fs-xs);font-weight:800;color:#fff;cursor:pointer">Activar</button>';
+      nb.innerHTML='<span style="flex:1">\uD83D\uDD14 \u00bfAvisarte cuando llegue un mensaje?</span><button onclick="_dmNotifAsk(this)" style="background:var(--ac);border:none;border-radius:8px;padding:6px 11px;font-size:var(--fs-xs);font-weight:800;color:#fff;cursor:pointer">Activar</button>';
       panel.insertBefore(nb,panel.children[1]||null);
     }
   }catch(_e){}
-  var sx,sy,sw,sh,moved;
+  var sx,sy,sw,sh,moved,mode;
   grip.addEventListener("pointerdown",function(e){
+    mode=panel.dataset.mode||"panel";
+    if(mode==="full")return;                    // en pantalla completa no hay resize
     e.preventDefault();grip.setPointerCapture(e.pointerId);moved=false;
-    sx=e.clientX;sy=e.clientY;var r=panel.getBoundingClientRect();sw=r.width;sh=r.height;panel.style.maxHeight="none";
-    function mv(ev){var dx=sx-ev.clientX,dy=sy-ev.clientY;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
-      panel.style.width=Math.min(Math.max(sw+dx,300),window.innerWidth-24)+"px";
-      panel.style.height=Math.min(Math.max(sh+dy,340),window.innerHeight-40)+"px";}
-    function up(){grip.removeEventListener("pointermove",mv);grip.removeEventListener("pointerup",up);
-      try{var r2=panel.getBoundingClientRect();localStorage.setItem("dmW",Math.round(r2.width));localStorage.setItem("dmH",Math.round(r2.height));}catch(_e){}}
-    grip.addEventListener("pointermove",mv);grip.addEventListener("pointerup",up);
+    sx=e.clientX;sy=e.clientY;
+    var r=panel.getBoundingClientRect();sw=r.width;sh=r.height;
+    function mv(ev){
+      var dx=sx-ev.clientX,dy=sy-ev.clientY;
+      if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+      if(mode==="dock"){
+        var w=Math.min(Math.max(sw+dx,DM_MIN_W),Math.round(window.innerWidth*0.55));
+        panel.style.width=w+"px";
+        document.documentElement.style.setProperty("--dmDockW",w+"px");
+      }else{
+        panel.style.width=Math.min(Math.max(sw+dx,DM_MIN_W),window.innerWidth-24)+"px";
+        panel.style.height=Math.min(Math.max(sh+dy,DM_MIN_H),window.innerHeight-40)+"px";
+        _dmPositionPanel();                     // re-clamp: nunca se sale del viewport
+      }
+    }
+    function up(){
+      grip.removeEventListener("pointermove",mv);grip.removeEventListener("pointerup",up);
+      if(!moved)return;                         // ← el fix: sin arrastre real no se guarda nada
+      try{
+        var r2=panel.getBoundingClientRect();
+        if(mode==="dock")localStorage.setItem("dmDockW",Math.round(r2.width));
+        else{
+          localStorage.setItem("dmW",Math.round(r2.width));
+          localStorage.setItem("dmH",Math.round(r2.height));
+        }
+      }catch(_e){}
+    }
+    grip.addEventListener("pointermove",mv);
+    grip.addEventListener("pointerup",up);
   });
-  var lastTap=0;
-  grip.addEventListener("pointerup",function(){var t=Date.now();if(t-lastTap<350){_dmToggleExpand(panel);}lastTap=t;});
-}
-function _dmToggleExpand(panel){
-  if(!panel)panel=document.getElementById("dmPanel");if(!panel)return;
-  if(panel._big){panel.style.width=(panel._pw||360)+"px";panel.style.height=(panel._ph||500)+"px";panel._big=false;}
-  else{var r=panel.getBoundingClientRect();panel._pw=Math.round(r.width);panel._ph=Math.round(r.height);panel.style.maxHeight="none";panel.style.width=Math.min(window.innerWidth-24,860)+"px";panel.style.height=(window.innerHeight-40)+"px";panel._big=true;}
+  grip.addEventListener("dblclick",function(e){e.preventDefault();_dmResetSize();});
 }
 function _dmInit(){
   if(!currentUser){ // logout — teardown
@@ -6895,7 +7089,7 @@ function _dmInit(){
 }
 function _dmOpenPanel(){
   _dmEnsureDom();document.getElementById("dmPanel").style.display="flex";_dmRenderList();
-  try{_dmPositionPanel();}catch(_e){}
+  try{_dmApplyMode(_dmGetMode(),false);}catch(_e){}
   // roster may be empty if loadUsers() hasn't resolved yet — fetch, then refresh the list
   try{
     var haveUsers=(typeof allUsers!=="undefined"&&allUsers&&allUsers.length);
@@ -6904,6 +7098,9 @@ function _dmOpenPanel(){
 }
 function closeTeamChat(){
   var p=document.getElementById("dmPanel");if(p)p.style.display="none";
+  document.body.classList.remove("dm-docked");                 // la app recupera su ancho
+  var f=document.getElementById("dmFab");
+  if(f&&currentUser)f.style.display="flex";                    // vuelve la burbuja con su badge
   if(_dm.unsubMsgs){try{_dm.unsubMsgs();}catch(_e){}_dm.unsubMsgs=null;}
   _dm.view="list";_dm.peer=null;
 }
@@ -6918,7 +7115,7 @@ function _dmRoster(){
 function _dmRenderList(){
   _dm.view="list";_dm.peer=null;
   if(_dm.unsubMsgs){try{_dm.unsubMsgs();}catch(_e){}_dm.unsubMsgs=null;}
-  document.getElementById("dmHead").innerHTML='<span style="font-weight:800;letter-spacing:.3px">💬 Mensajes</span><button onclick="closeTeamChat()" style="margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer">×</button>';
+  document.getElementById("dmHead").innerHTML='<span style="font-weight:800;letter-spacing:.3px">💬 Mensajes</span>'+_dmCtrls();
   var me=currentUser&&currentUser.name;
   var PAL=["#134A63","#1C8FA8","#B5733A","#2E8B57","#7A4FBF","#C0492F","#B58A1C","#4F6D7A"];
   function colOf(n){var hh=0;n=String(n||"");for(var i2=0;i2<n.length;i2++)hh=(hh*31+n.charCodeAt(i2))>>>0;return PAL[hh%PAL.length];}
@@ -6960,7 +7157,7 @@ async function _dmOpenThread(peer){
   document.getElementById("dmHead").innerHTML='<button onclick="_dmRenderList()" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer">\u2190</button>'
     +'<div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">'+esc(String(peer).slice(0,2).toUpperCase())+'</div>'
     +'<span style="font-weight:800">'+esc(peer)+'</span>'
-    +'<button onclick="closeTeamChat()" style="margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer">\u00d7</button>';
+    +_dmCtrls();
   document.getElementById("dmBody").innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">Loading\u2026</div>';
   document.getElementById("dmFoot").innerHTML='<div style="display:flex;gap:8px;padding:10px 12px"><input id="dmInput" placeholder="Message '+esc(peer)+'\u2026" style="flex:1;padding:10px 12px;border:1px solid var(--ln);border-radius:20px;font-size:14px" onkeydown="if(event.key===\'Enter\')_dmSend()"><button onclick="_dmSend()" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--br);color:#fff;font-size:16px;cursor:pointer">\u27a4</button></div>';
   var tid=_dmTid(me,peer);
@@ -6992,7 +7189,7 @@ async function _dmSend(){
 function _dmOpenGroup(){
   _dm.view="group";_dm.peer=null;
   var me=currentUser&&currentUser.name;
-  document.getElementById("dmHead").innerHTML='<button onclick="_dmRenderList()" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer">\u2190</button><span style="font-weight:800">\uD83D\uDC65 Team (everyone)</span><button onclick="closeTeamChat()" style="margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer">\u00d7</button>';
+  document.getElementById("dmHead").innerHTML='<button onclick="_dmRenderList()" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer">\u2190</button><span style="font-weight:800">\uD83D\uDC65 Team (everyone)</span>'+_dmCtrls();
   document.getElementById("dmBody").innerHTML='<div style="padding:16px;text-align:center;color:var(--i3)">Loading\u2026</div>';
   document.getElementById("dmFoot").innerHTML='<div style="display:flex;gap:8px;padding:10px 12px"><input id="dmInput" placeholder="Message the team\u2026" style="flex:1;padding:10px 12px;border:1px solid var(--ln);border-radius:20px;font-size:14px" onkeydown="if(event.key===\'Enter\')teamSend()"><button onclick="teamSend()" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--br);color:#fff;font-size:16px;cursor:pointer">\u27a4</button></div>';
   if(_dm.unsubMsgs){try{_dm.unsubMsgs();}catch(_e){}}
