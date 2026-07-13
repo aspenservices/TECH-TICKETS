@@ -26547,7 +26547,7 @@ function showTicketDetail(p,i){
 #bsOv .bs-line .bs-q,#nvPanel .bs-line .bs-q{margin-left:auto;white-space:nowrap;color:var(--i2,#5a5248)}
 #bsOv .bs-line em,#nvPanel .bs-line em{flex-basis:100%;font-style:normal;font-size:11px;color:var(--c-warning-fg,#92400e)}
 #bsOv .bs-lines-f,#nvPanel .bs-lines-f{font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:6px}
-#bsOv textarea{width:100%;min-height:190px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;border:1px solid var(--ln,#ddd);border-radius:10px;padding:12px;background:var(--bg,#faf8f4);color:var(--ink,#1f1a15);resize:vertical;box-sizing:border-box}
+#bsOv textarea{width:100%;min-height:170px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;border:1px solid var(--ln,#ddd);border-radius:10px;padding:12px;background:var(--bg,#faf8f4);color:var(--ink,#1f1a15);resize:vertical;box-sizing:border-box}
 #bsOv .bs-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 #bsOv .bs-copy{width:100%;padding:14px;background:var(--br,#3D2B1F);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;min-height:48px}
 #bsOv .bs-row2{display:flex;gap:8px}
@@ -26816,8 +26816,23 @@ window.bsAiDraft=async function(){
 };
 window.bsCopyShort=async function(){
   var el=document.getElementById("bsShortTxt");if(!el)return;
+  var t=Q[idx];
   try{await navigator.clipboard.writeText(el.value);}catch(e){el.select();try{document.execCommand("copy");}catch(e2){}}
-  try{toast("Nota corta copiada ✓ — pégala en NOTES de QB");}catch(e){}
+  try{toast(TT("Nota de ","Note for ")+((t&&t.customer)||"")+TT(" copiada ✓ → NOTES"," copied ✓ → NOTES"));}catch(e){}
+};
+async function _copyPlain(txt,msg){
+  try{await navigator.clipboard.writeText(txt);}catch(e){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e2){}document.body.removeChild(ta);}
+  try{toast(msg);}catch(e){}
+}
+window.bsCopyName=function(){
+  var t=Q[idx];if(!t)return;
+  _copyPlain(t.customer||"",TT("Nombre copiado: ","Name copied: ")+(t.customer||"")+" ✓");
+};
+window.nvCopy=function(kind){
+  var t=_nvFind(window._nvSel);if(!t)return;
+  if(kind==="name")return _copyPlain(t.customer||"",TT("Nombre copiado: ","Name copied: ")+(t.customer||"")+" ✓");
+  var txt=(kind==="n")?qbShortFor(t):qbTextFor(t);
+  _copyPlain(txt,(kind==="n"?TT("Nota de ","Note for "):TT("Descripción de ","Description for "))+(t.customer||"")+TT(" copiada ✓"," copied ✓"));
 };
 function qbTplFor(t){
   var vn=Number(t.visitNum)||1,b=null;
@@ -27186,12 +27201,12 @@ function _nvCol(t){
   if(_bsMissing(t).length||v.cls==="warn"||_bsMismatch(t))return "rev";
   return "rdy";
 }
-function nvCard(t,extra){
+function nvCard(t,extra,ghost){
   var sub=0;try{sub=moneySub(t);}catch(e){}
   return '<div class="nv-card" onclick="nvOpenTicket(\''+String(t.id).replace(/'/g,"")+'\')">'
     +'<div style="font-weight:800;font-size:13px;color:var(--ink,#1f1a15)">'+esc3(t.customer||"—")+'</div>'
     +'<div style="font-size:11px;color:var(--i3,#8a8073);margin-top:2px">'+esc3(t.date||"")+((t.techs&&t.techs[0])?" · "+esc3(t.techs[0]):"")+" · "+(VLABEL[Number(t.visitNum)||1]||"")+ageChip(t)+'</div>'
-    +'<div style="font-size:12.5px;font-weight:800;margin-top:4px;color:var(--ink,#1f1a15)">$'+sub.toFixed(2)+' <span style="font-size:9.5px;font-weight:700;color:var(--i3,#8a8073)">pre-tax</span>'+(extra?' <span style="font-size:10.5px;font-weight:700;color:var(--i3,#8a8073)">'+extra+'</span>':'')+'</div>'
+    +(ghost?('<div style="font-size:12.5px;font-weight:700;margin-top:4px;color:var(--i3,#8a8073)"><s>$'+sub.toFixed(2)+'</s> <span style="font-size:9.5px">'+TT("valor cubierto","covered value")+'</span>'):('<div style="font-size:12.5px;font-weight:800;margin-top:4px;color:var(--ink,#1f1a15)">$'+sub.toFixed(2)+' <span style="font-size:9.5px;font-weight:700;color:var(--i3,#8a8073)">pre-tax</span>'))+(extra?' <span style="font-size:10.5px;font-weight:700;color:var(--i3,#8a8073)">'+extra+'</span>':'')+'</div>'
   +'</div>';
 }
 window.nvOpen=function(){
@@ -27219,14 +27234,15 @@ window.nvShowPanel=function(id){
   var addr=((t.address||"")+(t.zip?" "+t.zip:"")).trim();
   function box(l,val){return '<div style="background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:8px 10px;text-align:center"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--i3,#8a8073);font-weight:800">'+l+'</div><div style="font-size:14px;font-weight:800;margin-top:2px">'+val+'</div></div>';}
   pn.innerHTML=
-    '<div style="display:flex;align-items:flex-start;gap:10px"><div><div style="font-size:17px;font-weight:800">'+esc3(t.customer||"—")+'</div><div style="font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:2px">'+esc3(t.date||"")+((t.techs&&t.techs.length)?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[Number(t.visitNum)||1]||"")+ageChip(t)+'</div></div><button onclick="nvHidePanel()" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
+    '<div style="display:flex;align-items:flex-start;gap:10px"><div><div style="font-size:17px;font-weight:800">'+esc3(t.customer||"—")+' <button onclick="nvCopy(\'name\')" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073);padding:2px;vertical-align:middle">'+bico("copy",14)+'</button></div><div style="font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:2px">'+esc3(t.date||"")+((t.techs&&t.techs.length)?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[Number(t.visitNum)||1]||"")+ageChip(t)+'</div></div><button onclick="nvHidePanel()" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
     +'<div style="background:'+VC[0]+';color:'+VC[1]+';border-radius:10px;padding:9px 12px;font-size:13px;font-weight:800;margin:10px 0 4px">'+v.txt+(v.sub?'<div style="font-size:11px;font-weight:600;margin-top:2px">'+esc3(v.sub)+'</div>':'')+'</div>'
     +c360HTML(t)
     +'<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0">'+box("En sitio",dur)+box("Labor · sin tax","$"+m.labor.toFixed(2))+box("Parts · +tax","$"+m.parts.toFixed(2))+box("Subtotal","$"+(m.parts+m.labor).toFixed(2))+'</div>'
     +qbLinesHTML(t)
     +(String(t.notes||"").trim()?'<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--i3,#8a8073);font-weight:800;margin:8px 0 4px">Descripción del técnico</div><div style="font-size:12px;line-height:1.55;color:var(--i2,#5a5248);white-space:pre-wrap;background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;max-height:180px;overflow:auto">'+esc3(_bsSnip(t.notes,900))+'</div>':'')
     +(photos.length?'<div style="display:flex;gap:6px;margin-top:8px">'+photos.map(function(x){var u=x.url||x.data;return '<img src="'+esc3(u)+'" onclick="window.open(\''+esc3(x.url||"")+'\',\'_blank\')" style="width:58px;height:58px;object-fit:cover;border-radius:8px;border:1px solid var(--ln,#e5e0d8);cursor:pointer">';}).join("")+'</div>':'')
-    +'<button class="nv-act" onclick="nvOpenSprint()" style="background:var(--br,#3D2B1F);color:#fff;border:none;margin-top:14px">'+bico("zap",14)+' '+TT("Facturar en Sprint (con checks) →","Bill in Sprint (with checks) →")+'</button>'
+    +'<div style="display:flex;gap:6px;margin-top:12px"><button class="nv-act" style="flex:1;margin-top:0;background:transparent;border:1.5px solid var(--ln,#ddd);color:var(--i2,#5a5248)" onclick="nvCopy(\'name\')">'+bico("copy",12)+' '+TT("Nombre","Name")+'</button><button class="nv-act" style="flex:1;margin-top:0;background:transparent;border:1.5px solid var(--ln,#ddd);color:var(--i2,#5a5248)" onclick="nvCopy(\'n\')">'+TT("Nota","Note")+'</button><button class="nv-act" style="flex:1;margin-top:0;background:transparent;border:1.5px solid var(--ln,#ddd);color:var(--i2,#5a5248)" onclick="nvCopy(\'d\')">'+TT("Descripción","Description")+'</button></div>'
+    +'<button class="nv-act" onclick="nvOpenSprint()" style="background:var(--br,#3D2B1F);color:#fff;border:none;margin-top:8px">'+bico("zap",14)+' '+TT("Facturar en Sprint (con checks) →","Bill in Sprint (with checks) →")+'</button>'
     +(miss.length?'<button class="nv-act" onclick="nvTechMsgP()" style="background:transparent;border:1.5px solid var(--c-warning-fg,#92400e);color:var(--c-warning-fg,#92400e)">'+bico("message-circle",13)+' Pedir datos al técnico (falta: '+esc3(miss.join(", "))+')</button>':'')
     +'<div style="display:flex;gap:8px">'
     +(addr?'<button class="nv-act" onclick="window.open(\'https://maps.apple.com/?q='+encodeURIComponent(addr)+'\',\'_blank\')" style="flex:1;background:transparent;border:1.5px solid var(--ln,#ddd);color:var(--i2,#5a5248)">'+bico("map-pin",13)+' Ver en mapa</button>':'')+'</div>'
@@ -27258,8 +27274,7 @@ window.nvTechMsgP=async function(){
 };
 window.nvOpenSprint=function(){
   var id=window._nvSel;nvHidePanel();
-  bsOpen();
-  for(var i=0;i<Q.length;i++)if(String(Q[i].id)===String(id)){bsJump(i);return;}
+  bsOpen(id);
 };
 window.nvRender=function(){
   var ov=document.getElementById("nvOv");if(!ov||ov.style.display==="none")return;
@@ -27284,11 +27299,11 @@ window.nvRender=function(){
   var delta=compToday-compYest;
   function kpi(lbl,val,sub,subCol){return '<div class="nv-kpi"><span>'+lbl+'</span><b>'+val+'</b>'+(sub?'<em style="color:'+(subCol||"var(--i3,#8a8073)")+'">'+sub+'</em>':'')+'</div>';}
   function colH(lbl,arr,bg,fg){var tot=0;arr.forEach(function(t){try{tot+=moneySub(t);}catch(e){}});return '<div class="nv-colh" style="background:'+bg+';color:'+fg+'">'+lbl+' · '+arr.length+'<span>$'+Math.round(tot).toLocaleString("en-US")+'</span></div>';}
-  function colBody(key,arr,extraFn){
+  function colBody(key,arr,extraFn,ghost){
     var LIM=6,exp=window._nvExp&&window._nvExp[key];
     var shown=exp?arr:arr.slice(0,LIM),restA=exp?[]:arr.slice(LIM),rest=0;
     restA.forEach(function(t){try{rest+=moneySub(t);}catch(e){}});
-    return shown.map(function(t){return nvCard(t,extraFn?extraFn(t):"");}).join("")
+    return shown.map(function(t){return nvCard(t,extraFn?extraFn(t):"",ghost);}).join("")
       +(restA.length?'<div class="nv-more" onclick="nvMore(\''+key+'\')">+'+restA.length+' tickets más · $'+Math.round(rest).toLocaleString("en-US")+'</div>':'')
       +(exp&&arr.length>LIM?'<div class="nv-more" onclick="nvLess(\''+key+'\')">− mostrar menos</div>':'');
   }
@@ -27325,7 +27340,7 @@ window.nvRender=function(){
     +'<div class="nv-cols">'
       +'<div class="nv-col">'+colH("READY TO BILL",cols.rdy,"var(--c-money-bg,#ecfdf5)","var(--c-money-fg,#065f46)")+colBody("rdy",cols.rdy)+'</div>'
       +'<div class="nv-col">'+colH("NEEDS REVIEW",cols.rev,"var(--c-warning-bg,#fef3c7)","var(--c-warning-fg,#92400e)")+colBody("rev",cols.rev,function(t){return _bsMissing(t).length?"falta: "+esc3(_bsMissing(t).join(", ")):(_bsMismatch(t)?"garantía vs C360":"");})+'</div>'
-      +'<div class="nv-col">'+colH("WARRANTY · NO FACTURAR",cols.war,"var(--c-danger-bg,#fee2e2)","var(--c-danger-fg,#991b1b)")+colBody("war",cols.war,function(t){return verdictFor(t).txt.replace(/^[^ ]+ /,"");})+'</div>'
+      +'<div class="nv-col">'+colH("WARRANTY · NO FACTURAR",cols.war,"var(--c-danger-bg,#fee2e2)","var(--c-danger-fg,#991b1b)")+colBody("war",cols.war,function(t){return (Number(t.visitNum)===4||t.isRepeat)?"repeat":"";},true)+'</div>'
       +'<div class="nv-col">'+colH("RESCHEDULE",res,"var(--c-ash,#eceae6)","var(--i2,#5a5248)")+colBody("res",res)+'</div>'
       +'<div class="nv-col" style="opacity:.8">'+colH("EN QB HOY ✓",qbToday,"var(--c-info-bg,#dbeafe)","var(--c-info-fg,#1e40af)")+colBody("qb",qbToday,function(){return "✓ facturada";})+'</div>'
     +'</div>'
@@ -27354,9 +27369,9 @@ window.rollMark=function(id){var m=_rollGet();if(m[id])delete m[id];else m[id]=1
 window.rollCopy=async function(id,kind){
   var t=null;((typeof active!=="undefined"&&active)||[]).some(function(x){if(x&&String(x.id)===String(id)){t=x;return true;}return false;});
   if(!t)return;
-  var txt=(kind==="n")?qbShortFor(t):qbTextFor(t);
+  var txt=(kind==="name")?(t.customer||""):((kind==="n")?qbShortFor(t):qbTextFor(t));
   try{await navigator.clipboard.writeText(txt);}catch(e){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e2){}document.body.removeChild(ta);}
-  try{toast(kind==="n"?TT("Nota copiada ✓ → NOTES","Note copied ✓ → NOTES"):TT("Descripción copiada ✓ → DESCRIPTION","Description copied ✓ → DESCRIPTION"));}catch(e){}
+  try{toast((kind==="name"?TT("Nombre copiado: ","Name copied: "):(kind==="n"?TT("Nota de ","Note for "):TT("Descripción de ","Description for ")))+(t.customer||"")+" ✓");}catch(e){}
 };
 window.rollRender=function(){
   var ov=document.getElementById("rollOv");if(!ov||ov.style.display==="none")return;
@@ -27379,7 +27394,7 @@ window.rollRender=function(){
       if(done)return '<div style="background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:12px;padding:9px 13px;margin-top:8px;opacity:.45;display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:700;color:var(--i2,#5a5248);text-decoration:line-through">'+esc3(t.customer||"—")+' · $'+sub.toFixed(2)+'</span><button onclick="rollMark(\''+sid+'\')" '+sb+' title="'+TT("Desmarcar","Unmark")+'" style="margin-left:auto;border:1px solid var(--ln,#ddd);background:none;border-radius:7px;padding:4px 9px;font-size:10.5px;font-weight:700;color:var(--i3,#8a8073);cursor:pointer;font-family:inherit">↩</button></div>';
       if(sub<=0&&!cur)return '<div style="background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:12px;padding:9px 13px;margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;color:var(--i2,#5a5248)">'+esc3(t.customer||"—")+'</span><span style="font-size:10.5px;color:var(--i3,#8a8073);font-weight:700">'+esc3(tpl||"")+' · $0</span><span style="margin-left:auto;display:inline-flex;gap:6px"><button onclick="rollCopy(\''+sid+'\',\'n\')" '+sb+'>'+TT("Nota","Note")+'</button><button onclick="rollCopy(\''+sid+'\',\'d\')" '+sb+'>'+TT("Descr.","Descr.")+'</button><button onclick="rollMark(\''+sid+'\')" '+sb+'>✓</button></span></div>';
       return '<div '+(cur?'id="rollCur" ':'')+'style="background:var(--card,#fff);border-radius:14px;padding:13px 15px;margin-top:10px;'+(cur?'box-shadow:0 0 0 2.5px var(--acd,#A85C1F),0 4px 14px rgba(92,74,61,.12)':'border:1px solid var(--ln,#e5e0d8)')+'">'
-        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:15px;font-weight:800;color:var(--ink,#1f1a15)">'+esc3(t.customer||"—")+'</span>'+(tpl?'<span style="font-size:10.5px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:2px 10px;font-weight:800">⌨ '+esc3(tpl)+'</span>':'')+'<span style="margin-left:auto;font-size:14px;font-weight:800;color:var(--ink,#1f1a15)">$'+sub.toFixed(2)+'</span></div>'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:15px;font-weight:800;color:var(--ink,#1f1a15)">'+esc3(t.customer||"—")+'</span><button onclick="rollCopy(\''+sid+'\',\'name\')" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073);padding:2px">'+bico("copy",13)+'</button>'+(tpl?'<span style="font-size:10.5px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:2px 10px;font-weight:800">⌨ '+esc3(tpl)+'</span>':'')+'<span style="margin-left:auto;font-size:14px;font-weight:800;color:var(--ink,#1f1a15)">$'+sub.toFixed(2)+'</span></div>'
         +(lines?'<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--i2,#5a5248);margin:6px 0 8px">'+lines+'</div>':'')
         +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
           +'<button onclick="rollCopy(\''+sid+'\',\'n\')" style="flex:1;min-width:120px;padding:10px;border:none;border-radius:9px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">1 · '+TT("Copiar nota","Copy note")+'</button>'
@@ -27432,8 +27447,15 @@ function esc3(s){try{return esc(s);}catch(e){return String(s==null?"":s);}}
 function cur(){return Q[idx]||null;}
 function _counts(){var d=0,k=0;Q.forEach(function(t){if(t.qbCopied||t.bsNoBill)d++;else if(sk[t.id])k++;});return{d:d,s:k};}
 
-window.bsOpen=function(){
+window.bsOpen=function(focusId){
   fTech="";Q=pool();idx=0;sk={};bl=[];wKept={};ck={};window._bsParty=false;
+  if(focusId!=null){
+    var _ft=_nvFind(focusId),_k=-1;
+    for(var _i=0;_i<Q.length;_i++)if(String(Q[_i].id)===String(focusId)){_k=_i;break;}
+    if(_k<0&&_ft){Q.unshift(_ft);_k=0;}
+    if(_k>=0)idx=_k;
+    else{try{toast(TT("No encontré ese ticket","Ticket not found"),"warn");}catch(e){}return;}
+  }
   if(!Q.length){try{toast("No pending invoices ✓");}catch(e){}return;}
   var ov=document.getElementById("bsOv");
   if(ov)ov.remove();
@@ -27486,7 +27508,7 @@ function show(){
   var ckt=ck[t.id]||(ck[t.id]={g:!_bsMismatch(t),v:false,tx:false});
   var ready=ckt.g&&ckt.v&&ckt.tx;
   var L=''
-    +'<div class="bs-cust">'+esc3(t.customer||"(no name)")+'</div>'
+    +'<div class="bs-cust">'+esc3(t.customer||"(no name)")+' <button onclick="bsCopyName()" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073);padding:2px;vertical-align:middle">'+bico("copy",15)+'</button></div>'
     +'<div class="bs-meta">'+esc3(t.date||"")+(t.techs&&t.techs.length?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[vn]||("visit "+vn))+(sk[t.id]?" · ↷ "+TT("saltada antes","skipped earlier"):"")+ageChip(t)+'</div>'
     +histHTML(t)
     +repeatHTML(t)
@@ -27503,8 +27525,9 @@ function show(){
     +'</div>'
     +qbLinesHTML(t);
   var R=''
+    +'<div style="display:flex;align-items:center;gap:6px;background:var(--c-info-bg,#dbeafe);color:var(--c-info-fg,#1e40af);border-radius:9px;padding:7px 11px;margin-bottom:8px;font-size:12.5px;font-weight:800">'+bico("user",13)+' '+TT("Textos de: ","Texts for: ")+esc3(t.customer||"—")+'<button onclick="bsCopyName()" title="'+TT("Copiar nombre","Copy name")+'" style="margin-left:auto;border:none;background:none;cursor:pointer;color:inherit;padding:2px">'+bico("copy",13)+'</button></div>'
     +'<div style="font-size:11px;margin:2px 0 3px"><span style="background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);font-weight:800;padding:1px 8px;border-radius:999px;font-size:10px">'+bico("lock",10)+' '+TT("INTERNA","INTERNAL")+'</span> <span style="color:var(--i3,#8a8073);font-weight:700">'+TT("Nota → NOTES de QB · solo el comentario, fecha primero","Note → QB NOTES · comment only, date first")+'</span></div>'
-    +'<div style="display:flex;gap:6px;align-items:stretch"><textarea id="bsShortTxt" style="min-height:54px;flex:1"></textarea><button onclick="bsCopyShort()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--br,#3D2B1F);background:transparent;color:var(--br,#3D2B1F);font-weight:800;font-size:11.5px;cursor:pointer;font-family:inherit">'+TT("Copiar<br>nota","Copy<br>note")+'</button></div>'
+    +'<div style="display:flex;gap:6px;align-items:stretch"><textarea id="bsShortTxt" style="min-height:110px;flex:1"></textarea><button onclick="bsCopyShort()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--br,#3D2B1F);background:transparent;color:var(--br,#3D2B1F);font-weight:800;font-size:11.5px;cursor:pointer;font-family:inherit">'+TT("Copiar<br>nota","Copy<br>note")+'</button></div>'
     +'<div style="font-size:11px;margin:10px 0 3px"><span style="background:var(--c-info-bg,#dbeafe);color:var(--c-info-fg,#1e40af);font-weight:800;padding:1px 8px;border-radius:999px;font-size:10px">'+bico("user",10)+' '+TT("CLIENTE","CUSTOMER")+'</span> <span style="color:var(--i3,#8a8073);font-weight:700">'+TT("Detalle → DESCRIPTION · fecha + horas + trabajo · sin parts ni precios","Detail → DESCRIPTION · date + time + work · no parts, no prices")+'</span></div>'
     +'<textarea id="bsText"></textarea>'
     +'<button id="bsAiBtn" onclick="bsAiDraft()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid var(--acd,#A85C1F);background:transparent;color:var(--acd,#A85C1F);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("sparkles",13)+' '+TT("Redactar con AI (los 2 textos)","Draft with AI (both texts)")+' · '+TT("hoy","today")+': '+_bsAiCount()+'</button>'
@@ -27516,6 +27539,7 @@ function show(){
     +'</div>'
     +'<div class="bs-actions" style="margin-top:6px">'
       +'<button class="bs-copy" '+(ready?"":"disabled ")+'onclick="bsCopyNext()">'+bico("clipboard",15)+' '+TT("Copiar detalle + Facturada ✓ → siguiente","Copy detail + Billed ✓ → next")+'</button>'
+      +(ready?'':'<div style="text-align:center;font-size:10.5px;color:var(--c-warning-fg,#92400e);font-weight:800;margin-top:2px">'+TT("faltan ","missing ")+((ckt.g?0:1)+(ckt.v?0:1)+(ckt.tx?0:1))+TT(" checks para poder facturar"," checks to bill")+'</div>')
       +'<button class="bs-skip" onclick="bsSkip()" style="width:100%">'+TT("Saltar","Skip")+' →</button>'
       +'<button class="bs-nobill" onclick="bsNoBill()" style="width:100%;margin-top:10px">'+bico("ban",14)+' '+TT("No se factura","Do not bill")+'</button>'
     +'</div>'
