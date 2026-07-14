@@ -27593,7 +27593,7 @@ window.cbShow=function(){
     +'<div style="display:flex;align-items:center;gap:10px"><button onclick="cbBack()" style="border:none;background:none;font-size:19px;color:var(--i3,#999);cursor:pointer">←</button>'
     +'<h2 style="margin:0;font-size:17px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("credit-card",16)+' '+TT("Cobro Sprint","Collections Sprint")+'</h2>'
     +'<span style="margin-left:auto;font-size:12px;font-weight:800;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:3px 12px">'+Math.min(cbIdx+1,cbQ.length)+'/'+cbQ.length+' · '+TT("cobrado","collected")+': $'+Math.round(tot).toLocaleString("en-US")+'</span>'
-    +'<button onclick="cbClose()" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
+    +'<button onclick="cbSetLink()" title="'+TT("Configurar link de pago PayTrace","Set PayTrace payment link")+'" style="border:none;background:none;font-size:15px;cursor:pointer">🔗</button><button onclick="cbClose()" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
     +'<div style="height:6px;border-radius:999px;background:var(--ln,#e5e0d8);overflow:hidden;margin:8px 0 16px"><i style="display:block;height:100%;width:'+(cbQ.length?Math.round(done/cbQ.length*100):0)+'%;background:var(--c-money-fg,#065f46);border-radius:999px"></i></div>';
   if(!ev){
     var mails=cbQ.filter(function(x){return cbMail[x.id];});
@@ -27614,6 +27614,7 @@ window.cbShow=function(){
     +'<div style="font-size:17px;font-weight:800;color:var(--ink,#1f1a15)">'+esc3(ev.customerName||"—")+' <button onclick="cbCopyName()" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073)">'+bico("copy",14)+'</button></div>'
     +'<div style="font-size:30px;font-weight:800;color:var(--ink,#1f1a15);margin:6px 0 2px">$'+amt.toFixed(2)+'</div>'
     +'<div style="font-size:11.5px;font-weight:700;color:var(--i3,#8a8073);margin-bottom:4px">'+(p.invoiceNumber||p.invoiceNum?("Invoice #"+esc3(String(p.invoiceNumber||p.invoiceNum))+" · "):"")+esc3(p.reasonLabel||p.reason||TT("alerta de pago","payment alert"))+(p.technician?" · "+esc3(String(p.technician)):"")+'</div>'
+    +(ev.lastAttemptAt?'<div style="font-size:10.5px;font-weight:700;color:var(--i3,#8a8073);margin-bottom:6px">🕘 '+TT("Último intento: ","Last attempt: ")+esc3(String(ev.lastAttemptAt))+' · '+esc3(String(ev.lastAttemptBy||""))+' · '+esc3(String(ev.lastAttemptAction||""))+'</div>':'')
     +(cc?'<div style="display:inline-block;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:2px 12px;font-size:11px;font-weight:800;margin-bottom:10px">CC ✓ '+TT("perfil en PayTrace","PayTrace profile")+'</div>':'<div style="display:inline-block;background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:999px;padding:2px 12px;font-size:11px;font-weight:800;margin-bottom:10px">'+TT("sin CC registrada","no card on file")+'</div>')
     +(isDone?'<div style="background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:10px;padding:10px;font-weight:800;font-size:13px;margin-bottom:8px">✓ '+TT("Cobrada en esta sesión","Collected this session")+'</div>':'')
     +'<button onclick="cbGo()" style="width:100%;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;margin-bottom:6px">1 · '+TT("Copiar datos + abrir PayTrace ↗","Copy data + open PayTrace ↗")+'</button>'
@@ -27623,12 +27624,32 @@ window.cbShow=function(){
       +'<button onclick="cbToMail()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid var(--c-warning-fg,#92400e);background:transparent;color:var(--c-warning-fg,#92400e);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">'+bico("mail",12)+' '+TT("Sin tarjeta → email","No card → email")+'</button>'
     +'</div></div></div>';
 };
+function _cbLog(ev,action){
+  try{
+    if(typeof db==="undefined"||!db||!ev||!ev.id)return;
+    var user=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
+    var entry={at:new Date().toLocaleString(),by:user,action:action};
+    db.collection("cross_app_events").doc(ev.id).update({
+      lastAttemptAt:entry.at,lastAttemptBy:user,lastAttemptAction:action,
+      attempts:firebase.firestore.FieldValue.arrayUnion(entry)
+    }).catch(function(){});
+    ev.lastAttemptAt=entry.at;ev.lastAttemptBy=user;ev.lastAttemptAction=action;
+  }catch(e){}
+}
+function _payLink(){try{return localStorage.getItem("aspPayLink")||"";}catch(e){return "";}}
+window.cbSetLink=function(){
+  var v=prompt(TT("Pega el link de pago de PayTrace (página hosteada). Queda guardado en este equipo y se incluye en los recordatorios.","Paste your PayTrace hosted payment page link. Saved on this device and included in reminders."),_payLink()||"https://");
+  if(v===null)return;
+  try{localStorage.setItem("aspPayLink",v.trim());}catch(e){}
+  try{toast(TT("Link de pago guardado ✓","Payment link saved ✓"));}catch(e){}
+};
 window.cbCopyName=function(){var ev=cbQ[cbIdx];if(ev)_copyPlain(ev.customerName||"",TT("Nombre copiado: ","Name copied: ")+(ev.customerName||"")+" ✓");};
 window.cbGo=function(){
   var ev=cbQ[cbIdx];if(!ev)return;
   var p=ev.payload||{};
   var txt=(ev.customerName||"")+" · $"+_alertAmount(ev).toFixed(2)+((p.invoiceNumber||p.invoiceNum)?" · Invoice #"+(p.invoiceNumber||p.invoiceNum):"");
   _copyPlain(txt,TT("Datos copiados ✓ — pégalos en PayTrace","Data copied ✓ — paste in PayTrace"));
+  _cbLog(ev,"paytrace-attempt");
   try{window.open("https://paytrace.net","_blank");}catch(e){}
 };
 window.cbPaid=function(){
@@ -27638,8 +27659,24 @@ window.cbPaid=function(){
   try{toast(TT("Cobrada: ","Collected: ")+(ev.customerName||"")+" · $"+_alertAmount(ev).toFixed(2)+" ✓");}catch(e){}
   setTimeout(cbAdv,250);
 };
-window.cbSkipIt=function(){var ev=cbQ[cbIdx];if(ev)cbSkip[ev.id]=1;cbAdv();};
-window.cbToMail=function(){var ev=cbQ[cbIdx];if(ev)cbMail[ev.id]=1;cbAdv();};
+window.cbSkipIt=function(){var ev=cbQ[cbIdx];if(ev){cbSkip[ev.id]=1;_cbLog(ev,"skipped");}cbAdv();};
+window.cbToMail=function(){
+  var ev=cbQ[cbIdx];if(!ev)return;
+  cbMail[ev.id]=1;
+  var p=ev.payload||{};
+  var link=_payLink();
+  var inv=(p.invoiceNumber||p.invoiceNum)?("#"+String(p.invoiceNumber||p.invoiceNum)):"";
+  var nm=String(ev.customerName||"");
+  var fn=nm.indexOf(",")>=0?nm.split(",")[1].trim().split(" ")[0]:nm.split(" ")[0];
+  var txt="Subject: Aspen Spas — Invoice "+inv+" payment reminder\n\n"
+    +"Hi "+(fn||"there")+",\n\n"
+    +"This is a friendly reminder that invoice "+inv+" for $"+_alertAmount(ev).toFixed(2)+" is currently open on your account.\n\n"
+    +(link?("You can pay securely online here: "+link+"\n\n"):"You can reply to this email or call us at (314) 776-5050 to arrange payment.\n\n")
+    +"Thank you for your business!\nAspen Spas";
+  _copyPlain(txt,TT("Recordatorio de ","Reminder for ")+nm+TT(" copiado ✓ — pégalo en Outlook"," copied ✓ — paste into Outlook"));
+  _cbLog(ev,"email-reminder");
+  cbAdv();
+};
 
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
 function _applySkin(){try{var on=canUse()&&localStorage.getItem("aspSkinOff")!=="1";document.body.classList.toggle("aspSkin",!!on);}catch(e){}}
