@@ -26660,6 +26660,20 @@ function showTicketDetail(p,i){
    paid in QB — and buries the real pending list below. The reschedule block
    (ca-warn) stays. Remove this rule to bring it back. */
 #collAlertTop .ca-block.ca-danger{display:none!important}
+/* C-lite (Nela, Jul 2026): Alerts tab in quiet Apple-Mail style. Scoped to
+   body.aspSkin (the 🎨 toggle turns it off). Targets the inline-style
+   signatures of rndrAlerts output — no app code modified. */
+body.aspSkin #alertsTabBody>div[style*="linear-gradient"]{background:var(--card,#fff)!important;border:1px solid #EDE6DD!important;box-shadow:0 1px 5px rgba(92,74,61,.07)!important}
+body.aspSkin #alertsTabBody button[style*="background:#7c2d12"]{background:transparent!important;border:1px solid #EDE6DD!important;color:#8A7768!important;box-shadow:none!important}
+body.aspSkin #alertsTabBody div[style*="border-radius:9px"]{background:transparent!important;border:none!important;border-top:1px solid #EDE6DD!important;border-radius:0!important;box-shadow:none!important;padding:12px 4px!important;margin-bottom:0!important}
+body.aspSkin #alertsTabBody div[style*="border-radius:9px"]>div[style*="flex-direction:column"]{opacity:0;transition:opacity .15s}
+body.aspSkin #alertsTabBody div[style*="border-radius:9px"]:hover>div[style*="flex-direction:column"],body.aspSkin #alertsTabBody div[style*="border-radius:9px"]:focus-within>div[style*="flex-direction:column"],body.aspSkin #alertsTabBody div[style*="border-radius:9px"]:active>div[style*="flex-direction:column"]{opacity:1}
+body.aspSkin #alertsTabBody button[style*="#dbeafe"],body.aspSkin #alertsTabBody button[style*="#fefce8"]{background:transparent!important;border:1px solid #EDE6DD!important;color:#8A7768!important}
+body.aspSkin #alertsTabBody button[style*="background:white"]{background:transparent!important;border:1px solid #B8CDBE!important;color:#41694F!important}
+body.aspSkin #alertsTabBody div[style*="border-bottom:2px solid"]{border-bottom:1px solid #EDE6DD!important}
+body.aspSkin #alertsTabBody span[style*="font-size:18px"]{font-size:13px!important;opacity:.85}
+body.aspSkin #alertsTabBody a[style*="--c-info-strong"]{color:#8A6A3B!important}
+body.aspSkin #alertsTabBody div[style*="#fef3c7"]{background:#FBF8F4!important;border-left-color:#D9CDBE!important;color:#6B5D4F!important}
 /* Team chat (their code): push the header below the iPhone notch so the
    close × is always tappable in PWA standalone. Additive CSS only. */
 #dmHead{padding-top:calc(11px + env(safe-area-inset-top,0px))!important}
@@ -27683,7 +27697,7 @@ window.qaSave=function(){
   if(!nm||isNaN(am)||am<=0){try{toast(TT("Cliente y monto son obligatorios","Customer and amount are required"),"warn");}catch(e){}return;}
   try{
     if(typeof db!=="undefined"&&db)db.collection("cross_app_events").add({
-      eventType:"payment_alert",source:"manual",status:"open",
+      eventType:"payment_alert",source:"manual",sourceApp:"tech-tickets",status:"open",
       customerName:nm,
       customerKeys:(typeof _custKeys==="function")?_custKeys(nm):[],
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -27982,7 +27996,7 @@ window.bsCopyNext=async function(){
       try{
         var m0=moneyFor(t);var amt0=(m0.tax>0?m0.total:+(m0.parts+m0.labor).toFixed(2));
         db.collection("cross_app_events").add({
-          eventType:"payment_alert",source:"tech-tickets",status:"open",
+          eventType:"payment_alert",source:"tech-tickets",sourceApp:"tech-tickets",status:"open",
           customerName:t.customer||"",
           customerKeys:(typeof _custKeys==="function")?_custKeys(t.customer||""):[],
           createdAt:firebase.firestore.FieldValue.serverTimestamp(),
