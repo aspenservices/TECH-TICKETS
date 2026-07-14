@@ -3489,7 +3489,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
     <!-- 14-day driving time trend chart -->
     <h3 style="margin:24px 0 10px 0;font-size:var(--fs-md);color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="bar-chart-3" data-size="16" data-color="var(--ac)"></span>Last 14 Days · Driving Time</h3>
     <p style="color:var(--i3);margin:0 0 14px 0;font-size:var(--fs-base)">Where the team's time has been going · Each bar stacks total drive time per tech</p>
-    <div id="mapsTrendChart" style="background:#fff;border:1.5px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:24px"></div>
+    <div id="mapsTrendChart" style="background:var(--cd);border:1.5px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:24px"></div>
 
     <!-- Per-tech historical archive -->
     <h3 style="margin:24px 0 10px 0;font-size:var(--fs-md);color:var(--i1);display:flex;align-items:center;gap:8px"><span class="lucide-mount" data-lucide="history" data-size="16" data-color="var(--ac)"></span>Historical Records</h3>
@@ -4078,9 +4078,17 @@ try{
   // If sign-in fails (offline), Firestore queues writes locally and retries
   // once the connection (and auth) come back, so the tech still keeps working.
   try{
-    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
-    firebase.auth().signInAnonymously().then(function(){
-      console.log("✓ Anonymous auth ready");
+    /* PERSISTENCIA CON RESPALDO (v1.9.3) — LA CAUSA DEL "insufficient permissions".
+       Persistence.LOCAL usa IndexedDB. El navegador EMBEBIDO de Mensajes (donde el
+       cliente abre el link que le manda el técnico) lo bloquea o lo particiona, así
+       que setPersistence fallaba, el .catch se lo tragaba en silencio, y
+       signInAnonymously() no llegaba a crear la sesión. Sin sesión, Firestore
+       deniega toda escritura → el cliente firmaba y el guardado moría.
+       El cliente NO necesita que su sesión sobreviva al cierre de la pestaña: solo
+       necesita poder firmar AHORA. Así que bajamos el listón hasta que alguna
+       funcione: LOCAL (ideal) → SESSION (sessionStorage) → NONE (solo memoria). */
+    _authSignInWithFallback().then(function(mode){
+      console.log("✓ Anonymous auth ready (persistence: "+mode+")");
     }).catch(function(err){
       console.warn("Anonymous auth failed:",err.code||"",err.message||err);
       // Most likely cause: Anonymous sign-in is disabled in Firebase Console.
@@ -5421,6 +5429,73 @@ try{
 // ═══ AUTH ═══
 let currentUser=null; // {name,pin,role}
 let allUsers=[]; // from Firestore
+
+/* ═══ SESIÓN DE PERSONAL · v1.10.0 ═══════════════════════════════════════════
+   Hoy TODO el mundo (técnicos y clientes) entra con la misma sesión anónima, así
+   que la regla "allow read, write: if request.auth != null" no distingue a nadie:
+   cualquiera que pida una sesión anónima contra el proyecto puede leer y escribir
+   la base entera. Las reglas no pueden defender lo que no pueden distinguir.
+
+   Esto canjea el PIN por un CUSTOM TOKEN con el claim `staff: true` (lo emite la
+   Cloud Function staffLogin, que valida el PIN con el Admin SDK). Con ese claim,
+   las reglas ya pueden decir "solo el personal".
+
+   RED DE SEGURIDAD: si la función no está desplegada, no hay red, o falla por lo
+   que sea, el login sigue exactamente igual que hoy (sesión anónima). NADIE se
+   queda fuera. Por eso se puede subir esto sin miedo ANTES de tocar las reglas.
+
+   STAFF_REQUIRED se queda en false hasta que confirmes que todo el equipo entra
+   con token de personal. Ponerlo en true (a la vez que publicas las reglas nuevas)
+   hace que la app exija el PIN de nuevo si la sesión de personal no está activa.
+   Ver DESPLIEGUE-SEGURIDAD.md — el orden importa. */
+var STAFF_LOGIN_FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/staffLogin";
+var STAFF_REQUIRED=false;   // ← ponlo en true SOLO en el paso 5 del despliegue
+
+// ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
+async function _isStaffSession(){
+  try{
+    var u=firebase.auth().currentUser;
+    if(!u)return false;
+    var r=await u.getIdTokenResult();
+    return !!(r&&r.claims&&r.claims.staff===true);
+  }catch(_e){return false}
+}
+
+// Canjea nombre + PIN por el token de personal. Devuelve true si la sesión quedó
+// establecida. Nunca lanza: si algo falla, seguimos con la sesión anónima.
+async function _staffSignIn(name,pin){
+  try{
+    if(!STAFF_LOGIN_FN)return false;
+    var ctl=("AbortController" in window)?new AbortController():null;
+    var to=setTimeout(function(){try{ctl&&ctl.abort()}catch(_e){}},8000);
+    var r=await fetch(STAFF_LOGIN_FN,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:name,pin:String(pin==null?"":pin)}),
+      signal:ctl?ctl.signal:undefined
+    });
+    clearTimeout(to);
+    if(!r.ok){
+      // 401 = el PIN está mal (lo dice el servidor, que es quien manda).
+      // 429 = demasiados intentos. Cualquier otra cosa = la función no está
+      // disponible → caemos a la validación local de siempre.
+      if(r.status===401)return {ok:false,badPin:true};
+      if(r.status===429){
+        var mins=15;try{var j429=await r.json();mins=(j429&&j429.minutes)||15}catch(_e){}
+        return {ok:false,locked:true,minutes:mins};
+      }
+      console.warn("[staff] login fn "+r.status+" — seguimos con sesión anónima");
+      return {ok:false,unavailable:true};
+    }
+    var j=await r.json();
+    if(!j||!j.token)return {ok:false,unavailable:true};
+    await firebase.auth().signInWithCustomToken(j.token);   // reemplaza a la anónima
+    console.log("\u2713 Staff session ("+name+")");
+    return {ok:true,role:j.role||""};
+  }catch(e){
+    console.warn("[staff] sin token de personal, sigo con sesión anónima:",e&&e.message);
+    return {ok:false,unavailable:true};
+  }
+}
 // ═══ TIMER REGISTRY (memory leak prevention) ═══
 // Long-running views (Maps, polling) accumulate setTimeout/setInterval handles
 // over a session. Logout used to leave them firing — wasting battery on mobile
@@ -5691,7 +5766,26 @@ async function _migratePinsIfNeeded(){
 async function doLogin(){
   if(!selectedLoginUser)return;
   const pin=document.getElementById("loginPinIn").value;
-  if(!(await _pinMatches(selectedLoginUser,pin))){document.getElementById("loginPinErr").style.display="block";return}
+  /* v1.10.0 — el PIN lo valida AHORA EL SERVIDOR (la Cloud Function staffLogin), no
+     el navegador. Este orden importa: si primero validáramos en local, no podrías
+     vaciar nunca los PINs de config/users —que hoy los puede leer cualquiera— porque
+     el login se cortaría antes de llegar a la función.
+       · la función dice OK   → dentro, con sesión de personal
+       · la función dice 401  → PIN incorrecto (lo dice el servidor)
+       · la función no está   → red de seguridad: validación local de siempre y
+                                sesión anónima, exactamente como hoy. Nadie se queda
+                                fuera si la función aún no está desplegada. */
+  var _st=await _staffSignIn(selectedLoginUser.name,pin);
+  if(_st.locked){toast("Too many attempts. Try again in "+_st.minutes+" min.","err");return}
+  if(_st.badPin){document.getElementById("loginPinErr").style.display="block";return}
+  if(!_st.ok){
+    if(STAFF_REQUIRED){
+      toast("Couldn't start your staff session. Check your connection and try again.","err");
+      return;
+    }
+    // red de seguridad: como siempre
+    if(!(await _pinMatches(selectedLoginUser,pin))){document.getElementById("loginPinErr").style.display="block";return}
+  }
   currentUser=selectedLoginUser;
   isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
   // Session: never persist a plaintext PIN; carry the hash for auto-login.
@@ -5709,6 +5803,11 @@ async function doLogin(){
     localStorage.setItem("aspSessPersist",JSON.stringify({n:_pu.name||"",h:_pu.pinHash||"",exp:Date.now()+12*3600*1000}));
   }catch(_e){}
   try{_migratePinsIfNeeded()}catch(_e){}
+  // v1.11.0: siembra de seguridad AUTOMÁTICA. Corre una sola vez, en silencio, la
+  // primera vez que un admin entra tras subir esta versión — reusa el PIN que ya
+  // tenemos en mano en este preciso instante, así no hay que guardarlo ni pedirlo
+  // aparte. Best-effort: si la función no está desplegada, no hace nada.
+  try{if(isAdmin&&currentUser&&currentUser.role==="admin")_staffAutoSeed(pin);}catch(_e){}
   try{localStorage.setItem("aspLastUser",currentUser.name||"")}catch(_e){}
   try{_presenceOnLogin()}catch(_e){}
   document.getElementById("loginScreen").style.display="none";
@@ -5741,6 +5840,15 @@ function logout(){
   // Reset state
   currentUser=null;
   isAdmin=false;
+  /* v1.10.0: cerrar TAMBIÉN la sesión de personal de Firebase. Si no, el token con
+     claim staff sobreviviría al logout y la siguiente persona que use el dispositivo
+     heredaría los permisos del anterior. Después volvemos a la sesión anónima, que es
+     la que necesita la pantalla de login para leer la lista de usuarios. */
+  try{
+    firebase.auth().signOut()
+      .then(function(){return _authSignInWithFallback()})
+      .catch(function(){});
+  }catch(_e){}
   try{sessionStorage.removeItem("aspUser");try{localStorage.removeItem("aspSessPersist")}catch(_e){}}catch(_e){}
   document.getElementById("loginScreen").style.display="flex";
   updAdmin();
@@ -5766,6 +5874,18 @@ async function _pushInit(){
     await db.collection("fcmTokens").doc(tok).set({user:currentUser.name,ua:(navigator.userAgent||"").slice(0,120),updatedAt:new Date().toISOString()},{merge:true});
     console.log("[push] token registrado para",currentUser.name);
   }catch(e){console.warn("[push]",e&&e.message);}
+}
+/* v1.10.0 — el auto-login restaura al usuario de la APP desde el almacenamiento,
+   pero la sesión de FIREBASE es otra cosa: iOS purga el almacenamiento de las PWA
+   cada tanto y con él se va el token de personal. Cuando STAFF_REQUIRED esté activo,
+   si al arrancar no hay claim staff se pide el PIN de nuevo (una vez): sin el claim,
+   las reglas nuevas no le dejarían escribir nada y la app fallaría en silencio.
+   Con STAFF_REQUIRED en false esto no hace nada. */
+async function _staffGuard(){
+  if(!STAFF_REQUIRED||!currentUser)return;
+  if(await _isStaffSession())return;
+  console.warn("[staff] sesión de personal perdida — pidiendo PIN");
+  try{logout()}catch(_e){}
 }
 function tryAutoLogin(){
   // 1) sesión viva (misma pestaña/lanzamiento)
@@ -5938,8 +6058,11 @@ function _metricsRender(){
     else if(_gp==="week"){mStart=new Date(now);mStart.setDate(now.getDate()-now.getDay());mStart.setHours(0,0,0,0);}
     var monthT=completed.filter(function(t){var dt=dOf(t);return dt&&(!mStart||dt>=mStart);});
     var monthMoney=monthT.reduce(function(sm,t){return sm+_metricsMoney(t);},0);
-    var reworks=monthT.filter(function(t){return Number(t.visitNum)===4||Number(t.visitNum)===2;}).length;
-    var ftfRate=monthT.length?Math.round((1-reworks/monthT.length)*100):0;
+    // FTF: mismo motor que Daily y Admin. Antes contaba "reworks" como visitNum 2 ó 4
+    // dentro del periodo: otra fórmula → otro número para el MISMO indicador. Y sin
+    // datos devolvía 0%, mientras Daily devolvía 100%.
+    var _ftfR=_ftfTeamStats(mStart?fmtD(mStart):null,null);
+    var ftfRate=(_ftfR&&_ftfR.jobs)?_ftfR.rate:null;
     // last 8 weeks (Sun-based)
     var weeks=[];for(var i=7;i>=0;i--){var ws=new Date(now);ws.setDate(now.getDate()-now.getDay()-i*7);ws.setHours(0,0,0,0);var we=new Date(ws);we.setDate(ws.getDate()+7);weeks.push({s:ws,e:we,n:0});}
     completed.forEach(function(t){var dt=dOf(t);if(!dt)return;for(var j=0;j<weeks.length;j++){if(dt>=weeks[j].s&&dt<weeks[j].e){weeks[j].n++;break;}}});
@@ -5957,7 +6080,7 @@ function _metricsRender(){
     h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">';
     h+=tile(L2?L2("Completados","Completed"):"Completed",monthT.length,"var(--ac)");
     h+=tile(L2?L2("Facturado","Billed"):"Billed",'$'+Math.round(monthMoney).toLocaleString(),"var(--c-success-strong)");
-    h+=tile(L2?L2("Resueltos 1\u00aa vez","First-time fix"):"First-time fix",ftfRate+'%',"var(--br)");
+    h+=tile(L2?L2("Resueltos 1\u00aa vez","First-time fix"):"First-time fix",(ftfRate==null?"\u2014":ftfRate+'%'),"var(--br)");
     h+='</div>';
     h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-bottom:8px">'+(L2?L2("Tickets por semana","Tickets per week"):"Tickets per week")+'</div>';
     h+='<div style="display:flex;align-items:flex-end;gap:6px;height:96px;margin-bottom:18px">';
@@ -6607,7 +6730,7 @@ function convRenderDash(){
   var _a=(typeof active!=="undefined"&&Array.isArray(active))?active:[];
   var _d=(typeof done!=="undefined"&&Array.isArray(done))?done:[];
   var scheduledToday=_today?_a.filter(function(t){return t.date===_today;}).length:0;
-  var doneToday=_today?((_d.filter(function(t){return (typeof _dateOnly==="function")&&(t.completedAt||"").length&&_dateOnly(t.completedAt)===_today;}).length)||(_d.filter(function(t){return t.date===_today;}).length)):0;
+  var doneToday=(_today&&typeof _statCompletedOn==="function")?_statCompletedOn(_today):0;  // misma definición que Daily
   var customers=(_convState.rows||[]).length;
   var lastSeen=_convState.lastSeen||0;
   var newCount=evs.filter(function(e){var ms=e.ts&&e.ts.toMillis?e.ts.toMillis():0;return ms>lastSeen;}).length;
@@ -6628,17 +6751,17 @@ function convRenderDash(){
   var expiring=[];
   Object.keys(warr).forEach(function(k){var end=warr[k].ms+365*86400000;var dLeft=Math.ceil((end-now)/86400000);if(dLeft>0&&dLeft<=30)expiring.push({name:warr[k].name,dLeft:dLeft});});
   expiring.sort(function(a,b){return a.dLeft-b.dLeft;});
-  function kpi(n,l,ac){return '<div style="flex:1;min-width:88px;background:#fff;border:1px solid var(--ln);border-radius:12px;padding:11px 13px"><div style="font-size:22px;font-weight:800;color:'+(ac||'var(--br)')+';line-height:1">'+n+'</div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px">'+l+'</div></div>';}
+  function kpi(n,l,ac){return '<div style="flex:1;min-width:88px;background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:11px 13px"><div style="font-size:22px;font-weight:800;color:'+(ac||'var(--br)')+';line-height:1">'+n+'</div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px">'+l+'</div></div>';}
   var html='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'
     +kpi(scheduledToday,"Scheduled today")+kpi(doneToday,"Completed today")+kpi(customers,"Customers")+kpi(newCount,"New",newCount>0?"#B5733A":"var(--br)")+'</div>';
   if(due.length){
-    html+='<div style="background:#fff;border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px">'
+    html+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px">'
       +'<div style="font-weight:800;color:var(--i1);margin-bottom:6px;display:flex;align-items:center;gap:6px">\uD83E\uDDEA Due for service <span style="background:#B5733A;color:#fff;font-size:11px;font-weight:800;border-radius:10px;padding:1px 8px">'+due.length+'</span></div>'
       +due.slice(0,6).map(function(d){return '<div onclick="openCustomerTimeline(this.dataset.c)" data-c="'+esc(d.name)+'" style="display:flex;justify-content:space-between;gap:8px;padding:7px 2px;border-top:1px solid var(--ln);cursor:pointer"><span style="font-weight:600;color:var(--i1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(d.name)+'</span><span style="font-size:var(--fs-sm);color:#B5733A;font-weight:700;flex:none">'+esc(d.why)+'</span></div>';}).join("")
       +'</div>';
   }
   if(expiring.length){
-    html+='<div style="background:#fff;border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px">'
+    html+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px">'
       +'<div style="font-weight:800;color:var(--i1);margin-bottom:6px">\uD83D\uDEE1\uFE0F Warranty expiring soon</div>'
       +expiring.slice(0,6).map(function(w){return '<div onclick="openCustomerTimeline(this.dataset.c)" data-c="'+esc(w.name)+'" style="display:flex;justify-content:space-between;gap:8px;padding:7px 2px;border-top:1px solid var(--ln);cursor:pointer"><span style="font-weight:600;color:var(--i1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.name)+'</span><span style="font-size:var(--fs-sm);color:var(--c-danger-fg);font-weight:700;flex:none">'+w.dLeft+'d left</span></div>';}).join("")
       +'</div>';
@@ -6646,7 +6769,7 @@ function convRenderDash(){
   var recent=[],rseen={};
   evs.forEach(function(e){var tp=String(e.type||"");if(tp.indexOf("closed")<0&&tp.indexOf("completed")<0)return;var ms2=e.ts&&e.ts.toMillis?e.ts.toMillis():0;if(now-ms2>14*86400000)return;var k2=e.customerKey||"";if(!k2||rseen[k2])return;rseen[k2]=1;recent.push(e.customer||k2);});
   try{recent=recent.filter(function(nm){return !_reviewAlreadySent(nm);});}catch(_rf){}
-  if(recent.length){html+='<div style="background:#fff;border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:800;color:var(--i1);margin-bottom:6px">\u2B50 Ask for a review</div>'+recent.slice(0,5).map(function(nm){return '<div onclick="convReview(this.dataset.c)" data-c="'+esc(nm)+'" style="display:flex;justify-content:space-between;gap:8px;padding:7px 2px;border-top:1px solid var(--ln);cursor:pointer"><span style="font-weight:600;color:var(--i1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+'</span><span style="font-size:var(--fs-sm);color:var(--br);font-weight:700;flex:none">Send review \u2192</span></div>';}).join("")+'</div>';}
+  if(recent.length){html+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:11px 13px;margin-bottom:12px"><div style="font-weight:800;color:var(--i1);margin-bottom:6px">\u2B50 Ask for a review</div>'+recent.slice(0,5).map(function(nm){return '<div onclick="convReview(this.dataset.c)" data-c="'+esc(nm)+'" style="display:flex;justify-content:space-between;gap:8px;padding:7px 2px;border-top:1px solid var(--ln);cursor:pointer"><span style="font-weight:600;color:var(--i1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+'</span><span style="font-size:var(--fs-sm);color:var(--br);font-weight:700;flex:none">Send review \u2192</span></div>';}).join("")+'</div>';}
   box.innerHTML=html;
 }
 var _teamUnsub=null;
@@ -9321,6 +9444,7 @@ function adminZipCancelImport(){
 }
 function rndrAdminUsers(){
   const el=document.getElementById("adminUserList");
+  _renderStaffMigrateBox();          // v1.10.1: caja de migración de seguridad (solo admin)
   el.innerHTML=allUsers.map((u,i)=>`<div class="usr-card"${u.hidden?' style="opacity:.55"':''}><div class="usr-name">${esc(u.name)}${u.hidden?' <span style="font-size:var(--fs-xs);font-weight:700;color:var(--i3);background:var(--c-ash);padding:1px 6px;border-radius:5px;letter-spacing:.5px">HIDDEN</span>':''}</div><span class="usr-role r-${u.role}">${u.role.toUpperCase()}</span><span class="usr-pin" title="PINs are stored hashed — use the PIN button to reset">••••</span><div class="usr-actions"><button class="usr-edit" title="${u.hidden?'Show on login':'Hide from login (keeps history)'}" onclick="toggleUserHidden(${i})">${u.hidden?icon("eye",14):icon("eye-off",14)}</button><button class="usr-edit" onclick="renameUser(${i})">${icon("pencil",14)}</button><button class="usr-edit" onclick="editUserPin(${i})">PIN</button><button class="usr-edit" onclick="toggleUserRole(${i})">→${u.role==="tech"?"Org":u.role==="organizer"?"Admin":"Tech"}</button>${allUsers.length>1?`<button class="usr-del" onclick="removeUser(${i})">✕</button>`:""}</div></div>`).join("");
   var c=document.getElementById("adminUserCount");if(c)c.textContent=allUsers.length;
 }
@@ -9382,6 +9506,136 @@ async function renameUser(i){
   if(!newName||!newName.trim()||newName.trim()===allUsers[i].name)return;
   allUsers[i].name=newName.trim();await saveUsers();rndrAdmin();toast("Renamed ✓");
 }
+/* ═══ SIEMBRA AUTOMÁTICA · v1.11.0 ═══════════════════════════════════════════
+   Se ejecuta sola tras el primer login de admin. Guarda una marca en
+   config/security_migration para no repetirse en cada entrada. Silenciosa: si algo
+   falla, no molesta al admin — el botón manual sigue estando por si acaso.
+   Devuelve sin hacer nada si:
+     · la Cloud Function staffLogin no está desplegada (STAFF_LOGIN_FN vacío/inalcanzable)
+     · ya se sembró antes (la marca existe)
+   Reintenta en el siguiente login si la vez anterior no pudo (p.ej. sin red). */
+async function _staffAutoSeed(adminPin){
+  if(typeof STAFF_LOGIN_FN==="undefined"||!STAFF_LOGIN_FN)return;
+  if(!adminPin)return;
+  // ¿Ya está hecho? La marca vive en config/security_migration.
+  try{
+    var mk=await db.collection("config").doc("security_migration").get();
+    if(mk.exists&&mk.data()&&mk.data().seeded)return;   // ya sembrado, nada que hacer
+  }catch(_e){/* si no se puede leer, seguimos e intentamos igualmente */}
+  // Mandar la lista completa a la función (mismo endpoint que el botón manual).
+  var payload=allUsers.map(function(u){return {name:u.name,pin:(u.pin!=null?String(u.pin):null),role:u.role||"tech"};});
+  try{
+    var r=await fetch(STAFF_LOGIN_FN,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"seed",name:(currentUser&&currentUser.name)||"",pin:String(adminPin),users:payload})});
+    if(!r.ok)return;                                    // 401/403/500 o función ausente → reintenta otro día
+    var j=await r.json();
+    // Dejar la marca para no volver a hacerlo. Guardamos también quién quedó
+    // pendiente (PIN solo-hash) por si quieres verlo luego en el panel.
+    try{
+      await db.collection("config").doc("security_migration").set({
+        seeded:true,
+        seededCount:(j&&j.seeded)||0,
+        pending:(j&&j.skipped)||[],
+        at:new Date().toISOString(),
+        by:(currentUser&&currentUser.name)||""
+      },{merge:true});
+    }catch(_e){}
+    if(j&&j.seeded){
+      // Aviso discreto, una sola vez.
+      try{toast("\uD83D\uDD10 Security migration complete \u2713","");}catch(_e){}
+    }
+  }catch(_e){/* silencioso a propósito */}
+}
+
+/* ═══ MIGRACIÓN DE SEGURIDAD SIN EL EQUIPO · v1.10.1 ═════════════════════════
+   Panel que aparece SOLO para el admin, encima de la lista de usuarios. Un botón
+   "siembra" todos los PINs en la caja fuerte del servidor (staff_auth) de una vez,
+   sin que cada persona tenga que entrar. Debajo, un verificador que dice, en
+   cristiano, quién ya está protegido y quién falta. */
+function _renderStaffMigrateBox(){
+  try{
+    var host=document.getElementById("adminUserList");if(!host)return;
+    if(!isAdmin){var ex0=document.getElementById("staffMigrateBox");if(ex0)ex0.remove();return;}
+    var box=document.getElementById("staffMigrateBox");
+    if(!box){box=document.createElement("div");box.id="staffMigrateBox";host.parentNode.insertBefore(box,host);}
+    var withPin=allUsers.filter(function(u){return (u.pin!=null&&String(u.pin).trim()!=="")||u.pinHash;}).length;
+    box.style.cssText="background:var(--cd);border:1.5px solid var(--ac);border-radius:14px;padding:16px 18px;margin-bottom:16px";
+    box.innerHTML=
+       '<div style="font-family:var(--f-head,inherit);font-weight:800;font-size:var(--fs-md);color:var(--acd);margin-bottom:4px">\uD83D\uDD10 Security migration</div>'
+      +'<div id="staffMigrateAuto" style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:10px"></div>'
+      +'<div style="font-size:var(--fs-sm);color:var(--i2);line-height:1.5;margin-bottom:12px">'
+      +'This runs automatically the first time you sign in as admin \u2014 you don\'t need to do anything. '
+      +'The buttons below are only if you want to run it again or check the status. '
+      +'Everyone\'s PIN stays the same.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button onclick="_staffSeedAll()" style="padding:11px 18px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:var(--fs-base);min-height:44px;cursor:pointer">Migrate all '+withPin+' PINs now</button>'
+      +'<button onclick="_staffVerify()" style="padding:11px 18px;background:none;border:1.5px solid var(--ac);color:var(--ac);border-radius:10px;font-weight:700;font-size:var(--fs-base);min-height:44px;cursor:pointer">Check who\'s protected</button>'
+      +'</div>'
+      +'<div id="staffMigrateResult" style="margin-top:12px;font-size:var(--fs-sm)"></div>';
+    // Reflejar el estado de la siembra automática (sin pedir nada).
+    try{
+      db.collection("config").doc("security_migration").get().then(function(s){
+        var el=document.getElementById("staffMigrateAuto");if(!el)return;
+        if(s.exists&&s.data()&&s.data().seeded){
+          var d=s.data();var extra=(d.pending&&d.pending.length)?(" \u00b7 pending: "+d.pending.map(esc).join(", ")):"";
+          el.innerHTML='<span style="color:var(--c-success-strong);font-weight:700">\u2713 Already migrated ('+(d.seededCount||0)+' PINs)</span>'+extra;
+        }else{
+          el.innerHTML='<span style="color:var(--c-warning-strong)">Not migrated yet \u2014 it will run automatically on your next admin sign-in.</span>';
+        }
+      }).catch(function(){});
+    }catch(_e){}
+  }catch(_e){console.warn("[migrate box]",_e);}
+}
+
+/* Siembra: manda al servidor la lista {name, pin, role}. Solo funciona para admin
+   (la función lo verifica con TU PIN). Los PINs que solo existen como hash no se
+   pueden reconstruir → esos quedan pendientes de "entrar una vez" y se avisan. */
+async function _staffSeedAll(){
+  var out=document.getElementById("staffMigrateResult");
+  if(typeof STAFF_LOGIN_FN==="undefined"||!STAFF_LOGIN_FN){if(out)out.innerHTML='<span style="color:var(--r)">Server function not configured.</span>';return;}
+  var myPin=await promptDialog("Confirm YOUR admin PIN to migrate everyone:","");
+  if(!myPin)return;
+  if(out)out.innerHTML='<span style="color:var(--i3)">Migrating\u2026</span>';
+  var payload=allUsers.map(function(u){return {name:u.name,pin:(u.pin!=null?String(u.pin):null),role:u.role||"tech"};});
+  try{
+    var r=await fetch(STAFF_LOGIN_FN,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"seed",name:(currentUser&&currentUser.name)||"",pin:String(myPin),users:payload})});
+    if(r.status===401){if(out)out.innerHTML='<span style="color:var(--r)">That PIN didn\'t match. Try again.</span>';return;}
+    if(r.status===403){if(out)out.innerHTML='<span style="color:var(--r)">Only an admin can run this.</span>';return;}
+    if(!r.ok){if(out)out.innerHTML='<span style="color:var(--r)">Migration failed ('+r.status+'). Is the function deployed?</span>';return;}
+    var j=await r.json();
+    var msg='<span style="color:var(--c-success-strong);font-weight:700">\u2713 '+(j.seeded||0)+' PIN'+((j.seeded===1)?"":"s")+' migrated to the vault.</span>';
+    if(j.skipped&&j.skipped.length){
+      msg+='<div style="margin-top:8px;color:var(--c-warning-strong)">These need to log in once (their PIN was only stored hashed, so it can\'t be copied): <b>'+j.skipped.map(esc).join(", ")+'</b>. '
+         +'Or reset their PIN with the PIN button and migrate again.</div>';
+    }
+    msg+='<div style="margin-top:8px;color:var(--i3)">Next: run the deploy guide\'s step 5 (empty the PINs in config/users), then the rules.</div>';
+    if(out)out.innerHTML=msg;
+    toast("Security migration done \u2713");
+  }catch(e){if(out)out.innerHTML='<span style="color:var(--r)">Error: '+esc((e&&e.message)||"unknown")+'</span>';}
+}
+
+/* Verificador: intenta un login por-persona no es viable sin sus PINs, así que en su
+   lugar comprobamos si existe su documento en staff_auth. Como las reglas nuevas
+   ocultan staff_auth, esta lectura va por la función (action:"status"). */
+async function _staffVerify(){
+  var out=document.getElementById("staffMigrateResult");
+  if(typeof STAFF_LOGIN_FN==="undefined"||!STAFF_LOGIN_FN){if(out)out.innerHTML='<span style="color:var(--r)">Server function not configured.</span>';return;}
+  if(out)out.innerHTML='<span style="color:var(--i3)">Checking\u2026</span>';
+  try{
+    var r=await fetch(STAFF_LOGIN_FN,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"status",name:(currentUser&&currentUser.name)||"",pin:"_verify_"})});
+    if(!r.ok){if(out)out.innerHTML='<span style="color:var(--i3)">Verifier needs the updated function. If you just migrated and saw the \u2713, you\'re set.</span>';return;}
+    var j=await r.json();
+    var done=(j.migrated||[]).map(function(s){return s.toLowerCase();});
+    var pending=allUsers.filter(function(u){return done.indexOf((u.name||"").toLowerCase())<0;}).map(function(u){return u.name;});
+    var h='<div style="color:var(--c-success-strong)">Protected: <b>'+((j.migrated||[]).map(esc).join(", ")||"none yet")+'</b></div>';
+    if(pending.length)h+='<div style="margin-top:6px;color:var(--c-warning-strong)">Still need to migrate: <b>'+pending.map(esc).join(", ")+'</b></div>';
+    else h+='<div style="margin-top:6px;color:var(--c-success-strong);font-weight:700">\u2713 Everyone is protected. Safe to empty config/users and publish the rules.</div>';
+    if(out)out.innerHTML=h;
+  }catch(e){if(out)out.innerHTML='<span style="color:var(--i3)">Couldn\'t check automatically. If the migrate step showed \u2713, you\'re fine.</span>';}
+}
+
 async function editUserPin(i){
   const np=(await promptDialog(`New 4-digit PIN for ${allUsers[i].name}:`,""));
   if(!np||!/^\d{4}$/.test(np.trim())){toast("PIN must be 4 digits","warn");return}
@@ -10420,7 +10674,7 @@ function _weeklyDownloadEml(){
   var blob=new Blob([eml],{type:"message/rfc822"});
   var url=URL.createObjectURL(blob);
   var a=document.createElement("a");
-  a.href=url;a.download="aspen-weekly-summary-"+new Date().toISOString().slice(0,10)+".eml";
+  a.href=url;a.download="aspen-weekly-summary-"+fmtD(new Date())+".eml";  // día local, no UTC
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(url)},2000);
   toast("📩 .eml downloaded — open it in Outlook to send","success");
@@ -11167,6 +11421,53 @@ function celebrate(opts){
   }catch(_e){el.textContent=target}
 }
 function _todayKey(){return fmtD(new Date())} // UTC FIX (Jul 2026): after ~7PM CT the ISO key rolled to tomorrow
+
+/* ═══ MOTOR DE MÉTRICAS · v1.9.0 — una sola definición por indicador ══════════
+   El problema no era el diseño de los dashboards: era que cada pantalla calculaba
+   los mismos indicadores a su manera, así que se contradecían entre ellas.
+     · "Completed today" tenía 3 fórmulas (Daily, Conversiones, Admin)
+     · "First-time fix"  tenía 3 fórmulas (Daily, Métricas, Admin)
+   Ahora todas llaman aquí. Coste Firestore: CERO — es cálculo local sobre los
+   tickets que la app ya tiene en memoria. ═══════════════════════════════════ */
+
+// Completados en un día (clave YYYY-MM-DD, hora LOCAL).
+// Regla única: cuenta por completedAt (cuándo se cerró de verdad); si el ticket no
+// lo trae —los viejos— cae a su fecha programada. Antes se usaba un "||" entre dos
+// métricas DISTINTAS: si hoy no se había cerrado nada, mostraba los PROGRAMADOS de
+// hoy como si fueran completados.
+function _statCompletedOn(dayKey){
+  if(!dayKey)return 0;
+  var d=(typeof done!=="undefined"&&Array.isArray(done))?done:[];   // puede correr antes del primer load
+  return d.filter(function(t){
+    if(!t||t.status==="canceled")return false;
+    var k=(t.completedAt&&_dateOnly(t.completedAt))||t.date||"";
+    return k===dayKey;
+  }).length;
+}
+
+// First-time fix — SIEMPRE el cálculo bounce-aware de _ftfTeamStats (trabajos de 1ª
+// visita; rebota si vuelve una 2ª visita/repetición del mismo cliente entre 1 y 45
+// días después, o si el propio trabajo se reprogramó). Ventana por defecto: 30 días.
+// Devuelve null si no hay trabajos en la ventana → la UI pinta "—" en vez de
+// inventarse un 0% (Métricas) o un 100% (Daily), que es lo que hacía antes.
+function _statFtf(days){
+  try{
+    var n=days||30,s=new Date();s.setDate(s.getDate()-n);
+    var r=_ftfTeamStats(fmtD(s),null);
+    return (r&&r.jobs)?r.rate:null;
+  }catch(_e){return null}
+}
+
+// Delta contra el periodo anterior del mismo tamaño (para las flechas ▲▼ de las KPI).
+// Con 7 días compara los últimos 3-4 contra los 3-4 anteriores.
+function _statDelta(series){
+  if(!series||series.length<4)return null;
+  var h=Math.floor(series.length/2);
+  var prev=series.slice(0,h).reduce(function(a,b){return a+b},0);
+  var cur=series.slice(h).reduce(function(a,b){return a+b},0);
+  if(!prev)return cur?100:null;
+  return Math.round((cur-prev)/prev*100);
+}
 function _renderWelcomeKPIs(){
   var box=document.getElementById("welcomeKPIs");if(!box)return;
   if(!currentUser){box.style.display="none";return}
@@ -11190,18 +11491,20 @@ function _renderWelcomeKPIs(){
   var a=Array.isArray(active)?active:[];
   var d=Array.isArray(done)?done:[];
   var scheduledToday=a.filter(function(t){return t.date===today}).length;
-  var doneToday=d.filter(function(t){return (t.completedAt||"").length && _dateOnly(t.completedAt)===today}).length
-              || d.filter(function(t){return t.date===today}).length;
+  var doneToday=_statCompletedOn(today);                       // definición única
   var pending=a.filter(function(t){return t.status==="pending"||t.status==="reschedule"}).length;
   var resched=a.filter(function(t){return t.status==="reschedule"}).length;
-  // First-time fix rate (completed vs reschedules)
-  var totalForFtf=d.length+resched;
-  var ftf=totalForFtf?Math.round(d.length/totalForFtf*100):100;
+  // FTF: el mismo cálculo que el panel de Admin, 30 días. Antes era
+  // done.length/(done.length+reschedules_activos): sin ventana temporal, el
+  // denominador crecía con todo el histórico y el número trepaba solo hacia 100%
+  // — nunca coincidía con el panel de Admin, que usa el cálculo bueno.
+  var ftf=_statFtf(30);
   // 7-day sparkline series for the KPI cards (oldest → newest).
   var _kpiDays=_last7Keys();
   var _kpiSchedSeries=_kpiDays.map(function(dk){return a.filter(function(t){return t.date===dk}).length+d.filter(function(t){return t.date===dk}).length});
   var _kpiDoneSeries=_kpiDays.map(function(dk){return d.filter(function(t){var c=(t.completedAt&&_dateOnly(t.completedAt))||t.date;return c===dk}).length});
   var _kpiReschedSeries=_kpiDays.map(function(dk){return a.filter(function(t){if(t.status!=="reschedule")return false;var rk=t.reschedAtMs?fmtD(new Date(t.reschedAtMs)):t.date;return rk===dk}).length});
+  var _dSched=_statDelta(_kpiSchedSeries),_dDone=_statDelta(_kpiDoneSeries),_dResc=_statDelta(_kpiReschedSeries);
   box.style.display="block";
   // Skip re-render/re-animation if nothing changed (e.g. user is typing in search)
   var nelaCobranzaSig="";
@@ -11217,7 +11520,7 @@ function _renderWelcomeKPIs(){
     var _qbStale=_qbSnap&&_qbSnap.payload?(_qbSnap.payload.staleCount||0):0;
     nelaCobranzaSig="|nela|"+_evs.length+"|"+_tot.toFixed(0)+"|"+_od+"|"+_fu+"|qb"+_qbCount+"|qs"+_qbStale;
   }
-  var sig=[scheduledToday,doneToday,resched,ftf,who,greet].join("|")+nelaCobranzaSig;
+  var sig=[scheduledToday,doneToday,resched,(ftf==null?"-":ftf),who,greet].join("|")+nelaCobranzaSig;
   if(box.dataset.sig===sig)return;
   box.dataset.sig=sig;
   // IDEA 1 — Personal Cobranza widget for Nela, shown above the standard KPI cards
@@ -11256,23 +11559,36 @@ function _renderWelcomeKPIs(){
     +'<div class="kpi-hello">'+greet+',<span class="kpi-name">'+(who?esc(who):"")+'</span></div>'
     +'<div class="kpi-sub">Here\'s today\'s service snapshot — tap a card to open it.</div>'
     +'<div class="kpi-grid">'
-      +_kpiCard("scheduledToday",scheduledToday,"Scheduled today","var(--c-info-strong)","calendar","showTab(4)","Open calendar",false,_sparklineSVG(_kpiSchedSeries,"var(--c-info-strong)"))
-      +_kpiCard("doneToday",doneToday,"Completed today","var(--c-success-strong)","check-circle","showTab(2)","View completed",false,_sparklineSVG(_kpiDoneSeries,"var(--c-success-strong)"))
-      +_kpiCard("reschedK",resched,"Reschedules — need date","var(--c-warning-strong)","rotate-ccw","showTab(5)","Open service log",false,_sparklineSVG(_kpiReschedSeries,"var(--c-warning-strong)"))
-      +_kpiCard("ftfK",ftf,"First-time fix","var(--ac)","target","showTab(2)","See details",true)
+      +_kpiCard("scheduledToday",scheduledToday,"Scheduled today","var(--c-info-strong)","calendar","showTab(4)","Open calendar",false,_sparklineSVG(_kpiSchedSeries,"var(--c-info-strong)"),_dSched,0)
+      +_kpiCard("doneToday",doneToday,"Completed today","var(--c-success-strong)","check-circle","showTab(2)","View completed",false,_sparklineSVG(_kpiDoneSeries,"var(--c-success-strong)"),_dDone,1)
+      +_kpiCard("reschedK",resched,"Reschedules — need date","var(--c-warning-strong)","rotate-ccw","showTab(5)","Open service log",false,_sparklineSVG(_kpiReschedSeries,"var(--c-warning-strong)"),_dResc,-1)
+      +_kpiCard("ftfK",(ftf==null?"\u2014":ftf),"First-time fix","var(--ac)","target","showTab(2)","Last 30 days",(ftf!=null))
     +'</div>';
   mountLucideIcons(box);
   _countUp(document.getElementById("kpi_scheduledToday"),scheduledToday);
   _countUp(document.getElementById("kpi_doneToday"),doneToday);
   _countUp(document.getElementById("kpi_reschedK"),resched);
-  _countUp(document.getElementById("kpi_ftfK"),ftf);
+  // sin trabajos en la ventana → "—", no un 100% inventado
+  if(ftf==null){var _fe=document.getElementById("kpi_ftfK");if(_fe)_fe.textContent="\u2014";}
+  else _countUp(document.getElementById("kpi_ftfK"),ftf);
 }
-function _kpiCard(id,val,label,color,ico,onclickJs,goText,isPct,sparkSVG){
+// delta = % contra los 3-4 días previos · goodDir: 1 = subir es bueno, -1 = subir es
+// malo (reschedules), 0 = neutro. Antes la etiqueta decía siempre "7d", que no
+// informaba de nada: la sparkline se veía bonita pero no se sabía si íbamos mejor.
+function _kpiCard(id,val,label,color,ico,onclickJs,goText,isPct,sparkSVG,delta,goodDir){
+  var dTxt="7d",dCol="var(--i3)";
+  if(delta!=null&&delta!==0){
+    dTxt=(delta>0?"\u25B2":"\u25BC")+Math.abs(delta)+"%";
+    if(goodDir){
+      var good=(delta>0)===(goodDir>0);
+      dCol=good?"var(--c-success-strong)":"var(--c-danger-fg)";
+    }
+  }
   return '<div class="kpi-card" style="--kpi-ac:'+color+'" onclick="'+onclickJs+'" role="button" tabindex="0">'
     +'<span class="kpi-ico">'+icon(ico,30,{color:color})+'</span>'
     +'<div class="kpi-val"><span id="kpi_'+id+'">0</span>'+(isPct?'<small>%</small>':'')+'</div>'
     +'<div class="kpi-lbl">'+label+'</div>'
-    +(sparkSVG?'<div class="kpi-spark-wrap">'+sparkSVG+'<span class="kpi-spark-delta" style="color:var(--i3)">7d</span></div>':'')
+    +(sparkSVG?'<div class="kpi-spark-wrap">'+sparkSVG+'<span class="kpi-spark-delta" title="vs. los 3-4 d\u00edas anteriores" style="color:'+dCol+';font-weight:700">'+dTxt+'</span></div>':'')
     +'<div class="kpi-go">'+esc(goText||"")+' →</div>'
     +'</div>';
 }
@@ -11285,10 +11601,13 @@ function _last7Keys(){
 // Tiny inline sparkline (area + line + end dot). Returns "" when the series is flat-zero.
 function _sparklineSVG(series,color){
   if(!series||series.length<2)return "";
-  if(!series.some(function(v){return v>0}))return "";
+  // Antes: con la serie a cero devolvía "" y la tarjeta se ENCOGÍA — las 4 KPI
+  // quedaban de alturas distintas según los datos del día. Ahora una semana sin
+  // movimiento se dibuja como una línea plana centrada: la tarjeta no se mueve.
   var w=80,h=22,pad=2,n=series.length;
   var max=Math.max.apply(null,series),min=Math.min.apply(null,series),range=(max-min)||1;
-  var pts=series.map(function(v,i){var x=pad+i*(w-2*pad)/(n-1);var y=h-pad-((v-min)/range)*(h-2*pad);return x.toFixed(1)+","+y.toFixed(1)});
+  var flat=(max===min);
+  var pts=series.map(function(v,i){var x=pad+i*(w-2*pad)/(n-1);var y=flat?(h/2):(h-pad-((v-min)/range)*(h-2*pad));return x.toFixed(1)+","+y.toFixed(1)});
   var lastXY=pts[pts.length-1].split(",");
   var area=pts.join(" ")+" "+(w-pad).toFixed(1)+","+(h-pad)+" "+pad+","+(h-pad);
   var gid="spk"+Math.random().toString(36).slice(2,7);
@@ -11298,9 +11617,14 @@ function _sparklineSVG(series,color){
     '<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'+
     '<circle cx="'+lastXY[0]+'" cy="'+lastXY[1]+'" r="2.2" fill="'+color+'"/></svg>';
 }
-// Helper: extract YYYY-MM-DD from a localized timestamp string if possible
+// Helper: extract YYYY-MM-DD from a localized timestamp string if possible.
+// DATA FIX (v1.9.0): toISOString() convierte a UTC. Un ticket cerrado a las 7:30 PM
+// en St. Louis (CDT = UTC-5) devolvía la fecha de MAÑANA, así que "Completed today"
+// se vaciaba cada tarde y las series de 7 días quedaban corridas un día. Es el mismo
+// bug que ya se corrigió en _todayKey(). fmtD() usa getFullYear/getMonth/getDate:
+// siempre el día LOCAL.
 function _dateOnly(s){
-  try{var dt=new Date(s);if(!isNaN(dt))return dt.toISOString().slice(0,10)}catch(_e){}
+  try{var dt=new Date(s);if(!isNaN(dt))return fmtD(dt)}catch(_e){}
   return "";
 }
 
@@ -11691,6 +12015,13 @@ function buildEstimatePdf(e){
   doc.text("ESTIMATED TOTAL",M,y+4);doc.text(money(e.total),W-M,y+4,{align:"right"});y+=30;
   doc.setFont("helvetica","normal");
   if(e.notes){doc.setFontSize(9);doc.setTextColor(90,90,90);var nl=doc.splitTextToSize(String(e.notes),W-2*M);doc.text(nl,M,y);y+=nl.length*12+10}
+  // Aviso de estimación — también en el PDF que queda archivado y firmado
+  try{
+    doc.setFontSize(8);doc.setTextColor(125,125,125);
+    var _dl=doc.splitTextToSize(EST_DISCLAIMER,W-2*M);
+    doc.text(_dl,M,y);y+=_dl.length*10+8;
+    doc.setFontSize(10);doc.setTextColor(0,0,0);
+  }catch(_de){}
   // Signature
   y+=10;doc.setDrawColor(225,225,225);doc.line(M,y,W-M,y);y+=18;
   doc.setFontSize(9);doc.setTextColor(120,120,120);doc.text("Customer Signature — Approved",M,y);y+=8;
@@ -16696,6 +17027,7 @@ function genEstimate(){
   else if(lb)h+=`<div class="est-row" style="color:var(--ac);font-weight:600"><span>${lb.label}</span><span>$${lb.amount.toFixed(2)}</span></div>`;
   if(tax>0)h+=`<div class="est-row" style="font-size:var(--fs-sm);color:var(--i2)"><span>Tax 9% (parts only)</span><span>$${tax.toFixed(2)}</span></div>`;
   h+=`<div class="est-total"><span>ESTIMATED TOTAL</span><span>$${grand.toFixed(2)}</span></div>`;
+  h+=_estDisclaimerHTML();                         // mismo aviso que verá el cliente
   if(notes)h+=`<div style="margin-top:10px;padding:10px;background:#f9f9f6;border-radius:8px;font-size:var(--fs-base);color:var(--i2);font-style:italic">${esc(notes)}</div>`;
   h+=`<div class="sig-area"><div class="sig-lbl">Customer Signature</div><canvas class="sig-canvas" id="sigPad" width="600" height="200"></canvas><div class="sig-actions"><button class="sig-clear" onclick="if(localSigPad)localSigPad.clear();document.getElementById('estSendBtn').disabled=true">✕ Clear</button><div style="flex:1;text-align:right;font-size:var(--fs-sm);color:var(--i3);align-self:center" id="sigHint">Sign above to accept</div></div></div>`;
   h+=`<div style="margin-top:12px;font-size:var(--fs-xs);color:#bbb;text-align:center">This is an estimate. Final charges may vary.</div>`;
@@ -16838,7 +17170,7 @@ async function shareLinkEstimate(){
     });
     const link=window.location.origin+window.location.pathname+"?estimate="+token;
     if(navigator.share){
-      await navigator.share({title:`Estimate — ${cu}`,text:`Aspen Spas Service Estimate for ${cu}\nTotal: $${grand.toFixed(2)}\n\nPlease review and sign here:`,url:link}).catch(()=>{});
+      await navigator.share({title:`Estimate — ${cu}`,text:`Aspen Spas Service Estimate for ${cu}\nEstimated total: $${grand.toFixed(2)}\n\nThis is an estimate, not a final bill — the total may change if the technician finds additional work is needed.\n\nPlease review and sign here:`,url:link}).catch(()=>{});
     }else{
       await navigator.clipboard.writeText(link).catch(()=>{});
     }
@@ -17073,7 +17405,74 @@ function rndrCoaching(){
   if(_coachNewOpen){Object.keys(_np).forEach(function(idd){var e=document.getElementById(idd);if(e&&_np[idd]!==undefined)e.value=_np[idd];});}
 }
 
-let custSigPad=null,custEstToken="",custSigData=null;
+/* AVISO DE ESTIMACIÓN (v1.9.1) — pedido por Alberto.
+   El cliente firma un total que puede cambiar: si al abrir el spa el técnico
+   encuentra más trabajo o más piezas, la factura final no será la misma. Eso hay
+   que decírselo ANTES de que firme, no cuando le llega la factura. Se muestra en
+   la vista del cliente, en la vista previa del técnico, en el PDF y en el texto
+   que se copia/comparte. */
+var EST_DISCLAIMER="This is an estimate, not a final bill. The amounts above are based on what we know today. If the technician finds that additional parts or labor are needed to finish the repair, the final total may change. We will always let you know before doing any extra work.";
+/* AVISO DE SESIÓN (v1.9.2) — el cliente tiene que saber ANTES de firmar que su
+   navegador no puede escribir en el servidor, no después de haber firmado. */
+function _estAuthWarnHTML(){
+  return '<div style="margin-bottom:14px;padding:12px 14px;background:#FDECEA;border:1px solid #C0492F;'
+    +'border-radius:10px;font-size:var(--fs-sm);line-height:1.5;color:#7a2e1e">'
+    +'<b style="display:block;margin-bottom:3px">\u26A0 Connection problem</b>'
+    +'This browser can\'t reach our server, so your signature may not go through. '
+    +'Please open this link in <b>Safari</b> or <b>Chrome</b> \u2014 not inside the text-message preview \u2014 '
+    +'or <a href="javascript:location.reload()" style="color:#7a2e1e;font-weight:700">tap here to retry</a>.</div>';
+}
+function _estDisclaimerHTML(){
+  return '<div style="margin-top:14px;padding:12px 14px;background:var(--acl);border:1px solid var(--ac);'
+    +'border-radius:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--i2)">'
+    +'<b style="color:var(--acd);display:block;margin-bottom:3px">\u2139 This is an estimate \u2014 not a final bill</b>'
+    +'The amounts above are based on what we know today. If the technician finds that additional parts or labor '
+    +'are needed to finish the repair, the final total may change. We will always let you know before doing any '
+    +'extra work.</div>';
+}
+
+/* Cadena de persistencia: prueba LOCAL, luego SESSION, luego NONE (memoria).
+   Devuelve el modo que funcionó. Se usa en el arranque y en _awaitAuth. */
+function _authSignInWithFallback(){
+  var auth=firebase.auth(),P=firebase.auth.Auth.Persistence;
+  var chain=[["LOCAL",P.LOCAL],["SESSION",P.SESSION],["NONE",P.NONE]];
+  function step(i){
+    if(i>=chain.length)return Promise.reject(new Error("no persistence mode available"));
+    return auth.setPersistence(chain[i][1])
+      .then(function(){return auth.signInAnonymously()})
+      .then(function(){return chain[i][0]})
+      .catch(function(){return step(i+1)});   // ese modo no va en este navegador: baja uno
+  }
+  return step(0);
+}
+
+/* PLAN B (v1.9.3): si NINGÚN modo de sesión funciona en ese navegador, la firma se
+   manda a una Cloud Function que escribe con credenciales de admin. El Admin SDK NO
+   pasa por las reglas de Firestore: no necesita sesión, ni IndexedDB, ni cookies.
+   Funciona en cualquier navegador — incluido el de Mensajes.
+   Requiere desplegar la función `signEstimate` (te la dejo en functions-signEstimate.js).
+   Si no está desplegada, esto simplemente devuelve false y no rompe nada. */
+var EST_SIGN_FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/signEstimate";
+async function _signViaFunction(){
+  try{
+    var r=await fetch(EST_SIGN_FN,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token:custEstToken,signatureData:custSigData,signedAt:new Date().toLocaleString()})
+    });
+    if(!r.ok)return false;
+    var j=await r.json();
+    return !!(j&&j.ok);
+  }catch(_e){console.warn("[estimate] fallback function failed",_e);return false}
+}
+function _estThanksHTML(name){
+  return '<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3>'
+    +'<div class="est-sub">Service Estimate</div><div style="margin:20px 0"><span style="font-size:48px">\u2713</span></div>'
+    +'<div style="font-size:var(--fs-lg);color:var(--ac);font-weight:700;margin-bottom:8px">Estimate Accepted!</div>'
+    +'<div style="font-size:var(--fs-base);color:var(--i2)">Thank you'+(name?", "+esc(name):"")+'. Your technician has been notified.</div>'
+    +'<div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">You may close this page.</div></div>';
+}
+
+let custSigPad=null,custEstToken="",custSigData=null,custEstName="";
 // Resolves once Firebase anonymous auth is ready (a non-null user). On a customer's
 // FRESH device the module-load signInAnonymously() has not finished yet, and the
 // Firestore rules require request.auth != null — so any read fired before this point
@@ -17088,7 +17487,9 @@ function _awaitAuth(timeoutMs){
       var done=false;
       function finish(ok){if(done)return;done=true;try{unsub&&unsub()}catch(_e){}resolve(ok);}
       var unsub=auth.onAuthStateChanged(function(u){if(u)finish(true);});
-      auth.signInAnonymously().catch(function(){/* surfaced by the timeout below */});
+      // v1.9.3: no basta con signInAnonymously() — en el navegador de Mensajes falla
+      // la persistencia por IndexedDB. Bajamos a SESSION y luego a memoria.
+      _authSignInWithFallback().catch(function(){/* lo recoge el timeout de abajo */});
       setTimeout(function(){finish(!!auth.currentUser);},timeoutMs||9000);
     }catch(_e){resolve(false);}
   });
@@ -17113,11 +17514,18 @@ async function loadCustEstimate(){
   // cached. Firestore rules require an authenticated request — wait for sign-in to land
   // before reading, or the first link-open races ahead of auth and is denied.
   document.getElementById("custEstContent").innerHTML='<div class="empty" style="padding:60px 20px"><div style="font-size:32px;margin-bottom:10px">⏳</div><h3 style="font-size:var(--fs-lg)">Loading your estimate…</h3></div>';
-  await _awaitAuth(9000);
+  /* AUTH (v1.9.2): antes esto era "await _awaitAuth(9000)" y el resultado se TIRABA.
+     Si la sesión anónima no llegaba a establecerse (el navegador embebido de Mensajes,
+     Safari en privado, almacenamiento particionado), el estimado se pintaba IGUAL
+     —Firestore lo sirve desde su caché local— y nadie se enteraba de nada... hasta que
+     el cliente firmaba y la escritura moría con "Missing or insufficient permissions".
+     Ahora lo sabemos desde el primer segundo y se lo decimos. */
+  var _authOk=await _awaitAuth(9000);
   try{
     const doc=await db.collection("estimates").doc(token).get();
     if(!doc.exists){document.getElementById("custEstContent").innerHTML='<div class="empty" style="padding:60px 20px"><h3 style="font-size:var(--fs-xl);color:var(--r);margin-bottom:8px">Link Not Found</h3><p>This estimate link does not exist or has been removed.</p></div>';return true}
     const d=doc.data();
+    custEstName=d.customer||"";
     if(d.signed||d.expired){document.getElementById("custEstContent").innerHTML=`<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div><div style="margin:20px 0;font-size:var(--fs-lg);color:var(--ac);font-weight:700">${d.signed?"✓ This estimate has been signed and accepted.":"This link has expired."}</div>${d.signed?`<div style="font-size:var(--fs-base);color:var(--i3)">Signed on ${d.signedAt}</div>`:""}<div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">Thank you for choosing Aspen Spas</div></div>`;return true}
 
     let h=`<div class="est-preview" style="border-color:var(--ac)"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div>`;
@@ -17133,11 +17541,13 @@ async function loadCustEstimate(){
     else if(d.labor)h+=`<div class="est-row" style="color:var(--ac);font-weight:600"><span>${d.labor.label}</span><span>$${d.labor.amount.toFixed(2)}</span></div>`;
     if(d.tax>0)h+=`<div class="est-row" style="font-size:var(--fs-sm);color:var(--i2)"><span>Tax 9% (parts only)</span><span>$${d.tax.toFixed(2)}</span></div>`;
     h+=`<div class="est-total"><span>ESTIMATED TOTAL</span><span>$${d.total.toFixed(2)}</span></div>`;
+    h+=_estDisclaimerHTML();                       // el cliente lo ve ANTES de firmar
     if(d.notes)h+=`<div style="margin-top:10px;padding:10px;background:#f9f9f6;border-radius:8px;font-size:var(--fs-base);color:var(--i2);font-style:italic">${esc(d.notes)}</div>`;
     h+=`<div class="sig-area"><div class="sig-lbl">Customer Signature</div><canvas class="sig-canvas" id="custSigPad" width="600" height="200"></canvas><div class="sig-actions"><button class="sig-clear" onclick="if(custSigPad)custSigPad.clear();custSigData=null;document.getElementById('custAcceptBtn').disabled=true">✕ Clear</button><div style="flex:1;text-align:right;font-size:var(--fs-sm);color:var(--i3);align-self:center" id="custSigHint">Sign above to accept</div></div></div>`;
     h+=`<button class="est-send-btn" id="custAcceptBtn" onclick="submitCustSig()" disabled>✓ Accept Estimate</button>`;
     h+=`<div style="margin-top:12px;font-size:var(--fs-xs);color:#bbb;text-align:center">This is an estimate. Final charges may vary.</div>`;
     h+=`</div>`;
+    if(!_authOk)h=_estAuthWarnHTML()+h;      // avisar ANTES de que firme, no después
     document.getElementById("custEstContent").innerHTML=h;
     setTimeout(()=>{
       custSigPad=initSigPad("custSigPad",function(data){custSigData=data;document.getElementById("custAcceptBtn").disabled=false},"custSigHint");
@@ -17172,6 +17582,40 @@ async function _attachApprovedEstimate(fromId,fields,estAttach){
 async function submitCustSig(){
   if(!custSigData||!custEstToken){return}
   const btn=document.getElementById("custAcceptBtn");btn.disabled=true;btn.textContent="Saving...";
+  /* ═══ LA CAUSA DEL "Missing or insufficient permissions" (v1.9.2) ═══════════
+     Las reglas del proyecto son:  allow read, write: if request.auth != null
+     — o sea, YA permiten todo lo que el cliente necesita. No faltaba ninguna regla:
+     faltaba la SESIÓN. _awaitAuth() solo se llamaba al CARGAR la página y su
+     resultado se descartaba. La lectura del estimado puede servirse de la caché
+     local de Firestore, así que el cliente veía su estimado y firmaba tan tranquilo;
+     pero la escritura SIEMPRE va al servidor, y sin sesión Firestore la deniega.
+     El error saltaba en el peor momento posible: con la firma ya hecha.
+     Ahora se comprueba (y se reintenta) ANTES de escribir, con la firma todavía en
+     pantalla — si falla, no se pierde y el cliente puede reintentar en otro navegador. */
+  var _authOk=await _awaitAuth(12000);
+  if(!_authOk){
+    /* Sin sesión en este navegador (típico: el de Mensajes). NO le pedimos al cliente
+       que abra el link en otro sitio — el técnico se lo manda por mensaje y ahí lo
+       tiene que poder firmar. Mandamos la firma a la Cloud Function, que escribe con
+       credenciales de admin y no necesita sesión. */
+    var _fnOk=await _signViaFunction();
+    if(_fnOk){
+      document.getElementById("custEstContent").innerHTML=_estThanksHTML(custEstName);
+      return;
+    }
+    btn.disabled=false;btn.textContent="\u2713 Accept Estimate";
+    toast("We couldn't save your signature. Please call us at 314-776-5050 \u2014 your technician has been notified.","err");
+    try{
+      db.collection("client_errors").add({
+        type:"estimate_no_auth",token:custEstToken,ua:navigator.userAgent,
+        at:firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function(){});
+    }catch(_le){}
+    return;
+  }
+  /* Diagnóstico por pasos (v1.9.1): si aun con sesión Firestore deniega algo, el
+     mensaje dice CUÁL de las escrituras falló, no un "permisos" a secas. */
+  var _step="read";
   try{
     // ── Read the estimate doc FIRST. Do NOT mark it signed yet: the customer's
     //    acceptance must be persisted as an APPROVED TICKET before we flip the
@@ -17190,10 +17634,12 @@ async function submitCustSig(){
     };
     // Generate + upload the signed PDF on the customer's device (best-effort)
     const _fromId=d.fromTicketId||null;
+    _step="pdf";
     const _pdfMedia=await makeEstimatePdfMedia(Object.assign({customer:d.customer,phone:d.phone,address:d.address,city:d.city,zip:d.zip,date:d.date,techs:d.techs||[]},estPacket),_fromId||("est_"+custEstToken));
     if(_pdfMedia){estPacket.pdfUrl=_pdfMedia.url;estPacket.pdfName=_pdfMedia.name}
     const _estAttach=_pdfMedia||{data:custSigData,type:"signature",fromEstimate:true};
     // ── 1) Persist the APPROVAL FIRST ──
+    _step="ticket";
     if(_fromId){
       // ═══ SAME-TICKET round-trip: approval returns to the originating ticket ═══
       // Atomic arrayUnion append — clobber-safe + idempotent under sync races.
@@ -17231,11 +17677,42 @@ async function submitCustSig(){
     }
     // ── 2) Only NOW mark the estimate signed (last write). If this step fails,
     //    the ticket is already approved and the customer can safely retry. ──
+    _step="estimate";
     await db.collection("estimates").doc(custEstToken).update({
       signed:true,expired:true,signatureData:custSigData,signedAt:_signedAt
     });
     document.getElementById("custEstContent").innerHTML=`<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div><div style="margin:20px 0"><span style="font-size:48px">✓</span></div><div style="font-size:var(--fs-lg);color:var(--ac);font-weight:700;margin-bottom:8px">Estimate Accepted!</div><div style="font-size:var(--fs-base);color:var(--i2)">Thank you, ${esc(d.customer)}. Your technician has been notified.</div><div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">You may close this page.</div></div>`;
-  }catch(e){console.error(e);btn.disabled=false;btn.textContent="✓ Accept Estimate";toast("Error: "+e.message,"err")}
+  }catch(e){
+    console.error("[estimate:accept] paso="+_step,e&&e.code,e);
+    btn.disabled=false;btn.textContent="\u2713 Accept Estimate";
+    var _perm=!!(e&&(e.code==="permission-denied"||/insufficient permissions/i.test(e.message||"")));
+    var _where={read:"reading the estimate",pdf:"saving the signed PDF",ticket:"sending the approval to your technician",estimate:"marking the estimate as signed"}[_step]||"processing";
+    // Último recurso: si Firestore deniega la escritura incluso con sesión, la firma
+    // se manda igualmente por la Cloud Function antes de darle un error al cliente.
+    if(_perm){
+      var _rescue=await _signViaFunction();
+      if(_rescue){
+        document.getElementById("custEstContent").innerHTML=_estThanksHTML(custEstName);
+        return;
+      }
+    }
+    if(_perm){
+      // El cliente no puede hacer nada con esto: el fallo es de reglas, no suyo.
+      // Le decimos que su firma NO se perdió y que llamamos nosotros.
+      toast("We couldn't finish "+_where+". Your technician has been notified — please call us at 314-776-5050.","err");
+      try{
+        // Deja rastro para el equipo: qué paso, qué código. Best-effort: si TAMBIÉN
+        // está bloqueado por reglas, se ignora en silencio (no rompe al cliente).
+        db.collection("client_errors").add({
+          type:"estimate_permission_denied",step:_step,token:custEstToken,
+          code:(e&&e.code)||"",msg:(e&&e.message)||"",
+          ua:navigator.userAgent,at:firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(function(){});
+      }catch(_le){}
+    }else{
+      toast("Error while "+_where+": "+((e&&e.message)||"unknown"),"err");
+    }
+  }
 }
 
 function copyEstimate(){
@@ -21158,9 +21635,10 @@ function _renderSlogStats(cat){
   var h='<div class="slog-stats-title">Calls by zone — '+catLbl+' ('+tkts.length+')</div>';
   if(!rows.length){el.innerHTML=h+'<div class="slog-stats-empty">No tickets in this view.</div>';return}
   rows.forEach(function(r){
-    var pct=Math.round(r.n/max*100);
-    var zc=ZONE_COLORS[r.zone]||{bg:"#ECE7E0",text:"#7a7066"};
-    h+='<div class="slog-stat-row"><span class="ssr-zone"><b style="background:'+zc.bg+';color:'+zc.text+'">'+esc(r.zone)+'</b></span><span class="ssr-bar"><i style="width:'+pct+'%;background:'+zc.text+'"></i></span><span class="ssr-n" style="color:'+zc.text+'">'+r.n+'</span></div>';
+    var pct=Math.round(r.n/max*100);                       // ancho: relativo a la zona líder
+    var share=tkts.length?Math.round(r.n/tkts.length*100):0; // dato real: % del total
+    var zc=ZONE_COLORS[r.zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};  // era #ECE7E0/#7a7066 fijos → ilegible en dark
+    h+='<div class="slog-stat-row"><span class="ssr-zone"><b style="background:'+zc.bg+';color:'+zc.text+'">'+esc(r.zone)+'</b></span><span class="ssr-bar"><i style="width:'+pct+'%;background:'+zc.text+'"></i></span><span class="ssr-n" style="color:'+zc.text+'">'+r.n+'<small style="color:var(--i3);font-weight:600;margin-left:4px">'+share+'%</small></span></div>';
   });
   el.innerHTML=h;
 }
@@ -21599,6 +22077,15 @@ function startEstimateFrom(id){
     document.getElementById("eCust").value=t.customer||"";
     document.getElementById("eDate").value=t.date||localDateStr();
     document.getElementById("eNotes").value=t.notes||"";
+    /* AUTOCOMPLETADO (v1.9.1): el ticket YA tiene teléfono, dirección, ciudad y ZIP,
+       pero el estimado nacía vacío y el técnico los reescribía a mano desde el campo
+       — con el riesgo de mandar el link con otro teléfono o sin dirección. Solo se
+       rellena lo que el ticket trae: nunca borra algo que el técnico ya escribió. */
+    var _fill=function(id,v){var e=document.getElementById(id);if(e&&v)e.value=v;};
+    _fill("eCustPhone",t.phone);
+    _fill("eCustAddr",t.address);
+    _fill("eCustCity",t.city);
+    _fill("eCustZip",t.zip);
     // Show back button
     let bb=document.getElementById("backToEstBtn");
     if(!bb){bb=document.createElement("button");bb.id="backToEstBtn";bb.style.cssText="margin-bottom:14px;padding:10px 18px;background:none;border:1.5px solid var(--ac);border-radius:10px;font-size:var(--fs-base);font-weight:600;color:var(--ac);width:100%";document.getElementById("estMode").prepend(bb)}
@@ -23646,8 +24133,18 @@ function _mapsRenderTrendChart(){
     el.innerHTML='<div style="text-align:center;padding:24px;color:var(--i3);font-size:var(--fs-base)">No driving data yet for the last 14 days. Open a date above (or click <b>Backfill 14d</b>) to start recording.</div>';
     return;
   }
-  // Build stacked bar chart
-  let h='<div style="display:flex;align-items:flex-end;gap:6px;height:180px;padding-bottom:4px">';
+  // Build stacked bar chart — con escala: sin líneas de guía no se podía leer
+  // ninguna magnitud sin pasar el ratón por encima (y en el teléfono no hay ratón).
+  const maxH=(maxSec/3600);
+  const scaleLbl=function(f){const v=maxH*f;return v<1?Math.round(v*60)+'m':v.toFixed(1)+'h'};
+  let h='<div style="position:relative;padding-left:34px">';
+  h+='<div style="position:absolute;left:0;top:14px;bottom:22px;width:32px;display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--i3);text-align:right;padding-right:4px">'
+    +'<span>'+scaleLbl(1)+'</span><span>'+scaleLbl(0.5)+'</span><span>0</span></div>';
+  h+='<div style="position:absolute;left:34px;right:0;top:20px;height:150px;pointer-events:none">'
+    +'<div style="position:absolute;top:0;left:0;right:0;border-top:1px dashed var(--ln)"></div>'
+    +'<div style="position:absolute;top:50%;left:0;right:0;border-top:1px dashed var(--ln)"></div>'
+    +'<div style="position:absolute;bottom:0;left:0;right:0;border-top:1px solid var(--ln)"></div></div>';
+  h+='<div style="display:flex;align-items:flex-end;gap:6px;height:180px;padding-bottom:4px;position:relative">';
   dayData.forEach(function(d){
     const dt=new Date(d.date+"T12:00:00");
     const isToday=d.date===fmtD(new Date());
@@ -23672,7 +24169,7 @@ function _mapsRenderTrendChart(){
     h+='<div style="font-size:var(--fs-xs);color:'+(isToday?'var(--ac);font-weight:800':'var(--i3)')+';margin-top:4px">'+dayLbl+' '+dayNum+'</div>';
     h+='</div>';
   });
-  h+='</div>';
+  h+='</div></div>';
   // Legend
   const legendTechs={};
   dayData.forEach(d=>Object.keys(d.techsSec).forEach(tn=>{legendTechs[tn]=(legendTechs[tn]||0)+d.techsSec[tn]}));
