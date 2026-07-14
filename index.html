@@ -26633,7 +26633,7 @@ function showTicketDetail(p,i){
 @keyframes bsIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 #bsBody.bs-anim{animation:bsIn .16s ease-out}
 @media(max-width:520px){#bsOv{padding:0;align-items:stretch}#bsOv .bs-box{max-width:none;height:100dvh;max-height:none;border-radius:0}}
-#nvLaunch,#rollLaunch{width:100%;margin:0 0 12px;padding:11px 16px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center;gap:8px}
+#nvLaunch,#rollLaunch,#payLaunch{width:100%;margin:0 0 12px;padding:11px 16px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center;gap:8px}
 #nvOv{position:fixed;inset:0;background:var(--bg,#faf8f4);z-index:10001;overflow:auto;padding:16px 18px;display:none}
 #nvOv .nv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
 #nvOv .nv-kpi{background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px}
@@ -26669,6 +26669,7 @@ function showTicketDetail(p,i){
 #bsOv .bs-ck button.on{border-color:var(--c-money-fg,#065f46);background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46)}
 #bsOv .bs-copy[disabled]{opacity:.45;cursor:not-allowed}
 #rollOv{position:fixed;inset:0;background:var(--bg,#faf8f4);z-index:10005;overflow:auto;display:none}
+#payOv{position:fixed;inset:0;background:var(--bg,#faf8f4);z-index:10006;overflow:auto;display:none}
 body.aspSkin:not(.dark){--bg:#FBF8F4;--card:#FFFFFF;--c-money-bg:#E4F0E7;--c-money-fg:#41694F;--c-warning-bg:#F7EDDD;--c-warning-fg:#8A6A3B;--c-danger-bg:#F6E3DE;--c-danger-fg:#A85B4B;--c-info-bg:#E7EEF3;--c-info-fg:#4A6B82}
 body.aspSkin:not(.dark) #pg1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 90'%3E%3Cpath d='M0 55 Q50 40 100 55 T200 55 T300 55 T400 55' fill='none' stroke='%23B98A5E' stroke-opacity='0.10' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M0 72 Q50 58 100 72 T200 72 T300 72 T400 72' fill='none' stroke='%238A7768' stroke-opacity='0.08' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21 C7 16 8 9 12 3 C16 9 17 16 12 21 Z' fill='%23B98A5E' fill-opacity='0.06'/%3E%3C/svg%3E");background-repeat:repeat-x,no-repeat;background-position:bottom -4px center,right -70px top -60px;background-size:820px 90px,320px 320px}
 body.aspSkin:not(.dark) #bsOv .bs-box,body.aspSkin:not(.dark) #bsDigest>div,body.aspSkin:not(.dark) #nvOv .nv-kpi,body.aspSkin:not(.dark) #nvOv .nv-card,body.aspSkin:not(.dark) #bsLaunch,body.aspSkin:not(.dark) #nvLaunch,body.aspSkin:not(.dark) #nvPanel{box-shadow:0 1px 6px rgba(92,74,61,.08),inset 0 1.5px 0 rgba(255,255,255,.85);border-color:#EDE6DD}
@@ -27489,6 +27490,72 @@ window.rollRender=function(){
   try{var cu=document.getElementById("rollCur");if(cu)cu.scrollIntoView({block:"center"});}catch(e){}
 };
 
+/* ── LOTE DE COBRO PAYTRACE (Jul 2026) — serial collections. Pool: tickets
+   billed in QB (qbCopied), NOT paid, WITH card on file (ccOnFile). Per-row:
+   copy name · mark PAID (reuses the app's togglePaid). CSV export for
+   PayTrace "Process Multiple Transactions" (test batch of 3 first — the
+   customer_id must match the PayTrace vault profile IDs; first import
+   calibrates the format). Charge-on-file consent required. Zero extra reads. ── */
+function payPool(){
+  return ((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.status==="complete"&&t.qbCopied&&!t.paid&&t.ccOnFile;})
+    .sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
+}
+function payAmt(t){
+  var st=(t.total!=null&&!isNaN(Number(t.total))&&Number(t.total)>0)?+Number(t.total).toFixed(2):null;
+  if(st!=null)return{v:st,ok:true};
+  return{v:moneySub(t),ok:false};
+}
+function _payId(t){return String(t.customer||"").toUpperCase().replace(/[^A-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,24);}
+window.payOpen=function(){var ov=document.getElementById("payOv");if(!ov){ov=document.createElement("div");ov.id="payOv";document.body.appendChild(ov);}ov.style.display="block";document.body.style.overflow="hidden";payRender();};
+window.payClose=function(){var ov=document.getElementById("payOv");if(ov)ov.style.display="none";document.body.style.overflow="";try{renderBtn();}catch(e){}};
+window.payPaid=async function(id){
+  var t=null;((typeof active!=="undefined"&&active)||[]).some(function(x){if(x&&String(x.id)===String(id)){t=x;return true;}return false;});
+  if(!t)return;
+  try{if(typeof togglePaid==="function")await togglePaid(t.id,!!t.paid);}catch(e){}
+  setTimeout(function(){try{payRender();}catch(e){}},500);
+};
+window.payCopyName=function(id){
+  var t=null;((typeof active!=="undefined"&&active)||[]).some(function(x){if(x&&String(x.id)===String(id)){t=x;return true;}return false;});
+  if(t)_copyPlain(t.customer||"",TT("Nombre copiado: ","Name copied: ")+(t.customer||"")+" ✓");
+};
+window.payCSV=function(n){
+  var p=payPool().slice(0,n||100000);
+  if(!p.length){try{toast(TT("No hay cobros con CC ✓ pendientes","No card-on-file charges pending"),"warn");}catch(e){}return;}
+  var rows=["customer_id,amount,invoice"];
+  p.forEach(function(t){var a=payAmt(t);rows.push(_payId(t)+","+a.v.toFixed(2)+","+String(t.id).replace(/[^\w-]/g,"").slice(0,12));});
+  var blob=new Blob([rows.join("\r\n")+"\r\n"],{type:"text/csv"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="aspen-cobro-paytrace-"+((typeof fmtD==="function")?fmtD(new Date()):"hoy")+".csv";
+  a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  try{toast(TT("CSV descargado — PayTrace: Virtual Terminal → Process Multiple Transactions","CSV downloaded — PayTrace: Virtual Terminal → Process Multiple Transactions"));}catch(e){}
+};
+window.payRender=function(){
+  var ov=document.getElementById("payOv");if(!ov||ov.style.display==="none")return;
+  var p=payPool(),tot=0,warn=0;
+  p.forEach(function(t){var a=payAmt(t);tot+=a.v;if(!a.ok)warn++;});
+  ov.innerHTML='<div style="max-width:720px;margin:0 auto;padding:16px 14px 60px">'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg,#faf8f4);z-index:3;padding:calc(6px + env(safe-area-inset-top,0px)) 0 8px">'
+      +'<h2 style="margin:0;font-size:18px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("credit-card",17)+' '+TT("Lote de cobro PayTrace","PayTrace collection batch")+'</h2>'
+      +'<span style="margin-left:auto;font-size:12px;font-weight:800;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:3px 12px">'+p.length+' · $'+Math.round(tot).toLocaleString("en-US")+'</span>'
+      +'<button onclick="payClose()" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
+    +'<div style="font-size:11.5px;color:var(--i2,#5a5248);font-weight:600;background:var(--c-warning-bg,#fef3c7);border-radius:10px;padding:8px 12px;margin-bottom:10px">'+bico("shield-check",12)+' '+TT("Solo entran: facturadas en QB · sin PAID · con CC ✓. Cobra únicamente clientes con consentimiento de cargo firmado.","Only: billed in QB · not PAID · CC on file ✓. Charge only customers with signed charge-on-file consent.")+(warn?' · ⚠ '+warn+' '+TT("sin total guardado (monto pre-tax — verifica en QB)","without stored total (pre-tax — verify in QB)"):'')+'</div>'
+    +(p.length?'':'<div style="text-align:center;color:var(--i3,#8a8073);font-weight:600;padding:30px 0">'+TT("Nada pendiente con tarjeta guardada 🎉","Nothing pending with card on file 🎉")+'</div>')
+    +p.map(function(t){
+      var a=payAmt(t),sid=String(t.id).replace(/[^\w-]/g,"");
+      return '<div style="background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:12px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        +'<span style="font-size:13.5px;font-weight:800;color:var(--ink,#1f1a15)">'+esc3(t.customer||"—")+'</span>'
+        +'<button onclick="payCopyName(\''+sid+'\')" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073);padding:2px">'+bico("copy",13)+'</button>'
+        +'<span style="font-size:11px;color:var(--i3,#8a8073)">'+esc3(t.date||"")+'</span>'
+        +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:var(--ink,#1f1a15)">$'+a.v.toFixed(2)+(a.ok?'':' <span style="font-size:9.5px;color:var(--c-warning-fg,#92400e)">⚠ pre-tax</span>')+'</span>'
+        +'<button onclick="payPaid(\''+sid+'\')" style="padding:8px 13px;border-radius:9px;border:1.5px solid var(--c-money-fg,#065f46);background:transparent;color:var(--c-money-fg,#065f46);font-weight:800;font-size:11.5px;cursor:pointer;font-family:inherit">✓ '+TT("Cobrada → PAID","Charged → PAID")+'</button>'
+      +'</div>';
+    }).join("")
+    +(p.length?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
+      +'<button onclick="payCSV(3)" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1.5px solid var(--br,#3D2B1F);background:transparent;color:var(--br,#3D2B1F);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">'+bico("file-download",13)+' '+TT("CSV de PRUEBA — primeros 3","TEST CSV — first 3")+'</button>'
+      +'<button onclick="payCSV()" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:none;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">'+bico("file-download",13)+' '+TT("CSV completo","Full CSV")+' ('+p.length+')</button>'
+    +'</div><div style="font-size:10.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:8px;text-align:center">'+TT("PayTrace: Virtual Terminal → Process Multiple Transactions → upload. El customer_id debe coincidir con el ID del perfil en tu vault — la prueba de 3 calibra el formato.","PayTrace: Virtual Terminal → Process Multiple Transactions → upload. customer_id must match your vault profile IDs — the 3-row test calibrates the format.")+'</div>':'');
+};
+
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
 function _applySkin(){try{var on=canUse()&&localStorage.getItem("aspSkinOff")!=="1";document.body.classList.toggle("aspSkin",!!on);}catch(e){}}
 function _applyFs(){var n=1;try{n=parseInt(localStorage.getItem("aspFs")||"1",10);}catch(e){}document.body.classList.toggle("aspFs2",n===2);document.body.classList.toggle("aspFs3",n===3);}
@@ -27521,6 +27588,12 @@ function renderBtn(){
   var rm=_rollGet(),rtN=rp.filter(function(t){return rm[t.id];}).length;
   rb.style.display=rp.length?"inline-flex":"none";
   rb.innerHTML=bico("clipboard-list",14)+" "+TT("Rollo del día","Day roll")+" — "+rtN+" / "+rp.length+" "+TT("digitadas","typed");
+  var pb=document.getElementById("payLaunch");
+  var pp=payPool();
+  if(!pb){pb=document.createElement("button");pb.id="payLaunch";pb.type="button";pb.onclick=payOpen;if(rb.nextSibling)pg.insertBefore(pb,rb.nextSibling);else pg.appendChild(pb);}
+  var pt=0;pp.forEach(function(t){try{pt+=payAmt(t).v;}catch(e){}});
+  pb.style.display=pp.length?"inline-flex":"none";
+  pb.innerHTML=bico("credit-card",14)+" "+TT("Cobro PayTrace","PayTrace collections")+" — "+pp.length+" CC ✓ · $"+Math.round(pt).toLocaleString("en-US");
   try{nvRender();}catch(e){}
 }
 setInterval(function(){try{renderBtn();}catch(e){}},12000);
