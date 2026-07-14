@@ -26713,6 +26713,7 @@ function moneyFor(t){
   return{parts:+parts.toFixed(2),labor:+labor.toFixed(2),tax:tax,total:+(parts+labor+tax).toFixed(2)};
 }
 
+function _isFilter(p){return /filt(er|ro)/i.test((((p&&p.n)||"")+" "+((p&&p.d)||"")+" "+((p&&p.c)||"")));}
 function moneySub(t){var m=moneyFor(t);return +(m.parts+m.labor).toFixed(2);}
 /* fx: ripple de agua al facturar (solo al actuar, cero costo en reposo) */
 function fxRipple(el){try{if(!el)return;var host=el.closest(".bs-box")||el.parentElement;var hb=host.getBoundingClientRect(),r=el.getBoundingClientRect();if(getComputedStyle(host).position==="static")host.style.position="relative";var sp=document.createElement("span");sp.style.cssText="position:absolute;border-radius:50%;background:rgba(232,167,111,.35);pointer-events:none;transform:translate(-50%,-50%);width:10px;height:10px;z-index:6;left:"+(r.left-hb.left+r.width/2)+"px;top:"+(r.top-hb.top+r.height/2)+"px";host.appendChild(sp);sp.animate([{width:"10px",height:"10px",opacity:1},{width:"1000px",height:"1000px",opacity:0}],{duration:600,easing:"ease-out"}).onfinish=function(){sp.remove();};}catch(e){}}
@@ -26725,6 +26726,8 @@ function verdictFor(t){
   try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
   var sub=b&&b.bottom?b.bottom:"";
   if(vn===4||t.isRepeat)return{txt:"⛔ NO facturar — Repeat / warranty callback",sub:"",cls:"no"};
+  var _vf=((t.parts||[]).some(function(p){return _isFilter(p);}));
+  if(b&&b.partsFree&&b.laborFree&&_vf)return{txt:"⚠️ "+TT("Cubierto por garantía — pero lleva FILTROS: esos SÍ se cobran","Covered by warranty — but has FILTERS: those ARE billed"),sub:TT("Filtros = consumible, nunca en garantía","Filters = consumable, never covered")+(sub?" · "+sub:""),cls:"warn"};
   if(b&&b.partsFree&&b.laborFree)return{txt:"⛔ NO facturar — cubierto por garantía",sub:sub,cls:"no"};
   if(b&&(b.verify||b.pending))return{txt:"⚠️ Revisar garantía antes de facturar",sub:sub,cls:"warn"};
   if(vn===3)return{txt:"🔵 Chemical Maintenance — sin mano de obra",sub:sub,cls:"info"};
@@ -26786,7 +26789,7 @@ function qbLinesFor(t){
   var vn=Number(t.visitNum)||1,b=null,mins=_qMins(t),L=[];
   try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
   var parts=(t.parts||[]).filter(function(p){return p&&p.n;});
-  function addParts(zero,note){parts.forEach(function(p,k){var pr=(p.ch!=null?p.ch:p.p)||0;L.push({i:p.n,q:_fq(p.qty||1),r:zero?"$0.00":"$"+(+pr).toFixed(2),n:(k===0?note:"")});});}
+  function addParts(zero,note){parts.forEach(function(p,k){var pr=(p.ch!=null?p.ch:p.p)||0;var fil=_isFilter(p);L.push({i:p.n,q:_fq(p.qty||1),r:(zero&&!fil)?"$0.00":"$"+(+pr).toFixed(2),n:fil?TT("Filtro — consumible: SIEMPRE se cobra, nunca entra en garantía","Filter — consumable: ALWAYS billed, never under warranty"):(k===0?note:"")});});}
   if(vn===3)return{lines:L,foot:"Chemical maintenance — $0 (Service - Chemical Bi Monthly / Weekly). No se cobra."};
   if(vn===4||t.isRepeat){
     L.push({i:"Service-Repeat Service",q:_fq(_hrsAll(mins)||1),r:"$0.00",n:"Repeat: item de QB \"Service-Repeat Service\" con el tiempo de la visita, rate $0"});
@@ -26811,7 +26814,8 @@ function qbLinesFor(t){
     L.push({i:"Service-Warranty Service Call",q:"1",r:"$0.00"});
     addParts(true,"");
     L.push({i:"Discount-Service(Warranty)",q:"",r:"Warranty Work"});
-    return{lines:L,foot:"Warranty 100% — Total $0 · Tax $0."};
+    var _hf=parts.some(_isFilter);
+    return{lines:L,foot:_hf?TT("Warranty 100% — todo $0 EXCEPTO los filtros: esos se cobran + tax.","Warranty 100% — all $0 EXCEPT filters: those are billed + tax."):"Warranty 100% — Total $0 · Tax $0."};
   }
   if(b&&(b.verify||b.pending)){
     L.push({i:"Service-Basic Service Call",q:"1",r:"$150.00",n:"⚠ Garantía sin confirmar — verificar antes de digitar"});
@@ -26878,7 +26882,7 @@ window.bsAiDraft=async function(){
       +"\nTECH NOTES: "+_bsSnip(t.notes||"",700)
       +(prior?"\n"+prior:"");
     var resp=await _aiFetch({model:"claude-sonnet-4-6",max_tokens:700,
-      system:"You write QuickBooks invoice text for Aspen Spas (hot tub service company, St. Louis). Produce BOTH outputs in English. Output EXACTLY this structure:\n===SHORT===\nINTERNAL note for the QB Notes field (office record, the customer never sees it). Format: MM/DD/YYYY TechFirstName — then one brief, direct summary of what the tech found, what was done, and the outcome. Technical shorthand OK. STRICT: no parts list, no hours, no prices.\n===DETAILED===\nCustomer-facing invoice description. Format exactly: 'Service date: <Month D, YYYY>' newline 'Technician: <name>' newline 'Time on site: <Xh Ym>' blank line 'Work performed:' then a clear, warm, plain-language paragraph describing what the technician found and did in the customer's home and the result. STRICT: never mention part names, prices, warranty codes (RDA, N/W), repeats, or internal billing decisions.\nThe two outputs MUST describe the same visit with the same facts and outcome — no contradictions. Write complete grammatical sentences; if the tech notes are fragmentary or mixed-language, rewrite them into clean English prose WITHOUT adding facts. Do not repeat the date or technician name inside the body text (they are already in the header/prefix). If the data is too thin to describe the work, output exactly: 'Technician visit completed — see service record.' ANTI-INFERENCE RULES (strict): (1) Never state agreements, commitments or promises with the customer unless the technician used those exact words — if the tech 'explained' or 'discussed', write 'as discussed during the previous visit', NEVER 'as planned/agreed with the customer'. (2) Draw a conclusion only when it follows directly from the notes: 'all systems normal' allows 'the spa is back in working order'; a noted leak does NOT allow promising monitoring or follow-up — report it plainly ('a minor leak was noted; access is limited'). (3) Prefer the technician's own verbs; when in doubt, state the plain fact instead of interpreting it. NEVER invent facts not present in the data.",
+      system:"You write QuickBooks invoice text for Aspen Spas (hot tub service company, St. Louis). Produce BOTH outputs in English. Output EXACTLY this structure:\n===SHORT===\nINTERNAL note for the QB Notes field (office record, the customer never sees it). Format: MM/DD/YYYY TechFirstName — then one brief, direct summary of what the tech found, what was done, and the outcome. Technical shorthand OK. STRICT: no parts list, no hours, no prices.\n===DETAILED===\nCustomer-facing invoice description. Format exactly: 'Service date: <Month D, YYYY>' newline 'Technician: <name>' newline 'Time on site: <Xh Ym>' blank line 'Work performed:' then a clear, warm, plain-language paragraph describing what the technician found and did in the customer's home and the result. STRICT: never mention part names, prices, warranty codes (RDA, N/W), repeats, or internal billing decisions.\nThe two outputs MUST describe the same visit with the same facts and outcome — no contradictions. Write complete grammatical sentences; if the tech notes are fragmentary or mixed-language, rewrite them into clean English prose WITHOUT adding facts. Do not repeat the date or technician name inside the body text (they are already in the header/prefix). If the data is too thin to describe the work, output exactly: 'Technician visit completed — see service record.' FILTERS RULE: filters are consumables — NEVER covered by any warranty; they are ALWAYS billed at normal price in every visit type, including full-warranty and repeat visits. ANTI-INFERENCE RULES (strict): (1) Never state agreements, commitments or promises with the customer unless the technician used those exact words — if the tech 'explained' or 'discussed', write 'as discussed during the previous visit', NEVER 'as planned/agreed with the customer'. (2) Draw a conclusion only when it follows directly from the notes: 'all systems normal' allows 'the spa is back in working order'; a noted leak does NOT allow promising monitoring or follow-up — report it plainly ('a minor leak was noted; access is limited'). (3) Prefer the technician's own verbs; when in doubt, state the plain fact instead of interpreting it. NEVER invent facts not present in the data.",
       messages:[{role:"user",content:ctx}]});
     if(!resp.ok){var em="AI "+resp.status;try{var ej=await resp.json();if(ej&&ej.error&&ej.error.message)em+=": "+ej.error.message;}catch(e){}throw new Error(em);}
     var d=await resp.json();
