@@ -27612,7 +27612,7 @@ window.cbShow=function(){
   ov.innerHTML=head
     +'<div style="background:var(--card,#fff);border-radius:16px;padding:20px;box-shadow:0 0 0 2.5px var(--acd,#A85C1F),0 6px 20px rgba(92,74,61,.12);text-align:center">'
     +'<div style="font-size:17px;font-weight:800;color:var(--ink,#1f1a15)">'+esc3(ev.customerName||"—")+' <button onclick="cbCopyName()" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073)">'+bico("copy",14)+'</button></div>'
-    +'<div style="font-size:30px;font-weight:800;color:var(--ink,#1f1a15);margin:6px 0 2px">$'+amt.toFixed(2)+'</div>'
+    +'<div style="font-size:30px;font-weight:800;color:var(--ink,#1f1a15);margin:6px 0 2px">$'+amt.toFixed(2)+' <button onclick="cbEditAmt()" title="'+TT("Corregir monto (balance real de QB)","Fix amount (real QB balance)")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073);font-size:15px;vertical-align:middle">'+bico("pencil",15)+'</button></div>'
     +'<div style="font-size:11.5px;font-weight:700;color:var(--i3,#8a8073);margin-bottom:4px">'+(p.invoiceNumber||p.invoiceNum?("Invoice #"+esc3(String(p.invoiceNumber||p.invoiceNum))+" · "):"")+esc3(p.reasonLabel||p.reason||TT("alerta de pago","payment alert"))+(p.technician?" · "+esc3(String(p.technician)):"")+'</div>'
     +(ev.lastAttemptAt?'<div style="font-size:10.5px;font-weight:700;color:var(--i3,#8a8073);margin-bottom:6px">🕘 '+TT("Último intento: ","Last attempt: ")+esc3(String(ev.lastAttemptAt))+' · '+esc3(String(ev.lastAttemptBy||""))+' · '+esc3(String(ev.lastAttemptAction||""))+'</div>':'')
     +(cc?'<div style="display:inline-block;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:2px 12px;font-size:11px;font-weight:800;margin-bottom:10px">CC ✓ '+TT("perfil en PayTrace","PayTrace profile")+'</div>':'<div style="display:inline-block;background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:999px;padding:2px 12px;font-size:11px;font-weight:800;margin-bottom:10px">'+TT("sin CC registrada","no card on file")+'</div>')
@@ -27643,6 +27643,53 @@ window.cbSetLink=function(){
   try{localStorage.setItem("aspPayLink",v.trim());}catch(e){}
   try{toast(TT("Link de pago guardado ✓","Payment link saved ✓"));}catch(e){}
 };
+function _alertsTools(){
+  var pg=document.getElementById("pg8");if(!pg||!pg.classList.contains("show"))return;
+  var bar=document.getElementById("cbTools");
+  if(!bar){bar=document.createElement("div");bar.id="cbTools";bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px";pg.insertBefore(bar,pg.firstChild);}
+  var ap=cbPool(),at=0;ap.forEach(function(x){try{at+=_alertAmount(x);}catch(e){}});
+  bar.innerHTML='<button onclick="cbOpen()" style="flex:2;min-width:200px;padding:12px 14px;border:1.5px solid var(--c-money-fg,#065f46);border-radius:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("credit-card",14)+' '+TT("Cobro Sprint","Collections Sprint")+' — '+ap.length+' · $'+Math.round(at).toLocaleString("en-US")+'</button>'
+    +'<button onclick="qaOpen()" style="flex:1;min-width:150px;padding:12px 14px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">+ '+TT("Factura abierta","Open invoice")+'</button>';
+}
+window.qaOpen=function(){
+  var ov=document.getElementById("qaOv");
+  if(!ov){
+    ov=document.createElement("div");ov.id="qaOv";
+    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10007;display:flex;align-items:center;justify-content:center;padding:16px";
+    ov.addEventListener("click",function(e){if(e.target===ov)ov.style.display="none";});
+    document.body.appendChild(ov);
+  }
+  var f='style="width:100%;padding:11px 12px;border:1.5px solid var(--ln,#ddd);border-radius:10px;font-family:inherit;font-size:13px;box-sizing:border-box;margin-bottom:8px;background:var(--bg,#faf8f4);color:var(--ink,#1f1a15)"';
+  ov.innerHTML='<div style="background:var(--card,#fff);border-radius:16px;max-width:420px;width:100%;padding:18px;color:var(--ink,#1f1a15)">'
+    +'<div style="display:flex;align-items:center;margin-bottom:10px"><b style="font-size:15px">+ '+TT("Factura abierta (pendiente de pago)","Open invoice (pending payment)")+'</b><button onclick="document.getElementById(\'qaOv\').style.display=\'none\'" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer">×</button></div>'
+    +'<input id="qaName" placeholder="'+TT("Cliente (Apellido, Nombre)","Customer (Last, First)")+'" '+f+'>'
+    +'<input id="qaAmt" type="number" step="0.01" placeholder="'+TT("Monto (balance due de QB)","Amount (QB balance due)")+'" '+f+'>'
+    +'<input id="qaInv" placeholder="QB Invoice # ('+TT("opcional","optional")+')" '+f+'>'
+    +'<input id="qaNote" placeholder="'+TT("Nota (ej: venta de cover)","Note (e.g. cover sale)")+'" '+f+'>'
+    +'<button onclick="qaSave()" style="width:100%;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">'+TT("Guardar — visible para todos","Save — visible to everyone")+'</button></div>';
+  ov.style.display="flex";
+  setTimeout(function(){try{document.getElementById("qaName").focus();}catch(e){}},50);
+};
+window.qaSave=function(){
+  var nm=((document.getElementById("qaName")||{}).value||"").trim();
+  var am=parseFloat(((document.getElementById("qaAmt")||{}).value||"").replace(/[^0-9.]/g,""));
+  var inv=((document.getElementById("qaInv")||{}).value||"").trim();
+  var nt=((document.getElementById("qaNote")||{}).value||"").trim();
+  if(!nm||isNaN(am)||am<=0){try{toast(TT("Cliente y monto son obligatorios","Customer and amount are required"),"warn");}catch(e){}return;}
+  try{
+    if(typeof db!=="undefined"&&db)db.collection("cross_app_events").add({
+      eventType:"payment_alert",source:"manual",status:"open",
+      customerName:nm,
+      customerKeys:(typeof _custKeys==="function")?_custKeys(nm):[],
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
+      payload:{amount:+am.toFixed(2),invoiceNumber:inv||null,reason:"open_invoice",reasonLabel:nt||"Manual entry",ticketId:null}
+    }).catch(function(){});
+  }catch(e){}
+  try{toast(TT("Factura abierta registrada ✓ — ya está en el Cobro Sprint de todos","Open invoice saved ✓ — now in everyone\'s Collections Sprint"));}catch(e){}
+  var ov=document.getElementById("qaOv");if(ov)ov.style.display="none";
+  try{_alertsTools();}catch(e){}
+};
 window.cbCopyName=function(){var ev=cbQ[cbIdx];if(ev)_copyPlain(ev.customerName||"",TT("Nombre copiado: ","Name copied: ")+(ev.customerName||"")+" ✓");};
 window.cbGo=function(){
   var ev=cbQ[cbIdx];if(!ev)return;
@@ -27658,6 +27705,21 @@ window.cbPaid=function(){
   try{if(typeof _payAlertMarkPaid==="function")_payAlertMarkPaid(ev.id);}catch(e){}
   try{toast(TT("Cobrada: ","Collected: ")+(ev.customerName||"")+" · $"+_alertAmount(ev).toFixed(2)+" ✓");}catch(e){}
   setTimeout(cbAdv,250);
+};
+window.cbEditAmt=function(){
+  var ev=cbQ[cbIdx];if(!ev)return;
+  var cur=_alertAmount(ev);
+  var v=prompt(TT("Monto correcto según QB (balance due) para ","Correct amount per QB (balance due) for ")+(ev.customerName||"")+":",cur.toFixed(2));
+  if(v===null)return;
+  var nv=parseFloat(String(v).replace(/[^0-9.]/g,""));
+  if(isNaN(nv)||nv<0){try{toast(TT("Monto inválido","Invalid amount"),"warn");}catch(e){}return;}
+  try{
+    if(typeof db!=="undefined"&&db&&ev.id)db.collection("cross_app_events").doc(ev.id).update({"payload.amount":+nv.toFixed(2),amountEditedBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",amountEditedAt:new Date().toLocaleString()}).catch(function(){});
+    if(!ev.payload)ev.payload={};ev.payload.amount=+nv.toFixed(2);
+  }catch(e){}
+  _cbLog(ev,"amount-edited $"+cur.toFixed(2)+" → $"+nv.toFixed(2));
+  try{toast(TT("Monto corregido: $","Amount fixed: $")+nv.toFixed(2)+" ✓");}catch(e){}
+  cbShow();
 };
 window.cbSkipIt=function(){var ev=cbQ[cbIdx];if(ev){cbSkip[ev.id]=1;_cbLog(ev,"skipped");}cbAdv();};
 window.cbToMail=function(){
@@ -27688,6 +27750,7 @@ function renderBtn(){
   _applySkin();_applyFs();
   if(!canUse())return;
   if(document.hidden)return;
+  try{_alertsTools();}catch(e){}
   var pg=document.getElementById("pg1");if(!pg)return;
   if(!pg.classList.contains("show"))return;
   var p=pool(),n=p.length;
@@ -27811,6 +27874,7 @@ function show(){
     +'<textarea id="bsText"></textarea>'
     +'<button id="bsAiBtn" onclick="bsAiDraft()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid var(--acd,#A85C1F);background:transparent;color:var(--acd,#A85C1F);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("sparkles",13)+' '+TT("Redactar con AI (los 2 textos)","Draft with AI (both texts)")+' · '+TT("hoy","today")+': '+_bsAiCount()+'</button>'
     +(miss.length?'<button onclick="bsTechMsg()" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid var(--c-warning-fg,#92400e);background:transparent;color:var(--c-warning-fg,#92400e);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">'+bico("message-circle",13)+' '+TT("Pedir datos al técnico","Ask the tech")+((t.techs&&t.techs[0])?" — "+esc3(t.techs[0]):"")+' ('+TT("falta","missing")+': '+esc3(miss.join(", "))+')</button>':'')
+    +'<div style="display:flex;gap:6px;align-items:center;margin-top:8px"><input id="bsInvNo" placeholder="QB Invoice # ('+TT("opcional — QB lo muestra al guardar","optional — QB shows it on save")+')" style="flex:1;min-width:0;padding:9px 11px;border:1.5px solid var(--ln,#ddd);border-radius:9px;font-family:inherit;font-size:12px;background:var(--card,#fff);color:var(--ink,#1f1a15)"></div>'
     +'<div class="bs-ck">'
       +'<button class="'+(ckt.g?"on":"")+'" onclick="bsCk(\'g\')">'+(ckt.g?"✓ ":"")+TT("Garantía revisada","Warranty checked")+'</button>'
       +'<button class="'+(ckt.v?"on":"")+'" onclick="bsCk(\'v\')">'+(ckt.v?"✓ ":"")+TT("Tipo de visita OK","Visit type OK")+'</button>'
@@ -27906,8 +27970,22 @@ window.bsCopyNext=async function(){
   var txt=(document.getElementById("bsText")||{}).value||"";
   try{await navigator.clipboard.writeText(txt);}
   catch(e){var ta=document.getElementById("bsText");if(ta){ta.select();try{document.execCommand("copy");}catch(e2){}}}
+  var invNo=((document.getElementById("bsInvNo")||{}).value||"").trim();
   try{
-    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()}).catch(function(){});
+    if(typeof db!=="undefined"&&db&&t.id){
+      db.collection("tickets").doc(t.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString(),qbInvoiceNo:invNo||null}).catch(function(){});
+      try{
+        var m0=moneyFor(t);var amt0=(m0.tax>0?m0.total:+(m0.parts+m0.labor).toFixed(2));
+        db.collection("cross_app_events").add({
+          eventType:"payment_alert",source:"tech-tickets",status:"open",
+          customerName:t.customer||"",
+          customerKeys:(typeof _custKeys==="function")?_custKeys(t.customer||""):[],
+          createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
+          payload:{amount:amt0,invoiceNumber:invNo||null,reason:"open_invoice",reasonLabel:"Invoice pending payment",technician:((t.techs||[])[0])||null,ticketId:t.id}
+        }).catch(function(){});
+      }catch(_a){}
+    }
     t.qbCopied=true;delete sk[t.id];
     try{bl.push({c:t.customer||"",tot:moneySub(t)});}catch(_b){}
     if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();
