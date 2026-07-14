@@ -26713,7 +26713,7 @@ function canUse(){try{return typeof currentUser!=="undefined"&&currentUser&&(cur
    would flood the queue with hundreds of already-billed tickets. */
 function pool(){
   return ((typeof active!=="undefined"&&active)||[]).filter(function(t){
-    return t&&t.source!=="dispatch"&&!t.qbCopied&&!t.bsNoBill&&t.status==="complete";
+    return t&&t.source!=="dispatch"&&!t.qbCopied&&!t.bsNoBill&&!t.bsWaitParts&&t.status==="complete";
   }).sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
 }
 
@@ -27263,6 +27263,9 @@ function renderDigest(p){
   var rows=[];
   if(p.length)rows.push('<div class="bsd-r" onclick="bsOpen()" style="cursor:pointer">'+bico("zap",13)+' <b>'+p.length+' por facturar</b> · $'+Math.round(tot).toLocaleString("en-US")+' pre-tax — abrir Sprint →</div>');
   if(missN)rows.push('<div class="bsd-r">'+bico("triangle-alert",13)+' <b>'+missN+' con datos incompletos</b> — pídelos al técnico desde el Sprint</div>');
+  var wpD=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.status==="complete"&&t.bsWaitParts&&!t.qbCopied;});
+  if(wpD.length){var wpT=0;wpD.forEach(function(t){try{wpT+=moneySub(t);}catch(e){}});var wpStale=wpD.filter(function(t){return _wpDays(t)>=12;}).length;
+    rows.push('<div class="bsd-r">⏳ <b>'+wpD.length+' '+TT("esperando partes","waiting parts")+'</b> · $'+Math.round(wpT).toLocaleString("en-US")+(wpStale?' · <span style="color:var(--c-danger-fg,#991b1b);font-weight:800">'+wpStale+' '+TT("atoradas 12d+","stalled 12d+")+'</span>':'')+'</div>');}
   if(mmN)rows.push('<div class="bsd-r">'+bico("shield-alert",13)+' <b>'+mmN+' con garantía inconsistente</b> vs Customer 360</div>');
   if(cc.length)rows.push('<div class="bsd-r">'+bico("credit-card",13)+' <b>'+cc.length+' deben dejar CC</b>: '+esc3(cc.slice(0,3).map(function(t){return t.customer||"";}).join(", "))+(cc.length>3?"…":"")+'</div>');
   if(ev.length)rows.push('<div class="bsd-r">'+bico("banknote",13)+' <b>'+ev.length+' alertas de pago abiertas</b> · $'+Math.round(evTot).toLocaleString("en-US")+'</div>');
@@ -27337,8 +27340,28 @@ window.nvShowPanel=function(id){
   var photos=(t.media||[]).filter(function(x){return x&&x.type!=="pdf"&&(x.url||x.data);}).slice(0,4);
   var addr=((t.address||"")+(t.zip?" "+t.zip:"")).trim();
   function box(l,val){return '<div style="background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:8px 10px;text-align:center"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--i3,#8a8073);font-weight:800">'+l+'</div><div style="font-size:14px;font-weight:800;margin-top:2px">'+val+'</div></div>';}
+  function _tl(){
+    var done1=!!t.date,done2=(t.status==="complete"||t.status==="done"),done3=!!t.qbCopied,done4=!!t.paid;
+    var cur=done4?5:(done3?4:(done2?3:(done1?2:1)));
+    var bill=done3?String(t.qbCopiedAt||"").split(",")[0]:(done2?_ageDays(t)+"d ⚠":"—");
+    var paid=done4?String(t.paidAt||"").split(",")[0]:"—";
+    function stp(n,lbl,val,done,curr){
+      var bg=done?"var(--c-money-fg,#065f46)":(curr?"var(--acd,#A85C1F)":"var(--ln,#e5e0d8)");
+      var fg=done||curr?"#fff":"var(--i3,#8a8073)";
+      return '<div style="flex:1;text-align:center;min-width:0"><div style="width:22px;height:22px;border-radius:50%;background:'+bg+';color:'+fg+';display:flex;align-items:center;justify-content:center;margin:0 auto 3px;font-size:10px;font-weight:800">'+(done?"✓":n)+'</div><div style="font-size:9px;color:var(--i3,#8a8073);font-weight:700">'+lbl+'</div><div style="font-size:9.5px;font-weight:800;color:'+(curr?"var(--acd,#A85C1F)":"var(--i2,#5a5248)")+'">'+esc3(String(val||"—"))+'</div></div>';
+    }
+    function bar(on){return '<div style="flex:.4;height:2px;background:'+(on?"var(--c-money-fg,#065f46)":"var(--ln,#e5e0d8)")+';margin-bottom:22px"></div>';}
+    return '<div style="display:flex;align-items:center;background:var(--bg,#faf8f4);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 8px;margin:10px 0 4px">'
+      +stp(1,"Service",t.date,done1,cur===1)+bar(done2)
+      +stp(2,"Report",done2?(t.date||"✓"):"—",done2,cur===2)+bar(done3)
+      +stp(3,"Billing",bill,done3,cur===3)+bar(done4)
+      +stp(4,"Paid",paid,done4,cur===4)
+    +'</div>';
+  }
   pn.innerHTML=
     '<div style="display:flex;align-items:flex-start;gap:10px"><div><div style="font-size:17px;font-weight:800">'+esc3(t.customer||"—")+' <button onclick="nvCopy(\'name\')" title="'+TT("Copiar nombre","Copy name")+'" style="border:none;background:none;cursor:pointer;color:var(--i3,#8a8073);padding:2px;vertical-align:middle">'+bico("copy",14)+'</button></div><div style="font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin-top:2px">'+esc3(t.date||"")+((t.techs&&t.techs.length)?" · "+esc3(t.techs.join(", ")):"")+" · "+(VLABEL[Number(t.visitNum)||1]||"")+ageChip(t)+'</div></div><button onclick="nvHidePanel()" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer;line-height:1">×</button></div>'
+    +_tl()
+    +(t.bsWaitParts?'<button class="nv-act" onclick="nvPartsBack()" style="background:transparent;border:1.5px solid var(--c-info-fg,#1e40af);color:var(--c-info-fg,#1e40af);margin-top:4px">✓ '+TT("Partes llegaron — volver a cola","Parts arrived — back to queue")+' ('+_wpDays(t)+'d)</button>':'')
     +'<div style="background:'+VC[0]+';color:'+VC[1]+';border-radius:10px;padding:9px 12px;font-size:13px;font-weight:800;margin:10px 0 4px">'+v.txt+(v.sub?'<div style="font-size:11px;font-weight:600;margin-top:2px">'+esc3(v.sub)+'</div>':'')+'</div>'
     +c360HTML(t)
     +'<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0">'+box("En sitio",dur)+box("Labor · sin tax","$"+m.labor.toFixed(2))+box("Parts · +tax","$"+m.parts.toFixed(2))+box("Subtotal","$"+(m.parts+m.labor).toFixed(2))+'</div>'
@@ -27400,6 +27423,7 @@ window.nvRender=function(){
   var cols={rdy:[],rev:[],war:[]};
   pend.forEach(function(t){cols[_nvCol(t)].push(t);});
   var res=act.filter(function(t){return t.status==="reschedule";});
+  var wp=act.filter(function(t){return t.status==="complete"&&t.bsWaitParts&&!t.qbCopied;});
   var delta=compToday-compYest;
   function kpi(lbl,val,sub,subCol){return '<div class="nv-kpi"><span>'+lbl+'</span><b>'+val+'</b>'+(sub?'<em style="color:'+(subCol||"var(--i3,#8a8073)")+'">'+sub+'</em>':'')+'</div>';}
   function colH(lbl,arr,bg,fg){var tot=0;arr.forEach(function(t){try{tot+=moneySub(t);}catch(e){}});return '<div class="nv-colh" style="background:'+bg+';color:'+fg+'">'+lbl+' · '+arr.length+'<span>$'+Math.round(tot).toLocaleString("en-US")+'</span></div>';}
@@ -27426,7 +27450,8 @@ window.nvRender=function(){
     '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg,#faf8f4);z-index:5;padding:calc(4px + env(safe-area-inset-top,0px)) 0 8px">'
       +'<h2 style="margin:0;font-size:19px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("layout-dashboard",18)+' Vista Nela — facturación por etapa</h2>'
       +'<span style="font-size:12px;color:var(--i3,#8a8073);font-weight:700">'+esc3(today)+'</span>'
-      +'<button onclick="nvRender()" title="Actualizar" style="margin-left:auto;border:1.5px solid var(--ln,#ddd);background:var(--card,#fff);border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">↻</button>'
+      +'<button onclick="wkOpen()" style="margin-left:auto;border:1.5px solid var(--ln,#ddd);background:var(--card,#fff);border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">'+bico("calendar",12)+' '+TT("Semana","Week")+'</button>'
+      +'<button onclick="nvRender()" title="Actualizar" style="border:1.5px solid var(--ln,#ddd);background:var(--card,#fff);border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">↻</button>'
       +'<button onclick="nvHidePanel();nvClose()" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer">×</button>'
     +'</div>'
     +'<div class="nv-kpis">'
@@ -27444,6 +27469,7 @@ window.nvRender=function(){
     +'<div class="nv-cols">'
       +'<div class="nv-col">'+colH("READY TO BILL",cols.rdy,"var(--c-money-bg,#ecfdf5)","var(--c-money-fg,#065f46)")+colBody("rdy",cols.rdy)+'</div>'
       +'<div class="nv-col">'+colH("NEEDS REVIEW",cols.rev,"var(--c-warning-bg,#fef3c7)","var(--c-warning-fg,#92400e)")+colBody("rev",cols.rev,function(t){return _bsMissing(t).length?"falta: "+esc3(_bsMissing(t).join(", ")):(_bsMismatch(t)?"garantía vs C360":"");})+'</div>'
+      +'<div class="nv-col">'+colH("⏳ WAITING PARTS",wp,"var(--c-info-bg,#dbeafe)","var(--c-info-fg,#1e40af)")+colBody("wp",wp,function(t){var d=_wpDays(t);return (d>=12?"⚠ ":"")+d+"d"+(t.bsWaitPartsBy?" · "+esc3(t.bsWaitPartsBy):"");})+'</div>'
       +'<div class="nv-col">'+colH("WARRANTY · NO FACTURAR",cols.war,"var(--c-danger-bg,#fee2e2)","var(--c-danger-fg,#991b1b)")+colBody("war",cols.war,function(t){return (Number(t.visitNum)===4||t.isRepeat)?"repeat":"";},true)+'</div>'
       +'<div class="nv-col">'+colH("RESCHEDULE",res,"var(--c-ash,#eceae6)","var(--i2,#5a5248)")+colBody("res",res)+'</div>'
       +'<div class="nv-col" style="opacity:.8">'+colH("EN QB HOY ✓",qbToday,"var(--c-info-bg,#dbeafe)","var(--c-info-fg,#1e40af)")+colBody("qb",qbToday,function(){return "✓ facturada";})+'</div>'
@@ -27759,6 +27785,61 @@ window.cbToMail=function(){
   cbAdv();
 };
 
+/* ── ③ CIERRE SEMANAL (Jul 2026) — Tom's page. Rolling 7 days vs prior 7,
+   all deterministic from in-memory data. Copy-for-email included. ── */
+function _wkStats(off){
+  var end=Date.now()-off*864e5,start=end-7*864e5;
+  function inW(ds){var ts=Date.parse(ds);return !isNaN(ts)&&ts>=start&&ts<end;}
+  var act=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.source!=="dispatch";});
+  var billed=act.filter(function(t){return t.qbCopiedAt&&inW(t.qbCopiedAt);});
+  var bSum=0;billed.forEach(function(t){try{bSum+=moneySub(t);}catch(e){}});
+  var paidL=act.filter(function(t){return t.paid&&t.paidAt&&inW(t.paidAt);});
+  var pSum=0;paidL.forEach(function(t){try{pSum+=moneySub(t);}catch(e){}});
+  var dSum=0,dN=0;
+  billed.forEach(function(t){try{var a=Date.parse(t.date+"T12:00:00"),b=Date.parse(t.qbCopiedAt);if(!isNaN(a)&&!isNaN(b)&&b>=a){dSum+=(b-a)/864e5;dN++;}}catch(e){}});
+  var wk=act.filter(function(t){return t.date&&inW(t.date+"T12:00:00")&&(t.status==="complete"||t.status==="done");});
+  var covSum=0,reps={},repN=0;
+  wk.forEach(function(t){
+    try{if(verdictFor(t).cls==="no"){covSum+=moneySub(t);}}catch(e){}
+    if(Number(t.visitNum)===4||t.isRepeat){repN++;var k=(t.techs&&t.techs[0])||"?";reps[k]=(reps[k]||0)+1;}
+  });
+  var topRep="";var mx=0;for(var k in reps)if(reps[k]>mx){mx=reps[k];topRep=k;}
+  return{bN:billed.length,bSum:bSum,pN:paidL.length,pSum:pSum,avgD:dN?(dSum/dN):0,covSum:covSum,repN:repN,topRep:topRep};
+}
+function _pct(now,prev){if(!prev)return "";var d=Math.round((now-prev)/prev*100);return (d>=0?"▲ ":"▼ ")+Math.abs(d)+"%";}
+window.wkOpen=function(){
+  var a=_wkStats(0),b=_wkStats(7);
+  var out=0;try{cbPool().forEach(function(x){out+=_alertAmount(x);});}catch(e){}
+  var wpD=((typeof active!=="undefined"&&active)||[]).filter(function(t){return t&&t.status==="complete"&&t.bsWaitParts&&!t.qbCopied;});
+  var wpT=0;wpD.forEach(function(t){try{wpT+=moneySub(t);}catch(e){}});
+  var d2=new Date(),d1=new Date(Date.now()-6*864e5);
+  var rng=(d1.getMonth()+1)+"/"+d1.getDate()+" – "+(d2.getMonth()+1)+"/"+d2.getDate();
+  var ov=document.getElementById("wkOv");
+  if(!ov){ov=document.createElement("div");ov.id="wkOv";ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10008;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";ov.addEventListener("click",function(e){if(e.target===ov)ov.style.display="none";});document.body.appendChild(ov);}
+  function row(l,v,d){return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--ln,#e5e0d8);font-size:13px"><span style="color:var(--i2,#5a5248)">'+l+'</span><b style="font-weight:800;color:var(--ink,#1f1a15)">'+v+(d?' <span style="font-size:11px;color:'+(d.charAt(0)==="▲"?"var(--c-money-fg,#065f46)":"var(--c-danger-fg,#991b1b)")+'">'+d+'</span>':'')+'</b></div>';}
+  var txt="ASPEN SPAS — Weekly billing & collections ("+rng+")\n"
+    +"Billed: "+a.bN+" invoices · $"+Math.round(a.bSum).toLocaleString("en-US")+" ("+(_pct(a.bSum,b.bSum)||"n/a")+")\n"
+    +"Collected: "+a.pN+" · $"+Math.round(a.pSum).toLocaleString("en-US")+" ("+(_pct(a.pSum,b.pSum)||"n/a")+")\n"
+    +"Outstanding now: $"+Math.round(out).toLocaleString("en-US")+"\n"
+    +"Service→invoice avg: "+a.avgD.toFixed(1)+" days\n"
+    +"Warranty covered (not billed): $"+Math.round(a.covSum).toLocaleString("en-US")+"\n"
+    +"Repeats: "+a.repN+(a.topRep?" (most: "+a.topRep+")":"")+"\n"
+    +"Waiting parts: "+wpD.length+" · $"+Math.round(wpT).toLocaleString("en-US");
+  ov.innerHTML='<div style="background:var(--card,#fff);border-radius:16px;max-width:460px;width:100%;padding:20px;color:var(--ink,#1f1a15)">'
+    +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:16px">🍂 '+TT("Semana","Week")+' '+rng+'</b><button onclick="document.getElementById(\'wkOv\').style.display=\'none\'" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer">×</button></div>'
+    +'<div style="font-size:11px;color:var(--i3,#8a8073);font-weight:600;margin-bottom:10px">'+TT("últimos 7 días vs los 7 anteriores","last 7 days vs prior 7")+'</div>'
+    +row(TT("Facturado","Billed"),a.bN+" · $"+Math.round(a.bSum).toLocaleString("en-US"),_pct(a.bSum,b.bSum))
+    +row(TT("Cobrado","Collected"),a.pN+" · $"+Math.round(a.pSum).toLocaleString("en-US"),_pct(a.pSum,b.pSum))
+    +row("Outstanding","$"+Math.round(out).toLocaleString("en-US"),"")
+    +row(TT("Servicio→factura","Service→invoice"),a.avgD.toFixed(1)+" "+TT("días","days"),"")
+    +row(TT("Cubierto por garantía","Warranty covered"),"$"+Math.round(a.covSum).toLocaleString("en-US"),"")
+    +row("Repeats",a.repN+(a.topRep?" · "+esc3(a.topRep):""),"")
+    +row("⏳ Waiting parts",wpD.length+" · $"+Math.round(wpT).toLocaleString("en-US"),"")
+    +'<button onclick="_copyPlain('+JSON.stringify(txt).replace(/"/g,"&quot;")+',TT(\'Resumen semanal copiado ✓ — pégalo en Outlook para Tom\',\'Weekly summary copied ✓ — paste into Outlook for Tom\'))" style="width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit">'+bico("clipboard",14)+' '+TT("Copiar para email","Copy for email")+'</button>'
+    +'<div style="font-size:10px;color:var(--i3,#8a8073);font-weight:600;text-align:center;margin-top:6px">'+TT("montos pre-tax · datos en vivo de la app","pre-tax amounts · live app data")+'</div></div>';
+  ov.style.display="flex";
+};
+
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
 function _applySkin(){try{var on=canUse()&&localStorage.getItem("aspSkinOff")!=="1";document.body.classList.toggle("aspSkin",!!on);}catch(e){}}
 function _applyFs(){var n=1;try{n=parseInt(localStorage.getItem("aspFs")||"1",10);}catch(e){}document.body.classList.toggle("aspFs2",n===2);document.body.classList.toggle("aspFs3",n===3);}
@@ -27903,6 +27984,7 @@ function show(){
       +'<button class="bs-copy" '+(ready?"":"disabled ")+'onclick="bsCopyNext()">'+bico("clipboard",15)+' '+TT("Copiar detalle + Facturada ✓ → siguiente","Copy detail + Billed ✓ → next")+'</button>'
       +(ready?'':'<div style="text-align:center;font-size:10.5px;color:var(--c-warning-fg,#92400e);font-weight:800;margin-top:2px">'+TT("faltan ","missing ")+((ckt.g?0:1)+(ckt.v?0:1)+(ckt.tx?0:1))+TT(" checks para poder facturar"," checks to bill")+'</div>')
       +'<button class="bs-skip" onclick="bsSkip()" style="width:100%">'+TT("Saltar","Skip")+' →</button>'
+      +'<button class="bs-skip" onclick="bsWait()" style="width:100%;margin-top:6px;border-color:var(--c-info-fg,#1e40af);color:var(--c-info-fg,#1e40af)">⏳ '+TT("Esperando partes — sacar de la cola","Waiting parts — leave the queue")+'</button>'
       +'<button class="bs-nobill" onclick="bsNoBill()" style="width:100%;margin-top:10px">'+bico("ban",14)+' '+TT("No se factura","Do not bill")+'</button>'
     +'</div>'
     +'<div style="text-align:center;font-size:10.5px;color:var(--i3,#8a8073);margin-top:6px">⌨ Enter '+TT("copiar","copy")+' · S '+TT("saltar","skip")+' · ← → · Esc</div>';
@@ -28028,6 +28110,25 @@ window.bsNoBill=async function(){
   adv();
 };
 
+window.bsWait=function(){
+  var t=Q[idx];if(!t)return;
+  try{
+    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({bsWaitParts:true,bsWaitPartsAt:new Date().toLocaleString(),bsWaitPartsBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""}).catch(function(){});
+    t.bsWaitParts=true;t.bsWaitPartsAt=new Date().toLocaleString();
+  }catch(e){}
+  try{toast("⏳ "+TT("Esperando partes — te avisaré si se atora","Waiting parts — I will flag if it stalls"));}catch(e){}
+  adv();
+};
+window.nvPartsBack=function(){
+  var t=_nvFind(window._nvSel);if(!t)return;
+  try{
+    if(typeof db!=="undefined"&&db&&t.id)db.collection("tickets").doc(t.id).update({bsWaitParts:false,bsWaitPartsBackAt:new Date().toLocaleString()}).catch(function(){});
+    t.bsWaitParts=false;
+  }catch(e){}
+  try{toast("✓ "+TT("Partes llegaron — de vuelta en la cola de facturación","Parts arrived — back in the billing queue"));}catch(e){}
+  nvHidePanel();nvRender();
+};
+function _wpDays(t){try{var d=new Date(t.bsWaitPartsAt);return Math.max(0,Math.floor((Date.now()-d.getTime())/864e5));}catch(e){return 0;}}
 window.bsReviewSkipped=function(){
   Q=Q.filter(function(t){return sk[t.id]&&!t.qbCopied&&!t.bsNoBill;});
   sk={};idx=0;show();
