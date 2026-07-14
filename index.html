@@ -26655,6 +26655,11 @@ function showTicketDetail(p,i){
 #nvPanel .nv-act{width:100%;padding:12px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;margin-top:8px}
 #bsDigest .bsd-r{font-size:12px;padding:4px 0;color:var(--i2,#5a5248);font-weight:600;line-height:1.45}
 #bsDigest .bsd-r b{color:var(--ink,#1f1a15)}
+/* Hide the stale "critical receivables" red block on the Alerts tab (per
+   Nela, Jul 2026): it lists old tickets never flagged PAID — mostly already
+   paid in QB — and buries the real pending list below. The reschedule block
+   (ca-warn) stays. Remove this rule to bring it back. */
+#collAlertTop .ca-block.ca-danger{display:none!important}
 /* Team chat (their code): push the header below the iPhone notch so the
    close × is always tappable in PWA standalone. Additive CSS only. */
 #dmHead{padding-top:calc(11px + env(safe-area-inset-top,0px))!important}
