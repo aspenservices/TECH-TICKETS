@@ -5817,7 +5817,6 @@ async function doLogin(){
   // aparte. Best-effort: si la función no está desplegada, no hace nada.
   try{if(isAdmin&&currentUser&&currentUser.role==="admin")_staffAutoSeed(pin);}catch(_e){}
   try{localStorage.setItem("aspLastUser",currentUser.name||"")}catch(_e){}
-  return true;   // v1.11.2: el pinpad Focus espera este resultado
   try{_presenceOnLogin()}catch(_e){}
   document.getElementById("loginScreen").style.display="none";
   updAdmin();
@@ -5840,6 +5839,7 @@ async function doLogin(){
   // either may be the one who checked in.
   try{if(typeof _startCheckOutReminderPoll==="function")setTimeout(_startCheckOutReminderPoll,5000)}catch(_e){}
   toast(`Welcome, ${currentUser.name}`);
+  return true;   // v1.11.3: el pinpad Focus espera este resultado (ahora AL FINAL, tras mostrar la app)
 }
 function logout(){
   // Clean up active timers and listeners to prevent memory leaks across sessions.
