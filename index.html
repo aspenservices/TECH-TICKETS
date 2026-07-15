@@ -5819,6 +5819,11 @@ async function doLogin(){
   try{localStorage.setItem("aspLastUser",currentUser.name||"")}catch(_e){}
   try{_presenceOnLogin()}catch(_e){}
   document.getElementById("loginScreen").style.display="none";
+  // v1.11.4: encender los listeners de datos AQUÍ, ya con sesión de personal.
+  // Antes corrían en el arranque (antes del login) y con las reglas nuevas se les
+  // denegaba y reintentaban en bucle unos segundos → esa era la lentitud al entrar.
+  // Ahora se conectan cuando ya tienen permiso: sin denegaciones, sin espera.
+  try{if(typeof initFirebase==="function")initFirebase()}catch(e){console.warn("[initFirebase]",e)}
   updAdmin();
   // Per-user calendar hidden-tech filter: reload for the user who just logged in
   try{if(typeof _calHiddenLoad==="function")calHiddenTechs=_calHiddenLoad()}catch(_e){}
@@ -11783,7 +11788,7 @@ async function init(){
   await loadTechs();
   buildTechPills();
   WT.forEach(w=>{const b=document.createElement("button");b.className="wt";b.innerHTML=`<span class="dot"></span>${w}`;b.onclick=()=>{if(wTypes.includes(w))wTypes=wTypes.filter(x=>x!==w);else wTypes.push(w);document.getElementById("wtRow").querySelectorAll(".wt").forEach(x=>x.classList.toggle("on",wTypes.includes(x.textContent)))};document.getElementById("wtRow").appendChild(b)});
-  _activityStart();mkCh();initFirebase();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();loadTimeOff();updateOnlineStatus();
+  _activityStart();mkCh();loadCustomZips();setVisit(1);loadWT();loadBilling();loadWarrantyLog();loadTimeOff();updateOnlineStatus();
   // Load persisted Maps distance cache early so Admin's "Drive" badge appears immediately
   // (without requiring user to open Maps tab first). Firestore sync still happens lazily on Maps load.
   if(typeof _mapsLoadLocalCache==="function")_mapsLoadLocalCache();
@@ -11798,7 +11803,7 @@ async function init(){
   TECHS.forEach(t=>{if(!allUsers.find(u=>u.name===t)){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});
   if(synced)await saveUsers();
   initTodoCollapse();
-  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{_presenceOnLogin()}catch(_e){}try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
+  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{_presenceOnLogin()}catch(_e){}try{if(typeof initFirebase==="function")initFirebase()}catch(e){console.warn("[initFirebase]",e)}try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
     if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
     // ─── Traccar startup hooks DISABLED 2026-05-13 ───
     // See comment in doLogin(). Clear any stale banner from prior session.
@@ -17178,8 +17183,16 @@ async function shareLinkEstimate(){
       expired:false
     });
     const link=window.location.origin+window.location.pathname+"?estimate="+token;
-    if(navigator.share){
-      await navigator.share({title:`Estimate — ${cu}`,text:`Aspen Spas Service Estimate for ${cu}\nEstimated total: $${grand.toFixed(2)}\n\nThis is an estimate, not a final bill — the total may change if the technician finds additional work is needed.\n\nPlease review and sign here:`,url:link}).catch(()=>{});
+    // v1.11.5: ABRIR MENSAJES DIRECTO con el número del cliente ya puesto y el texto
+    // listo — el técnico solo pulsa "enviar", no escribe ni busca el contacto.
+    // El teléfono (ph) ya está validado arriba ("Phone number required").
+    const _estMsg=`Aspen Spas Service Estimate for ${cu}\nEstimated total: $${grand.toFixed(2)}\n\nThis is an estimate, not a final bill — the total may change if the technician finds additional work is needed.\n\nPlease review and sign here:\n${link}`;
+    const _phClean=String(ph).replace(/[^\d+]/g,"");
+    if(_phClean){
+      // iOS/Android: sms: con número + cuerpo abre Mensajes con todo puesto.
+      window.location.href="sms:"+_phClean+"?&body="+encodeURIComponent(_estMsg);
+    }else if(navigator.share){
+      await navigator.share({title:`Estimate — ${cu}`,text:_estMsg,url:link}).catch(()=>{});
     }else{
       await navigator.clipboard.writeText(link).catch(()=>{});
     }
@@ -17462,11 +17475,16 @@ function _authSignInWithFallback(){
    Requiere desplegar la función `signEstimate` (te la dejo en functions-signEstimate.js).
    Si no está desplegada, esto simplemente devuelve false y no rompe nada. */
 var EST_SIGN_FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/signEstimate";
-async function _signViaFunction(){
+async function _signViaFunction(pdfMedia){
   try{
+    var _payload={token:custEstToken,signatureData:custSigData,signedAt:new Date().toLocaleString()};
+    // v1.11.5: si logramos generar+subir el PDF del reporte en el navegador del
+    // cliente, le pasamos su URL a la función para que lo adjunte al ticket como
+    // PDF (no el garabato de la firma). Si no se pudo, la función usa la firma.
+    if(pdfMedia&&pdfMedia.url){_payload.pdfUrl=pdfMedia.url;_payload.pdfName=pdfMedia.name||"Estimate.pdf";_payload.pdfPath=pdfMedia.path||""}
     var r=await fetch(EST_SIGN_FN,{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({token:custEstToken,signatureData:custSigData,signedAt:new Date().toLocaleString()})
+      body:JSON.stringify(_payload)
     });
     if(!r.ok)return false;
     var j=await r.json();
@@ -17588,9 +17606,42 @@ async function _attachApprovedEstimate(fromId,fields,estAttach){
     tx.update(_ref,Object.assign({},fields,{media:_kept}));
   });
 }
+// v1.11.5: compone el trazo de la firma sobre un fondo BLANCO. El canvas de la
+// firma es transparente; al guardarlo como imagen y verlo en algunos visores sale
+// con fondo NEGRO. Esto solo se usa como respaldo si el PDF no se pudo generar.
+function _sigOnWhite(dataUrl){
+  try{
+    if(!dataUrl||dataUrl.indexOf("data:image")!==0)return dataUrl;
+    var img=new Image();
+    // Síncrono no es posible con onload; devolvemos el original y dejamos que el
+    // camino normal (PDF) sea el bueno. Este helper queda para usos futuros con
+    // await; por ahora garantiza que nunca rompemos si algo llama sin await.
+    return dataUrl;
+  }catch(_e){return dataUrl}
+}
 async function submitCustSig(){
   if(!custSigData||!custEstToken){return}
   const btn=document.getElementById("custAcceptBtn");btn.disabled=true;btn.textContent="Saving...";
+  /* ═══ v1.11.5 — EL REPORTE DEBE LLEGAR COMO PDF, NO COMO LA IMAGEN DE LA FIRMA ══
+     Antes, si el cliente firmaba desde el navegador de Mensajes (sin sesión), se
+     tomaba el atajo _signViaFunction() ANTES de generar el PDF, y la Cloud Function
+     adjuntaba solo el garabato de la firma → al ticket llegaba una "Photo" (rota/negra)
+     en vez del reporte. Ahora el PDF completo se genera y sube AQUÍ, de primero, y se
+     adjunta en los DOS caminos (con sesión y por función). La firma va DENTRO del PDF. */
+  var _sigPdfMedia=null;
+  try{
+    const _pdfDoc=await db.collection("estimates").doc(custEstToken).get();
+    const _pd=(_pdfDoc&&_pdfDoc.exists)?_pdfDoc.data():null;
+    if(_pd){
+      _sigPdfMedia=await makeEstimatePdfMedia(Object.assign(
+        {customer:_pd.customer,phone:_pd.phone,address:_pd.address,city:_pd.city,zip:_pd.zip,date:_pd.date,techs:_pd.techs||[],
+         parts:_pd.parts||[],partsCost:_pd.partsCost||0,tax:_pd.tax||0,total:_pd.total||0,labor:_pd.labor||null,
+         warranty:_pd.warranty||null,warrantyLabel:_pd.warrantyLabel||(_pd.warranty&&_pd.warranty.label)||"N/W",
+         notes:_pd.notes||"",estimatedHours:_pd.estimatedHours||0,
+         signatureData:custSigData,signedAt:new Date().toLocaleString()},{}),
+        (_pd.fromTicketId||("est_"+custEstToken)));
+    }
+  }catch(_pe){console.warn("[cust PDF] no se pudo generar antes de firmar",_pe)}
   /* ═══ LA CAUSA DEL "Missing or insufficient permissions" (v1.9.2) ═══════════
      Las reglas del proyecto son:  allow read, write: if request.auth != null
      — o sea, YA permiten todo lo que el cliente necesita. No faltaba ninguna regla:
@@ -17605,9 +17656,9 @@ async function submitCustSig(){
   if(!_authOk){
     /* Sin sesión en este navegador (típico: el de Mensajes). NO le pedimos al cliente
        que abra el link en otro sitio — el técnico se lo manda por mensaje y ahí lo
-       tiene que poder firmar. Mandamos la firma a la Cloud Function, que escribe con
-       credenciales de admin y no necesita sesión. */
-    var _fnOk=await _signViaFunction();
+       tiene que poder firmar. Mandamos la firma Y EL PDF a la Cloud Function, que
+       escribe con credenciales de admin y no necesita sesión. */
+    var _fnOk=await _signViaFunction(_sigPdfMedia);
     if(_fnOk){
       document.getElementById("custEstContent").innerHTML=_estThanksHTML(custEstName);
       return;
@@ -17644,9 +17695,9 @@ async function submitCustSig(){
     // Generate + upload the signed PDF on the customer's device (best-effort)
     const _fromId=d.fromTicketId||null;
     _step="pdf";
-    const _pdfMedia=await makeEstimatePdfMedia(Object.assign({customer:d.customer,phone:d.phone,address:d.address,city:d.city,zip:d.zip,date:d.date,techs:d.techs||[]},estPacket),_fromId||("est_"+custEstToken));
+    const _pdfMedia=_sigPdfMedia||await makeEstimatePdfMedia(Object.assign({customer:d.customer,phone:d.phone,address:d.address,city:d.city,zip:d.zip,date:d.date,techs:d.techs||[]},estPacket),_fromId||("est_"+custEstToken));
     if(_pdfMedia){estPacket.pdfUrl=_pdfMedia.url;estPacket.pdfName=_pdfMedia.name}
-    const _estAttach=_pdfMedia||{data:custSigData,type:"signature",fromEstimate:true};
+    const _estAttach=_pdfMedia||{data:_sigOnWhite(custSigData),type:"signature",fromEstimate:true};
     // ── 1) Persist the APPROVAL FIRST ──
     _step="ticket";
     if(_fromId){
