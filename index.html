@@ -28332,8 +28332,10 @@ if(typeof _c360Render==="function"&&!window._c360Render._asp){
   };
   window._c360Render._asp=1;
 }
-/* ── Registro administrativo acumulativo (colección customer_notes, 1 doc por
-   cliente; 1 lectura al abrir el cliente, 1 escritura por nota — consumo ~0) ── */
+/* ── Registro administrativo acumulativo. Guarda en cross_app_events (colección
+   que las reglas de Firestore YA permiten) con eventType:"customer_note" y
+   status:"note" — así el listener de alertas (status=="open") las ignora.
+   1 lectura al abrir el cliente, 1 escritura por nota — consumo ~0. ── */
 var _aspLogCache={},_aspLogLoading={};
 function _aspLogDocId(){var k=String((typeof selectedCustKey!=="undefined"&&selectedCustKey)||"");return k?k.replace(/[^a-zA-Z0-9_|:-]/g,"_").slice(0,900):"";}
 function _aspInitials(){try{var n=(currentUser&&currentUser.name)||"";return n?n.slice(0,2).toUpperCase():"—";}catch(e){return "—";}}
@@ -28352,13 +28354,19 @@ window._aspAddLogEntry=async function(text,silent){
   if(last&&last.text===entry.text&&(entry.ts-(last.ts||0))<180000){if(!silent)try{toast(TT("Nota idéntica reciente — no se duplicó","Same note moments ago — not duplicated"),"warn");}catch(e){}return;}
   arr.push(entry);
   try{
-    if(typeof db!=="undefined"&&db)await db.collection("customer_notes").doc(id).set({
-      name:(document.getElementById("custName")||{}).value||"",
-      entries:firebase.firestore.FieldValue.arrayUnion(entry)
-    },{merge:true});
+    var _nm=(document.getElementById("custName")||{}).value||"";
+    if(typeof db!=="undefined"&&db)await db.collection("cross_app_events").add({
+      eventType:"customer_note",
+      status:"note",
+      customerName:_nm,
+      customerKeys:(typeof _custKeys==="function")?_custKeys(_nm):[],
+      sourceApp:"tech-tickets",
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      payload:{text:entry.text,by:entry.by,when:entry.when,groupKey:id},
+      ts:entry.ts
+    });
   }catch(e){
-    var ms=String((e&&e.message)||e||"");
-    try{toast(/permission|insufficient/i.test(ms)?TT("Firestore bloquea customer_notes — la nota quedó solo en pantalla. Hay que sumar la colección a las reglas.","Firestore blocks customer_notes — note kept on screen only. The collection must be added to the rules."):TT("No se guardó: ","Not saved: ")+ms.slice(0,90),"warn");}catch(e2){}
+    try{toast(TT("No se guardó: ","Not saved: ")+String((e&&e.message)||e||"").slice(0,90),"warn");}catch(e2){}
   }
   if(!silent)try{toast(TT("Nota agregada ✓","Note added ✓"));}catch(e){}
   try{rndrCust();}catch(e){}
@@ -28429,15 +28437,23 @@ function _aspNotesTabExtras(){
       var box=document.getElementById("aspLogBox");
       if(box){box.remove();try{_aspNotesTabExtras();}catch(e){}}
     };
-    var _to=setTimeout(function(){_fin([],TT("Firestore no respondió — reintenta","Firestore timed out — retry"));},6000);
+    var _nm=(document.getElementById("custName")||{}).value||"";
+    var _myKeys=(typeof _custKeys==="function")?_custKeys(_nm):[];
+    var _to=setTimeout(function(){_fin([],TT("La red tardó — recarga si sigue vacío","Network slow — reload if still empty"));},6000);
     try{
-      db.collection("customer_notes").doc(id).get().then(function(snap){
+      db.collection("cross_app_events").where("eventType","==","customer_note").get().then(function(snap){
         clearTimeout(_to);
-        _fin((snap.exists&&Array.isArray(snap.data().entries))?snap.data().entries.slice():[]);
+        var mine=[];
+        snap.forEach(function(d){
+          var ev=d.data()||{};var ks=ev.customerKeys||[];var p=ev.payload||{};
+          var match=(p.groupKey&&p.groupKey===id)||_myKeys.some(function(k){return ks.indexOf(k)>=0;});
+          if(match&&p.text)mine.push({when:p.when||"",by:p.by||"",text:p.text,ts:ev.ts||0});
+        });
+        mine.sort(function(a,b){return (a.ts||0)-(b.ts||0);});
+        _fin(mine);
       }).catch(function(err){
         clearTimeout(_to);
-        var msg=String((err&&err.message)||err||"");
-        _fin([],/permission|insufficient/i.test(msg)?TT("Firestore bloquea la colección customer_notes — hay que agregarla a las reglas (dime y te guío)","Firestore rules block the customer_notes collection — it must be added to the rules (ask me how)"):msg.slice(0,120));
+        _fin([],String((err&&err.message)||err||"").slice(0,120));
       });
     }catch(e){clearTimeout(_to);_fin([],String(e&&e.message||e).slice(0,120));}
   }
@@ -28453,7 +28469,7 @@ function _aspNotesTabExtras(){
   var visits=tkts.filter(_aspIsTechVisit).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
   var story="";try{story=(_compileCustomerStory(tkts)||{}).text||"";}catch(e){}
   var h='<div id="aspLogBox">'
-    +(window._aspLogErr?'<div style="font-size:12px;color:var(--c-danger-fg,#991b1b);background:var(--c-danger-bg,#fef2f2);border-radius:8px;padding:7px 10px;margin-bottom:10px;font-weight:600">⚠ '+esc3(window._aspLogErr)+'</div>':'')
+    +(window._aspLogErr?'<div style="font-size:12px;color:var(--i2,#5a5248);background:var(--c-ash-2,#f3f0ea);border-radius:8px;padding:7px 10px;margin-bottom:10px;font-weight:600">'+esc3(window._aspLogErr)+'</div>':'')
     +'<div class="asp-twocol" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">'
     +'<div style="border:1px solid var(--ln,#e5e0d8);border-radius:12px;background:var(--bg,#faf8f4);padding:13px 14px">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">'
