@@ -28247,6 +28247,147 @@ window._custGroupKey=function(s){
   sig.sort();
   return "fam:"+sig.join("|");
 };
+/* ── C360 LOGIC FIX (Jul 2026, pedido de Nela):
+   SERVICE HISTORY = trabajo realizado por el técnico.
+   NOTES = llamadas, citas, comunicaciones y acciones administrativas (estilo QB,
+   acumulativo, nunca se borra). Sin rediseñar la pantalla: solo lógica. ── */
+var ASP_ADMIN_LINE=/^\s*(?:\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}[\s·—:-]*)?(service call\b|customer called|customer will call|called customer|appointment scheduled|appointment set|rescheduled?|cancell?ed|voice ?mail|vm\b|office note|left message|no answer|estimate sent|estimate\b|parts? ordered)/i;
+function _aspCleanTechNotes(raw){
+  var lines=String(raw||"").replace(/\r/g,"").split(/\n+/);
+  var keep=lines.filter(function(ln){var l=ln.trim();if(!l)return false;if(l==="---")return false;return !ASP_ADMIN_LINE.test(l);});
+  return keep.join("\n").trim();
+}
+function _aspIsTechVisit(t){
+  if(!t)return false;
+  var st=String(t.status||"").toLowerCase();
+  if(st==="canceled"||st==="cancelled"||st==="reschedule")return false;
+  var hasTech=Array.isArray(t.techs)&&t.techs.filter(Boolean).length>0;
+  if(!hasTech)return false;
+  var isDone=false;try{isDone=(typeof done!=="undefined"&&Array.isArray(done)&&done.indexOf(t)>=0);}catch(e){}
+  return isDone||!!(t.arrival||t.departure)||st==="done"||st==="complete"||(Array.isArray(t.parts)&&t.parts.length>0);
+}
+if(typeof _c360Render==="function"&&!window._c360Render._asp){
+  var _c360RenderBase=_c360Render;
+  window._c360Render=function(tkts){
+    var vis=(tkts||[]).filter(_aspIsTechVisit).map(function(t){
+      var cl=Object.assign({},t);
+      cl.notes=_aspCleanTechNotes(t.notes)||String(t.notes||"").trim();
+      return cl;
+    });
+    return _c360RenderBase(vis);
+  };
+  window._c360Render._asp=1;
+}
+/* ── Registro administrativo acumulativo (colección customer_notes, 1 doc por
+   cliente; 1 lectura al abrir el cliente, 1 escritura por nota — consumo ~0) ── */
+var _aspLogCache={},_aspLogLoading={};
+function _aspLogDocId(){var k=String((typeof selectedCustKey!=="undefined"&&selectedCustKey)||"");return k?k.replace(/[^a-zA-Z0-9_|:-]/g,"_").slice(0,900):"";}
+function _aspInitials(){try{var n=(currentUser&&currentUser.name)||"";return n?n.slice(0,2).toUpperCase():"—";}catch(e){return "—";}}
+function _aspNow(){var d=new Date();return d.toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})+" "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});}
+function _aspLogEntryHTML(e){
+  return '<div style="border-bottom:1px dashed var(--ln,#e5e0d8);padding:9px 2px;font-size:13px;line-height:1.55;white-space:pre-line;color:var(--ink,#222)"><b>'+esc3(e.when||"")+' — '+esc3(e.by||"")+'</b>\n'+esc3(e.text||"")+'</div>';
+}
+window._aspAddLogEntry=async function(text,silent){
+  var id=_aspLogDocId();if(!id||!text)return;
+  var entry={when:_aspNow(),by:_aspInitials(),text:String(text).trim(),ts:Date.now()};
+  var arr=_aspLogCache[id]||(_aspLogCache[id]=[]);
+  var last=arr[arr.length-1];
+  if(last&&last.text===entry.text&&(entry.ts-(last.ts||0))<180000){if(!silent)try{toast(TT("Nota idéntica reciente — no se duplicó","Same note moments ago — not duplicated"),"warn");}catch(e){}return;}
+  arr.push(entry);
+  try{
+    if(typeof db!=="undefined"&&db)await db.collection("customer_notes").doc(id).set({
+      name:(document.getElementById("custName")||{}).value||"",
+      entries:firebase.firestore.FieldValue.arrayUnion(entry)
+    },{merge:true});
+  }catch(e){}
+  if(!silent)try{toast(TT("Nota agregada ✓","Note added ✓"));}catch(e){}
+  try{rndrCust();}catch(e){}
+};
+window._aspPromptNote=function(){
+  var t=prompt(TT("Nueva nota (llamada, voicemail, cita, estimate, pedido de parte...):","New note (call, voicemail, appointment, estimate, part order...):"),"");
+  if(t&&t.trim())_aspAddLogEntry(t.trim());
+};
+function _aspNotesTabExtras(){
+  if(typeof qbCustTab==="undefined"||qbCustTab!=="info")return;
+  var tb=document.querySelector(".qb-cust-tab-body");
+  if(!tb||document.getElementById("aspLogBox"))return;
+  var id=_aspLogDocId();if(!id)return;
+  if(_aspLogCache[id]===undefined&&!_aspLogLoading[id]){
+    _aspLogLoading[id]=1;
+    try{
+      db.collection("customer_notes").doc(id).get().then(function(snap){
+        _aspLogCache[id]=(snap.exists&&Array.isArray(snap.data().entries))?snap.data().entries.slice():[];
+        delete _aspLogLoading[id];
+        try{rndrCust();}catch(e){}
+      }).catch(function(){_aspLogCache[id]=[];delete _aspLogLoading[id];});
+    }catch(e){_aspLogCache[id]=[];}
+  }
+  var entries=_aspLogCache[id]||[];
+  var h='<div id="aspLogBox" style="border:1px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--cd,#fff);padding:13px 15px;margin-bottom:12px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+      +'<span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--br,#a85c1f)">'+TT("Registro (estilo QuickBooks)","Log (QuickBooks style)")+'</span>'
+      +'<button onclick="_aspPromptNote()" style="margin-left:auto;border:1px dashed var(--br,#a85c1f);background:none;color:var(--br,#a85c1f);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">+ '+TT("Agregar nota","Add note")+'</button>'
+    +'</div>'
+    +(entries.length?entries.map(_aspLogEntryHTML).join(""):'<div style="font-size:12.5px;color:var(--i3,#8a8073);padding:6px 2px">'+(_aspLogLoading[id]?TT("Cargando…","Loading…"):TT("Aún sin registros. Las citas nuevas se anotan aquí solas; usa + Agregar nota para llamadas, voicemails, estimates…","No entries yet. New appointments log here automatically; use + Add note for calls, voicemails, estimates…"))+'</div>')
+  +'</div>';
+  tb.insertAdjacentHTML("afterbegin",h);
+  var story=null;var kids=tb.children;
+  for(var i=1;i<kids.length;i++){if(kids[i].id!=="aspLogBox"){story=kids[i];break;}}
+  if(story&&story.tagName!=="DETAILS"){
+    var d=document.createElement("details");
+    d.innerHTML='<summary style="cursor:pointer;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--i3,#8a8073);padding:4px 2px;margin-bottom:6px">🗂 '+TT("Notas históricas de tickets (solo lectura)","Historical ticket notes (read-only)")+'</summary>';
+    story.parentNode.insertBefore(d,story);
+    d.appendChild(story);
+  }
+}
+if(typeof rndrCust==="function"&&!rndrCust._asp){
+  var _rndrCustBase=rndrCust;
+  window.rndrCust=function(){
+    _rndrCustBase();
+    try{_aspNotesTabExtras();}catch(e){}
+  };
+  window.rndrCust._asp=1;
+}
+/* ── Schedule Service Call: ticket LIMPIO (sin volcar historial), registro
+   automático en Notes, sin duplicados ── */
+if(typeof custCreateTicket==="function"&&!custCreateTicket._asp){
+  window.custCreateTicket=async function(){
+    if(!db||typeof selectedCustKey==="undefined"||!selectedCustKey)return;
+    function _fv(id){var el=document.getElementById(id);return el?String(el.value||"").trim():"";}
+    var all=[].concat(active||[],done||[]);
+    var custTkts=all.filter(function(t){
+      if(!t.customer)return false;
+      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||t.customer.trim().toLowerCase();
+      return k===selectedCustKey;
+    });
+    var c={name:_fv("custName"),phone:_fv("custPhone"),phone2:_fv("custPhone2"),email:_fv("custEmail"),address:_fv("custAddr"),city:_fv("custCity"),zip:_fv("custZip"),zone:_fv("custZone")};
+    custTkts.forEach(function(t){
+      if(!c.name&&t.customer)c.name=t.customer;
+      if(!c.phone&&t.phone)c.phone=t.phone;
+      if(!c.phone2&&t.phone2)c.phone2=t.phone2;
+      if(!c.email&&t.email)c.email=t.email;
+      if(!c.address&&t.address)c.address=t.address;
+      try{var _ec=effectiveCity(t);if(!c.city&&_ec)c.city=_ec;var _ez=effectiveZone(t);if(!c.zone&&_ez)c.zone=_ez;}catch(e){}
+      if(!c.zip&&t.zip)c.zip=t.zip;
+    });
+    if(!c.name){try{toast("Open a customer first","warn");}catch(e){}return;}
+    var dup=custTkts.some(function(t){return t.status==="pending"&&(t.workTypes||[]).indexOf("Service Call")>=0&&t.createdAtMs&&(Date.now()-t.createdAtMs)<180000;});
+    if(dup){try{toast(TT("Ya se creó una cita para este cliente hace un momento — no se duplicó","An appointment was just created for this customer — not duplicated"),"warn");}catch(e){}return;}
+    var reason=prompt(TT("¿Qué reportó el cliente? (motivo de la visita)","What did the customer report? (reason for the visit)"),"");
+    if(reason===null)return;
+    reason=String(reason||"").trim();
+    try{
+      await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
+        notes:(reason?("Customer reported: "+reason):""),
+        phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});
+      try{await _aspAddLogEntry("Service appointment scheduled."+(reason?("\nReason: "+reason):""),true);}catch(e){}
+      try{toast(TT("Cita creada para ","Appointment created for ")+c.name+" ✓");}catch(e){}
+      try{showTab(5);}catch(e){}
+    }catch(e){try{toast("Error: "+e.message,"err");}catch(e2){}}
+  };
+  window.custCreateTicket._asp=1;
+}
+
 function _pdfjsLoad(cb){
   if(window.pdfjsLib)return cb(window.pdfjsLib);
   var sc=document.createElement("script");
