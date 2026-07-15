@@ -28257,6 +28257,34 @@ function _aspCleanTechNotes(raw){
   var keep=lines.filter(function(ln){var l=ln.trim();if(!l)return false;if(l==="---")return false;return !ASP_ADMIN_LINE.test(l);});
   return keep.join("\n").trim();
 }
+/* Reporte de la visita = SOLO las líneas fechadas el día de ESA visita (y sus
+   continuaciones sin fecha). Los volcados históricos que el viejo Schedule
+   metió en notes (años de llamadas/voicemails) se quedan fuera. */
+function _aspVisitNotes(t){
+  var raw=String((t&&t.notes)||"").replace(/\r/g,"");
+  if(!raw.trim())return "";
+  var m=String((t&&t.date)||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  var lines=raw.split(/\n/);
+  var dateRe=/^\s*(\d{1,4})[\/\-](\d{1,2})[\/\-](\d{1,4})\b/;
+  var anyDated=lines.some(function(l){return dateRe.test(l);});
+  if(!m||!anyDated)return _aspCleanTechNotes(raw);
+  var Y=+m[1],M=+m[2],D=+m[3];
+  function sameDay(a,b,c){
+    a=+a;b=+b;c=+c;
+    var mo,dy,yr;
+    if(a>31){yr=a;mo=b;dy=c;}else{mo=a;dy=b;yr=c;}
+    if(yr<100)yr+=2000;
+    return yr===Y&&mo===M&&dy===D;
+  }
+  var out=[],inVisit=false;
+  lines.forEach(function(ln){
+    var l=ln.trim();if(!l||l==="---")return;
+    var dm=l.match(dateRe);
+    if(dm){inVisit=sameDay(dm[1],dm[2],dm[3]);if(inVisit&&!ASP_ADMIN_LINE.test(l))out.push(l);return;}
+    if(inVisit&&!ASP_ADMIN_LINE.test(l))out.push(l);
+  });
+  return out.join("\n").trim();
+}
 function _aspIsTechVisit(t){
   if(!t)return false;
   var st=String(t.status||"").toLowerCase();
@@ -28271,7 +28299,7 @@ if(typeof _c360Render==="function"&&!window._c360Render._asp){
   window._c360Render=function(tkts){
     var vis=(tkts||[]).filter(_aspIsTechVisit).map(function(t){
       var cl=Object.assign({},t);
-      cl.notes=_aspCleanTechNotes(t.notes)||String(t.notes||"").trim();
+      cl.notes=_aspVisitNotes(t);
       return cl;
     });
     return _c360RenderBase(vis);
@@ -28285,7 +28313,10 @@ function _aspLogDocId(){var k=String((typeof selectedCustKey!=="undefined"&&sele
 function _aspInitials(){try{var n=(currentUser&&currentUser.name)||"";return n?n.slice(0,2).toUpperCase():"—";}catch(e){return "—";}}
 function _aspNow(){var d=new Date();return d.toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})+" "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});}
 function _aspLogEntryHTML(e){
-  return '<div style="border-bottom:1px dashed var(--ln,#e5e0d8);padding:9px 2px;font-size:13px;line-height:1.55;white-space:pre-line;color:var(--ink,#222)"><b>'+esc3(e.when||"")+' — '+esc3(e.by||"")+'</b>\n'+esc3(e.text||"")+'</div>';
+  return '<div style="position:relative;padding:8px 2px 10px 20px;font-size:13px;line-height:1.55;white-space:pre-line;color:var(--ink,#222)">'
+    +'<span style="position:absolute;left:2px;top:14px;width:9px;height:9px;border-radius:50%;background:var(--br,#a85c1f);box-shadow:0 0 0 2.5px var(--cd,#fff),0 0 0 3.5px var(--ln,#e5e0d8)"></span>'
+    +'<span style="position:absolute;left:6px;top:26px;bottom:-2px;width:1px;background:var(--ln,#e5e0d8)"></span>'
+    +'<b>'+esc3(e.when||"")+' — '+esc3(e.by||"")+'</b>\n'+esc3(e.text||"")+'</div>';
 }
 window._aspAddLogEntry=async function(text,silent){
   var id=_aspLogDocId();if(!id||!text)return;
@@ -28299,7 +28330,10 @@ window._aspAddLogEntry=async function(text,silent){
       name:(document.getElementById("custName")||{}).value||"",
       entries:firebase.firestore.FieldValue.arrayUnion(entry)
     },{merge:true});
-  }catch(e){}
+  }catch(e){
+    var ms=String((e&&e.message)||e||"");
+    try{toast(/permission|insufficient/i.test(ms)?TT("Firestore bloquea customer_notes — la nota quedó solo en pantalla. Hay que sumar la colección a las reglas.","Firestore blocks customer_notes — note kept on screen only. The collection must be added to the rules."):TT("No se guardó: ","Not saved: ")+ms.slice(0,90),"warn");}catch(e2){}
+  }
   if(!silent)try{toast(TT("Nota agregada ✓","Note added ✓"));}catch(e){}
   try{rndrCust();}catch(e){}
 };
@@ -28314,13 +28348,24 @@ function _aspNotesTabExtras(){
   var id=_aspLogDocId();if(!id)return;
   if(_aspLogCache[id]===undefined&&!_aspLogLoading[id]){
     _aspLogLoading[id]=1;
+    var _fin=function(entries,errMsg){
+      if(_aspLogCache[id]===undefined)_aspLogCache[id]=entries||[];
+      delete _aspLogLoading[id];
+      window._aspLogErr=errMsg||"";
+      var box=document.getElementById("aspLogBox");
+      if(box){box.remove();try{_aspNotesTabExtras();}catch(e){}}
+    };
+    var _to=setTimeout(function(){_fin([],TT("Firestore no respondió — reintenta","Firestore timed out — retry"));},6000);
     try{
       db.collection("customer_notes").doc(id).get().then(function(snap){
-        _aspLogCache[id]=(snap.exists&&Array.isArray(snap.data().entries))?snap.data().entries.slice():[];
-        delete _aspLogLoading[id];
-        try{rndrCust();}catch(e){}
-      }).catch(function(){_aspLogCache[id]=[];delete _aspLogLoading[id];});
-    }catch(e){_aspLogCache[id]=[];}
+        clearTimeout(_to);
+        _fin((snap.exists&&Array.isArray(snap.data().entries))?snap.data().entries.slice():[]);
+      }).catch(function(err){
+        clearTimeout(_to);
+        var msg=String((err&&err.message)||err||"");
+        _fin([],/permission|insufficient/i.test(msg)?TT("Firestore bloquea la colección customer_notes — hay que agregarla a las reglas (dime y te guío)","Firestore rules block the customer_notes collection — it must be added to the rules (ask me how)"):msg.slice(0,120));
+      });
+    }catch(e){clearTimeout(_to);_fin([],String(e&&e.message||e).slice(0,120));}
   }
   var entries=_aspLogCache[id]||[];
   var h='<div id="aspLogBox" style="border:1px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--cd,#fff);padding:13px 15px;margin-bottom:12px">'
@@ -28328,6 +28373,7 @@ function _aspNotesTabExtras(){
       +'<span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--br,#a85c1f)">'+TT("Registro (estilo QuickBooks)","Log (QuickBooks style)")+'</span>'
       +'<button onclick="_aspPromptNote()" style="margin-left:auto;border:1px dashed var(--br,#a85c1f);background:none;color:var(--br,#a85c1f);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">+ '+TT("Agregar nota","Add note")+'</button>'
     +'</div>'
+    +(window._aspLogErr?'<div style="font-size:12px;color:var(--c-danger-fg,#991b1b);background:var(--c-danger-bg,#fef2f2);border-radius:8px;padding:7px 10px;margin-bottom:6px;font-weight:600">⚠ '+esc3(window._aspLogErr)+'</div>':'')
     +(entries.length?entries.map(_aspLogEntryHTML).join(""):'<div style="font-size:12.5px;color:var(--i3,#8a8073);padding:6px 2px">'+(_aspLogLoading[id]?TT("Cargando…","Loading…"):TT("Aún sin registros. Las citas nuevas se anotan aquí solas; usa + Agregar nota para llamadas, voicemails, estimates…","No entries yet. New appointments log here automatically; use + Add note for calls, voicemails, estimates…"))+'</div>')
   +'</div>';
   tb.insertAdjacentHTML("afterbegin",h);
