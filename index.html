@@ -27182,6 +27182,32 @@ body.aspSkin:not(.dark) #bsOv .bs-box,body.aspSkin:not(.dark) #bsDigest>div,body
 body.aspFs2 #bsOv .bs-box,body.aspFs2 #bsDigest,body.aspFs2 #nvPanel{zoom:1.12}
 body.aspFs3 #bsOv .bs-box,body.aspFs3 #bsDigest,body.aspFs3 #nvPanel{zoom:1.3}
 @media(max-width:520px){body.aspFs2 #bsOv .bs-box,body.aspFs2 #bsDigest,body.aspFs2 #nvPanel{zoom:1.05}body.aspFs3 #bsOv .bs-box,body.aspFs3 #bsDigest,body.aspFs3 #nvPanel{zoom:1.12}}
+/* ── ASPEN CUSTOMER 360 — rediseño SOLO visual (v2.1.1). Envuelve nodos
+   existentes; no toca IDs, funciones ni datos. Todo scoping .cust-page + clases
+   nuevas asp-*. Revertir = borrar este bloque. ── */
+.cust-page .qb-cust-hero{padding:16px 20px 12px!important}
+.cust-page .qb-cust-hero-name{font-size:20px!important}
+.cust-page .qb-cust-hero .app-av{width:48px!important;height:48px!important;font-size:17px!important}
+.cust-page .qb-cust-hero-stats[style*="display:none"]{display:none!important}
+.asp-kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 2px}
+.asp-kpi{position:relative;background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:11px 13px 11px 15px;box-shadow:0 2px 8px rgba(60,43,31,.06);overflow:hidden;transition:transform .14s,box-shadow .14s}
+.asp-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px -10px rgba(60,43,31,.4)}
+.asp-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac)}
+.asp-kpi.asp-warn::before{background:var(--c-warning-strong,#c98a2b)}
+.asp-kpi.asp-ok::before{background:var(--c-money-fg,#41694f)}
+.asp-kpi.asp-danger::before{background:var(--c-danger-strong,#a85b4b)}
+.asp-kpi .k-l{font-size:10px;font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:5px}
+.asp-kpi .k-v{font-size:18px;font-weight:800;color:var(--br);line-height:1.1;letter-spacing:-.3px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asp-kpi .k-s{font-size:10.5px;font-weight:600;color:var(--i3);margin-top:2px}
+.asp-cust-info{margin:16px;border:1px solid var(--ln);border-radius:16px;background:var(--cd);box-shadow:0 2px 10px rgba(60,43,31,.05);overflow:hidden}
+.asp-cust-info>summary{list-style:none;cursor:pointer;padding:13px 18px;font-size:13px;font-weight:800;color:var(--i2);display:flex;align-items:center;gap:9px;user-select:none}
+.asp-cust-info>summary::-webkit-details-marker{display:none}
+.asp-cust-info>summary .chev{margin-left:auto;transition:transform .18s;color:var(--i3);font-size:12px}
+.asp-cust-info[open]>summary .chev{transform:rotate(90deg)}
+.asp-cust-info[open]>summary{border-bottom:1px solid var(--ln)}
+.asp-cust-info>.qb-cust-info-grid{margin:0!important;border:none!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+body.dark-mode .asp-kpi,body.dark-mode .asp-cust-info{background:var(--cd)}
+@media(max-width:520px){.asp-kpi-strip{grid-template-columns:repeat(2,1fr);gap:8px}.asp-cust-info{margin:12px}}
 </style>
 <script id="aspenBillingSprintJS">
 (function(){
@@ -28448,10 +28474,73 @@ function _aspNotesTabExtras(){
   kids.forEach(function(k){k.style.display="none";});
   tb.insertAdjacentHTML("afterbegin",h);
 }
+/* ── Enhancer de encabezado Customer 360 (SOLO visual). Corre después de
+   rndrCust; envuelve nodos ya renderizados sin renombrar IDs/eventos:
+   1) reemplaza visualmente las 3 stats por 6 KPIs computados de los datos ya
+      en memoria (oculta las viejas, no las borra); 2) mete el grid editable en
+      un <details> "Customer Information" colapsado. Cero lógica de datos. ── */
+function _aspCustTkts(){
+  try{
+    if(typeof selectedCustKey==="undefined"||!selectedCustKey)return [];
+    return [].concat(active||[],done||[]).filter(function(t){
+      if(!t||!t.customer)return false;
+      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||String(t.customer).trim().toLowerCase();
+      return k===selectedCustKey;
+    });
+  }catch(e){return [];}
+}
+function _aspKpiCard(cls,label,val,sub){
+  return '<div class="asp-kpi'+(cls?" "+cls:"")+'"><div class="k-l">'+label+'</div><div class="k-v">'+esc3(val)+'</div>'+(sub?'<div class="k-s">'+esc3(sub)+'</div>':'')+'</div>';
+}
+function _aspFmtDate(s){var d=new Date(String(s||"")+"T00:00:00");return isNaN(d.getTime())?String(s||"—"):d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
+function _aspCustHeaderEnhance(){
+  var hero=document.querySelector(".cust-page .qb-cust-hero");
+  if(!hero)return;
+  var tkts=_aspCustTkts();
+  // 1) KPI strip (idempotente por render)
+  var stats=hero.querySelector(".qb-cust-hero-stats");
+  if(stats&&!hero.querySelector(".asp-kpi-strip")){
+    var completed=tkts.filter(_aspIsTechVisit);
+    var openCalls=tkts.filter(function(t){var st=String(t.status||"").toLowerCase();return st==="pending"||st==="open"||st==="scheduled"||st==="reschedule";});
+    var lastV=completed.map(function(t){return t.date||"";}).filter(Boolean).sort().pop()||"";
+    var future=openCalls.map(function(t){return t.date||"";}).filter(Boolean).filter(function(d){return d>=fmtD(new Date());}).sort();
+    var nextAppt=future.length?future[0]:"";
+    var repeats=tkts.filter(function(t){return Number(t.visitNum)===4;}).length;
+    var warTxt="—",warCls="";
+    try{
+      var ws=(typeof _c360Warranties==="function")?_c360Warranties(tkts):[];
+      var act=ws.filter(function(w){return w.active;});
+      if(ws.length){warTxt=act.length?"Active":"Expired";warCls=act.length?"asp-ok":"";}
+    }catch(e){}
+    var strip=document.createElement("div");
+    strip.className="asp-kpi-strip";
+    strip.innerHTML=
+       _aspKpiCard("asp-ok","🔧 Completed Visits",String(completed.length),"all time")
+      +_aspKpiCard(openCalls.length?"asp-warn":"","📋 Open Service Calls",String(openCalls.length),openCalls.length?"outstanding":"none")
+      +_aspKpiCard("","🗓 Last Service",lastV?_aspFmtDate(lastV):"—","")
+      +_aspKpiCard(nextAppt?"asp-warn":"","📅 Next Appointment",nextAppt?_aspFmtDate(nextAppt):"—",nextAppt?"scheduled":"none")
+      +_aspKpiCard(warCls,"🛡 Warranty",warTxt,"")
+      +_aspKpiCard(repeats?"asp-danger":"","🔁 Repeat Calls",String(repeats),repeats?"review":"good standing");
+    stats.style.display="none";
+    stats.parentNode.insertBefore(strip,stats);
+  }
+  // 2) info-grid → <details> "Customer Information" colapsado (mueve el nodo tal cual)
+  var grid=document.querySelector(".cust-page .qb-cust-info-grid");
+  if(grid&&!grid.closest(".asp-cust-info")){
+    var det=document.createElement("details");
+    det.className="asp-cust-info";
+    var sum=document.createElement("summary");
+    sum.innerHTML="👤 "+TT("Información del cliente (editar)","Customer Information (edit)")+'<span class="chev">▶</span>';
+    grid.parentNode.insertBefore(det,grid);
+    det.appendChild(sum);
+    det.appendChild(grid);
+  }
+}
 if(typeof rndrCust==="function"&&!rndrCust._asp){
   var _rndrCustBase=rndrCust;
   window.rndrCust=function(){
     _rndrCustBase();
+    try{_aspCustHeaderEnhance();}catch(e){}
     try{_aspNotesTabExtras();}catch(e){}
   };
   window.rndrCust._asp=1;
