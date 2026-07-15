@@ -27208,6 +27208,13 @@ body.aspFs3 #bsOv .bs-box,body.aspFs3 #bsDigest,body.aspFs3 #nvPanel{zoom:1.3}
 .asp-cust-info>.qb-cust-info-grid{margin:0!important;border:none!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
 body.dark-mode .asp-kpi,body.dark-mode .asp-cust-info{background:var(--cd)}
 @media(max-width:520px){.asp-kpi-strip{grid-template-columns:repeat(2,1fr);gap:8px}.asp-cust-info{margin:12px}}
+.asp-chip{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--c-ash-2,#f3f0ea);color:var(--i2,#5a5248);white-space:nowrap}
+.asp-chip-ok{background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46)}
+.asp-chip-warn{background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e)}
+.asp-chip-mut{background:var(--c-ash-2,#f3f0ea);color:var(--i3,#8a8073)}
+.asp-tcard{border:1px solid var(--ln,#e5e0d8);border-radius:11px;background:var(--cd,#fff);padding:11px 13px;transition:box-shadow .14s,border-color .14s}
+.asp-tcard:hover{box-shadow:0 6px 16px -10px rgba(60,43,31,.4);border-color:#d8cfc2}
+.asp-tcard .asp-more{font-size:11.5px;font-weight:800;color:var(--br,#a85c1f);cursor:pointer;user-select:none}
 </style>
 <script id="aspenBillingSprintJS">
 (function(){
@@ -28320,15 +28327,17 @@ function _aspIsTechVisit(t){
   var isDone=false;try{isDone=(typeof done!=="undefined"&&Array.isArray(done)&&done.indexOf(t)>=0);}catch(e){}
   return isDone||!!(t.arrival||t.departure)||st==="done"||st==="complete"||(Array.isArray(t.parts)&&t.parts.length>0);
 }
+/* Service History tab: mismas cards limpias que la columna derecha del tab Notes.
+   Muere la vista vieja (KPIs + WARRANTIES/INSTALLED EQUIPMENT separado + REPEATED
+   WORK). El warranty ahora es un chip DENTRO de cada card; el reporte del técnico
+   se abre inline con "Ver detalles del trabajo". */
 if(typeof _c360Render==="function"&&!window._c360Render._asp){
-  var _c360RenderBase=_c360Render;
   window._c360Render=function(tkts){
-    var vis=(tkts||[]).filter(_aspIsTechVisit).map(function(t){
-      var cl=Object.assign({},t);
-      cl.notes=_aspVisitNotes(t);
-      return cl;
-    });
-    return _c360RenderBase(vis);
+    var vis=(tkts||[]).filter(_aspIsTechVisit).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
+    if(!vis.length)return '<div style="text-align:center;padding:36px 18px;color:var(--i3,#8a8073);font-size:13px">'+TT("Sin visitas técnicas completadas todavía.","No completed technician visits yet.")+'</div>';
+    var h='<div style="font-size:12px;color:var(--i3,#8a8073);margin:2px 2px 14px;line-height:1.5">'+TT("Trabajo realizado por los técnicos — toca una visita para ver el reporte completo, partes y fotos.","Work performed by technicians — tap a visit to see the full report, parts and photos.")+'</div>';
+    h+=vis.map(_aspTechCardHTML).join("");
+    return h;
   };
   window._c360Render._asp=1;
 }
@@ -28398,28 +28407,55 @@ function _aspTimelineRow(when,by,text){
     +'</div></div>';
 }
 function _aspLogEntryHTML(e){return _aspTimelineRow(e.when,e.by,e.text);}
+function _aspWarChip(t){
+  try{
+    if(t.partWarranty90&&t.partWarranty90Start)return '<span class="asp-chip asp-chip-ok">🛡 '+TT("Cubierto","Covered")+'</span>';
+    var lbl=String((t.warranty&&t.warranty.label)||"").trim();
+    if(lbl&&!/^n\/?w$/i.test(lbl)&&!/no ?warranty/i.test(lbl))return '<span class="asp-chip asp-chip-ok">🛡 '+esc3(lbl)+'</span>';
+    return '<span class="asp-chip asp-chip-mut">'+TT("Sin garantía","No warranty")+'</span>';
+  }catch(e){return "";}
+}
+window._aspTechToggle=function(id){
+  var b=document.getElementById("asptb_"+id);if(!b)return;
+  var open=(b.style.display==="none"||!b.style.display);
+  b.style.display=open?"block":"none";
+  var a=document.getElementById("aspta_"+id);
+  if(a)a.textContent=open?(TT("Ocultar detalles","Hide details")+" ▲"):(TT("Ver detalles del trabajo","View job details")+" →");
+};
 function _aspTechCardHTML(t){
+  var id=String(t.id||"").replace(/[^A-Za-z0-9_-]/g,"")||("x"+Math.random().toString(36).slice(2,8));
+  var idJS=String(t.id||"").replace(/'/g,"\\'");
   var techs=(t.techs||[]).filter(Boolean).join(", ")||"—";
   var wt=(t.workTypes||[]).filter(Boolean).join(", ")||"Service Visit";
   var mins=0;try{mins=(typeof _visitMins==="function")?(_visitMins(t)||0):0;}catch(e){}
   var dur=mins?(Math.floor(mins/60)+"h "+String(mins%60).padStart(2,"0")+"m"):"";
+  var vn=Number(t.visitNum)||1;
   var rep=_aspVisitNotes(t);
+  var repPrev=rep?rep.replace(/\n+/g," ").trim():"";
+  if(repPrev.length>110)repPrev=repPrev.slice(0,110)+"…";
   var parts=(Array.isArray(t.parts)?t.parts:[]);
-  var photos=[];(t.media||[]).forEach(function(m){if(m&&m.type!=="pdf"&&(m.url||m.data)&&photos.length<3)photos.push(m.url||m.data);});
+  var photos=[];(t.media||[]).forEach(function(m){if(m&&m.type!=="pdf"&&(m.url||m.data))photos.push(m.url||m.data);});
+  var chips=_aspWarChip(t)+(vn===4?'<span class="asp-chip asp-chip-warn">🔁 '+TT("Repetición","Repeat")+'</span>':'')+(parts.length?'<span class="asp-chip">🧰 '+parts.length+' '+TT("parte(s)","part(s)")+'</span>':'')+(photos.length?'<span class="asp-chip">📷 '+photos.length+'</span>':'');
+  var partsHTML=parts.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">'+parts.map(function(p){return '<span class="asp-chip">✓ '+esc3((p.qty||1)+"× "+(p.n||p.name||""))+'</span>';}).join("")+'</div>':'';
+  var photoHTML=photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+photos.map(function(u){return '<img data-u="'+esc3(u)+'" data-c="'+esc3((t.date||"")+" · "+techs)+'" onclick="try{previewAttachment(this.dataset.u,\'photo\',this.dataset.c)}catch(e){}" loading="lazy" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--ln,#e5e0d8);cursor:pointer">';}).join("")+'</div>':'';
+  var body=''
+    +(rep?'<div style="font-size:12.5px;line-height:1.6;white-space:pre-line;color:var(--ink,#222)">'+esc3(rep)+'</div>':'<div style="font-size:11.5px;color:var(--i3,#8a8073);font-style:italic">'+TT("Sin reporte del técnico ese día","No tech report for that day")+'</div>')
+    +partsHTML+photoHTML
+    +'<div style="margin-top:10px"><button onclick="try{openTktDetail(\''+idJS+'\')}catch(e){}" style="border:1px solid var(--ln,#d5d0c8);background:var(--bg,#faf8f4);color:var(--i2,#5a5248);border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit">📝 '+TT("Abrir ticket completo","Open full ticket")+'</button></div>';
   var h='<div style="position:relative;padding:0 0 14px 26px">'
-    +'<span style="position:absolute;left:0;top:4px;width:18px;height:18px;border-radius:50%;background:var(--br,#a85c1f);display:flex;align-items:center;justify-content:center;font-size:9.5px;box-shadow:0 0 0 2px var(--cd,#fff)">🔧</span>'
-    +'<span style="position:absolute;left:8.5px;top:24px;bottom:0;width:1px;background:var(--ln,#e5e0d8)"></span>'
-    +'<div style="border:1px solid var(--ln,#e5e0d8);border-radius:10px;background:var(--cd,#fff);padding:11px 13px">'
+    +'<span style="position:absolute;left:0;top:6px;width:18px;height:18px;border-radius:50%;background:var(--br,#a85c1f);display:flex;align-items:center;justify-content:center;font-size:9.5px;box-shadow:0 0 0 2px var(--cd,#fff)">🔧</span>'
+    +'<span style="position:absolute;left:8.5px;top:26px;bottom:0;width:1px;background:var(--ln,#e5e0d8)"></span>'
+    +'<div class="asp-tcard">'
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
         +'<b style="font-size:13.5px;color:var(--ink,#222)">'+esc3(wt)+'</b>'
-        +'<span style="background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-size:10px;font-weight:800;padding:1.5px 8px;border-radius:7px">Completed</span>'
-        +'<span style="margin-left:auto;font-size:11px;color:var(--i3,#8a8073);font-weight:700">'+esc3(t.date||"")+'</span>'
+        +'<span class="asp-chip asp-chip-ok">✓ Completed</span>'
+        +'<span style="margin-left:auto;font-size:11px;color:var(--i3,#8a8073);font-weight:700">'+esc3(t.date||"")+(vn>1?' · '+TT("visita","visit")+' '+vn:'')+'</span>'
       +'</div>'
-      +'<div style="font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin:3px 0 6px">👤 '+esc3(techs)+(dur?' · ⏱ '+dur:'')+'</div>'
-      +(rep?'<div style="font-size:12.5px;line-height:1.55;white-space:pre-line;color:var(--ink,#222)">'+esc3(rep)+'</div>':'<div style="font-size:11.5px;color:var(--i3,#8a8073);font-style:italic">'+TT("Sin reporte del técnico ese día","No tech report for that day")+'</div>')
-      +(parts.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">'+parts.slice(0,6).map(function(p){return '<span style="background:var(--c-ash-2,#f3f0ea);color:var(--i2,#5a5248);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:7px">✓ '+esc3((p.qty||1)+"× "+(p.n||p.name||""))+'</span>';}).join("")+(parts.length>6?'<span style="font-size:10.5px;color:var(--i3,#8a8073);font-weight:700">+'+(parts.length-6)+'</span>':'')+'</div>':'')
-      +(photos.length?'<div style="display:flex;gap:6px;margin-top:8px">'+photos.map(function(u){return '<img src="'+esc3(u)+'" loading="lazy" style="width:64px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--ln,#e5e0d8)">';}).join("")+'</div>':'')
-      +'<div style="text-align:right;margin-top:6px"><a onclick="qbCustSetTab(\'history\')" style="font-size:11.5px;font-weight:800;color:var(--br,#a85c1f);cursor:pointer">'+TT("Ver detalles del trabajo","View job details")+' →</a></div>'
+      +'<div style="font-size:11.5px;color:var(--i3,#8a8073);font-weight:600;margin:4px 0 7px">👤 '+esc3(techs)+(dur?' · ⏱ '+dur:'')+'</div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">'+chips+'</div>'
+      +'<div style="font-size:12px;color:var(--i2,#5a5248);line-height:1.5">'+(repPrev?esc3(repPrev):'<span style="font-style:italic;color:var(--i3,#8a8073)">'+TT("Sin reporte ese día","No report that day")+'</span>')+'</div>'
+      +'<div id="asptb_'+id+'" style="display:none;margin-top:10px;border-top:1px dashed var(--ln,#e5e0d8);padding-top:10px">'+body+'</div>'
+      +'<div style="text-align:right;margin-top:8px"><span id="aspta_'+id+'" class="asp-more" onclick="_aspTechToggle(\''+id+'\')">'+TT("Ver detalles del trabajo","View job details")+' →</span></div>'
     +'</div></div>';
   return h;
 }
