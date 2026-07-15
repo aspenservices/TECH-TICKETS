@@ -27128,12 +27128,12 @@ function showTicketDetail(p,i){
 #nvOv .nv-bar{display:flex;align-items:center;gap:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;margin-bottom:12px;flex-wrap:wrap}
 #nvOv .nv-track{flex:1;min-width:140px;height:8px;border-radius:999px;background:rgba(0,0,0,.12);overflow:hidden}
 #nvOv .nv-track i{display:block;height:100%;background:var(--c-money-fg,#065f46)}
-#nvOv .nv-cols,#cabOv .nv-cols{display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:24px}
-#nvOv .nv-col,#cabOv .nv-col{min-width:235px;flex:1}
-#nvOv .nv-colh,#cabOv .nv-colh{font-size:11.5px;font-weight:800;letter-spacing:.4px;padding:7px 10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
-#nvOv .nv-card,#cabOv .nv-card{background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:transform .1s}
-#nvOv .nv-card:hover,#cabOv .nv-card:hover{transform:translateY(-1px)}
-#nvOv .nv-more,#cabOv .nv-more{text-align:center;font-size:11.5px;font-weight:800;color:var(--i2,#5a5248);border:1.5px dashed var(--ln,#d5d0c8);border-radius:10px;padding:8px;cursor:pointer;margin-bottom:8px}
+#nvOv .nv-cols,#cabOv .nv-cols,#cabInline .nv-cols{display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:24px}
+#nvOv .nv-col,#cabOv .nv-col,#cabInline .nv-col{min-width:235px;flex:1}
+#nvOv .nv-colh,#cabOv .nv-colh,#cabInline .nv-colh{font-size:11.5px;font-weight:800;letter-spacing:.4px;padding:7px 10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+#nvOv .nv-card,#cabOv .nv-card,#cabInline .nv-card{background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:transform .1s}
+#nvOv .nv-card:hover,#cabOv .nv-card:hover,#cabInline .nv-card:hover{transform:translateY(-1px)}
+#nvOv .nv-more,#cabOv .nv-more,#cabInline .nv-more{text-align:center;font-size:11.5px;font-weight:800;color:var(--i2,#5a5248);border:1.5px dashed var(--ln,#d5d0c8);border-radius:10px;padding:8px;cursor:pointer;margin-bottom:8px}
 #nvOv .nv-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:10px;margin:4px 0 18px}
 #nvPanel{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);box-sizing:border-box;background:var(--card,#fff);color:var(--ink,#1f1a15);z-index:10004;box-shadow:-12px 0 40px rgba(0,0,0,.2);overflow-y:auto;overflow-x:hidden;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px));display:none;word-break:break-word}
 @media(max-width:600px){#nvPanel{width:100vw;left:0;right:0}}
@@ -28181,9 +28181,14 @@ function _alertsTools(){
   var bar=document.getElementById("cbTools");
   if(!bar){bar=document.createElement("div");bar.id="cbTools";bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px";pg.insertBefore(bar,pg.firstChild);}
   var ap=cbPool(),at=0;ap.forEach(function(x){try{at+=_alertAmount(x);}catch(e){}});
+  var bon=true;try{bon=localStorage.getItem("aspCabInline")!=="0";}catch(e){}
   bar.innerHTML='<button onclick="cbOpen()" style="flex:2;min-width:200px;padding:12px 14px;border:1.5px solid var(--c-money-fg,#065f46);border-radius:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("credit-card",14)+' '+TT("Cobro Sprint","Collections Sprint")+' — '+ap.length+' · $'+Math.round(at).toLocaleString("en-US")+'</button>'
-    +'<button onclick="cabOpen()" style="flex:1;min-width:130px;padding:12px 14px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("layout-kanban",13)+' '+TT("Board","Board")+'</button>'
+    +'<button onclick="cabToggle()" style="flex:1;min-width:130px;padding:12px 14px;border:1.5px solid '+(bon?'var(--c-money-fg,#065f46)':'var(--ln,#d5d0c8)')+';border-radius:12px;background:var(--card,#fff);color:'+(bon?'var(--c-money-fg,#065f46)':'var(--i2,#5a5248)')+';font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("layout-kanban",13)+' '+TT("Board","Board")+(bon?" ✓":"")+'</button>'
     +'<button onclick="qaOpen()" style="flex:1;min-width:150px;padding:12px 14px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">+ '+TT("Factura abierta","Open invoice")+'</button>';
+  var inl=document.getElementById("cabInline");
+  if(!inl){inl=document.createElement("div");inl.id="cabInline";inl.style.cssText="margin:0 0 14px";bar.insertAdjacentElement("afterend",inl);}
+  var sig=bon?(ap.length+"|"+Math.round(at)+"|"+ap.map(function(x){return x.id;}).join(",")):"off";
+  if(inl.dataset.sig!==sig){inl.dataset.sig=sig;inl.innerHTML=bon?cabHTML(ap):"";}
 }
 window.qaOpen=function(){
   var ov=document.getElementById("qaOv");
@@ -28197,7 +28202,7 @@ window.qaOpen=function(){
   ov.innerHTML='<div style="background:var(--card,#fff);border-radius:16px;max-width:420px;width:100%;padding:18px;color:var(--ink,#1f1a15)">'
     +'<div style="display:flex;align-items:center;margin-bottom:10px"><b style="font-size:15px">+ '+TT("Factura abierta (pendiente de pago)","Open invoice (pending payment)")+'</b><button onclick="document.getElementById(\'qaOv\').style.display=\'none\'" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--i3,#999);cursor:pointer">×</button></div>'
     +'<input id="qaName" placeholder="'+TT("Cliente (Apellido, Nombre)","Customer (Last, First)")+'" '+f+'>'
-    +'<input id="qaAmt" type="number" step="0.01" placeholder="'+TT("Monto (balance due de QB)","Amount (QB balance due)")+'" '+f+'>'
+    +'<input id="qaAmt" type="text" inputmode="decimal" autocomplete="off" placeholder="'+TT("Monto (balance due de QB)","Amount (QB balance due)")+'" '+f+'>'
     +'<input id="qaInv" placeholder="QB Invoice # ('+TT("opcional","optional")+')" '+f+'>'
     +'<input id="qaNote" placeholder="'+TT("Nota (ej: venta de cover)","Note (e.g. cover sale)")+'" '+f+'>'
     +'<label style="display:block;font-size:11.5px;font-weight:700;color:var(--i2,#5a5248);margin:2px 0 4px">'+TT("PDF de la factura (opcional, máx ~700KB)","Invoice PDF (optional, max ~700KB)")+'</label>'
@@ -28222,21 +28227,32 @@ window.qaParse=function(){
     var rd=new FileReader();
     rd.onload=function(){
       lib.getDocument({data:new Uint8Array(rd.result)}).promise.then(function(doc){
-        return doc.getPage(1).then(function(pg){return pg.getTextContent();});
-      }).then(function(tc){
-        var txt=tc.items.map(function(it){return it.str;}).join("\n");
-        var inv=(txt.match(/Invoice\s*No\.?\s*[\n:]*\s*(\d{4,8})/i)||txt.match(/\b(27\d{4})\b/)||[])[1]||"";
-        var bal=(txt.match(/Balance\s*Due[\s\S]{0,50}?\$?\s*([\d,]+\.\d{2})/i)||[])[1]||"";
-        if(!bal)bal=(txt.match(/Total[\s\S]{0,40}?\$?\s*([\d,]+\.\d{2})/i)||[])[1]||"";
+        var n=Math.min(doc.numPages||1,3),ps=[];
+        for(var i=1;i<=n;i++)ps.push(doc.getPage(i).then(function(pg){return pg.getTextContent();}));
+        return Promise.all(ps);
+      }).then(function(tcs){
+        var items=[];tcs.forEach(function(tc){(tc.items||[]).forEach(function(it){var v=String(it.str||"").trim();if(v)items.push(v);});});
+        var txt=items.join("\n");
+        var inv=(txt.match(/Invoice\s*No\.?\s*[\n:#]*\s*(\d{4,8})/i)||txt.match(/\b(27\d{4})\b/)||[])[1]||"";
+        var bal="";
+        for(var i=0;i<items.length&&!bal;i++){
+          if(/balance\s*due/i.test(items[i])){
+            bal=(items[i].match(/([\d,]+\.\d{2})/)||[])[1]||"";
+            for(var j=i+1;j<Math.min(i+6,items.length)&&!bal;j++){var mj=items[j].match(/^\$?\s*([\d,]+\.\d{2})\s*$/);if(mj)bal=mj[1];}
+          }
+        }
+        if(!bal)bal=(txt.match(/Balance\s*Due[\s\S]{0,120}?\$?\s*([\d,]+\.\d{2})/i)||[])[1]||"";
+        if(!bal){var all=txt.match(/[\d,]+\.\d{2}/g);if(all&&all.length)bal=all[all.length-1];}
         var name="";
         var mi=txt.search(/Bill\s*To:?/i);
         if(mi>=0){var seg=txt.slice(mi).split(/\n/).map(function(x){return x.trim();}).filter(function(x){return x&&!/^Bill\s*To/i.test(x);});if(seg.length)name=seg[0];}
         if(name&&name.indexOf(",")<0){var pz=name.split(/\s+/);if(pz.length>=2)name=pz[pz.length-1]+", "+pz.slice(0,-1).join(" ");}
         var nEl=document.getElementById("qaName"),aEl=document.getElementById("qaAmt"),iEl=document.getElementById("qaInv");
+        function fl(el){if(!el)return;el.style.transition="background .3s";el.style.background="#F3EBD9";setTimeout(function(){el.style.background="";},1600);}
         var got=0;
-        if(name&&nEl&&!nEl.value){nEl.value=name;got++;}
-        if(bal&&aEl&&!aEl.value){aEl.value=bal.replace(/,/g,"");got++;}
-        if(inv&&iEl&&!iEl.value){iEl.value=inv;got++;}
+        if(name&&nEl&&!nEl.value){nEl.value=name;fl(nEl);got++;}
+        if(bal&&aEl&&!aEl.value){aEl.value=bal.replace(/,/g,"");fl(aEl);got++;}
+        if(inv&&iEl&&!iEl.value){iEl.value=inv;fl(iEl);got++;}
         try{toast(got?TT("PDF leído ✓ — revisa los campos antes de guardar","PDF read ✓ — review fields before saving"):TT("PDF leído pero no reconocí los datos — llena a mano","PDF read but data not recognized — fill manually"),got?undefined:"warn");}catch(e){}
       }).catch(function(){try{toast(TT("PDF sin texto legible (¿escaneado?) — llena a mano","No readable text (scan?) — fill manually"),"warn");}catch(e){}});
     };
@@ -28244,10 +28260,8 @@ window.qaParse=function(){
   });
 };
 /* Board de cobranza por categoría (CC declined / pending / etc.) */
-window.cabOpen=function(){
-  var ov=document.getElementById("cabOv");
-  if(!ov){ov=document.createElement("div");ov.id="cabOv";document.body.appendChild(ov);}
-  var pool=cbPool(),groups={},order=[];
+function cabHTML(pool){
+  var groups={},order=[];
   pool.forEach(function(ev){
     var p=ev.payload||{};
     var gi=null;try{gi=(typeof _alertReasonInfo==="function")?_alertReasonInfo(p.reason):null;}catch(e){}
@@ -28256,12 +28270,8 @@ window.cabOpen=function(){
     groups[g].items.push(ev);groups[g].tot+=_alertAmount(ev);
   });
   order.sort(function(a,b){return groups[b].tot-groups[a].tot;});
-  ov.innerHTML='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg,#faf8f4);z-index:5;padding:calc(4px + env(safe-area-inset-top,0px)) 0 8px">'
-    +'<h2 style="margin:0;font-size:19px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("layout-kanban",18)+' '+TT("Cobranza por categoría","Collections by category")+'</h2>'
-    +'<span style="font-size:12px;color:var(--i3,#8a8073);font-weight:700">'+pool.length+' · $'+Math.round(pool.reduce(function(t,x){return t+_alertAmount(x);},0)).toLocaleString("en-US")+'</span>'
-    +'<button onclick="cbOpen()" style="margin-left:auto;border:none;background:var(--c-money-fg,#065f46);color:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">'+TT("Cobro Sprint","Collections Sprint")+' →</button>'
-    +'<button onclick="document.getElementById(\'cabOv\').style.display=\'none\';document.body.style.overflow=\'\'" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer">×</button></div>'
-    +'<div class="nv-cols">'+order.map(function(g){
+  if(!order.length)return '<div style="font-size:12.5px;color:var(--i3,#8a8073);font-weight:700;padding:8px 2px">'+TT("Sin cobros pendientes ✓","No pending collections ✓")+'</div>';
+  return '<div class="nv-cols">'+order.map(function(g){
       var G=groups[g];
       return '<div class="nv-col"><div class="nv-colh" style="background:'+G.color+'22;color:'+G.color+'">'+esc3(g.toUpperCase())+' · '+G.items.length+'<span>$'+Math.round(G.tot).toLocaleString("en-US")+'</span></div>'
         +G.items.map(function(ev){
@@ -28274,6 +28284,21 @@ window.cabOpen=function(){
           +'</div>';
         }).join("")+'</div>';
     }).join("")+'</div>';
+}
+window.cabToggle=function(){
+  try{localStorage.setItem("aspCabInline",localStorage.getItem("aspCabInline")==="0"?"1":"0");}catch(e){}
+  try{_alertsTools();}catch(e){}
+};
+window.cabOpen=function(){
+  var ov=document.getElementById("cabOv");
+  if(!ov){ov=document.createElement("div");ov.id="cabOv";document.body.appendChild(ov);}
+  var pool=cbPool();
+  ov.innerHTML='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg,#faf8f4);z-index:5;padding:calc(4px + env(safe-area-inset-top,0px)) 0 8px">'
+    +'<h2 style="margin:0;font-size:19px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("layout-kanban",18)+' '+TT("Cobranza por categoría","Collections by category")+'</h2>'
+    +'<span style="font-size:12px;color:var(--i3,#8a8073);font-weight:700">'+pool.length+' · $'+Math.round(pool.reduce(function(t,x){return t+_alertAmount(x);},0)).toLocaleString("en-US")+'</span>'
+    +'<button onclick="cbOpen()" style="margin-left:auto;border:none;background:var(--c-money-fg,#065f46);color:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">'+TT("Cobro Sprint","Collections Sprint")+' →</button>'
+    +'<button onclick="document.getElementById(\'cabOv\').style.display=\'none\';document.body.style.overflow=\'\'" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer">×</button></div>'
+    +cabHTML(pool);
   ov.style.display="block";document.body.style.overflow="hidden";
 };
 window.qaSave=function(){
