@@ -28211,30 +28211,41 @@ window.qaOpen=function(){
   ov.style.display="flex";
   setTimeout(function(){try{document.getElementById("qaName").focus();}catch(e){}},50);
 };
-/* ── FIX CRÍTICO (Jul 2026): _custKeys preciso — las alertas ya no se contagian
-   entre clientes que comparten apellido (Meyer, Doug & Carrie ≠ Meyer, Lisa).
-   Mantiene el match entre formatos ("Doug Meyer" = "Meyer, Doug") vía llaves
-   tok:/fp:. La llave floja fam: queda SOLO para nombres de una sola palabra.
-   Sobrescribe la función global del app base; los eventos viejos en Firestore
-   siguen encontrando a su dueño por el nombre completo normalizado. ── */
+/* ── FIX CRÍTICO v2 (Jul 2026, caso Doug Meyer x3): identidad de cliente estricta.
+   Bug 1 (alertas): _custKeys emparejaba por apellido o por apellido+primer nombre
+   → las 3 parejas "Meyer, Doug & (Karla|Carrie|Edith)" compartían alertas de pago.
+   Bug 2 (fusión de clientes): _custGroupKey del app base DESCARTA al cónyuge en
+   nombres con coma → los 3 Doug Meyer eran UN solo cliente: visitas sumadas,
+   direcciones cruzadas, deuda de Edith diagnosticada a Carrie.
+   Regla nueva: identidad = conjunto COMPLETO de nombres (orden libre). Para
+   clientes de un solo nombre de pila la llave de grupo es IDÉNTICA a la anterior
+   (no se re-agrupa nada más que las parejas). fam: suelta solo para nombres de
+   una palabra. Eventos viejos en Firestore matchean por nombre completo. ── */
+function _aspNormName(s){
+  var l=String(s).toLowerCase();
+  if(l.normalize)l=l.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  return l.replace(/['\u2018\u2019\-\u2010\u2011\u2013\u2014.]/g,"");
+}
 window._custKeys=function(s){
   if(!s)return [];
-  var lower=String(s).toLowerCase();
-  var out=[];
+  var lower=_aspNormName(s),out=[];
   var fullNorm=lower.replace(/[^a-z0-9]/g,"");
   if(fullNorm)out.push(fullNorm);
   var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
   var sig=clean.replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
-  if(sig.length>=2){
-    out.push("tok:"+sig.slice().sort().join(""));
-    var fams=[],giv=[];
-    if(clean.indexOf(",")>=0){
-      fams=[clean.split(",")[0].trim().replace(/\s+/g,"")];
-      giv=clean.split(",").slice(1).join(" ").replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
-    }else{fams=[sig[0],sig[sig.length-1]];giv=sig;}
-    fams.forEach(function(f){if(f.length<3)return;giv.forEach(function(g){if(g!==f)out.push("fp:"+f+":"+g);});});
-  }else if(sig.length===1&&sig[0].length>=3)out.push("fam:"+sig[0]);
+  if(sig.length>=2)out.push("tok:"+sig.slice().sort().join("+"));
+  else if(sig.length===1&&sig[0].length>=3)out.push("fam:"+sig[0]);
   return out;
+};
+window._custGroupKey=function(s){
+  if(!s)return "";
+  var lower=_aspNormName(s);
+  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
+  if(!clean)return lower.replace(/[^a-z0-9]/g,"");
+  var sig=clean.replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
+  if(!sig.length)return lower.replace(/[^a-z0-9]/g,"");
+  sig.sort();
+  return "fam:"+sig.join("|");
 };
 function _pdfjsLoad(cb){
   if(window.pdfjsLib)return cb(window.pdfjsLib);
