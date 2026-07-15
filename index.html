@@ -28196,6 +28196,8 @@ window.qaOpen=function(){
     +'<input id="qaAmt" type="number" step="0.01" placeholder="'+TT("Monto (balance due de QB)","Amount (QB balance due)")+'" '+f+'>'
     +'<input id="qaInv" placeholder="QB Invoice # ('+TT("opcional","optional")+')" '+f+'>'
     +'<input id="qaNote" placeholder="'+TT("Nota (ej: venta de cover)","Note (e.g. cover sale)")+'" '+f+'>'
+    +'<label style="display:block;font-size:11.5px;font-weight:700;color:var(--i2,#5a5248);margin:2px 0 4px">'+TT("PDF de la factura (opcional, máx ~700KB)","Invoice PDF (optional, max ~700KB)")+'</label>'
+    +'<input id="qaPdf" type="file" accept="application/pdf" style="width:100%;font-size:12px;margin-bottom:10px;font-family:inherit">'
     +'<button onclick="qaSave()" style="width:100%;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">'+TT("Guardar — visible para todos","Save — visible to everyone")+'</button></div>';
   ov.style.display="flex";
   setTimeout(function(){try{document.getElementById("qaName").focus();}catch(e){}},50);
@@ -28206,19 +28208,35 @@ window.qaSave=function(){
   var inv=((document.getElementById("qaInv")||{}).value||"").trim();
   var nt=((document.getElementById("qaNote")||{}).value||"").trim();
   if(!nm||isNaN(am)||am<=0){try{toast(TT("Cliente y monto son obligatorios","Customer and amount are required"),"warn");}catch(e){}return;}
-  try{
-    if(typeof db!=="undefined"&&db)db.collection("cross_app_events").add({
-      eventType:"payment_alert",source:"manual",sourceApp:"tech-tickets",status:"open",
-      customerName:nm,
-      customerKeys:(typeof _custKeys==="function")?_custKeys(nm):[],
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
-      payload:{amount:+am.toFixed(2),invoiceNumber:inv||null,reason:"open_invoice",reasonLabel:nt||"Manual entry",ticketId:null}
-    }).catch(function(){});
-  }catch(e){}
-  try{toast(TT("Factura abierta registrada ✓ — ya está en el Cobro Sprint de todos","Open invoice saved ✓ — now in everyone\'s Collections Sprint"));}catch(e){}
-  var ov=document.getElementById("qaOv");if(ov)ov.style.display="none";
-  try{_alertsTools();}catch(e){}
+  var fEl=document.getElementById("qaPdf");
+  var file=(fEl&&fEl.files&&fEl.files[0])||null;
+  function _write(pdfB64){
+    var payload={amount:+am.toFixed(2),invoiceNumber:inv||null,reason:"open_invoice",reasonLabel:nt||"Manual entry",ticketId:null};
+    if(pdfB64)payload.pdfBase64=pdfB64;
+    try{
+      if(typeof db!=="undefined"&&db)db.collection("cross_app_events").add({
+        eventType:"payment_alert",source:"manual",sourceApp:"tech-tickets",status:"open",
+        customerName:nm,
+        customerKeys:(typeof _custKeys==="function")?_custKeys(nm):[],
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
+        payload:payload
+      }).catch(function(){});
+    }catch(e){}
+    try{toast(TT("Factura abierta registrada ✓","Open invoice saved ✓")+(pdfB64?" + PDF":""));}catch(e){}
+    var ov=document.getElementById("qaOv");if(ov)ov.style.display="none";
+    try{_alertsTools();}catch(e){}
+  }
+  if(!file){_write(null);return;}
+  if(file.size>716800){try{toast(TT("PDF muy grande (máx ~700KB) — guárdala sin PDF o comprímela","PDF too large (max ~700KB) — save without it or compress"),"warn");}catch(e){}return;}
+  var rd=new FileReader();
+  rd.onload=function(){
+    var b64=String(rd.result||"");
+    var ix=b64.indexOf("base64,");
+    _write(ix>=0?b64.slice(ix+7):b64);
+  };
+  rd.onerror=function(){_write(null);};
+  rd.readAsDataURL(file);
 };
 window.cbCopyName=function(){var ev=cbQ[cbIdx];if(ev)_copyPlain(ev.customerName||"",TT("Nombre copiado: ","Name copied: ")+(ev.customerName||"")+" ✓");};
 window.cbGo=function(){
