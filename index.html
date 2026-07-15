@@ -5666,15 +5666,23 @@ function _lgPad(k){
   _lgBuf+=k;_lgDotsDraw();
   if(_lgBuf.length===4){
     var inp=document.getElementById("loginPinIn");if(inp)inp.value=_lgBuf;
-    try{doLogin();}catch(_e){}
-    setTimeout(function(){
+    // v1.11.2: ESPERAR de verdad el resultado de doLogin. doLogin ahora habla con
+    // el servidor (staffLogin) y tarda más que los 420ms del temporizador viejo,
+    // que asumía "PIN incorrecto" antes de tiempo. Ahora el error solo se muestra
+    // si doLogin DEVUELVE false (PIN realmente mal), no por impaciencia.
+    var _typed=_lgBuf;
+    Promise.resolve().then(function(){return doLogin();}).then(function(ok){
+      if(ok)return;                     // entró bien → no mostrar nada
       var ls=document.getElementById("loginScreen");
       if(ls&&ls.style.display!=="none"){
         _lgBuf="";_lgDotsDraw();
         var bx=document.getElementById("lgFocus");if(bx){bx.classList.add("err");}
         var er=document.getElementById("lgErr");if(er)er.textContent="PIN incorrecto — intenta de nuevo";
       }
-    },420);
+    }).catch(function(){
+      // doLogin lanzó (raro) → limpiar sin acusar de PIN incorrecto
+      _lgBuf="";_lgDotsDraw();
+    });
   }
 }
 function _lgKeys(e){
@@ -5776,15 +5784,15 @@ async function doLogin(){
                                 sesión anónima, exactamente como hoy. Nadie se queda
                                 fuera si la función aún no está desplegada. */
   var _st=await _staffSignIn(selectedLoginUser.name,pin);
-  if(_st.locked){toast("Too many attempts. Try again in "+_st.minutes+" min.","err");return}
-  if(_st.badPin){document.getElementById("loginPinErr").style.display="block";return}
+  if(_st.locked){toast("Too many attempts. Try again in "+_st.minutes+" min.","err");return false}
+  if(_st.badPin){document.getElementById("loginPinErr").style.display="block";return false}
   if(!_st.ok){
     if(STAFF_REQUIRED){
       toast("Couldn't start your staff session. Check your connection and try again.","err");
-      return;
+      return false;
     }
     // red de seguridad: como siempre
-    if(!(await _pinMatches(selectedLoginUser,pin))){document.getElementById("loginPinErr").style.display="block";return}
+    if(!(await _pinMatches(selectedLoginUser,pin))){document.getElementById("loginPinErr").style.display="block";return false}
   }
   currentUser=selectedLoginUser;
   isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
@@ -5809,6 +5817,7 @@ async function doLogin(){
   // aparte. Best-effort: si la función no está desplegada, no hace nada.
   try{if(isAdmin&&currentUser&&currentUser.role==="admin")_staffAutoSeed(pin);}catch(_e){}
   try{localStorage.setItem("aspLastUser",currentUser.name||"")}catch(_e){}
+  return true;   // v1.11.2: el pinpad Focus espera este resultado
   try{_presenceOnLogin()}catch(_e){}
   document.getElementById("loginScreen").style.display="none";
   updAdmin();
