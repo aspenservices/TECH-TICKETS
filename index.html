@@ -5449,7 +5449,7 @@ let allUsers=[]; // from Firestore
    hace que la app exija el PIN de nuevo si la sesión de personal no está activa.
    Ver DESPLIEGUE-SEGURIDAD.md — el orden importa. */
 var STAFF_LOGIN_FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/staffLogin";
-var STAFF_REQUIRED=false;   // ← ponlo en true SOLO en el paso 5 del despliegue
+var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en la caja fuerte (staff_auth)
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
 async function _isStaffSession(){
