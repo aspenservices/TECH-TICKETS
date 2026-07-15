@@ -28211,6 +28211,31 @@ window.qaOpen=function(){
   ov.style.display="flex";
   setTimeout(function(){try{document.getElementById("qaName").focus();}catch(e){}},50);
 };
+/* ── FIX CRÍTICO (Jul 2026): _custKeys preciso — las alertas ya no se contagian
+   entre clientes que comparten apellido (Meyer, Doug & Carrie ≠ Meyer, Lisa).
+   Mantiene el match entre formatos ("Doug Meyer" = "Meyer, Doug") vía llaves
+   tok:/fp:. La llave floja fam: queda SOLO para nombres de una sola palabra.
+   Sobrescribe la función global del app base; los eventos viejos en Firestore
+   siguen encontrando a su dueño por el nombre completo normalizado. ── */
+window._custKeys=function(s){
+  if(!s)return [];
+  var lower=String(s).toLowerCase();
+  var out=[];
+  var fullNorm=lower.replace(/[^a-z0-9]/g,"");
+  if(fullNorm)out.push(fullNorm);
+  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
+  var sig=clean.replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
+  if(sig.length>=2){
+    out.push("tok:"+sig.slice().sort().join(""));
+    var fams=[],giv=[];
+    if(clean.indexOf(",")>=0){
+      fams=[clean.split(",")[0].trim().replace(/\s+/g,"")];
+      giv=clean.split(",").slice(1).join(" ").replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
+    }else{fams=[sig[0],sig[sig.length-1]];giv=sig;}
+    fams.forEach(function(f){if(f.length<3)return;giv.forEach(function(g){if(g!==f)out.push("fp:"+f+":"+g);});});
+  }else if(sig.length===1&&sig[0].length>=3)out.push("fam:"+sig[0]);
+  return out;
+};
 function _pdfjsLoad(cb){
   if(window.pdfjsLib)return cb(window.pdfjsLib);
   var sc=document.createElement("script");
