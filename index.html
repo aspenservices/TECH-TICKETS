@@ -28332,20 +28332,9 @@ function _aspIsTechVisit(t){
   var isDone=false;try{isDone=(typeof done!=="undefined"&&Array.isArray(done)&&done.indexOf(t)>=0);}catch(e){}
   return isDone||!!(t.arrival||t.departure)||st==="done"||st==="complete"||(Array.isArray(t.parts)&&t.parts.length>0);
 }
-/* Service History tab: mismas cards limpias que la columna derecha del tab Notes.
-   Muere la vista vieja (KPIs + WARRANTIES/INSTALLED EQUIPMENT separado + REPEATED
-   WORK). El warranty ahora es un chip DENTRO de cada card; el reporte del técnico
-   se abre inline con "Ver detalles del trabajo". */
-if(typeof _c360Render==="function"&&!window._c360Render._asp){
-  window._c360Render=function(tkts){
-    var vis=(tkts||[]).filter(_aspIsTechVisit).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
-    if(!vis.length)return '<div style="text-align:center;padding:36px 18px;color:var(--i3,#8a8073);font-size:13px">'+TT("Sin visitas técnicas completadas todavía.","No completed technician visits yet.")+'</div>';
-    var h='<div style="font-size:12px;color:var(--i3,#8a8073);margin:2px 2px 14px;line-height:1.5">'+TT("Trabajo realizado por los técnicos — toca una visita para ver el reporte completo, partes y fotos.","Work performed by technicians — tap a visit to see the full report, parts and photos.")+'</div>';
-    h+=vis.map(_aspTechCardHTML).join("");
-    return h;
-  };
-  window._c360Render._asp=1;
-}
+/* Service History: se usa el render ORIGINAL de la app (cards con Service
+   Performed, técnico/fecha/partes/warranty/fotos, botón de detalle, Field Report
+   y PDF reenviable al cliente). NO se sobrescribe — se restauró la lógica base. */
 /* ── Registro administrativo acumulativo. Guarda en cross_app_events (colección
    que las reglas de Firestore YA permiten) con eventType:"customer_note" y
    status:"note" — así el listener de alertas (status=="open") las ignora.
@@ -28467,7 +28456,7 @@ function _aspTechCardHTML(t){
 function _aspNotesTabExtras(){
   if(typeof qbCustTab==="undefined"||qbCustTab!=="info")return;
   var tb=document.querySelector(".qb-cust-tab-body");
-  if(!tb||document.getElementById("aspLogBox"))return;
+  if(!tb)return;
   var id=_aspLogDocId();if(!id)return;
   if(_aspLogCache[id]===undefined&&!_aspLogLoading[id]){
     _aspLogLoading[id]=1;
@@ -28475,8 +28464,7 @@ function _aspNotesTabExtras(){
       if(_aspLogCache[id]===undefined)_aspLogCache[id]=entries||[];
       delete _aspLogLoading[id];
       window._aspLogErr=errMsg||"";
-      var box=document.getElementById("aspLogBox");
-      if(box){box.remove();try{_aspNotesTabExtras();}catch(e){}}
+      try{rndrCust();}catch(e){}
     };
     var _nm=(document.getElementById("custName")||{}).value||"";
     var _myKeys=(typeof _custKeys==="function")?_custKeys(_nm):[];
@@ -28499,37 +28487,34 @@ function _aspNotesTabExtras(){
     }catch(e){clearTimeout(_to);_fin([],String(e&&e.message||e).slice(0,120));}
   }
   var entries=(_aspLogCache[id]||[]).slice();
-  var tkts=[];
-  try{
-    tkts=[].concat(active||[],done||[]).filter(function(t){
-      if(!t||!t.customer)return false;
-      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||String(t.customer).trim().toLowerCase();
-      return k===selectedCustKey;
-    });
-  }catch(e){}
-  var visits=tkts.filter(_aspIsTechVisit).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
-  var story="";try{story=(_compileCustomerStory(tkts)||{}).text||"";}catch(e){}
-  var h='<div id="aspLogBox">'
-    +(window._aspLogErr?'<div style="font-size:12px;color:var(--i2,#5a5248);background:var(--c-ash-2,#f3f0ea);border-radius:8px;padding:7px 10px;margin-bottom:10px;font-weight:600">'+esc3(window._aspLogErr)+'</div>':'')
-    +'<div class="asp-twocol">'
-    +'<div id="aspAdminCol" class="asp-col" style="border:1px solid var(--ln,#e5e0d8);border-radius:12px;background:var(--bg,#faf8f4);padding:13px 14px">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">'
-        +'<b style="font-size:13.5px;color:var(--ink,#222)">📋 '+TT("Notas / Agenda (oficina)","Admin Notes / Scheduling")+'</b>'
-        +'<button onclick="_aspPromptNote()" style="margin-left:auto;border:1px dashed var(--br,#a85c1f);background:none;color:var(--br,#a85c1f);border-radius:8px;padding:4px 11px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit">+ '+TT("Agregar nota","Add note")+'</button>'
-      +'</div>'
-      +'<div style="font-size:10.5px;color:var(--i3,#8a8073);margin-bottom:12px">'+TT("Llamadas, citas y acciones administrativas — se acumulan, nunca se borran.","Internal notes, calls, follow-ups, and scheduling activity.")+'</div>'
-      +(entries.length?entries.map(_aspLogEntryHTML).join(""):'<div style="font-size:12px;color:var(--i3,#8a8073);line-height:1.5;padding:2px 2px 6px">'+(_aspLogLoading[id]?TT("Cargando…","Loading…"):TT("Aún no hay notas administrativas. Las citas programadas y actualizaciones de oficina aparecerán aquí.","No administrative notes yet. Scheduled appointments and office updates will appear here."))+'</div>')
-      +(story?'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--i3,#8a8073);padding:4px 0">🗂 '+TT("Notas históricas de tickets","Historical ticket notes")+'</summary><div style="border:1px solid var(--ln,#e5e0d8);border-radius:10px;background:var(--cd,#fff);padding:10px 12px;margin-top:6px;font-size:12px;line-height:1.6;white-space:pre-line;color:var(--i2,#5a5248)">'+esc3(story)+'</div></details>':'')
-    +'</div>'
-    +'<div id="aspTechCol" class="asp-col" style="border:1px solid var(--ln,#e5e0d8);border-radius:12px;background:var(--bg,#faf8f4);padding:13px 14px">'
-      +'<b style="font-size:13.5px;color:var(--ink,#222)">🔧 '+TT("Historial técnico","Technician Service History")+'</b>'
-      +'<div style="font-size:10.5px;color:var(--i3,#8a8073);margin:2px 0 12px">'+TT("Solo trabajo realizado por técnicos.","Work performed by technicians and job history.")+'</div>'
-      +(visits.length?visits.map(_aspTechCardHTML).join(""):'<div style="font-size:12px;color:var(--i3,#8a8073);line-height:1.5">'+TT("Sin visitas técnicas completadas todavía.","No completed technician visits yet.")+'</div>')
-    +'</div>'
-    +'</div></div>';
-  var kids=Array.prototype.slice.call(tb.children);
-  kids.forEach(function(k){k.style.display="none";});
-  tb.insertAdjacentHTML("afterbegin",h);
+  // NO ocultamos el contenido base (las notas QB históricas ya se muestran ahí).
+  // Solo: (a) un enlace discreto "+ Add note", (b) las notas nuevas (citas,
+  // llamadas, etc. guardadas en cross_app_events) agregadas al final del mismo
+  // hilo cronológico, con el MISMO estilo desplazado de QuickBooks. Sin bloque
+  // ni título "Admin Notes / Scheduling", sin tarjetas vacías.
+  if(!document.getElementById("aspAddNoteBar")){
+    var bar=document.createElement("div");
+    bar.id="aspAddNoteBar";
+    bar.style.cssText="display:flex;justify-content:flex-end;margin:0 0 8px";
+    bar.innerHTML='<button onclick="_aspPromptNote()" style="border:1px dashed var(--br,#a85c1f);background:none;color:var(--br,#a85c1f);border-radius:8px;padding:4px 11px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit">+ '+TT("Agregar nota","Add note")+'</button>';
+    tb.insertBefore(bar,tb.firstChild);
+  }
+  if(entries.length&&!document.getElementById("aspNoteExtra")){
+    var lines=entries.map(function(e){return (e.when||"")+" — "+(e.by||"")+": "+(e.text||"");}).join("\n");
+    var storyDiv=tb.querySelector('div[style*="white-space:pre-line"]');
+    if(storyDiv){
+      var pre=storyDiv.textContent.trim()?"\n":"";
+      storyDiv.insertAdjacentHTML("beforeend",'<span id="aspNoteExtra">'+esc3(pre+lines)+'</span>');
+    }else{
+      var empty=Array.prototype.slice.call(tb.querySelectorAll("div")).filter(function(d){return /No notes yet/i.test(d.textContent||"")&&d.children.length===0;});
+      empty.forEach(function(d){d.style.display="none";});
+      var card=document.createElement("div");
+      card.id="aspNoteExtra";
+      card.style.cssText="border:1px solid var(--ln,#e5e0d8);border-radius:12px;background:var(--cd,#fff);padding:15px 16px";
+      card.innerHTML='<div style="font-size:13.5px;color:#2c3a42;line-height:1.65;white-space:pre-line">'+esc3(lines)+'</div>';
+      tb.appendChild(card);
+    }
+  }
 }
 /* ── Enhancer de encabezado Customer 360 (SOLO visual). Corre después de
    rndrCust; envuelve nodos ya renderizados sin renombrar IDs/eventos:
@@ -28602,29 +28587,8 @@ function _aspCustHeaderEnhance(){
     det.appendChild(grid);
   }
 }
-/* Chips Notes / Service History → NO cambian de vista: mantienen la pantalla de
-   dos columnas y hacen scroll suave + resalte a la columna correspondiente.
-   Spa Description y Photos siguen normales. */
-window._aspScrollHi=function(colId){
-  var el=document.getElementById(colId);if(!el)return;
-  try{el.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){try{el.scrollIntoView();}catch(e2){}}
-  el.classList.remove("asp-flash");void el.offsetWidth;el.classList.add("asp-flash");
-  setTimeout(function(){el.classList.remove("asp-flash");},1500);
-};
-if(typeof qbCustSetTab==="function"&&!qbCustSetTab._asp){
-  var _qbCustSetTabBase=qbCustSetTab;
-  window.qbCustSetTab=function(tab){
-    if(tab==="history"||tab==="info"){
-      var wasInfo=(typeof qbCustTab!=="undefined"&&qbCustTab==="info");
-      _qbCustSetTabBase("info");
-      var target=(tab==="history")?"aspTechCol":"aspAdminCol";
-      setTimeout(function(){try{_aspScrollHi(target);}catch(e){}},wasInfo?20:90);
-      return;
-    }
-    _qbCustSetTabBase(tab);
-  };
-  window.qbCustSetTab._asp=1;
-}
+/* Los tabs Notes / Spa / Photos / Service History funcionan con su lógica
+   ORIGINAL (no se intercepta qbCustSetTab). */
 if(typeof rndrCust==="function"&&!rndrCust._asp){
   var _rndrCustBase=rndrCust;
   window.rndrCust=function(){
