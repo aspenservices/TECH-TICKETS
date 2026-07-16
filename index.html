@@ -29186,5 +29186,370 @@ window.bsReviewSkipped=function(){
 </script>
 <!-- ════ END ASPEN BILLING SPRINT ════ -->
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CUSTOMER 360 V3 — unified Notes + Technician Service History
+     Notes = customer/admin activity. Service History = work actually performed.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="aspenCustomer360V3">
+.cust-page .qb-cust-hero{padding:16px 20px 14px!important;background:linear-gradient(135deg,var(--acl),var(--cd) 58%,var(--bg))!important}
+.cust-page .qb-cust-hero .app-av{width:52px!important;height:52px!important;font-size:18px!important}
+.cust-page .qb-cust-hero-name{font-size:21px!important;line-height:1.15}
+.cust-page .qb-cust-hero-sub{margin-top:6px!important;gap:6px!important}
+.cust-page .qb-cust-hero-sub span{padding:4px 9px!important;font-size:11.5px!important}
+.cust-page .asp-kpi-strip{margin:12px 16px 4px!important;grid-template-columns:repeat(6,minmax(118px,1fr));gap:8px!important}
+.cust-page .asp-kpi{min-height:82px;padding:11px 12px!important;border-radius:12px!important}
+.cust-page .asp-kpi .k-l{font-size:10px!important;line-height:1.25}
+.cust-page .asp-kpi .k-v{font-size:18px!important;margin-top:6px}
+.cust-page .asp-kpi .k-s{font-size:10px!important}
+.cust-page .asp-cust-info{margin:12px 16px 10px!important;border-radius:12px!important}
+.cust-page .asp-cust-info>summary{padding:11px 14px!important}
+.cust-page .qb-cust-action-bar{padding:4px 16px 12px!important}
+.cust-page .qb-cust-tabs{padding:5px 16px!important}
+.cust-page .qb-cust-tab-body{padding:14px 16px 22px!important}
+.cust-page .asp-twocol-v3{display:grid;grid-template-columns:minmax(320px,1fr) minmax(480px,1.48fr);gap:14px;align-items:start}
+.cust-page .asp-panel-v3{border:1px solid var(--ln);border-radius:14px;background:var(--cd);box-shadow:var(--sh-xs);min-width:0;overflow:hidden}
+.cust-page .asp-panel-head-v3{display:flex;align-items:center;gap:9px;padding:13px 14px;border-bottom:1px solid var(--ln);background:color-mix(in srgb,var(--bg) 58%,var(--cd));position:sticky;top:51px;z-index:3}
+.cust-page .asp-panel-head-v3 .ttl{font-size:13px;font-weight:800;color:var(--br);letter-spacing:.1px}
+.cust-page .asp-panel-head-v3 .sub{font-size:10.5px;color:var(--i3);font-weight:600}
+.cust-page .asp-count-v3{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;border-radius:999px;background:var(--acl);color:var(--acd);font-size:10.5px;font-weight:800}
+.cust-page .asp-panel-body-v3{padding:13px 14px}
+.cust-page .asp-notes-scroll-v3{max-height:720px;overflow:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--ln) transparent}
+.cust-page .asp-note-empty-v3,.cust-page .asp-history-empty-v3{padding:34px 18px;text-align:center;color:var(--i3);font-size:12.5px;line-height:1.55}
+.cust-page .asp-add-note-v3{margin-left:auto;border:1px solid var(--ln);background:var(--cd);color:var(--br);border-radius:9px;padding:6px 10px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:5px}
+.cust-page .asp-add-note-v3:hover{border-color:var(--ac);color:var(--acd);background:var(--acl)}
+.cust-page .asp-tech-list-v3{display:flex;flex-direction:column;gap:10px}
+.cust-page .asp-service-card-v3{border:1px solid var(--ln);border-radius:12px;background:var(--cd);padding:13px 14px;box-shadow:0 1px 2px rgba(60,43,31,.04)}
+.cust-page .asp-service-card-v3:hover{border-color:color-mix(in srgb,var(--ac) 42%,var(--ln));box-shadow:var(--sh-sm)}
+.cust-page .asp-service-date-v3{display:flex;flex-direction:column;align-items:center;justify-content:center;width:48px;min-width:48px;height:54px;border-radius:10px;background:var(--acl);color:var(--acd);font-variant-numeric:tabular-nums}
+.cust-page .asp-service-date-v3 b{font-size:18px;line-height:1}.cust-page .asp-service-date-v3 span{font-size:9px;font-weight:800;text-transform:uppercase;margin-top:4px}
+.cust-page .asp-report-v3{font-size:12.5px;line-height:1.55;color:var(--ink);white-space:pre-line;margin-top:8px}
+.cust-page .asp-service-actions-v3{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--ln)}
+.cust-page .asp-service-actions-v3 button{border:1px solid var(--ln);background:var(--bg);color:var(--i2);border-radius:8px;padding:6px 9px;font-size:10.5px;font-weight:800}
+.cust-page .asp-service-actions-v3 button.primary{background:var(--br);border-color:var(--br);color:#fff}
+.cust-page .asp-service-actions-v3 button.report{background:var(--ac);border-color:var(--ac);color:#fff}
+.cust-page .asp-service-actions-v3 button:hover{transform:translateY(-1px)}
+.cust-page .asp-note-row-v3{position:relative;padding:0 0 14px 27px}
+.cust-page .asp-note-row-v3:last-child{padding-bottom:2px}
+.cust-page .asp-note-dot-v3{position:absolute;left:1px;top:4px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;background:var(--acl);box-shadow:0 0 0 2px var(--cd)}
+.cust-page .asp-note-line-v3{position:absolute;left:9.5px;top:24px;bottom:0;width:1px;background:var(--ln)}
+.cust-page .asp-note-row-v3:last-child .asp-note-line-v3{display:none}
+.cust-page .asp-note-card-v3{border:1px solid var(--ln);border-radius:10px;padding:9px 11px;background:var(--cd)}
+.cust-page .asp-note-meta-v3{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+.cust-page .asp-note-meta-v3 b{font-size:10.5px;color:var(--i3)}
+.cust-page .asp-note-type-v3{font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--c-neutral-bg);color:var(--c-neutral-fg)}
+.cust-page .asp-note-by-v3{margin-left:auto;font-size:9.5px;color:var(--i3);font-weight:700}
+.cust-page .asp-note-text-v3{font-size:12px;line-height:1.5;white-space:pre-line;color:var(--ink)}
+#aspCustScheduleOv{position:fixed;inset:0;z-index:var(--z-dialog);background:rgba(20,14,10,.52);display:none;align-items:center;justify-content:center;padding:18px}
+#aspCustScheduleOv.open{display:flex}
+#aspCustScheduleOv .asp-sch-card{width:min(520px,100%);background:var(--cd);border:1px solid var(--ln);border-radius:18px;box-shadow:var(--sh-lg);overflow:hidden}
+#aspCustScheduleOv .asp-sch-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--ln);background:var(--bg)}
+#aspCustScheduleOv .asp-sch-head b{font-size:16px;color:var(--br)}
+#aspCustScheduleOv .asp-sch-body{padding:16px 18px}
+#aspCustScheduleOv label{display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;color:var(--i3);margin:0 0 5px}
+#aspCustScheduleOv input,#aspCustScheduleOv select,#aspCustScheduleOv textarea{width:100%;border:1.5px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--ink);padding:10px 11px;font-family:inherit;font-size:13px;margin-bottom:12px}
+#aspCustScheduleOv textarea{min-height:92px;resize:vertical}
+#aspCustScheduleOv .asp-sch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#aspCustScheduleOv .asp-sch-actions{display:flex;gap:8px;justify-content:flex-end;padding:13px 18px;border-top:1px solid var(--ln);background:var(--bg)}
+#aspCustScheduleOv .asp-sch-actions button{border:1px solid var(--ln);border-radius:10px;padding:10px 15px;background:var(--cd);color:var(--i2);font-size:12px;font-weight:800}
+#aspCustScheduleOv .asp-sch-actions button.primary{background:var(--br);border-color:var(--br);color:#fff}
+@media(max-width:1180px){.cust-page .asp-kpi-strip{grid-template-columns:repeat(3,1fr)}.cust-page .asp-twocol-v3{grid-template-columns:minmax(290px,.92fr) minmax(410px,1.35fr)}}
+@media(max-width:840px){.cust-page .asp-twocol-v3{grid-template-columns:1fr}.cust-page .asp-notes-scroll-v3{max-height:none}.cust-page .asp-panel-head-v3{top:49px}.cust-page .asp-kpi-strip{grid-template-columns:repeat(2,1fr)}.cust-page .qb-cust-tab-body{padding:10px!important}}
+@media(max-width:520px){#aspCustScheduleOv .asp-sch-grid{grid-template-columns:1fr}.cust-page .asp-panel-body-v3{padding:11px}.cust-page .asp-service-card-v3{padding:11px}.cust-page .asp-service-date-v3{width:42px;min-width:42px}}
+</style>
+<script id="aspenCustomer360V3Script">
+(function(){
+"use strict";
+
+var ADMIN_RE=/^\s*(?:(?:\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)?[\s·—:\-]*)?(?:service\s*(?:call|request)|customer\s+(?:called|reported|will call)|called\s+customer|appointment\s+(?:scheduled|set|confirmed|cancelled|canceled)|scheduled|rescheduled?|reprogram|cancelled?|canceled|voice\s*mail|voicemail|\bvm\b|office\s+note|left\s+(?:a\s+)?message|no\s+answer|estimate\s+(?:sent|approved|declined|created)|invoice|parts?\s+ordered|reason\s*:|follow\s*up|callback)/i;
+var ADMIN_HEADING=/^\s*(?:—\s*)?(?:tech\s+notes?|notes?\s*&\s*updates?|reschedule)(?:\s*—)?\s*$/i;
+
+function e3(v){try{return typeof esc3==="function"?esc3(String(v==null?"":v)):String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];});}catch(_e){return String(v||"");}}
+function groupKeyForName(name){var k="";try{k=(typeof _custGroupKey==="function"?_custGroupKey(name):"")||String(name||"").trim().toLowerCase();}catch(e){k=String(name||"").trim().toLowerCase();}return k;}
+function logIdForName(name){return groupKeyForName(name).replace(/[^a-zA-Z0-9_|:\-]/g,"_").slice(0,900);}
+function fmtDateHuman(s){if(!s)return "—";var d=new Date(String(s)+"T12:00:00");return isNaN(d.getTime())?String(s):d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}
+function dateParts(s){var d=new Date(String(s||"")+"T12:00:00");if(isNaN(d.getTime()))return{day:"—",mon:""};return{day:String(d.getDate()),mon:d.toLocaleDateString("en-US",{month:"short"})};}
+function currentBy(){try{var n=(currentUser&&currentUser.name)||"";return n?n.slice(0,2).toUpperCase():"—";}catch(e){return "—";}}
+function currentWhen(){var d=new Date();return d.toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"})+" "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});}
+function ticketMs(t){try{return Number(t.createdAtMs)||((t.createdAt&&t.createdAt.toMillis)?t.createdAt.toMillis():0)||new Date(String(t.date||"")+"T12:00:00").getTime()||0;}catch(e){return 0;}}
+function meaningfulLines(raw){return String(raw||"").replace(/\r/g,"").split(/\n+/).map(function(x){return x.trim();}).filter(function(x){return x&&x!=="---"&&!ADMIN_HEADING.test(x);});}
+
+/* Only the technician's actual work belongs in Service History. */
+window._aspCleanTechNotes=function(raw){
+  return meaningfulLines(raw).filter(function(line){return !ADMIN_RE.test(line)&&!/^customer\s+reported\s*:/i.test(line)&&!/^reason\s*:/i.test(line);}).join("\n").trim();
+};
+window._aspVisitNotes=function(t){
+  var raw=String((t&&t.notes)||"").replace(/\r/g,"");
+  if(!raw.trim())return "";
+  var target=String((t&&t.date)||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  var lines=raw.split(/\n/),dateRe=/^\s*(\d{1,4})[\/\-](\d{1,2})[\/\-](\d{1,4})\b/;
+  var hasDated=lines.some(function(l){return dateRe.test(l);});
+  if(!target||!hasDated)return _aspCleanTechNotes(raw);
+  var Y=+target[1],M=+target[2],D=+target[3],out=[],inside=false;
+  function sameDay(a,b,c){a=+a;b=+b;c=+c;var y,m,d;if(a>31){y=a;m=b;d=c;}else{m=a;d=b;y=c;}if(y<100)y+=2000;return y===Y&&m===M&&d===D;}
+  lines.forEach(function(line){
+    var l=line.trim();if(!l||l==="---"||ADMIN_HEADING.test(l))return;
+    var dm=l.match(dateRe);
+    if(dm){inside=sameDay(dm[1],dm[2],dm[3]);if(inside&&!ADMIN_RE.test(l))out.push(l);return;}
+    if(inside&&!ADMIN_RE.test(l)&&!/^customer\s+reported\s*:/i.test(l)&&!/^reason\s*:/i.test(l))out.push(l);
+  });
+  return out.join("\n").trim();
+};
+window._aspIsTechVisit=function(t){
+  if(!t)return false;
+  var st=String(t.status||"").toLowerCase();
+  if(st==="canceled"||st==="cancelled"||st==="reschedule"||st==="pending"||st==="open"||st==="scheduled")return false;
+  var hasTech=Array.isArray(t.techs)&&t.techs.filter(Boolean).length>0;
+  var hasWork=!!(_aspVisitNotes(t)||(Array.isArray(t.parts)&&t.parts.length)||(t.arrival&&t.departure)||(Array.isArray(t.media)&&t.media.length));
+  var terminal=(st==="done"||st==="complete"||st==="completed"||t.fieldReportSubmitted===true);
+  try{if(Array.isArray(done)&&done.some(function(x){return x&&t&&String(x.id)===String(t.id);}))terminal=true;}catch(e){}
+  return hasTech&&terminal&&hasWork;
+};
+
+function serviceTitle(t){
+  var w=(t.workTypes||[]).filter(function(x){return x&&!/^(service\s*call|customer\s*call|appointment|schedule)/i.test(String(x));});
+  return w.join(" · ")||"Service Performed";
+}
+function partLabel(p){return String((p&&(p.n||p.name||p.desc||p.part||p.label||p.item))||"").trim();}
+function serviceCard(t){
+  var id=String(t.id||"").replace(/'/g,"\\'");
+  var dp=dateParts(t.date),tech=(t.techs||[]).filter(Boolean).join(", ")||"—";
+  var report=_aspVisitNotes(t),parts=Array.isArray(t.parts)?t.parts:[];
+  var media=(t.media||[]).filter(function(m){return m&&m.type!=="pdf"&&(m.url||m.data||m.dataUrl);});
+  var warranty="";try{warranty=_aspWarChip(t);}catch(e){}
+  var repeat=Number(t.visitNum)===4?'<span class="asp-chip asp-chip-warn">↻ Repeat</span>':"";
+  var chips=warranty+repeat+(parts.length?'<span class="asp-chip">🧰 '+parts.length+' part'+(parts.length===1?'':'s')+'</span>':'')+(media.length?'<span class="asp-chip">📷 '+media.length+'</span>':'');
+  var partHtml=parts.length?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:9px">'+parts.map(function(p){var nm=partLabel(p);return nm?'<span class="asp-chip">✓ '+e3((p.qty||1)+'× '+nm)+'</span>':'';}).join('')+'</div>':'';
+  var buttons='<div class="asp-service-actions-v3">'
+    +'<button class="primary" onclick="event.stopPropagation();try{openTktDetail(\''+id+'\')}catch(e){}">Open ticket</button>'
+    +'<button class="report" onclick="event.stopPropagation();try{openReportModalById(\''+id+'\')}catch(e){}">Send report</button>'
+    +'<button onclick="event.stopPropagation();try{_visitClientPDF(\''+id+'\')}catch(e){}">PDF</button>'
+    +(media.length?'<button onclick="event.stopPropagation();try{_visitPhotosDownload(\''+id+'\')}catch(e){}">Photos ('+media.length+')</button>':'')
+    +'</div>';
+  return '<article class="asp-service-card-v3">'
+    +'<div style="display:flex;gap:11px;align-items:flex-start">'
+      +'<div class="asp-service-date-v3"><b>'+e3(dp.day)+'</b><span>'+e3(dp.mon)+'</span></div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><b style="font-size:13.5px;color:var(--ink)">'+e3(serviceTitle(t))+'</b><span class="asp-chip asp-chip-ok">✓ Completed</span><span style="margin-left:auto;font-size:10.5px;color:var(--i3);font-weight:700">'+e3(t.date||'')+'</span></div>'
+        +'<div style="font-size:11px;color:var(--i3);font-weight:700;margin-top:4px">Technician: '+e3(tech)+'</div>'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">'+chips+'</div>'
+        +'<div class="asp-report-v3">'+(report?e3(report):'<span style="color:var(--i3);font-style:italic">No technician report was recorded for this visit.</span>')+'</div>'
+        +partHtml+buttons
+      +'</div>'
+    +'</div>'
+  +'</article>';
+}
+
+function classify(text){
+  var t=String(text||"").toLowerCase();
+  if(/resched|reprogram/.test(t))return{ico:"↻",label:"Rescheduled",bg:"var(--c-warning-bg)",fg:"var(--c-warning-fg)"};
+  if(/cancel/.test(t))return{ico:"×",label:"Canceled",bg:"var(--c-danger-bg)",fg:"var(--c-danger-fg)"};
+  if(/schedul|appointment|cita/.test(t))return{ico:"▣",label:"Scheduled",bg:"var(--c-info-bg)",fg:"var(--c-info-fg)"};
+  if(/voicemail|voice\s*mail|\bvm\b|call|llam/.test(t))return{ico:"☎",label:"Call",bg:"var(--c-money-bg)",fg:"var(--c-money-fg)"};
+  if(/estimate|invoice|payment|paid|part.*order/.test(t))return{ico:"▤",label:"Office",bg:"var(--c-neutral-bg)",fg:"var(--c-neutral-fg)"};
+  return{ico:"✎",label:"Note",bg:"var(--c-neutral-bg)",fg:"var(--c-neutral-fg)"};
+}
+function noteRow(x){
+  var m=classify(x.text);
+  return '<div class="asp-note-row-v3"><span class="asp-note-dot-v3" style="background:'+m.bg+';color:'+m.fg+'">'+m.ico+'</span><span class="asp-note-line-v3"></span>'
+    +'<div class="asp-note-card-v3"><div class="asp-note-meta-v3"><b>'+e3(x.when||'')+'</b><span class="asp-note-type-v3" style="background:'+m.bg+';color:'+m.fg+'">'+m.label+'</span>'+(x.by?'<span class="asp-note-by-v3">'+e3(x.by)+'</span>':'')+'</div><div class="asp-note-text-v3">'+e3(x.text||'')+'</div></div></div>';
+}
+function parseDateFromLine(line,fallback){
+  var m=String(line||"").match(/^\s*(\d{1,4})[\/\-](\d{1,2})[\/\-](\d{1,4})(?:\s+(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?)?/i);
+  if(!m)return fallback||0;
+  var a=+m[1],b=+m[2],c=+m[3],y,mo,d;if(a>31){y=a;mo=b;d=c;}else{mo=a;d=b;y=c;}if(y<100)y+=2000;
+  var hh=+(m[4]||12),mm=+(m[5]||0),ap=(m[6]||'').toLowerCase();if(ap==='pm'&&hh<12)hh+=12;if(ap==='am'&&hh===12)hh=0;
+  return new Date(y,mo-1,d,hh,mm).getTime()||fallback||0;
+}
+function legacyAdminRows(tkts){
+  var out=[],seen={};
+  (tkts||[]).slice().sort(function(a,b){return ticketMs(a)-ticketMs(b);}).forEach(function(t){
+    var reportSet={};meaningfulLines(_aspVisitNotes(t)).forEach(function(l){reportSet[l.toLowerCase().replace(/\s+/g,' ')]=1;});
+    var base=ticketMs(t);
+    meaningfulLines(t.notes).forEach(function(line,idx){
+      var key=line.toLowerCase().replace(/\s+/g,' ');
+      if(reportSet[key]&&!ADMIN_RE.test(line))return;
+      if(!ADMIN_RE.test(line)&&_aspIsTechVisit(t))return;
+      if(seen[key])return;seen[key]=1;
+      out.push({when:(line.match(/^\s*\d/) ? (line.match(/^\s*([^—\n]{6,25})/)||[])[1] : fmtDateHuman(t.date)),by:'Legacy',text:line,ts:parseDateFromLine(line,base+idx)});
+    });
+    var st=String(t.status||'').toLowerCase();
+    if((st==='pending'||st==='open'||st==='scheduled'||st==='reschedule'||st==='canceled'||st==='cancelled')&&t.date){
+      var typ=(st==='reschedule')?'Service appointment requires rescheduling.':((st==='canceled'||st==='cancelled')?'Service appointment canceled.':'Service appointment scheduled.');
+      var reason=String(t.reportedIssue||'').trim();
+      var text=typ+'\nDate: '+fmtDateHuman(t.date)+'\nTechnician: '+((t.techs||[]).filter(Boolean).join(', ')||'Unassigned')+(reason?'\nReason: '+reason:'');
+      var dk=(typ+'|'+t.date+'|'+reason).toLowerCase();if(!seen[dk]){seen[dk]=1;out.push({when:fmtDateHuman(t.date),by:'System',text:text,ts:base});}
+    }
+  });
+  return out;
+}
+function mergeRows(tkts,entries){
+  var rows=legacyAdminRows(tkts).concat((entries||[]).map(function(e){return{when:e.when||'',by:e.by||'',text:e.text||'',ts:Number(e.ts)||parseDateFromLine(e.when,0)};}));
+  var seen={};rows=rows.filter(function(r){var k=String(r.text||'').toLowerCase().replace(/\s+/g,' ').replace(/[^a-z0-9 ]/g,'').trim();if(!k||seen[k])return false;seen[k]=1;return true;});
+  rows.sort(function(a,b){return (a.ts||0)-(b.ts||0);});return rows;
+}
+
+async function writeCustomerLog(name,text,silent){
+  name=String(name||'').trim();text=String(text||'').trim();if(!name||!text)return false;
+  var id=logIdForName(name),entry={when:currentWhen(),by:currentBy(),text:text,ts:Date.now()};
+  if(typeof _aspLogCache==='undefined')window._aspLogCache={};
+  var arr=_aspLogCache[id]||(_aspLogCache[id]=[]),last=arr[arr.length-1];
+  if(last&&String(last.text||'').toLowerCase()===text.toLowerCase()&&(entry.ts-(last.ts||0))<180000){if(!silent&&typeof toast==='function')toast('Same note was not duplicated','warn');return false;}
+  arr.push(entry);
+  try{
+    if(typeof db!=='undefined'&&db)await db.collection('cross_app_events').add({eventType:'customer_note',status:'note',customerName:name,customerKeys:(typeof _custKeys==='function')?_custKeys(name):[],sourceApp:'tech-tickets',createdAt:firebase.firestore.FieldValue.serverTimestamp(),payload:{text:text,by:entry.by,when:entry.when,groupKey:id},ts:entry.ts});
+  }catch(e){if(typeof toast==='function')toast('Note could not be saved: '+String(e&&e.message||e).slice(0,80),'warn');return false;}
+  window._aspScrollNotesBottom=1;
+  if(!silent&&typeof toast==='function')toast('Note added ✓');
+  try{if(typeof rndrCust==='function')rndrCust();}catch(e){}
+  return true;
+}
+window._aspWriteCustomerLog=writeCustomerLog;
+window._aspAddLogEntry=function(text,silent){var n=((document.getElementById('custName')||{}).value||'').trim();return writeCustomerLog(n,text,silent);};
+window._aspPromptNote=function(){
+  var t=prompt('Add a customer note (call, voicemail, estimate, part order, office update):','');
+  if(t&&t.trim())writeCustomerLog(((document.getElementById('custName')||{}).value||'').trim(),t.trim(),false);
+};
+
+function loadEntriesForSelected(tb,doneCb){
+  var name=((document.getElementById('custName')||{}).value||'').trim(),id=logIdForName(name);if(!id){doneCb([]);return;}
+  if(typeof _aspLogCache==='undefined')window._aspLogCache={};
+  if(typeof window._aspV3LogLoading==='undefined')window._aspV3LogLoading={};
+  if(_aspLogCache[id]!==undefined){doneCb((_aspLogCache[id]||[]).slice());return;}
+  if(window._aspV3LogLoading[id]){window._aspV3LogLoading[id].push(doneCb);return;}
+  window._aspV3LogLoading[id]=[doneCb];
+  function finish(rows){var wait=window._aspV3LogLoading[id]||[];delete window._aspV3LogLoading[id];wait.forEach(function(cb){try{cb((rows||[]).slice());}catch(e){}});}
+  if(typeof db==='undefined'||!db){_aspLogCache[id]=[];finish([]);return;}
+  var keys=(typeof _custKeys==='function')?_custKeys(name):[];
+  db.collection('cross_app_events').where('eventType','==','customer_note').get().then(function(snap){
+    var mine=[];snap.forEach(function(d){var ev=d.data()||{},p=ev.payload||{},ks=ev.customerKeys||[];var match=(p.groupKey&&p.groupKey===id)||keys.some(function(k){return ks.indexOf(k)>=0;});if(match&&p.text)mine.push({when:p.when||'',by:p.by||'',text:p.text,ts:Number(ev.ts)||0});});
+    mine.sort(function(a,b){return(a.ts||0)-(b.ts||0);});_aspLogCache[id]=mine;finish(mine);
+  }).catch(function(){_aspLogCache[id]=[];finish([]);});
+}
+
+window._aspNotesTabExtras=function(){
+  if(typeof qbCustTab==='undefined'||qbCustTab!=='info')return;
+  var tb=document.querySelector('.qb-cust-tab-body');if(!tb||document.getElementById('aspUnifiedV3'))return;
+  var tkts=[];try{tkts=[].concat(active||[],done||[]).filter(function(t){return t&&t.customer&&groupKeyForName(t.customer)===selectedCustKey;});}catch(e){}
+  loadEntriesForSelected(tb,function(entries){
+    if(!document.body.contains(tb)||document.getElementById('aspUnifiedV3'))return;
+    var admin=mergeRows(tkts,entries),visits=tkts.filter(_aspIsTechVisit).sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
+    var notesHtml=admin.length?admin.map(noteRow).join(''):'<div class="asp-note-empty-v3">No administrative notes yet.<br>Calls, scheduling, rescheduling, estimates and office updates will accumulate here.</div>';
+    var serviceHtml=visits.length?'<div class="asp-tech-list-v3">'+visits.map(serviceCard).join('')+'</div>':'<div class="asp-history-empty-v3">No completed technician work yet.<br>Scheduled calls stay in Notes until a technician completes the visit.</div>';
+    var h='<div id="aspUnifiedV3" class="asp-twocol-v3">'
+      +'<section class="asp-panel-v3"><header class="asp-panel-head-v3"><div><div class="ttl">📝 Notes & Scheduling <span class="asp-count-v3">'+admin.length+'</span></div><div class="sub">Customer calls and administrative activity · oldest to newest</div></div><button class="asp-add-note-v3" onclick="_aspPromptNote()">＋ Add note</button></header><div class="asp-panel-body-v3"><div id="aspNotesScrollV3" class="asp-notes-scroll-v3">'+notesHtml+'</div></div></section>'
+      +'<section class="asp-panel-v3"><header class="asp-panel-head-v3"><div><div class="ttl">🔧 Technician Service History <span class="asp-count-v3">'+visits.length+'</span></div><div class="sub">Only work actually performed by technicians</div></div></header><div class="asp-panel-body-v3">'+serviceHtml+'</div></section>'
+      +'</div>';
+    Array.prototype.slice.call(tb.children).forEach(function(k){k.style.display='none';});tb.insertAdjacentHTML('afterbegin',h);
+    if(window._aspScrollNotesBottom){window._aspScrollNotesBottom=0;setTimeout(function(){var s=document.getElementById('aspNotesScrollV3');if(s)s.scrollTop=s.scrollHeight;},60);}
+    try{var tabs=document.querySelectorAll('.qb-cust-tabs .qb-cust-tab');if(tabs[0])tabs[0].textContent='Overview';if(tabs.length>3)tabs[3].style.display='none';}catch(e){}
+  });
+};
+
+/* Compact, informative header. Keep the editable customer fields collapsed. */
+var baseHeaderEnhance=window._aspCustHeaderEnhance;
+window._aspCustHeaderEnhance=function(){
+  try{if(typeof baseHeaderEnhance==='function')baseHeaderEnhance();}catch(e){}
+  try{
+    var detail=document.querySelector('.qb-cust-detail');if(detail)detail.classList.add('asp-customer-dashboard-v3');
+    var tabs=document.querySelectorAll('.qb-cust-tabs .qb-cust-tab');if(tabs[0])tabs[0].textContent='Overview';if(tabs.length>3)tabs[3].style.display='none';
+    var info=document.querySelector('.asp-cust-info');if(info)info.removeAttribute('open');
+  }catch(e){}
+};
+
+/* Re-wrap rndrCust last so V3 always runs after the original and prior enhancers. */
+if(typeof rndrCust==='function'&&!rndrCust._aspV3){
+  var baseRndrV3=rndrCust;
+  window.rndrCust=function(){baseRndrV3();try{_aspCustHeaderEnhance();}catch(e){}try{_aspNotesTabExtras();}catch(e){console.warn('[Customer V3]',e);}};
+  window.rndrCust._aspV3=1;
+}
+if(typeof qbCustSetTab==='function'&&!qbCustSetTab._aspV3){
+  var baseSetV3=qbCustSetTab;
+  window.qbCustSetTab=function(tab){return baseSetV3(tab==='history'?'info':tab);};
+  window.qbCustSetTab._aspV3=1;
+}
+
+function scheduleOverlay(){
+  var ov=document.getElementById('aspCustScheduleOv');if(ov)return ov;
+  ov=document.createElement('div');ov.id='aspCustScheduleOv';
+  ov.innerHTML='<div class="asp-sch-card"><div class="asp-sch-head"><span style="font-size:20px">📅</span><div><b>Schedule Service Call</b><div id="aspSchCust" style="font-size:11px;color:var(--i3);margin-top:2px"></div></div><button onclick="aspCustScheduleClose()" style="margin-left:auto;border:0;background:none;color:var(--i3);font-size:22px">×</button></div><div class="asp-sch-body"><div class="asp-sch-grid"><div><label>Date</label><input id="aspSchDate" type="date"></div><div><label>Technician</label><select id="aspSchTech"><option value="">Unassigned</option></select></div></div><label>What did the customer report?</label><textarea id="aspSchReason" placeholder="Describe the reason for the visit..."></textarea></div><div class="asp-sch-actions"><button onclick="aspCustScheduleClose()">Cancel</button><button id="aspSchSave" class="primary" onclick="aspCustScheduleSave()">Schedule Service Call</button></div></div>';
+  ov.addEventListener('click',function(ev){if(ev.target===ov)aspCustScheduleClose();});document.body.appendChild(ov);return ov;
+}
+window.aspCustScheduleClose=function(){var ov=document.getElementById('aspCustScheduleOv');if(ov)ov.classList.remove('open');};
+window.aspCustScheduleOpen=function(){
+  var name=((document.getElementById('custName')||{}).value||'').trim();if(!name){if(typeof toast==='function')toast('Open a customer first','warn');return;}
+  var ov=scheduleOverlay(),d=document.getElementById('aspSchDate'),sel=document.getElementById('aspSchTech'),r=document.getElementById('aspSchReason');
+  document.getElementById('aspSchCust').textContent=name;var td=new Date();td.setDate(td.getDate()+1);d.value=(typeof fmtD==='function'?fmtD(td):td.toISOString().slice(0,10));
+  var roster=[];try{roster=(typeof visibleTechs==='function'?visibleTechs():TECHS)||[];}catch(e){}
+  sel.innerHTML='<option value="">Unassigned</option>'+roster.map(function(x){return'<option value="'+e3(x)+'">'+e3(x)+'</option>';}).join('');r.value='';ov.classList.add('open');setTimeout(function(){r.focus();},80);
+};
+window.aspCustScheduleSave=async function(){
+  if(typeof db==='undefined'||!db)return;
+  function fv(id){var x=document.getElementById(id);return x?String(x.value||'').trim():'';}
+  var c={name:fv('custName'),phone:fv('custPhone'),phone2:fv('custPhone2'),email:fv('custEmail'),address:fv('custAddr'),city:fv('custCity'),zip:fv('custZip'),zone:fv('custZone')};
+  var date=fv('aspSchDate'),tech=fv('aspSchTech'),reason=fv('aspSchReason');if(!date){if(typeof toast==='function')toast('Select an appointment date','warn');return;}if(!reason){if(typeof toast==='function')toast('Enter what the customer reported','warn');return;}
+  var all=[];try{all=[].concat(active||[],done||[]);}catch(e){}
+  var duplicate=all.some(function(t){return t&&groupKeyForName(t.customer)===groupKeyForName(c.name)&&String(t.status||'').toLowerCase()==='pending'&&t.date===date&&String(t.reportedIssue||'').trim().toLowerCase()===reason.toLowerCase();});
+  if(duplicate){if(typeof toast==='function')toast('This appointment already exists — not duplicated','warn');return;}
+  var latest=all.filter(function(t){return t&&groupKeyForName(t.customer)===groupKeyForName(c.name);}).sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));})[0]||{};
+  var btn=document.getElementById('aspSchSave');if(btn){btn.disabled=true;btn.textContent='Scheduling...';}
+  try{
+    await db.collection('tickets').add({customer:c.name,date:date,techs:tech?[tech]:[],workTypes:['Service Call'],warranty:latest.warranty||{has:null,model:'',year:0,type:'rda',label:'N/W'},visitNum:1,noLabor:false,arrival:'',departure:'',parts:[],total:0,partsCost:0,totalRda:0,spaDesc:latest.spaDesc||'',notes:'Customer reported: '+reason,reportedIssue:reason,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:'dispatch',status:'pending',createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});
+    await writeCustomerLog(c.name,'Service appointment scheduled.\nDate: '+fmtDateHuman(date)+'\nTechnician: '+(tech||'Unassigned')+'\nReason: '+reason,true);
+    aspCustScheduleClose();if(typeof toast==='function')toast('Service call scheduled ✓');setTimeout(function(){try{refreshAll();}catch(e){}},350);
+  }catch(e){if(typeof toast==='function')toast('Error: '+String(e&&e.message||e),'err');}
+  finally{if(btn){btn.disabled=false;btn.textContent='Schedule Service Call';}}
+};
+window.custCreateTicket=function(){aspCustScheduleOpen();};
+window.custCreateTicket._aspV3=1;
+
+/* Keep scheduling done from Service Log in the same QB-style Notes timeline. */
+if(typeof slCreateCall==='function'&&!slCreateCall._aspV3){
+  var baseSlCreateV3=slCreateCall;
+  window.slCreateCall=async function(){
+    var name=((document.getElementById('slCustName')||{}).value||'').trim(),date=((document.getElementById('slDate')||{}).value||'').trim(),reason=((document.getElementById('slReported')||{}).value||'').trim()||((document.getElementById('slNotes')||{}).value||'').trim();
+    await baseSlCreateV3();var cleared=!(((document.getElementById('slCustName')||{}).value||'').trim());
+    if(name&&cleared)try{await writeCustomerLog(name,'Service appointment scheduled.\nDate: '+fmtDateHuman(date)+'\nTechnician: Unassigned'+(reason?'\nReason: '+reason:''),true);}catch(e){}
+  };window.slCreateCall._aspV3=1;
+}
+if(typeof slUpdateField==='function'&&!slUpdateField._aspV3){
+  var baseSlUpdateV3=slUpdateField;
+  window.slUpdateField=async function(docId,field,val){
+    var t=[];try{t=[].concat(active||[],done||[]).find(function(x){return x&&String(x.id)===String(docId);});}catch(e){}
+    var old=t?t[field]:'';await baseSlUpdateV3(docId,field,val);
+    if(t&&field==='date'&&String(old||'')!==String(val||''))try{await writeCustomerLog(t.customer,'Service appointment rescheduled.\nPrevious date: '+fmtDateHuman(old)+'\nNew date: '+fmtDateHuman(val),true);}catch(e){}
+  };window.slUpdateField._aspV3=1;
+}
+if(typeof slToggleTech==='function'&&!slToggleTech._aspV3){
+  var baseSlTechV3=slToggleTech;
+  window.slToggleTech=async function(docId,techName){
+    var t=[];try{t=[].concat(active||[],done||[]).find(function(x){return x&&String(x.id)===String(docId);});}catch(e){}
+    var had=t&&Array.isArray(t.techs)&&t.techs.indexOf(techName)>=0;await baseSlTechV3(docId,techName);
+    if(t)try{await writeCustomerLog(t.customer,'Appointment technician '+(had?'removed':'assigned')+'.\nDate: '+fmtDateHuman(t.date)+'\nTechnician: '+techName,true);}catch(e){}
+  };window.slToggleTech._aspV3=1;
+}
+
+if(typeof _autoCreateReschedDispatch==='function'&&!_autoCreateReschedDispatch._aspV3){
+  var baseAutoReschedV3=_autoCreateReschedDispatch;
+  window._autoCreateReschedDispatch=async function(srcDocId,srcData){
+    var result=await baseAutoReschedV3(srcDocId,srcData);
+    try{
+      var t=srcData||[];if((!t||!t.customer)&&typeof active!=='undefined')t=[].concat(active||[],done||[]).find(function(x){return x&&String(x.id)===String(srcDocId);})||{};
+      if(t&&t.customer){var rs=String(t.reschedReason||'').trim(),rn=String(t.reschedNote||'').trim();await writeCustomerLog(t.customer,'Technician requested a reschedule.\nPrevious date: '+fmtDateHuman(t.date)+(rs?'\nReason: '+rs:'')+(rn?'\nDetails: '+rn:''),true);}
+    }catch(e){}
+    return result;
+  };window._autoCreateReschedDispatch._aspV3=1;
+}
+
+if(typeof cancelVisit==='function'&&!cancelVisit._aspV3){
+  var baseCancelV3=cancelVisit;
+  window.cancelVisit=async function(docId){
+    var t=[];try{t=[].concat(active||[],done||[]).find(function(x){return x&&String(x.id)===String(docId);});}catch(e){}
+    await baseCancelV3(docId);if(t)try{await writeCustomerLog(t.customer,'Service appointment canceled.\nDate: '+fmtDateHuman(t.date),true);}catch(e){}
+  };window.cancelVisit._aspV3=1;
+}
+
+})();
+</script>
+
 </body>
 </html>
