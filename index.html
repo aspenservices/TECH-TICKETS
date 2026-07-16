@@ -27217,6 +27217,8 @@ body.dark-mode .asp-kpi,body.dark-mode .asp-cust-info{background:var(--cd)}
 .asp-tcard .asp-more{font-size:11.5px;font-weight:800;color:var(--br,#a85c1f);cursor:pointer;user-select:none}
 .asp-twocol{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:16px;align-items:start}
 @media(max-width:820px){.asp-twocol{grid-template-columns:1fr}}
+.asp-col-notes{border:1px solid var(--ln,#e5e0d8);border-radius:12px;background:var(--cd,#fff);padding:14px 15px}
+.asp-col-hist{min-width:0}
 .asp-col{scroll-margin-top:80px}
 .asp-col.asp-flash{animation:aspFlash 1.4s ease-out}
 @keyframes aspFlash{0%{box-shadow:0 0 0 3px var(--ac,#d4772c)}60%{box-shadow:0 0 0 3px var(--ac,#d4772c)}100%{box-shadow:0 0 0 0 rgba(212,119,44,0)}}
@@ -28486,35 +28488,44 @@ function _aspNotesTabExtras(){
       });
     }catch(e){clearTimeout(_to);_fin([],String(e&&e.message||e).slice(0,120));}
   }
+  if(document.getElementById("aspUnified"))return;
   var entries=(_aspLogCache[id]||[]).slice();
-  // NO ocultamos el contenido base (las notas QB históricas ya se muestran ahí).
-  // Solo: (a) un enlace discreto "+ Add note", (b) las notas nuevas (citas,
-  // llamadas, etc. guardadas en cross_app_events) agregadas al final del mismo
-  // hilo cronológico, con el MISMO estilo desplazado de QuickBooks. Sin bloque
-  // ni título "Admin Notes / Scheduling", sin tarjetas vacías.
-  if(!document.getElementById("aspAddNoteBar")){
-    var bar=document.createElement("div");
-    bar.id="aspAddNoteBar";
-    bar.style.cssText="display:flex;justify-content:flex-end;margin:0 0 8px";
-    bar.innerHTML='<button onclick="_aspPromptNote()" style="border:1px dashed var(--br,#a85c1f);background:none;color:var(--br,#a85c1f);border-radius:8px;padding:4px 11px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit">+ '+TT("Agregar nota","Add note")+'</button>';
-    tb.insertBefore(bar,tb.firstChild);
-  }
-  if(entries.length&&!document.getElementById("aspNoteExtra")){
-    var lines=entries.map(function(e){return (e.when||"")+" — "+(e.by||"")+": "+(e.text||"");}).join("\n");
-    var storyDiv=tb.querySelector('div[style*="white-space:pre-line"]');
-    if(storyDiv){
-      var pre=storyDiv.textContent.trim()?"\n":"";
-      storyDiv.insertAdjacentHTML("beforeend",'<span id="aspNoteExtra">'+esc3(pre+lines)+'</span>');
-    }else{
-      var empty=Array.prototype.slice.call(tb.querySelectorAll("div")).filter(function(d){return /No notes yet/i.test(d.textContent||"")&&d.children.length===0;});
-      empty.forEach(function(d){d.style.display="none";});
-      var card=document.createElement("div");
-      card.id="aspNoteExtra";
-      card.style.cssText="border:1px solid var(--ln,#e5e0d8);border-radius:12px;background:var(--cd,#fff);padding:15px 16px";
-      card.innerHTML='<div style="font-size:13.5px;color:#2c3a42;line-height:1.65;white-space:pre-line">'+esc3(lines)+'</div>';
-      tb.appendChild(card);
-    }
-  }
+  // Tickets del cliente (misma agrupación que la app)
+  var tkts=[];
+  try{
+    tkts=[].concat(active||[],done||[]).filter(function(t){
+      if(!t||!t.customer)return false;
+      var k=(typeof _custGroupKey==="function"?_custGroupKey(t.customer):"")||String(t.customer).trim().toLowerCase();
+      return k===selectedCustKey;
+    }).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
+  }catch(e){}
+  // Columna IZQUIERDA — notas estilo QuickBooks (histórico + nuevas), un solo hilo
+  var story="";try{story=(_compileCustomerStory(tkts)||{}).text||"";}catch(e){}
+  var extra=entries.length?entries.map(function(e){return (e.when||"")+" — "+(e.by||"")+": "+(e.text||"");}).join("\n"):"";
+  var notesText=[story,extra].filter(function(x){return x&&x.trim();}).join("\n");
+  var leftInner=notesText
+    ? '<div style="font-size:13px;color:#2c3a42;line-height:1.7;white-space:pre-line">'+esc3(notesText)+'</div>'
+    : '<div style="font-size:12.5px;color:var(--i3,#8a8073);line-height:1.5">'+TT("Sin notas todavía. Las citas y actualizaciones de oficina aparecerán aquí.","No notes yet. Appointments and office updates will appear here.")+'</div>';
+  // Columna DERECHA — Service History ORIGINAL de la app (cards con Technician
+  // Report, partes/warranty/billing, PDF profesional y Enviar al cliente intactos)
+  var rightInner="";
+  try{rightInner=_c360Render(tkts);}catch(e){rightInner='<div style="font-size:12px;color:var(--c-danger-fg,#991b1b)">'+esc3(String(e&&e.message||e))+'</div>';}
+  var h='<div id="aspUnified" class="asp-twocol">'
+    +'<div class="asp-col asp-col-notes">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">'
+        +'<b style="font-size:12.5px;color:var(--i2,#5a5248);text-transform:uppercase;letter-spacing:.5px">📝 '+TT("Notas","Notes")+'</b>'
+        +'<button onclick="_aspPromptNote()" style="margin-left:auto;border:1px dashed var(--br,#a85c1f);background:none;color:var(--br,#a85c1f);border-radius:8px;padding:4px 11px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit">+ '+TT("Agregar nota","Add note")+'</button>'
+      +'</div>'
+      +leftInner
+    +'</div>'
+    +'<div class="asp-col asp-col-hist">'
+      +'<div style="margin-bottom:9px"><b style="font-size:12.5px;color:var(--i2,#5a5248);text-transform:uppercase;letter-spacing:.5px">🔧 '+TT("Historial de servicio","Service History")+'</b></div>'
+      +rightInner
+    +'</div>'
+  +'</div>';
+  var kids=Array.prototype.slice.call(tb.children);
+  kids.forEach(function(k){k.style.display="none";});
+  tb.insertAdjacentHTML("afterbegin",h);
 }
 /* ── Enhancer de encabezado Customer 360 (SOLO visual). Corre después de
    rndrCust; envuelve nodos ya renderizados sin renombrar IDs/eventos:
@@ -28587,8 +28598,17 @@ function _aspCustHeaderEnhance(){
     det.appendChild(grid);
   }
 }
-/* Los tabs Notes / Spa / Photos / Service History funcionan con su lógica
-   ORIGINAL (no se intercepta qbCustSetTab). */
+/* Pantalla unificada: los chips Notes y Service History NO cambian de vista —
+   ambos muestran la misma pantalla de dos columnas (notas izq · service hist der,
+   render ORIGINAL). Spa Description y Photos siguen normales. */
+if(typeof qbCustSetTab==="function"&&!qbCustSetTab._asp){
+  var _qbCustSetTabBase=qbCustSetTab;
+  window.qbCustSetTab=function(tab){
+    if(tab==="history")return _qbCustSetTabBase("info");
+    return _qbCustSetTabBase(tab);
+  };
+  window.qbCustSetTab._asp=1;
+}
 if(typeof rndrCust==="function"&&!rndrCust._asp){
   var _rndrCustBase=rndrCust;
   window.rndrCust=function(){
