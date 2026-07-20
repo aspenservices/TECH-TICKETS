@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.7.8";
+const CACHE_VERSION = "v1.8.0";   // 20 jul 2026 — auditoria: identidad de cliente, reagendar v2, bandeja, 10 propuestas
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
@@ -46,8 +46,13 @@ const APP_SHELL = [
   "./manifest.json",
   "./st.bundle.json",
   // Firebase SDK CDN URLs — same versions used in index.html
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js",
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js",
+  // FIX (20 jul 2026): decia 10.7.1 pero el index carga 10.12.0 desde hace
+  // meses. O sea el pre-cache guardaba archivos que la app NUNCA pide, y los
+  // que si usa quedaban fuera del shell offline hasta la segunda carga.
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js",
   // Google Fonts CSS (the .woff2 files are fetched separately and cached at runtime)
   "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap",
 ];

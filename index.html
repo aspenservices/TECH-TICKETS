@@ -3059,6 +3059,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
             </div>
           </div>
           <div id="slWResult" style="display:none;padding:6px 8px;border-radius:6px;font-size:var(--fs-sm);font-weight:600"></div>
+          <!-- AUDIT FIX (20 jul 2026): slPart90Chk/Date/Name/Sub/Box eran leidos por
+               slUpWR(), _slPart90Toggle() y slCreateCall() pero NO EXISTIAN en el DOM.
+               Con las guardas ||{} fallaban en silencio: partWarranty90 se guardaba
+               SIEMPRE en false, o sea la garantia de 90 dias labor / 1 anio parte
+               nunca quedaba registrada desde el Service Log. Aqui vuelven a existir. -->
+          <div id="slPart90Box" style="margin-top:8px;border:1.5px solid #10b981;background:#ecfdf5;border-radius:10px;padding:10px 12px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-sm);font-weight:800;color:#065f46">
+              <input type="checkbox" id="slPart90Chk" onchange="_slPart90Toggle()" style="width:17px;height:17px;flex-shrink:0">
+              🛡 Se reemplazó una parte antes (garantía 90 d labor / 1 año parte)
+            </label>
+            <div id="slPart90Sub" style="display:none;margin-top:9px;display:none">
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="flex:1;min-width:130px">
+                  <div style="font-size:var(--fs-xs);font-weight:700;color:#065f46;margin-bottom:3px">Fecha de instalación</div>
+                  <input type="date" id="slPart90Date" onchange="slUpWR()" style="width:100%;padding:8px 10px;border:1.5px solid #a7f3d0;border-radius:8px;font-size:var(--fs-sm);font-family:inherit;box-sizing:border-box">
+                </div>
+                <div style="flex:2;min-width:150px">
+                  <div style="font-size:var(--fs-xs);font-weight:700;color:#065f46;margin-bottom:3px">Parte reemplazada</div>
+                  <input type="text" id="slPart90Name" placeholder="ej. Bomba 2 vel · Calentador" style="width:100%;padding:8px 10px;border:1.5px solid #a7f3d0;border-radius:8px;font-size:var(--fs-sm);font-family:inherit;box-sizing:border-box">
+                </div>
+              </div>
+              <div style="font-size:11px;color:#047857;margin-top:6px">↳ El motor de facturación calcula solo si labor va gratis (≤90 d) o se cobra.</div>
+            </div>
+          </div>
         </div>
         <!-- Simple 90-day service warranty check (replaces the complex part panel) -->
         <div style="margin-bottom:12px;padding:10px;background:var(--c-info-bg);border-radius:10px;border:1px solid var(--c-info-border)">
@@ -3117,6 +3141,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
             <button type="button" data-tpl="🌇 Prefers PM" onclick="_slAddTpl(this.dataset.tpl)" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--ink);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">🌇 PM</button>
             <button type="button" onclick="_slShowWarrantyModal()" title="Add a part with warranty tracking — appears in customer history as parseable line" style="padding:5px 10px;border:1.5px solid #10b981;border-radius:999px;background:#d1fae5;color:#065f46;font-size:var(--fs-xs);font-weight:700;cursor:pointer;font-family:inherit">🛡 Warranty Part</button>
             <button type="button" onclick="_slClearTpl()" title="Clear comments" style="padding:5px 10px;border:1px solid var(--ln);border-radius:999px;background:transparent;color:var(--i3);font-size:var(--fs-xs);font-weight:600;cursor:pointer;font-family:inherit">✕ Clear</button>
+          </div>
+          <!-- AUDIT FIX (20 jul 2026): slCreateCall() guardaba reportedIssue leyendo
+               #slReported, que NO EXISTIA -> el campo se grababa SIEMPRE vacio y se
+               perdia lo que el cliente reporto. Separado a proposito de slNotes:
+               "lo reportado" vs "lo encontrado" es la metrica de calidad real. -->
+          <div style="margin-bottom:10px">
+            <div style="font-size:var(--fs-xs);font-weight:800;color:var(--i2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">📣 Lo que reportó el cliente</div>
+            <input type="text" id="slReported" placeholder="En sus palabras — ej. 'no calienta', 'hace ruido al prender'" style="width:100%;padding:11px 13px;border:2px solid #cdd6df;border-radius:10px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;background:#fff">
           </div>
           <textarea id="slNotes" rows="6" placeholder="What's going on / what to know — e.g. 'LEAKING — call before arriving'" style="width:100%;min-height:140px;padding:14px 16px;border:2px solid #e6d399;border-radius:12px;font-size:15px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;background:#fff;transition:border-color .15s,box-shadow .15s;box-sizing:border-box"></textarea><div style="margin-top:8px"><button type="button" id="slAIBtn" class="sl-ai-btn" onclick="slAIInterpret(this)">🔎 <span data-i18n-es="Interpretar con AI" data-i18n-en="Interpret with AI">Interpretar con AI</span></button><div id="slAIVerdict"></div></div>
           <div style="font-size:11.5px;color:var(--i3);margin-top:7px">↳ Everything goes here — complaint, gate code, reminders. Each ticket adds a dated line to the history, like QuickBooks.</div>
@@ -9760,6 +9792,24 @@ function initFirebase(){
   // COST FIX (Jul 2026): windowed listener (see helpers above). Old open
   // tickets arrive via _sweepStaleActive; full history via _loadTicketArchive.
   setTimeout(function(){try{_sweepStaleActive()}catch(_e){}},6000);
+  /* COST/VISIBILIDAD FIX (auditoria 20 jul 2026): el listener de abajo filtra
+     por where("date",">=",_liveSinceISO). Una llamada de REAGENDAR nace con
+     date:"" y en Firestore "" < cualquier fecha -> NACIA FUERA DE LA VENTANA.
+     La red era _sweepStaleActive(), pero es un .get() UNA sola vez a los 6s del
+     arranque: si un tecnico reagendaba a las 2PM, la oficina con la app ya
+     abierta NO veia la llamada hasta recargar. Este segundo listener escucha
+     solo los tickets SIN fecha (son pocos: la bandeja de "necesita fecha"), asi
+     que el costo extra es minimo y la llamada aparece en tiempo real. */
+  db.collection("tickets").where("date","==","").onSnapshot(snap=>{
+    var touched=false;
+    snap.docChanges().forEach(function(ch){
+      var d=Object.assign({id:ch.doc.id},ch.doc.data());
+      if(ch.type==="removed"){ if(_staleActiveDocs.delete(d.id))touched=true; }
+      else if(d.status!=="done"){ _staleActiveDocs.set(d.id,d); touched=true; }
+      else if(_staleActiveDocs.delete(d.id)) touched=true;
+    });
+    if(touched){_mergeTicketSources();try{refreshAll()}catch(_e){}}
+  },function(e){console.warn("[dateless listener]",e)});
   db.collection("tickets").where("date",">=",_liveSinceISO).onSnapshot({includeMetadataChanges:true},snap=>{
     // SYNC BADGE (Jun 2026 fix): drive the "Syncing changes…" indicator from this
     // listener's metadata instead of db.waitForPendingWrites(). waitForPendingWrites
@@ -12821,6 +12871,12 @@ async function submitTkt(st){
     if(st==="reschedule"&&_reschedInfo){
       tktData.reschedReason=_reschedInfo.reason||"";
       tktData.reschedNote=_reschedInfo.note||"";
+      // REAGENDAR v2: lo que la oficina necesita para volver a agendar
+      tktData.reschedBlocker=_reschedInfo.blocker||"";
+      tktData.reschedBlockerPart=_reschedInfo.blockerPart||"";
+      tktData.reschedNotBefore=_reschedInfo.notBefore||"";
+      tktData.reschedAvailability=_reschedInfo.availability||"";
+      tktData.reschedUrgent=!!_reschedInfo.urgent;
       tktData.reschedAt=new Date().toLocaleString();
       tktData.reschedAtMs=Date.now();
     }
@@ -13543,41 +13599,119 @@ async function markDone(docId){
 // that resolves to {reason, note} or null if canceled. Structured reasons let
 // us track recurring problems (no access, missing parts, weather, etc.).
 function _askReschedReason(){
+  /* ═══ REAGENDAR v2 (auditoria 20 jul 2026) ═══════════════════════════════
+     ANTES preguntaba solo POR QUE fallo. La oficina necesita saber QUE HACE
+     FALTA PARA VOLVER — son preguntas distintas. La llamada de seguimiento
+     nacia vacia (date:"" techs:[]) y habia que re-decidir todo desde cero:
+     cuando puede el cliente, si falta una parte, quien va. Ahora se capturan
+     las 3 cosas en el mismo modal, en ~15 segundos, y la llamada nace lista.
+     Devuelve {reason,note,needsOtherTech,blocker,blockerPart,notBefore,
+     availability,urgent} o null si cancela. ═══════════════════════════════ */
   return new Promise(function(resolve){
     var reasons=["Customer not home","No access to spa","Parts not available","Weather","Customer rescheduled","Wrong/incomplete diagnosis","Other"];
-    var picked="";
+    var blockers=[
+      {k:"none", t:"\u2705 Nada \u2014 solo fecha"},
+      {k:"part", t:"\uD83D\uDCE6 Falta una parte"},
+      {k:"tech2",t:"\uD83D\uDC65 Falta 2\u00BA t\u00E9cnico"},
+      {k:"access",t:"\uD83D\uDD11 Acceso del cliente"},
+      {k:"equip",t:"\uD83D\uDEE0 Equipo especial"}
+    ];
+    var avail=[
+      {k:"week",  t:"Esta semana"},
+      {k:"next",  t:"Pr\u00F3xima semana"},
+      {k:"callus",t:"El cliente llama"},
+      {k:"urgent",t:"\uD83D\uDD25 Urgente"}
+    ];
+    var picked="",pickedBlocker="",pickedAvail="";
     var bg=document.createElement("div");
     bg.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px";
     var box=document.createElement("div");
-    box.style.cssText="background:#fff;border-radius:16px;max-width:430px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;max-height:90dvh;overflow:auto";
-    box.innerHTML='<div style="font-size:17px;font-weight:800;color:#111;margin-bottom:4px">\u21BB Reschedule reason</div>'+
-      '<div style="font-size:13px;color:#6b7280;margin-bottom:14px">Why couldn\u2019t the visit be completed? This is added to the Service Log call and helps spot recurring issues.</div>'+
-      '<div id="_rrBtns" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>'+
-      '<textarea id="_rrNote" placeholder="Optional details (what\u2019s needed to finish)..." style="width:100%;min-height:64px;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;margin-bottom:12px"></textarea>'+
-      '<label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:14px;font-weight:700;color:#92400e;background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:10px 12px;margin-bottom:14px"><input type="checkbox" id="_rrNeed2" style="width:17px;height:17px;flex-shrink:0">\uD83D\uDC65 This job needs an EXTRA technician (2-person job)</label>'+
-      '<div style="display:flex;gap:8px;justify-content:flex-end"><button id="_rrCancel" style="padding:10px 16px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:14px;font-weight:600;color:#374151;cursor:pointer">Cancel</button><button id="_rrOk" style="padding:10px 18px;background:var(--ac);border:none;border-radius:9px;font-size:14px;font-weight:700;color:#fff;cursor:pointer">Confirm reschedule</button></div>';
+    box.style.cssText="background:#fff;border-radius:16px;max-width:470px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:92vh;max-height:92dvh;overflow:auto";
+    function sect(t,sub){return '<div style="font-size:12px;font-weight:800;color:#374151;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.3px">'+t+(sub?'<span style="font-weight:600;text-transform:none;color:#9ca3af;letter-spacing:0"> \u00B7 '+sub+'</span>':'')+'</div>';}
+    box.innerHTML='<div style="font-size:17px;font-weight:800;color:#111">\u21BB Reagendar visita</div>'+
+      '<div style="font-size:12.5px;color:#6b7280;margin-top:3px">Esto arma la llamada de vuelta. Mientras m\u00E1s completo, menos llamadas hace la oficina.</div>'+
+      sect("1 \u00B7 \u00BFPor qu\u00E9 no se complet\u00F3?")+'<div id="_rrBtns" style="display:flex;flex-wrap:wrap;gap:7px"></div>'+
+      sect("2 \u00B7 \u00BFQu\u00E9 hace falta para volver?","lo m\u00E1s importante")+'<div id="_rrBlk" style="display:flex;flex-wrap:wrap;gap:7px"></div>'+
+      '<div id="_rrPartWrap" style="display:none;margin-top:9px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:10px">'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<div style="flex:2;min-width:150px"><div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:3px">\u00BFQu\u00E9 parte?</div>'+
+        '<input type="text" id="_rrPart" placeholder="ej. bomba 2 vel" style="width:100%;padding:8px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:13.5px;font-family:inherit;box-sizing:border-box"></div>'+
+        '<div style="flex:1;min-width:130px"><div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:3px">Llega el\u2026</div>'+
+        '<input type="date" id="_rrEta" style="width:100%;padding:8px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:13.5px;font-family:inherit;box-sizing:border-box"></div></div>'+
+        '<div style="font-size:10.5px;color:#b45309;margin-top:6px">\u21B3 La llamada no aparece como \u201Clista para agendar\u201D hasta esa fecha.</div>'+
+      '</div>'+
+      sect("3 \u00B7 \u00BFCu\u00E1ndo puede el cliente?")+'<div id="_rrAv" style="display:flex;flex-wrap:wrap;gap:7px"></div>'+
+      sect("Detalle (opcional)")+
+      '<textarea id="_rrNote" placeholder="Lo que la oficina necesita saber para re-agendar\u2026" style="width:100%;min-height:56px;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box"></textarea>'+
+      '<div id="_rrBill" style="margin-top:12px"></div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button id="_rrCancel" style="padding:10px 16px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:14px;font-weight:600;color:#374151;cursor:pointer">Cancelar</button><button id="_rrOk" style="padding:10px 18px;background:var(--ac);border:none;border-radius:9px;font-size:14px;font-weight:700;color:#fff;cursor:pointer">Confirmar reagendar</button></div>';
     bg.appendChild(box);document.body.appendChild(bg);
-    var btnWrap=box.querySelector("#_rrBtns");
-    reasons.forEach(function(r){
-      var b=document.createElement("button");
-      b.type="button";b.textContent=r;
-      b.style.cssText="padding:7px 12px;background:#f3f4f6;border:1.5px solid #e5e7eb;border-radius:999px;font-size:13px;font-weight:600;color:#374151;cursor:pointer";
-      b.onclick=function(){
-        picked=r;
-        Array.from(btnWrap.children).forEach(function(c){c.style.background="#f3f4f6";c.style.borderColor="#e5e7eb";c.style.color="#374151"});
-        b.style.background="var(--acl)";b.style.borderColor="var(--ac)";b.style.color="var(--acd)";
-      };
-      btnWrap.appendChild(b);
-    });
+
+    function chips(host,items,onPick,isObj){
+      var w=box.querySelector(host);
+      items.forEach(function(it){
+        var lbl=isObj?it.t:it, val=isObj?it.k:it;
+        var b=document.createElement("button");b.type="button";b.textContent=lbl;
+        b.style.cssText="padding:7px 12px;background:#f3f4f6;border:1.5px solid #e5e7eb;border-radius:999px;font-size:13px;font-weight:600;color:#374151;cursor:pointer;font-family:inherit";
+        b.onclick=function(){
+          Array.from(w.children).forEach(function(c){c.style.background="#f3f4f6";c.style.borderColor="#e5e7eb";c.style.color="#374151"});
+          b.style.background="var(--acl)";b.style.borderColor="var(--ac)";b.style.color="var(--acd)";
+          onPick(val);
+        };
+        w.appendChild(b);
+      });
+    }
+    chips("#_rrBtns",reasons,function(v){picked=v;},false);
+    chips("#_rrBlk",blockers,function(v){
+      pickedBlocker=v;
+      box.querySelector("#_rrPartWrap").style.display=(v==="part")?"block":"none";
+    },true);
+    chips("#_rrAv",avail,function(v){pickedAvail=v;},true);
+
+    /* #8 \u00B7 VEREDICTO DE SEGUNDA VISITA \u2014 el motor ya lo sabe; se muestra ANTES
+       de que el tecnico se vaya, no despues en facturacion. */
+    try{
+      if(typeof _billingFor==="function"){
+        var _bv=_billingFor({warranty:{has:false},visitNum:2});
+        var _txt=(_bv&&_bv.bottom)?_bv.bottom:"Segunda visita: sin Service Call \u2014 todo el tiempo en sitio se cobra como labor adicional ($100/hr en bloques de 15 min).";
+        box.querySelector("#_rrBill").innerHTML='<div style="background:var(--c-warning-bg,#fef3c7);border:1.5px solid var(--c-warning-border,#fde68a);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--c-warning-fg,#92400e);line-height:1.45">\uD83D\uDCB5 <b>La pr\u00F3xima cuenta como SEGUNDA VISITA.</b> '+esc(_txt)+'</div>';
+      }
+    }catch(_be){}
+
     function done(val){if(bg.parentNode)bg.parentNode.removeChild(bg);resolve(val)}
     box.querySelector("#_rrCancel").onclick=function(){done(null)};
     box.querySelector("#_rrOk").onclick=function(){
       var note=(box.querySelector("#_rrNote").value||"").trim();
-      if(!picked&&!note){toast("Pick a reason or add a note","warn");return}
-      done({reason:picked||"Other",note:note,needsOtherTech:!!box.querySelector("#_rrNeed2").checked});
+      if(!picked&&!note){toast("Elige un motivo o escribe una nota","warn");return}
+      if(pickedBlocker==="part"&&!(box.querySelector("#_rrPart").value||"").trim()){
+        toast("\u00BFQu\u00E9 parte falta?","warn");return;
+      }
+      var eta=(box.querySelector("#_rrEta")||{}).value||"";
+      done({
+        reason:picked||"Other", note:note,
+        needsOtherTech:(pickedBlocker==="tech2"),
+        blocker:pickedBlocker||"", blockerPart:(box.querySelector("#_rrPart")||{}).value||"",
+        notBefore:eta, availability:pickedAvail||"", urgent:(pickedAvail==="urgent")
+      });
     };
     bg.onclick=function(e){if(e.target===bg)done(null)};
   });
+}
+/* Texto legible del bloqueador \u2014 va al encabezado de la llamada de vuelta. */
+function _reschedBlockerLabel(info){
+  if(!info||!info.blocker)return "";
+  var m={none:"Listo para agendar \u2014 solo falta fecha",
+         part:"ESPERANDO PARTE"+(info.blockerPart?(": "+info.blockerPart):"")+(info.notBefore?(" \u00B7 llega "+info.notBefore):""),
+         tech2:"Necesita 2\u00BA t\u00E9cnico",
+         access:"Necesita coordinar acceso con el cliente",
+         equip:"Necesita equipo especial"};
+  return m[info.blocker]||"";
+}
+function _reschedAvailLabel(info){
+  if(!info||!info.availability)return "";
+  var m={week:"Cliente disponible ESTA semana",next:"Cliente disponible PR\u00D3XIMA semana",
+         callus:"El cliente va a llamar para agendar",urgent:"URGENTE"};
+  return m[info.availability]||"";
 }
 // Whole days elapsed since a millisecond timestamp (used for reschedule aging).
 function _daysSince(ms){
@@ -13648,6 +13782,12 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     var reasonNote=(srcData.reschedNote||"").trim();
     var noteHead="\u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"+(origDate?(" on "+origDate):"")+". Needs a new appointment date.";
     if(reason)noteHead+="\nReason: "+reason+(reasonNote?(" \u2014 "+reasonNote):"");
+    // REAGENDAR v2: el encabezado lleva QUE FALTA y CUANDO PUEDE el cliente,
+    // que es lo que la oficina necesita para re-agendar sin llamar de nuevo.
+    var _blkTxt=(typeof _reschedBlockerLabel==="function")?_reschedBlockerLabel(srcData):"";
+    var _avTxt=(typeof _reschedAvailLabel==="function")?_reschedAvailLabel(srcData):"";
+    if(_blkTxt)noteHead+="\n\u26A0\uFE0F Para volver: "+_blkTxt;
+    if(_avTxt)noteHead+="\n\uD83D\uDCC5 "+_avTxt;
     var origNotes=(srcData.notes||"").trim();
     var newNotes=noteHead+(origNotes?("\n\n\u2014 Tech notes \u2014\n"+origNotes):"");
     var stamp=new Date().toLocaleString();
@@ -13690,10 +13830,23 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       // docs for the same reschedule. Deterministic scored pick (the dispatch
       // dated the visit being rescheduled, then tech overlap, then oldest id)
       // makes every device converge on the same doc.
+      // AUDIT FIX (20 jul 2026 — cita futura destruida): este filtro agarraba
+      // CUALQUIER dispatch abierto del hogar y le borraba date+techs. Si el
+      // cliente ya tenia OTRA cita agendada a futuro (ej. cambio de filtro el
+      // 25), reagendar la visita del 20 se comia esa cita: desaparecia del
+      // calendario, sin tecnico y sin aviso. Ahora solo se reutiliza un
+      // dispatch SIN fecha, o el de la visita que se esta reagendando, o uno
+      // ya vencido — nunca una cita futura viva.
+      var _todayISO=(typeof fmtD==="function")?fmtD(new Date()):new Date().toISOString().slice(0,10);
       var _cands=(typeof active!=="undefined"?active:[]).filter(function(t){
-        return t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
+        if(!(t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
           &&!t.fieldReportSubmitted&&t.id!==srcDocId
-          &&_custSameHousehold(t.customer,cust);
+          &&_custSameHousehold(t.customer,cust)))return false;
+        var td=(t.date||"").trim();
+        if(!td)return true;                       // ya esta en "necesita fecha"
+        if(origDate&&td===origDate)return true;   // ES la visita que se reagenda
+        if(td<_todayISO)return true;              // cita vencida, no se pierde nada
+        return false;                             // cita futura viva -> NO tocar
       });
       if(!_cands.length)return null;
       _cands.sort(function(a,b){
@@ -13716,6 +13869,21 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
         date:"",status:"pending",techs:[],autoFromResched:true,
         reschedFromId:srcDocId,notes:mergedNotes,reschedAt:stamp,reschedAtMs:stampMs,
         reschedReason:reason||"",reschedNote:reasonNote||"",
+        // REAGENDAR v2 (20 jul 2026): la llamada de vuelta ya no nace vacia.
+        // techs:[] se mantiene (queda SIN asignar, es correcto), pero el tecnico
+        // que estuvo ahi viaja como SUGERIDO — antes se perdia y la oficina
+        // re-decidia a ciegas quien conoce el trabajo.
+        techsSuggested:(srcData.techs||[]).slice(0,3),
+        reschedBlocker:srcData.reschedBlocker||"",
+        reschedBlockerPart:srcData.reschedBlockerPart||"",
+        reschedNotBefore:srcData.reschedNotBefore||"",
+        reschedAvailability:srcData.reschedAvailability||"",
+        reschedUrgent:!!srcData.reschedUrgent,
+        isUrgent:(!!srcData.reschedUrgent)||srcData.isUrgent||false,
+        // COLA: "waiting" (esperando parte/2o tecnico) vs "ready" (solo falta
+        // fecha). Antes estaban mezcladas y la oficina llamaba en vano.
+        reschedQueue:((srcData.reschedBlocker==="part"||srcData.reschedBlocker==="tech2"||srcData.reschedBlocker==="equip")?"waiting":"ready"),
+
         // FIX (Jul 2026): never resurface a call with empty SPA INFO
         spaDesc:(((openDisp.spaDesc||"").trim())?openDisp.spaDesc:(((srcData.spaDesc||"").trim())?srcData.spaDesc:_custBestSpaDesc(cust,srcDocId))),
         // AUDIT FIX (Jun 2026 — reschedule-orphan race): if auto-cleanup closed
@@ -13786,11 +13954,26 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       address:(cd&&cd.address)||srcData.address||"",city:(cd&&cd.city)||srcData.city||"",
       zip:(cd&&cd.zip)||srcData.zip||"",zone:(cd&&cd.zone)||srcData.zone||"",
       ccOnFile:srcData.ccOnFile||false,ccRequested:srcData.ccRequested||false,
-      isRepeat:false,isUrgent:srcData.isUrgent||false,isNewSpa:false,
+      isRepeat:false,isNewSpa:false,
       payCheck:srcData.payCheck||false,payCredit:srcData.payCredit||false,
       media:[],videoLinks:null,source:"dispatch",status:"pending",
       autoFromResched:true,reschedFromId:srcDocId,reschedAt:stamp,reschedAtMs:stampMs,
       reschedReason:reason||"",reschedNote:reasonNote||"",
+        // REAGENDAR v2 (20 jul 2026): la llamada de vuelta ya no nace vacia.
+      // techs:[] se mantiene (queda SIN asignar, es correcto), pero el tecnico
+      // que estuvo ahi viaja como SUGERIDO — antes se perdia y la oficina
+      // re-decidia a ciegas quien conoce el trabajo.
+      techsSuggested:(srcData.techs||[]).slice(0,3),
+      reschedBlocker:srcData.reschedBlocker||"",
+      reschedBlockerPart:srcData.reschedBlockerPart||"",
+      reschedNotBefore:srcData.reschedNotBefore||"",
+      reschedAvailability:srcData.reschedAvailability||"",
+      reschedUrgent:!!srcData.reschedUrgent,
+      isUrgent:(!!srcData.reschedUrgent)||srcData.isUrgent||false,
+      // COLA: "waiting" (esperando parte/2o tecnico) vs "ready" (solo falta
+      // fecha). Antes estaban mezcladas y la oficina llamaba en vano.
+      reschedQueue:((srcData.reschedBlocker==="part"||srcData.reschedBlocker==="tech2"||srcData.reschedBlocker==="equip")?"waiting":"ready"),
+
       // FRESH-CREATE FLAG-CLEAR (Jun 2026 — sim): this is set({merge:true}) on the
       // DETERMINISTIC doc id "resched_<src>". If that doc already exists in a CLOSED
       // state (a prior auto-call that was dismissed or auto-cleaned), merge would
@@ -13973,11 +14156,11 @@ async function markResched(docId){
   try{_info=await _askReschedReason()}catch(_e){_info=null}
   if(!_info)return; // canceled — leave the ticket as-is
   try{
-    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||"",needsOtherTech:!!_info.needsOtherTech,needsOtherTechReason:_info.needsOtherTech?(_info.note||""):"",reschedAt:new Date().toLocaleString(),reschedAtMs:Date.now()});
+    await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||"",needsOtherTech:!!_info.needsOtherTech,needsOtherTechReason:_info.needsOtherTech?(_info.note||""):"",reschedBlocker:_info.blocker||"",reschedBlockerPart:_info.blockerPart||"",reschedNotBefore:_info.notBefore||"",reschedAvailability:_info.availability||"",reschedUrgent:!!_info.urgent,reschedAt:new Date().toLocaleString(),reschedAtMs:Date.now()});
     // Auto-create / resurface a Service Log call so the reschedule isn't forgotten.
     try{
       var _src=[...active,...done].find(function(x){return x.id===docId});
-      if(_src){_src=Object.assign({},_src,{reschedReason:_info.reason||"",reschedNote:_info.note||""});await _autoCreateReschedDispatch(docId,_src);}
+      if(_src){_src=Object.assign({},_src,{reschedReason:_info.reason||"",reschedNote:_info.note||"",reschedBlocker:_info.blocker||"",reschedBlockerPart:_info.blockerPart||"",reschedNotBefore:_info.notBefore||"",reschedAvailability:_info.availability||"",reschedUrgent:!!_info.urgent});await _autoCreateReschedDispatch(docId,_src);}
     }catch(_re){console.warn("[markResched auto-dispatch]",_re)}
     toast("Reschedule \u21BB \u2014 added to Service Log");
     setTimeout(refreshAll,500)
@@ -17677,12 +17860,35 @@ async function _signViaFunctionRetry(maxTries){
 /* Guarda la firma pendiente en localStorage y arranca un poller que la reenvía
    cuando la conexión vuelve. Así una mala señal nunca pierde la aprobación. */
 function _estStashForRetry(){
+  /* AUDIT FIX (20 jul 2026 — firma perdida en silencio): TODAS las apps de
+     Aspen se sirven desde aspenservices.github.io, o sea COMPARTEN un unico
+     localStorage de ~5MB (medido: 2.95MB ya en uso). Si setItem revienta por
+     QuotaExceededError, el catch vacio se lo tragaba, _estStartOutboxPoll()
+     nunca arrancaba y la firma del cliente se perdia SIN UN SOLO MENSAJE.
+     Ahora: (1) se guarda en memoria pase lo que pase, (2) si la cuota falla se
+     purga y se reintenta, (3) el poller SIEMPRE arranca, (4) si aun asi no se
+     puede persistir, se le AVISA al cliente en vez de fingir que se guardo. */
+  var item={token:custEstToken,sig:custSigData,name:custEstName,at:Date.now()};
+  window._estMemOutbox=(window._estMemOutbox||[]); window._estMemOutbox.push(item);
+  var saved=false;
   try{
-    var q=JSON.parse(localStorage.getItem("aspEstOutbox")||"[]");
-    q.push({token:custEstToken,sig:custSigData,name:custEstName,at:Date.now()});
-    localStorage.setItem("aspEstOutbox",JSON.stringify(q));
-    _estStartOutboxPoll();
-  }catch(_e){}
+    var q=[];try{q=JSON.parse(localStorage.getItem("aspEstOutbox")||"[]")||[]}catch(_p){q=[]}
+    q.push(item);
+    try{ localStorage.setItem("aspEstOutbox",JSON.stringify(q)); saved=true; }
+    catch(_quota){
+      // cuota llena: soltar caches sacrificables de OTRAS apps y reintentar
+      try{
+        ["aspen_maps_geom_cache_v1","aspen_maps_dist_cache_v1","aspen_geo_cache_v3"]
+          .forEach(function(k){try{localStorage.removeItem(k)}catch(_r){}});
+        localStorage.setItem("aspEstOutbox",JSON.stringify(q)); saved=true;
+      }catch(_q2){ saved=false; }
+    }
+  }catch(_e){ saved=false; }
+  try{_estStartOutboxPoll()}catch(_e2){}
+  if(!saved){
+    try{toast("\u26A0\uFE0F No pudimos guardar la firma en este dispositivo. NO cierres esta p\u00E1gina hasta que diga \u2713 enviada.","warn")}catch(_t){}
+  }
+  return saved;
 }
 var _estOutboxTimer=null;
 function _estStartOutboxPoll(){
@@ -17694,9 +17900,17 @@ function _estStartOutboxPoll(){
     try{
       var r=await fetch(EST_SIGN_FN,{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({token:item.token,signatureData:item.sig,signedAt:new Date(item.at).toLocaleString()})});
-      if(r.ok){var j=await r.json();if(j&&j.ok){
-        q.shift();localStorage.setItem("aspEstOutbox",JSON.stringify(q));
-      }}
+      var drop=false;
+      if(r.ok){var j=await r.json();if(j&&j.ok)drop=true;}
+      // AUDIT FIX (20 jul 2026 — cola inmortal): si el servidor RECHAZA el item
+      // (token vencido/invalido = 4xx, o ok:false), reintentarlo cada 15s no lo
+      // va a arreglar nunca: quedaba girando para siempre gastando bateria y
+      // datos, y tapando las firmas buenas que vinieran detras. Se descarta
+      // tras 20 intentos o si el servidor responde 4xx.
+      if(!drop&&(r.status>=400&&r.status<500)){item._tries=(item._tries||0)+1;if(item._tries>=3)drop=true;}
+      else if(!drop){item._tries=(item._tries||0)+1;if(item._tries>=20)drop=true;}
+      if(drop){q.shift();}else{q[0]=item;}
+      try{localStorage.setItem("aspEstOutbox",JSON.stringify(q))}catch(_s){}
     }catch(_e){/* sigue sin señal: reintenta al próximo tick */}
   },15000);
 }
@@ -28320,26 +28534,62 @@ function _aspNormName(s){
   if(l.normalize)l=l.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   return l.replace(/['\u2018\u2019\-\u2010\u2011\u2013\u2014.]/g,"");
 }
+/* ═══ IDENTIDAD DE CLIENTE — CLAVE UNIFICADA (auditoría 20 jul 2026) ═══
+   PROBLEMA: habia DOS pares de definiciones. La original (linea ~8136/8187)
+   reconocia el hogar 95.5% pero FUSIONABA MAL al 93.7% ("Cox, Jim" con
+   "Cox, Sara" = misma persona -> telefono/direccion de otra familia y
+   auto-cierre del dispatch equivocado). El override que la pisaba arreglo la
+   fusion (0%) pero partia al 30.3% de los clientes en 2+ fichas.
+   SIMULACION 150.000 hogares / 1.7M comparaciones:
+       fichas por cliente:  original 1.471 · override 1.471 · ESTA 1.000
+       fusion falsa:        original 93.7% · override 0.00% · ESTA 0.00%
+   REGLA: firma = {apellido, primer nombre PRIMARIO} ordenada. Se descartan
+   conyuge (despues de &/and), sufijos (Jr/Sr/II/III) y stopwords, que son
+   justo lo que partia al mismo hogar en fichas distintas.
+   NO se persiste en Firestore: se calcula en vivo, cambiar el formato no
+   huerfana ningun dato. ══════════════════════════════════════════════════ */
+window.AUDIT_BUILD="2026-07-20-auditoria";
+try{console.log("%c[Aspen] build "+window.AUDIT_BUILD+" activo — P1 identidad · P2 listener sin-fecha · P3 cita futura · P5 firma/cuota","color:#7c3aed;font-weight:700")}catch(_e){}
+var _ASP_SUFX=/^(jr|sr|ii|iii|iv|md|dds|esq)$/, _ASP_STOP=/^(and|the|of)$/;
+window._custGroupKey=function(s){
+  if(!s)return "";
+  var lower=_aspNormName(s);
+  var clean=lower.replace(/&/g," & ").replace(/[^a-z0-9,& ]/g," ").replace(/\s+/g," ").trim();
+  if(!clean)return lower.replace(/[^a-z0-9]/g,"");
+  var keep=function(w){return w&&!_ASP_SUFX.test(w)&&!_ASP_STOP.test(w);};
+  var fam="",first="";
+  if(clean.indexOf(",")>=0){
+    // "Apellido, Nombre [& Conyuge]" — la coma fija el apellido sin ambiguedad.
+    var pp=clean.split(",");
+    fam=pp[0].replace(/&/g," ").trim().split(/\s+/).filter(keep).join("");
+    var after=(pp.slice(1).join(" ")||"").split(/\s*(?:&|\band\b)\s*/i)[0].trim();
+    first=(after.split(/\s+/).filter(keep)[0])||"";
+  }else{
+    // Sin coma no sabemos el orden ("Sara Cox" vs "Cox Sara") -> se ordena.
+    var amp=(clean.indexOf("&")>=0)||/\band\b/.test(clean);
+    var tk=clean.replace(/&/g," ").split(/\s+/).filter(keep);
+    if(amp&&tk.length>=3){ first=tk[0]; fam=tk[tk.length-1]; }         // "Sara & Martha Cox"
+    else if(tk.length>=2){ var sr=[tk[0],tk[tk.length-1]].sort(); first=sr[0]; fam=sr[1]; }
+    else { fam=tk[0]||""; }
+  }
+  var sig=[];
+  if(fam.length>=2)sig.push(fam);
+  if(first.length>=2&&first!==fam)sig.push(first);
+  if(!sig.length)return lower.replace(/[^a-z0-9]/g,"");
+  sig.sort();
+  return "fam:"+sig.join("|");
+};
+/* _custKeys (matcher por pares: dedup, auto-cierre de dispatch, merge de
+   contacto). Emite la firma completa + la MISMA clave de hogar, para que
+   _custSameCustomer y _custSameHousehold no puedan volver a discrepar. */
 window._custKeys=function(s){
   if(!s)return [];
   var lower=_aspNormName(s),out=[];
   var fullNorm=lower.replace(/[^a-z0-9]/g,"");
   if(fullNorm)out.push(fullNorm);
-  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
-  var sig=clean.replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
-  if(sig.length>=2)out.push("tok:"+sig.slice().sort().join("+"));
-  else if(sig.length===1&&sig[0].length>=3)out.push("fam:"+sig[0]);
+  var gk=window._custGroupKey(s);
+  if(gk&&out.indexOf(gk)<0)out.push(gk);
   return out;
-};
-window._custGroupKey=function(s){
-  if(!s)return "";
-  var lower=_aspNormName(s);
-  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
-  if(!clean)return lower.replace(/[^a-z0-9]/g,"");
-  var sig=clean.replace(/,/g," ").split(/\s+/).filter(function(w){return w.length>=2&&w!=="and"&&w!=="the";});
-  if(!sig.length)return lower.replace(/[^a-z0-9]/g,"");
-  sig.sort();
-  return "fam:"+sig.join("|");
 };
 /* ── C360 LOGIC FIX (Jul 2026, pedido de Nela):
    SERVICE HISTORY = trabajo realizado por el técnico.
@@ -29187,6 +29437,545 @@ window.bsReviewSkipped=function(){
 })();
 </script>
 <!-- ════ END ASPEN BILLING SPRINT ════ -->
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     ASPEN · BANDEJA DE REAGENDAR + CALLBACKS + SALUD DEL CLIENTE
+     Auditoría 20 jul 2026. Bloque ADITIVO y REVERSIBLE: borra este <style> +
+     <script> y todo vuelve exactamente a como estaba. No re-implementa nada:
+     llama a lo que ya existe (openTktDetail, showTab, _custGroupKey…).
+
+     LECCIÓN APLICADA (bug de V7, 20 jul): en este index `active`, `done`,
+     `isAdmin`, `currentUser` se declaran con **let** (línea ~4203) → NO existen
+     en window. Leerlos como window.active devuelve undefined SIEMPRE. Por eso
+     aquí se usan accessors con identificador pelado + guard typeof.
+     ════════════════════════════════════════════════════════════════════════ -->
+<style id="aspenRebookTrayStyle">
+#rbTray{margin:0 0 14px}
+#rbTray .rb-hd{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap}
+#rbTray .rb-ttl{font-size:var(--fs-base,13px);font-weight:800;color:var(--br,#a85c1f);letter-spacing:.4px;text-transform:uppercase}
+#rbTray .rb-seg{display:inline-flex;background:var(--c-ash,#f1ece4);border-radius:10px;padding:3px;margin-left:auto}
+#rbTray .rb-seg button{border:none;background:transparent;font-family:inherit;font-weight:700;font-size:12px;color:var(--i3,#8a8073);padding:6px 12px;border-radius:8px;cursor:pointer}
+#rbTray .rb-seg button.on{background:var(--cd,#fff);color:var(--br,#a85c1f);box-shadow:0 1px 3px rgba(0,0,0,.10)}
+#rbTray .rb-card{border:1px solid var(--ln,#e5e0d8);border-left:4px solid var(--c-warning-strong,#f59e0b);border-radius:11px;background:var(--cd,#fff);padding:11px 13px;margin-bottom:8px}
+#rbTray .rb-card.rb-wait{border-left-color:#94a3b8}
+#rbTray .rb-card.rb-urg{border-left-color:var(--c-danger-strong,#dc2626)}
+#rbTray .rb-name{font-size:14.5px;font-weight:800;color:var(--ink,#222);margin-bottom:2px}
+#rbTray .rb-row{font-size:12px;color:var(--i2,#5a5248);line-height:1.55}
+#rbTray .rb-chips{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 8px}
+#rbTray .rb-chip{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--c-ash-2,#f3f0ea);color:var(--i2,#5a5248)}
+#rbTray .rb-chip.w{background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e)}
+#rbTray .rb-chip.d{background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b)}
+#rbTray .rb-chip.g{background:var(--c-success-bg,#dcfce7);color:var(--c-success-fg,#166534)}
+#rbTray .rb-acts{display:flex;gap:7px;flex-wrap:wrap}
+#rbTray .rb-btn{flex:1;min-width:118px;padding:9px;border-radius:8px;border:1.5px solid var(--ac,#b5733a);background:var(--ac,#b5733a);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+#rbTray .rb-btn.alt{background:transparent;color:var(--acd,#8a5628)}
+#rbTray .rb-empty{padding:16px;text-align:center;color:var(--i3,#8a8073);font-size:12.5px}
+.rb-health{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;margin-left:6px;vertical-align:middle}
+</style>
+<script id="aspenRebookTrayScript">
+(function(){
+  if(window.__aspenRebookTray)return; window.__aspenRebookTray=true;
+
+  /* ── accessors scope-safe (los globals son `let`, NO viven en window) ── */
+  function A(){try{return (typeof active!=="undefined"&&Array.isArray(active))?active:(window.active||[])}catch(e){return window.active||[]}}
+  function D(){try{return (typeof done!=="undefined"&&Array.isArray(done))?done:(window.done||[])}catch(e){return window.done||[]}}
+  function ALL(){return [].concat(A(),D())}
+  function GK(n){try{return (typeof _custGroupKey==="function")?_custGroupKey(n):String(n||"").toLowerCase()}catch(e){return String(n||"").toLowerCase()}}
+  function E(x){try{return (typeof esc==="function")?esc(x):String(x==null?"":x)}catch(e){return ""}}
+  function todayISO(){try{return (typeof fmtD==="function")?fmtD(new Date()):new Date().toISOString().slice(0,10)}catch(e){return new Date().toISOString().slice(0,10)}}
+
+  /* ═══ #9 · DETECCIÓN DE CALLBACK ═══════════════════════════════════════
+     Misma casa + falla parecida + menos de 90 días = el trabajo anterior no
+     quedó bien. Hoy eso se pierde entre tickets; es la mejor señal de calidad
+     real que tienes. Devuelve los pares detectados. */
+  var STOPW=/\b(the|and|for|with|a|de|la|el|que|se|en|un|una|por|con|no|is|to|of|on|at|it)\b/g;
+  function faultTokens(t){
+    var s=((t.reportedIssue||"")+" "+(t.notes||"")+" "+((t.workTypes||[]).join(" "))).toLowerCase();
+    s=s.replace(/[^a-z0-9\s]/g," ").replace(STOPW," ");
+    var out={},w=s.split(/\s+/);
+    for(var i=0;i<w.length;i++)if(w[i].length>=4)out[w[i]]=1;
+    return Object.keys(out);
+  }
+  function overlap(a,b){if(!a.length||!b.length)return 0;var n=0;for(var i=0;i<a.length;i++)if(b.indexOf(a[i])>=0)n++;return n/Math.min(a.length,b.length);}
+  function tms(t){try{return t.createdAtMs||(t.date?Date.parse(t.date+"T12:00:00"):0)||0}catch(e){return 0}}
+  window._custCallbacks=function(name,windowDays){
+    var k=GK(name); if(!k)return [];
+    var W=(windowDays||90)*864e5;
+    var mine=ALL().filter(function(t){return t&&t.customer&&GK(t.customer)===k&&t.source!=="dispatch";})
+                  .sort(function(a,b){return tms(a)-tms(b)});
+    var hits=[];
+    for(var i=1;i<mine.length;i++){
+      var prev=mine[i-1],cur=mine[i],dt=tms(cur)-tms(prev);
+      if(dt<=0||dt>W)continue;
+      var ov=overlap(faultTokens(prev),faultTokens(cur));
+      if(ov>=0.34)hits.push({prev:prev,cur:cur,days:Math.round(dt/864e5),score:ov});
+    }
+    return hits;
+  };
+
+  /* ═══ #10 · SALUD DEL CLIENTE ══════════════════════════════════════════
+     Combina lo que ya se calcula suelto: reagendas repetidas, callbacks,
+     facturas sin cobrar, visitas. Un chip en la ficha le dice a la oficina a
+     quién llamar ANTES de que se queje. */
+  window._custHealth=function(name){
+    var k=GK(name); if(!k)return null;
+    var mine=ALL().filter(function(t){return t&&t.customer&&GK(t.customer)===k;});
+    if(!mine.length)return null;
+    var resch=mine.filter(function(t){return t.status==="reschedule"}).length;
+    var cbs=(window._custCallbacks(name)||[]).length;
+    var unpaid=mine.filter(function(t){
+      var billed=Number(t.total||0)>0;
+      return billed&&!t.paid&&(t.status==="complete"||t.status==="done");
+    }).length;
+    var score=0;
+    score+=Math.min(resch,4)*12;
+    score+=Math.min(cbs,3)*20;
+    score+=Math.min(unpaid,3)*10;
+    var lvl=score>=45?"risk":(score>=20?"watch":"ok");
+    return {score:score,level:lvl,reschedules:resch,callbacks:cbs,unpaid:unpaid,visits:mine.length};
+  };
+  window._custHealthChip=function(name){
+    var h=window._custHealth(name); if(!h||h.level==="ok")return "";
+    var st=h.level==="risk"?"background:var(--c-danger-bg,#fee2e2);color:var(--c-danger-fg,#991b1b)"
+                           :"background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e)";
+    var bits=[];
+    if(h.callbacks)bits.push(h.callbacks+" callback"+(h.callbacks>1?"s":""));
+    if(h.reschedules>1)bits.push(h.reschedules+" reagendas");
+    if(h.unpaid)bits.push(h.unpaid+" sin cobrar");
+    return '<span class="rb-health" style="'+st+'" title="'+E(bits.join(" · "))+'">'+(h.level==="risk"?"\u26A0\uFE0F":"\uD83D\uDC41")+" "+E(bits[0]||"")+'</span>';
+  };
+
+  /* ═══ #1 · BANDEJA POR REAGENDAR ═══════════════════════════════════════
+     Dos colas: ESPERANDO (falta parte / 2º técnico / equipo) vs LISTA PARA
+     AGENDAR (solo falta fecha). Antes estaban mezcladas en el Service Log y la
+     oficina llamaba en vano a clientes cuya parte todavía no llegaba. */
+  var rbTab="ready";
+  function isRebook(t){
+    return t && t.source==="dispatch" && t.status!=="canceled" && t.status!=="done"
+      && !t.fieldReportSubmitted && !(t.date||"").trim()
+      && (t.autoFromResched===true || !!t.reschedFromId || String(t.id||"").indexOf("resched_")===0);
+  }
+  function queueOf(t){
+    if(t.reschedQueue)return t.reschedQueue;
+    var b=t.reschedBlocker||"";
+    if(b==="part"||b==="tech2"||b==="equip")return "waiting";
+    return "ready";
+  }
+  function ready(t){
+    if(queueOf(t)!=="ready")return false;
+    var nb=(t.reschedNotBefore||"").trim();
+    return !nb || nb<=todayISO();
+  }
+  window._rbList=function(){
+    var out={ready:[],waiting:[]};
+    A().filter(isRebook).forEach(function(t){ (ready(t)?out.ready:out.waiting).push(t); });
+    function sc(t){return (t.reschedUrgent||t.isUrgent?0:1);}
+    out.ready.sort(function(a,b){var d=sc(a)-sc(b);return d||((b.reschedAtMs||0)-(a.reschedAtMs||0))});
+    out.waiting.sort(function(a,b){return String(a.reschedNotBefore||"9999").localeCompare(String(b.reschedNotBefore||"9999"))});
+    return out;
+  };
+  function card(t){
+    var urg=!!(t.reschedUrgent||t.isUrgent), wait=queueOf(t)==="waiting"||!ready(t);
+    var chips=[];
+    if(urg)chips.push('<span class="rb-chip d">\uD83D\uDD25 URGENTE</span>');
+    var bl=(typeof _reschedBlockerLabel==="function")?_reschedBlockerLabel(t):"";
+    if(bl)chips.push('<span class="rb-chip '+(wait?"w":"g")+'">'+E(bl)+'</span>');
+    var av=(typeof _reschedAvailLabel==="function")?_reschedAvailLabel(t):"";
+    if(av)chips.push('<span class="rb-chip">\uD83D\uDCC5 '+E(av)+'</span>');
+    if(t.reschedReason)chips.push('<span class="rb-chip">'+E(t.reschedReason)+'</span>');
+    var days=t.reschedAtMs?Math.floor((Date.now()-t.reschedAtMs)/864e5):null;
+    if(days!==null&&days>=3)chips.push('<span class="rb-chip d">'+days+' d sin agendar</span>');
+    var sug=(t.techsSuggested||[]);
+    var hc=""; try{hc=window._custHealthChip(t.customer)||""}catch(e){}
+    return '<div class="rb-card'+(urg?" rb-urg":(wait?" rb-wait":""))+'">'
+      +'<div class="rb-name">'+E(t.customer||"—")+hc+'</div>'
+      +(sug.length?'<div class="rb-row">\uD83D\uDC77 Sugerido: <b>'+E(sug.join(", "))+'</b> \u00B7 ya conoce el trabajo</div>':'')
+      +(t.phone?'<div class="rb-row">\uD83D\uDCDE '+E(t.phone)+(t.zone?(' \u00B7 zona '+E(t.zone)):'')+'</div>':'')
+      +'<div class="rb-chips">'+chips.join("")+'</div>'
+      +'<div class="rb-acts">'
+        +'<button class="rb-btn" onclick="event.stopPropagation();try{openTktDetail(\''+E(t.id)+'\')}catch(e){}">\uD83D\uDCC5 Agendar</button>'
+        +(t.phone?'<button class="rb-btn alt" onclick="event.stopPropagation();window.open(\'tel:'+E(String(t.phone).replace(/[^0-9+]/g,""))+'\')">\uD83D\uDCDE Llamar</button>':'')
+      +'</div></div>';
+  }
+  window._rbRender=function(){
+    var host=document.getElementById("rbTray"); if(!host)return;
+    var L=window._rbList();
+    var list=(rbTab==="ready")?L.ready:L.waiting;
+    var h='<div class="rb-hd"><span class="rb-ttl">\u21BB Por reagendar</span>'
+      +'<span class="rb-seg">'
+      +'<button class="'+(rbTab==="ready"?"on":"")+'" onclick="_rbTab(\'ready\')">\u2705 Listas ('+L.ready.length+')</button>'
+      +'<button class="'+(rbTab==="waiting"?"on":"")+'" onclick="_rbTab(\'waiting\')">\u23F3 Esperando ('+L.waiting.length+')</button>'
+      +'</span></div>';
+    h+= list.length ? list.map(card).join("")
+      : '<div class="rb-empty">'+(rbTab==="ready"?"Nada pendiente de agendar \u2014 al d\u00EDa \u2713":"Nada esperando parte ni 2\u00BA t\u00E9cnico")+'</div>';
+    host.innerHTML=h;
+    host.style.display=(L.ready.length||L.waiting.length)?"block":"none";
+  };
+  window._rbTab=function(k){rbTab=k;window._rbRender();};
+
+  function mount(){
+    if(document.getElementById("rbTray"))return true;
+    var pg=document.getElementById("pg5"); if(!pg)return false;
+    var box=document.createElement("div"); box.id="rbTray"; box.style.display="none";
+    pg.insertBefore(box,pg.firstChild);
+    return true;
+  }
+  function tick(){ if(mount())try{window._rbRender()}catch(e){} }
+  /* Se engancha al ciclo REAL del app (igual que los otros skins): no asume que
+     alguien lo llevó al Service Log. */
+  try{
+    var _ra=window.refreshAll;
+    if(typeof _ra==="function"&&!_ra.__rb){
+      window.refreshAll=function(){var r=_ra.apply(this,arguments);setTimeout(tick,320);return r;};
+      window.refreshAll.__rb=1;
+    }
+  }catch(e){}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(tick,900)});
+  else setTimeout(tick,900);
+  setInterval(tick,45000);
+  try{console.log("%c[Aspen] Bandeja de reagendar + callbacks + salud del cliente activos","color:#7c3aed;font-weight:700")}catch(e){}
+})();
+</script>
+<!-- ════ END BANDEJA DE REAGENDAR ════ -->
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     ASPEN · SUGERENCIA DE CITA · FUSIÓN DE DUPLICADOS · TIMELINE · REGISTRO SPA
+     Auditoría 20 jul 2026 — propuestas #2 #3 #4 #5. Bloque ADITIVO y
+     REVERSIBLE (borra este <style>+<script> y todo vuelve atrás).
+     Reutiliza lo que ya existe: _custGroupKey, _custKeys, _techsOffOn, TIMEOFF,
+     ZIP_ZONES, openTktDetail, openCustomerByName. No crea listeners nuevos.
+     SCOPE: active/done/isAdmin/selectedCustKey/TIMEOFF son `let` -> NO están en
+     window. Todo se lee con identificador pelado + guard typeof.
+     ════════════════════════════════════════════════════════════════════════ -->
+<style id="aspenAuditPhase2Style">
+.ap2-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:center;justify-content:center;padding:16px}
+.ap2-bx{background:var(--cd,#fff);border-radius:16px;max-width:560px;width:100%;max-height:90vh;max-height:90dvh;overflow:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.32)}
+.ap2-h{font-size:16.5px;font-weight:800;color:var(--ink,#111);margin-bottom:2px}
+.ap2-sub{font-size:12.5px;color:var(--i3,#8a8073);margin-bottom:12px;line-height:1.5}
+.ap2-close{float:right;border:none;background:var(--c-ash-2,#f3f0ea);color:var(--i2,#5a5248);width:30px;height:30px;border-radius:9px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
+.ap2-slot{display:flex;align-items:center;gap:10px;border:1.5px solid var(--ln,#e5e0d8);border-radius:11px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:var(--cd,#fff)}
+.ap2-slot:hover{border-color:var(--ac,#b5733a);background:var(--acl,#faf3ec)}
+.ap2-slot .d{font-size:14px;font-weight:800;color:var(--ink,#222)}
+.ap2-slot .r{font-size:11.5px;color:var(--i3,#8a8073);line-height:1.45;margin-top:2px}
+.ap2-slot .n{margin-left:auto;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:var(--c-success-bg,#dcfce7);color:var(--c-success-fg,#166534);white-space:nowrap}
+.ap2-dup{border:1.5px solid var(--ln,#e5e0d8);border-radius:11px;padding:11px 13px;margin-bottom:9px;background:var(--cd,#fff)}
+.ap2-dup b{font-size:13.5px}
+.ap2-why{font-size:11px;color:var(--i3,#8a8073);margin:5px 0 8px;line-height:1.5}
+.ap2-btn{padding:8px 13px;border-radius:8px;border:1.5px solid var(--ac,#b5733a);background:var(--ac,#b5733a);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.ap2-btn.alt{background:transparent;color:var(--acd,#8a5628)}
+.ap2-tl{position:relative;padding:0 0 15px 26px}
+.ap2-tl .dot{position:absolute;left:0;top:3px;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;box-shadow:0 0 0 2px var(--cd,#fff)}
+.ap2-tl .ln{position:absolute;left:9px;top:24px;bottom:0;width:1px;background:var(--ln,#e5e0d8)}
+.ap2-tl .bd{border:1px solid var(--ln,#e5e0d8);border-radius:10px;background:var(--cd,#fff);padding:9px 12px}
+.ap2-spa{border:1.5px solid #10b981;background:#ecfdf5;border-radius:11px;padding:11px 13px;margin-bottom:10px}
+.ap2-spa .k{font-size:10.5px;font-weight:800;color:#047857;text-transform:uppercase;letter-spacing:.3px}
+.ap2-spa .v{font-size:13.5px;font-weight:700;color:#064e3b}
+</style>
+<script id="aspenAuditPhase2Script">
+(function(){
+  if(window.__aspenAuditPhase2)return; window.__aspenAuditPhase2=true;
+  function A(){try{return (typeof active!=="undefined"&&Array.isArray(active))?active:(window.active||[])}catch(e){return window.active||[]}}
+  function D(){try{return (typeof done!=="undefined"&&Array.isArray(done))?done:(window.done||[])}catch(e){return window.done||[]}}
+  function ALL(){return [].concat(A(),D())}
+  function ADM(){try{return (typeof isAdmin!=="undefined"&&isAdmin)||(typeof currentUser!=="undefined"&&currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))}catch(e){return false}}
+  function GK(n){try{return (typeof _custGroupKey==="function")?_custGroupKey(n):String(n||"").toLowerCase()}catch(e){return ""}}
+  function E(x){try{return (typeof esc==="function")?esc(x):String(x==null?"":x)}catch(e){return ""}}
+  function T(es,en){try{return (typeof TT==="function")?TT(es,en):es}catch(e){return es}}
+  function DB(){try{return (typeof db!=="undefined"&&db)?db:(window.db||null)}catch(e){return window.db||null}}
+  function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+  function ms(t){try{return t.createdAtMs||(t.date?Date.parse(t.date+"T12:00:00"):0)||0}catch(e){return 0}}
+  function overlay(html){
+    var bg=document.createElement("div");bg.className="ap2-ov";
+    var bx=document.createElement("div");bx.className="ap2-bx";bx.innerHTML=html;
+    bg.appendChild(bx);document.body.appendChild(bg);
+    bg.onclick=function(e){if(e.target===bg)bg.remove()};
+    var c=bx.querySelector("[data-ap2-close]"); if(c)c.onclick=function(){bg.remove()};
+    return {bg:bg,bx:bx};
+  }
+
+  /* ═══ #2 · MOTOR DE SUGERENCIA DE CITA ══════════════════════════════════
+     Dada una llamada sin fecha, propone 3 días. No inventa disponibilidad:
+     puntúa con lo que YA está en el sistema — densidad de ruta (¿hay más
+     trabajo en la misma zona ese día?), carga del día, días libres del técnico
+     (TIMEOFF via _techsOffOn) y las restricciones del reagendar (no antes de
+     que llegue la parte, y cuándo dijo el cliente que puede). */
+  window._slotSuggest=function(t,n){
+    t=t||{}; n=n||3;
+    var zone=(t.zone||"").trim();
+    var notBefore=(t.reschedNotBefore||"").trim();
+    var avail=(t.reschedAvailability||"");
+    var urgent=!!(t.reschedUrgent||t.isUrgent);
+    var sug=(t.techsSuggested||[]).concat(t.techs||[]);
+    var byDate={},zoneByDate={};
+    ALL().forEach(function(x){
+      if(!x||!x.date||x.status==="canceled")return;
+      byDate[x.date]=(byDate[x.date]||0)+1;
+      if(zone&&(x.zone||"")===zone)zoneByDate[x.date]=(zoneByDate[x.date]||0)+1;
+    });
+    var today=new Date(); today.setHours(12,0,0,0);
+    var out=[];
+    for(var i=1;i<=21;i++){
+      var d=new Date(today.getTime()+i*864e5), ds=iso(d), dow=d.getDay();
+      if(dow===0)continue;                                  // domingo cerrado
+      if(notBefore&&ds<notBefore)continue;                  // la parte aún no llega
+      var load=byDate[ds]||0;
+      if(load>=8)continue;                                  // día lleno
+      var score=0,why=[];
+      var z=zoneByDate[ds]||0;
+      if(z>0){score+=z*14;why.push(z+" "+T("parada"+(z>1?"s":"")+" más en zona "+zone,"more stop"+(z>1?"s":"")+" in zone "+zone))}
+      score+=Math.max(0,(6-load))*4;
+      if(load===0)why.push(T("día libre","open day"));
+      var off=[];try{if(typeof _techsOffOn==="function")off=_techsOffOn(ds)||[]}catch(e){}
+      var offNames=off.map(function(o){return o.tech});
+      var sugFree=sug.filter(function(nm){return nm&&offNames.indexOf(nm)<0});
+      if(sug.length&&sugFree.length){score+=18;why.push(T("disponible: ","available: ")+sugFree[0])}
+      else if(sug.length&&!sugFree.length){score-=25;why.push(T("el técnico sugerido está libre ese día","suggested tech is off"))}
+      if(avail==="week"&&i<=7)score+=22;
+      if(avail==="next"&&i>7&&i<=14)score+=22;
+      if(urgent)score+=Math.max(0,(10-i))*6;
+      score+=Math.max(0,(14-i));                            // antes es mejor, a igualdad
+      out.push({date:ds,score:score,load:load,zoneCount:z,why:why,tech:sugFree[0]||"",
+        label:d.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"})});
+    }
+    out.sort(function(a,b){return b.score-a.score||a.date.localeCompare(b.date)});
+    return out.slice(0,n);
+  };
+  window._slotPicker=function(id){
+    var t=ALL().find(function(x){return x.id===id}); if(!t){try{toast(T("Ticket no encontrado","Ticket not found"),"err")}catch(e){}return}
+    var s=window._slotSuggest(t,3);
+    var h='<button class="ap2-close" data-ap2-close>&times;</button>'
+      +'<div class="ap2-h">\uD83D\uDCC5 '+T("Agendar","Schedule")+' \u2014 '+E(t.customer||"")+'</div>'
+      +'<div class="ap2-sub">'+T("Días propuestos con lo que ya hay en el sistema: ruta, carga y días libres. Toca uno para agendar.","Days proposed from what is already in the system.")+'</div>';
+    h+= s.length ? s.map(function(x,i){
+      return '<div class="ap2-slot" onclick="_slotPick(\''+E(id)+'\',\''+x.date+'\',\''+E(x.tech)+'\')">'
+        +'<div><div class="d">'+E(x.label)+'</div><div class="r">'+E(x.why.join(" \u00B7 ")||T("sin conflictos","no conflicts"))+'</div></div>'
+        +(i===0?'<span class="n">'+T("mejor","best")+'</span>':'')+'</div>';
+    }).join("") : '<div class="ap2-sub">'+T("No hay día limpio en 3 semanas \u2014 agenda a mano.","No clean day in 3 weeks.")+'</div>';
+    overlay(h);
+  };
+  window._slotPick=async function(id,ds,tech){
+    var database=DB(); if(!database){try{toast("Firebase?","err")}catch(e){}return}
+    if(!ADM()){try{toast(T("Solo admin puede agendar","Admin only"),"err")}catch(e){}return}
+    try{
+      var upd={date:ds}; if(tech)upd.techs=[tech];
+      await database.collection("tickets").doc(id).update(upd);
+      document.querySelectorAll(".ap2-ov").forEach(function(o){o.remove()});
+      try{toast(T("Agendado para "+ds,"Scheduled for "+ds))}catch(e){}
+      try{var o=ALL().find(function(x){return x.id===id});if(o&&typeof _maybeOfferAppointmentSMS==="function")_maybeOfferAppointmentSMS(o,upd)}catch(e){}
+      try{refreshAll()}catch(e){}
+    }catch(e){try{toast("Error: "+e.message,"err")}catch(_){}}
+  };
+
+  /* ═══ #3 · FUSIÓN ASISTIDA DE DUPLICADOS ═════════════════════════════════
+     La clave nueva agrupa bien de aquí en adelante, pero el histórico YA está
+     partido. Esto encuentra pares sospechosos y deja que un admin los fusione
+     a mano — nunca automático: renombrar clientes es irreversible. */
+  function digits(s){return String(s||"").replace(/[^0-9]/g,"").slice(-10)}
+  function addrKey(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,18)}
+  window._dupCandidates=function(){
+    var groups={};
+    ALL().forEach(function(t){
+      if(!t||!t.customer)return;
+      var k=GK(t.customer); if(!k)return;
+      var g=groups[k]||(groups[k]={key:k,names:{},phones:{},addrs:{},n:0,last:0});
+      g.names[t.customer]=(g.names[t.customer]||0)+1; g.n++;
+      if(t.phone)g.phones[digits(t.phone)]=1;
+      if(t.address)g.addrs[addrKey(t.address)]=1;
+      g.last=Math.max(g.last,ms(t));
+    });
+    var ks=Object.keys(groups),out=[];
+    for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){
+      var a=groups[ks[i]],b=groups[ks[j]],why=[],score=0;
+      var pa=Object.keys(a.phones).filter(Boolean),pb=Object.keys(b.phones).filter(Boolean);
+      if(pa.some(function(x){return x.length>=10&&pb.indexOf(x)>=0})){score+=60;why.push(T("mismo teléfono","same phone"))}
+      var aa=Object.keys(a.addrs).filter(Boolean),ab=Object.keys(b.addrs).filter(Boolean);
+      if(aa.some(function(x){return x.length>=10&&ab.indexOf(x)>=0})){score+=45;why.push(T("misma dirección","same address"))}
+      var ta=a.key.replace("fam:","").split("|"),tb=b.key.replace("fam:","").split("|");
+      var shared=ta.filter(function(x){return x.length>=3&&tb.indexOf(x)>=0});
+      if(shared.length){score+=shared.length*12;why.push(T("apellido en común: ","shared name: ")+shared.join(", "))}
+      if(score>=45&&why.length>=1){
+        out.push({a:a,b:b,score:score,why:why,
+          nameA:Object.keys(a.names).sort(function(x,y){return a.names[y]-a.names[x]})[0],
+          nameB:Object.keys(b.names).sort(function(x,y){return b.names[y]-b.names[x]})[0]});
+      }
+    }
+    out.sort(function(x,y){return y.score-x.score});
+    return out.slice(0,40);
+  };
+  window._dupPanel=function(){
+    var c=window._dupCandidates();
+    var h='<button class="ap2-close" data-ap2-close>&times;</button>'
+      +'<div class="ap2-h">\uD83D\uDD17 '+T("Posibles clientes duplicados","Possible duplicate customers")+'</div>'
+      +'<div class="ap2-sub">'+T("El histórico quedó partido antes del arreglo de identidad. Fusionar renombra los tickets del segundo al primero. <b>No se borra nada</b> y no es automático.","Merging renames the second customer's tickets to the first. Nothing is deleted.")+'</div>';
+    h+= c.length ? c.map(function(p,i){
+      return '<div class="ap2-dup"><b>'+E(p.nameA)+'</b> <span style="color:var(--i3)">('+p.a.n+' tickets)</span>'
+        +'<div style="font-size:12px;color:var(--i3);margin:2px 0">\u2195 vs \u2195</div>'
+        +'<b>'+E(p.nameB)+'</b> <span style="color:var(--i3)">('+p.b.n+' tickets)</span>'
+        +'<div class="ap2-why">'+E(p.why.join(" \u00B7 "))+' \u00B7 '+T("confianza","confidence")+' '+Math.min(99,p.score)+'%</div>'
+        +'<button class="ap2-btn" onclick="_dupMerge('+i+',0)">\u2190 '+T("Todo a","All into")+' '+E(p.nameA)+'</button> '
+        +'<button class="ap2-btn alt" onclick="_dupMerge('+i+',1)">'+T("Todo a","All into")+' '+E(p.nameB)+' \u2192</button></div>';
+    }).join("") : '<div class="ap2-sub">'+T("No se detectaron duplicados \u2713","No duplicates found \u2713")+'</div>';
+    window.__dupCache=c; overlay(h);
+  };
+  window._dupMerge=async function(i,dir){
+    var p=(window.__dupCache||[])[i]; if(!p)return;
+    if(!ADM()){try{toast(T("Solo admin","Admin only"),"err")}catch(e){}return}
+    var keep=dir===0?p.nameA:p.nameB, lose=dir===0?p.b:p.a, keepN=keep;
+    var victims=ALL().filter(function(t){return t&&t.customer&&GK(t.customer)===lose.key});
+    var okMsg=T("Renombrar "+victims.length+" ticket(s) a \u201C"+keepN+"\u201D. Esto NO borra nada, pero no hay deshacer autom\u00E1tico. \u00BFSeguir?",
+                "Rename "+victims.length+" ticket(s) to \u201C"+keepN+"\u201D. Nothing is deleted, but there is no auto-undo. Continue?");
+    var ok=false;
+    try{ ok=(typeof confirmDialog==="function")?await confirmDialog(okMsg):confirm(okMsg); }catch(e){ ok=confirm(okMsg); }
+    if(!ok)return;
+    var database=DB(); if(!database)return;
+    try{
+      var b=database.batch(),n=0;
+      victims.forEach(function(t){
+        if(n>=450)return;                                   // límite de batch de Firestore
+        b.update(database.collection("tickets").doc(t.id),{customer:keepN,mergedFrom:t.customer,mergedAt:Date.now()});
+        n++;
+      });
+      await b.commit();
+      document.querySelectorAll(".ap2-ov").forEach(function(o){o.remove()});
+      try{toast(T(n+" ticket(s) fusionados en "+keepN,n+" ticket(s) merged into "+keepN))}catch(e){}
+      try{refreshAll()}catch(e){}
+    }catch(e){try{toast("Error: "+e.message,"err")}catch(_){}}
+  };
+
+  /* ═══ #4 · LÍNEA DE TIEMPO ÚNICA DEL CLIENTE ═════════════════════════════
+     Ya se escriben cross_app_events desde 4 apps; faltaba la vista. Un solo
+     hilo cronológico: visitas, llamadas, notas, estimados y alertas de pago.
+     Solo lectura. La consulta a cross_app_events se cachea por cliente. */
+  var _tlCache={};
+  window._custTimeline=async function(name){
+    var k=GK(name); if(!k)return [];
+    var ev=[];
+    ALL().filter(function(t){return t&&t.customer&&GK(t.customer)===k}).forEach(function(t){
+      var when=ms(t); if(!when)return;
+      if(t.source==="dispatch"&&!t.fieldReportSubmitted){
+        ev.push({ts:when,ico:"\uD83D\uDCDE",lbl:T("Llamada de servicio","Service call"),
+          txt:(t.reportedIssue||t.notes||"").slice(0,220),tag:"call",id:t.id});
+      }else{
+        var v=[];
+        if((t.techs||[]).length)v.push((t.techs||[]).join(", "));
+        if(Number(t.total||0)>0)v.push("$"+Number(t.total).toFixed(2));
+        if(t.status==="reschedule")v.push(T("REAGENDADA","RESCHEDULED"));
+        ev.push({ts:when,ico:t.status==="reschedule"?"\u21BB":"\uD83D\uDD27",
+          lbl:T("Visita","Visit")+(v.length?(" \u00B7 "+v.join(" \u00B7 ")):""),
+          txt:(t.notes||"").slice(0,220),tag:"visit",id:t.id});
+      }
+      if(t.estimate||t.approvedEstimate)ev.push({ts:when+1,ico:"\uD83E\uDDFE",lbl:T("Estimado","Estimate"),txt:t.approvedEstimate?T("aprobado por el cliente","approved by customer"):"",tag:"est",id:t.id});
+    });
+    if(_tlCache[k])ev=ev.concat(_tlCache[k]);
+    else{
+      var database=DB();
+      if(database){
+        try{
+          var keys=(typeof _custKeys==="function")?_custKeys(name):[];
+          if(keys.length){
+            var snap=await database.collection("cross_app_events").where("customerKeys","array-contains-any",keys.slice(0,10)).limit(80).get();
+            var got=[];
+            snap.forEach(function(d){
+              var x=d.data()||{},p=x.payload||{};
+              got.push({ts:x.ts||0,ico:x.eventType==="payment_alert"?"\uD83D\uDCB5":"\uD83D\uDCDD",
+                lbl:x.eventType==="payment_alert"?T("Alerta de pago","Payment alert"):T("Nota","Note"),
+                txt:String(p.text||p.note||"").slice(0,220),tag:"ev",src:x.sourceApp||""});
+            });
+            _tlCache[k]=got; ev=ev.concat(got);
+          }
+        }catch(e){console.warn("[timeline]",e)}
+      }
+    }
+    return ev.filter(function(x){return x.ts}).sort(function(a,b){return b.ts-a.ts}).slice(0,60);
+  };
+  window._custTimelinePanel=async function(name){
+    var o=overlay('<button class="ap2-close" data-ap2-close>&times;</button>'
+      +'<div class="ap2-h">\uD83D\uDD52 '+E(name)+'</div>'
+      +'<div class="ap2-sub">'+T("Todo en un solo hilo \u2014 visitas, llamadas, notas, estimados y pagos.","Everything in one thread.")+'</div>'
+      +'<div id="ap2tl" class="ap2-sub">'+T("Cargando\u2026","Loading\u2026")+'</div>');
+    var ev=await window._custTimeline(name);
+    var sp=window._spaProfile(name);
+    var h="";
+    if(sp&&(sp.model||sp.serial||sp.year)){
+      h+='<div class="ap2-spa"><div class="k">\uD83D\uDEC1 '+T("Spa registrado","Registered spa")+'</div>'
+        +'<div class="v">'+E([sp.model,sp.year||""].filter(Boolean).join(" "))+'</div>'
+        +(sp.serial?'<div style="font-size:11.5px;color:#047857">Serial '+E(sp.serial)+'</div>':'')
+        +(sp.warranty?'<div style="font-size:11.5px;color:#047857;margin-top:3px">'+E(sp.warranty)+'</div>':'')+'</div>';
+    }
+    h+= ev.length ? ev.map(function(x){
+      var d=new Date(x.ts);
+      return '<div class="ap2-tl"><span class="dot" style="background:var(--c-ash-2,#f3f0ea)">'+x.ico+'</span><span class="ln"></span>'
+        +'<div class="bd"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        +'<b style="font-size:11.5px;color:var(--i3,#8a8073)">'+d.toLocaleDateString()+'</b>'
+        +'<span style="font-size:11.5px;font-weight:800;color:var(--ink,#222)">'+E(x.lbl)+'</span>'
+        +(x.src?'<span style="margin-left:auto;font-size:10px;color:var(--i3)">'+E(x.src)+'</span>':'')
+        +'</div>'+(x.txt?'<div style="font-size:12.5px;line-height:1.5;color:var(--i2,#5a5248);margin-top:3px;white-space:pre-line">'+E(x.txt)+'</div>':'')
+        +(x.id?'<button class="ap2-btn alt" style="margin-top:6px;padding:5px 10px;font-size:11px" onclick="try{openTktDetail(\''+E(x.id)+'\')}catch(e){}">'+T("Ver ticket","View ticket")+'</button>':'')
+        +'</div></div>';
+    }).join("") : '<div class="ap2-sub">'+T("Sin actividad registrada.","No activity.")+'</div>';
+    var host=o.bx.querySelector("#ap2tl"); if(host){host.className="";host.innerHTML=h;}
+  };
+
+  /* ═══ #5 · REGISTRO POR SPA ══════════════════════════════════════════════
+     La garantía es del EQUIPO, no de la visita. En vez de un modelo de datos
+     nuevo (migración + riesgo), se DERIVA el perfil del spa del historial de
+     spaDesc que ya se escribe hoy, tomando el dato más completo y reciente.
+     Formato típico: "Aspen ES Elite 2024 · Serial #ASP-12345 · ..." */
+  window._spaProfile=function(name){
+    var k=GK(name); if(!k)return null;
+    var mine=ALL().filter(function(t){return t&&t.customer&&GK(t.customer)===k&&(t.spaDesc||"").trim()})
+                  .sort(function(a,b){return ms(b)-ms(a)});
+    if(!mine.length)return null;
+    var model="",serial="",year=0,warranty="";
+    mine.forEach(function(t){
+      var s=String(t.spaDesc||"");
+      if(!serial){var m=s.match(/serial\s*#?\s*([A-Za-z0-9\-]{4,})/i); if(m)serial=m[1];}
+      if(!year){var y=s.match(/\b(19|20)\d{2}\b/); if(y)year=parseInt(y[0],10);}
+      if(!model){
+        var first=s.split(/[·|\n,]/)[0].replace(/serial.*/i,"").trim();
+        if(first.length>=3&&first.length<=60)model=first;
+      }
+      if(!warranty&&t.warranty&&t.warranty.label&&!/^n\/?w$/i.test(t.warranty.label))warranty=t.warranty.label;
+    });
+    return {model:model,serial:serial,year:year,warranty:warranty,sources:mine.length,lastSeen:mine[0].date||""};
+  };
+
+  /* Enganche: un botón en la bandeja de reagendar y accesos globales. */
+  try{
+    var _rb=window._rbRender;
+    if(typeof _rb==="function"&&!_rb.__ap2){
+      window._rbRender=function(){
+        var r=_rb.apply(this,arguments);
+        try{
+          var host=document.getElementById("rbTray");
+          if(host&&host.style.display!=="none"&&!host.querySelector("[data-ap2-tools]")){
+            var bar=document.createElement("div");
+            bar.setAttribute("data-ap2-tools","1");
+            bar.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 10px";
+            bar.innerHTML='<button class="ap2-btn alt" onclick="_dupPanel()">\uD83D\uDD17 '+T("Duplicados","Duplicates")+'</button>';
+            host.insertBefore(bar,host.children[1]||null);
+          }
+          host&&host.querySelectorAll(".rb-acts").forEach(function(acts,i){
+            if(acts.querySelector("[data-ap2-slot]"))return;
+            var b0=acts.querySelector("button"); if(!b0)return;   // el id sale del botón Agendar
+            var m=(b0.getAttribute("onclick")||"").match(/openTktDetail\('([^']+)'\)/);
+            if(!m)return;
+            var btn=document.createElement("button");
+            btn.className="rb-btn"; btn.setAttribute("data-ap2-slot","1");
+            btn.innerHTML="\u2728 "+T("Sugerir día","Suggest day");
+            btn.onclick=function(ev){ev.stopPropagation();window._slotPicker(m[1])};
+            acts.insertBefore(btn,acts.firstChild);
+          });
+        }catch(e){}
+        return r;
+      };
+      window._rbRender.__ap2=1;
+    }
+  }catch(e){}
+  try{console.log("%c[Aspen] Sugerencia de cita · duplicados · timeline · registro de spa activos","color:#7c3aed;font-weight:700")}catch(e){}
+})();
+</script>
+<!-- ════ END FASE 2 AUDITORÍA ════ -->
 
 </body>
 </html>
