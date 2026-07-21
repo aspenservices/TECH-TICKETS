@@ -30087,9 +30087,25 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   var _v7Pool=[];
   function _v7Txt(v){if(typeof v!=='string')return '';var s=v.trim();if(!s)return '';if(/^(true|false|null|undefined|nan|0|1|n\/a|-|—)$/i.test(s))return '';if(s.length<3)return '';return s}
   function _v7Clean(s){var t=String(s||'').replace(/\r/g,'').trim();var out=[],norm=[];t.split('\n').forEach(function(L){var k=L.replace(/[^a-z0-9]+/gi,' ').replace(/\s+/g,' ').trim().toLowerCase();if(!k){out.push(L);norm.push('');return}for(var i=0;i<norm.length;i++){var a=norm[i];if(!a)continue;if(a===k)return;var lo=a.length<=k.length?a:k,hi=a.length<=k.length?k:a;if(hi.indexOf(lo)===0&&lo.length/hi.length>0.9)return}out.push(L);norm.push(k)});return out.join('\n').trim()}
+  window.v7Do=function(el){try{var act=el&&el.getAttribute?el.getAttribute('data-v7act'):null;var id=el&&el.getAttribute?el.getAttribute('data-v7id'):null;if(!act)return;window._v7Dispatch(act,id)}catch(err){try{alert('Customer V7 — no pude abrir: '+(err&&err.message||err))}catch(_){}}};
+  window._v7Dispatch=function(act,id){
+    if(act==='ticket'){if(typeof openTktDetail==='function')return openTktDetail(id);if(typeof openTicketDetail==='function')return openTicketDetail(id);var tk=_v7Find(id);if(tk)return _v7Own(tk);return alert('No encontre el ticket '+id)}
+    if(act==='toggle'){try{return v7Toggle(id)}catch(e){return}}
+    if(act==='email'){if(typeof openReportModalById==='function')return openReportModalById(id);var te=_v7Find(id);if(te)return _v7Own(te);return}
+    if(act==='report'){var _e=null;var had=!!document.getElementById('v8ReportOverlay');
+      try{if(typeof openCustomerReportPreview==='function')openCustomerReportPreview(id);else _e=new Error('openCustomerReportPreview no existe')}catch(x){_e=x}
+      setTimeout(function(){var o=document.getElementById('v8ReportOverlay');var vis=false;
+        try{vis=!!(o&&(o.classList.contains('open')||o.offsetParent!==null||(o.getBoundingClientRect&&o.getBoundingClientRect().height>50)))}catch(_){}
+        if(vis)return;
+        if(_e)try{console.warn('[Customer V7] visor oficial fallo:',_e)}catch(_){}
+        var t=_v7Find(id);
+        if(!t){try{alert('No encontre el ticket '+id+'. Recarga la pagina e intenta de nuevo.')}catch(_){}return}
+        try{_v7Own(t)}catch(err2){try{alert('Customer V7 — el reporte fallo: '+(err2&&err2.message||err2))}catch(_){}}
+      },150);return}
+  };
   function _v7Attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-  function _v7Btn(act,id,label,cls,domId){return '<button'+(domId?' id="'+_v7Attr(domId)+'"':'')+(cls?' class="'+cls+'"':'')+' data-v7act="'+act+'" data-v7id="'+_v7Attr(id)+'">'+label+'</button>'}
-  if(!window.__v7ClickBound){window.__v7ClickBound=1;document.addEventListener('click',function(e){var el=e.target;var b=null;while(el&&el!==document){if(el.getAttribute&&el.getAttribute('data-v7act')){b=el;break}el=el.parentNode}if(!b)return;var act=b.getAttribute('data-v7act'),id=b.getAttribute('data-v7id');e.preventDefault();e.stopPropagation();try{if(act==='ticket'){if(typeof openTktDetail==='function')openTktDetail(id);else if(typeof openTicketDetail==='function')openTicketDetail(id);else console.warn('[Customer V7] no hay funcion para abrir el ticket')}else if(act==='toggle'){v7Toggle(id)}else if(act==='report'){var _e=null;try{if(typeof openCustomerReportPreview==='function')openCustomerReportPreview(id)}catch(x){_e=x}setTimeout(function(){var o=document.getElementById('v8ReportOverlay');var vis=false;try{vis=!!(o&&(o.classList.contains('open')||(o.offsetParent!==null)))}catch(_){}if(!vis){if(_e)console.warn('[Customer V7] el visor oficial fallo:',_e);var t=_v7Find(id);if(t){_v7Own(t)}else{alert('No encontre el ticket '+id)}}},150)}else if(act==='email'){if(typeof openReportModalById==='function')openReportModalById(id)}}catch(err){console.error('[Customer V7] la accion "'+act+'" fallo:',err)}},true)}
+  function _v7Btn(act,id,label,cls,domId){return '<button'+(domId?' id="'+_v7Attr(domId)+'"':'')+(cls?' class="'+cls+'"':'')+' data-v7act="'+act+'" data-v7id="'+_v7Attr(id)+'" onclick="v7Do(this)">'+label+'</button>'}
+  if(!window.__v7ClickBound){window.__v7ClickBound=1;document.addEventListener('click',function(e){var el=e.target,b=null;while(el&&el!==document){if(el.getAttribute&&el.getAttribute('data-v7act')){b=el;break}el=el.parentNode}if(!b)return;e.preventDefault();e.stopPropagation();window.v7Do(b)},true)}
   function _v7Find(id){var all=_v7A().concat(_v7D());for(var i=0;i<all.length;i++){if(all[i]&&String(all[i].id)===String(id))return all[i]}return null}
   function _v7Money(n){n=Number(n||0);return '$'+n.toFixed(2)}
   function _v7Row(k,v){return v?('<div class="v11-money-row"><span>'+escV(k)+'</span><b>'+escV(v)+'</b></div>'):''}
@@ -30105,7 +30121,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   window.v7OnlySP=function(){try{localStorage.setItem('v7SPOnly',v7SPOnly()?'0':'1')}catch(_){}var p=document.querySelector('.v7-panel.visits');if(p){var on=v7SPOnly();p.classList.toggle('v7-sp-only',on);var b=p.querySelector('.v7-sp-btn');if(b)b.textContent=on?'▤ Vista completa':'▤ Solo Service Performed'}};
   function _v7A(){try{if(typeof active!=='undefined'&&Array.isArray(active))return active}catch(_){}return (_v7A())}
   function _v7D(){try{if(typeof done!=='undefined'&&Array.isArray(done))return done}catch(_){}return (_v7D())}
-  window.V7_BUILD='2026-07-21j-visor';try{window.__V7T={dkey:function(x){return _v7DKey(x)},entry:function(a,b){return _v7Entry(a,b)},clean:function(x){return _v7Clean(x)},pool:function(a){_v7Pool=a||[]},report:function(t){return report(t)},dedup:function(l){return _v7Dedup(l)},isVisit:function(t){return isVisit(t)},isDone:function(t){return isDone(t)}}}catch(_e){};try{console.log('%c[Customer V7] build '+window.V7_BUILD+' activo','color:#7c5cff;font-weight:bold')}catch(_e){}
+  window.V7_BUILD='2026-07-21k-blindado';try{window.__V7T={dkey:function(x){return _v7DKey(x)},entry:function(a,b){return _v7Entry(a,b)},clean:function(x){return _v7Clean(x)},pool:function(a){_v7Pool=a||[]},report:function(t){return report(t)},dedup:function(l){return _v7Dedup(l)},isVisit:function(t){return isVisit(t)},isDone:function(t){return isDone(t)}}}catch(_e){};try{console.log('%c[Customer V7] build '+window.V7_BUILD+' activo','color:#7c5cff;font-weight:bold')}catch(_e){}
   /* Neutralize the older unified renderer that remains in the base file. */
   try{window._aspNotesTabExtras=function(){};}catch(_e){}
   function escV(v){try{return typeof esc3==='function'?esc3(String(v==null?'':v)):String(v==null?'':v)}catch(_){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}}
