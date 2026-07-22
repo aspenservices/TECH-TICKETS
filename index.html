@@ -2672,6 +2672,44 @@ body.dark-mode .ent-card:hover,body.dark-mode .ent-card.open{box-shadow:0 16px 3
 #tktDetailBg #tktDetailActionsWrap{background:transparent;border:none}
 @media(prefers-reduced-motion:reduce){#tktDetailBg .mcl:hover{transform:none}}
 </style>
+<style id="mobileSheetPolishV1">
+/* ═══ MOBILE SHEET POLISH (22 jul 2026) — fixes from Alberto's iPhone screenshot.
+   CSS-only + two one-line hooks (openTktDetail/closeTktDetail toggle
+   body.sheet-open). Delete this block + those 2 hooks to revert. ═══ */
+/* 1) The chat bubble (#dmFab) and chat panel float at z-index 4400, ABOVE the
+   ticket sheet (z 1000) — on the screenshot the bubble sat on top of the
+   "Text On The Way" button and the location chip. Hide chat while ANY modal
+   sheet is open; it reappears untouched when the sheet closes. */
+body:has(.mbg.open) #dmFab,body.sheet-open #dmFab,
+body:has(.mbg.open) #dmPanel,body.sheet-open #dmPanel{display:none!important}
+/* 2) Header row: the customer title (h3 defaults to min-width:auto in flex) did
+   not shrink, so the "👤 360 ›" chip slid UNDER the × button. Let the title
+   column shrink + ellipsize the name; × keeps its 34px circle. */
+#tktDetailBg .mt-t{gap:8px}
+#tktDetailBg .mt-t h3{min-width:0;flex:1 1 auto;overflow:hidden}
+#tktDetailBg .mcl{flex:none}
+/* 3) Sticky Save/Text/Report bar: a strip of scrolling content stayed visible
+   BELOW the bar (the sheet's bottom padding zone). Make the bar full-bleed and
+   glued to the sheet's true bottom edge; the bar itself now carries the
+   safe-area padding, so nothing peeks underneath. Mobile only. */
+@media(max-width:1099px){
+  #tktDetailBg .modal:has(.dtv2-actbar){padding-bottom:0}
+  #tktDetailBg #tktDetailBody:has(.dtv2-actbar){padding-bottom:0!important}
+  #tktDetailBg .dtv2-actbar{margin:8px -16px 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));bottom:-1px;box-shadow:0 -8px 20px rgba(0,0,0,.10)}
+}
+/* 4) Tech pills: the assigned state is now explicit — a ✓ drawn with ::before.
+   IMPORTANT: it's a pseudo-element on purpose — saveDetailEdits reads the tech
+   name via .textContent, and pseudo-element content is NOT part of textContent,
+   so the saved names stay clean. Unassigned pills (visible after "Change") go
+   muted + dashed so on/off can't be confused at a glance. */
+#tktDetailBg #dtTechRow .pill.on::before{content:"✓ ";font-weight:800}
+#tktDetailBg #dtTechRow .pill.on{box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#tktDetailBg #dtTechRow .pill:not(.on){color:var(--i2);background:var(--bg);border-style:dashed}
+/* 5) Date/Arrival looked greyed-out (disabled) even though they're editable.
+   Accent border + card background + bolder value = clearly "live" fields. */
+#tktDetailBg #dtDate,#tktDetailBg #dtArrival{background:var(--cd);border:1.5px solid var(--ac);border-radius:10px;font-weight:700;color:var(--ink);min-width:132px;box-shadow:var(--sh-sm)}
+#tktDetailBg #dtDate:focus,#tktDetailBg #dtArrival:focus{box-shadow:0 0 0 3px var(--acl)}
+</style>
 <style id="calProV1">
 /* ═══ CALENDAR PRO — visual upgrade for Month · Team Week · Route (scoped to #pg4, logic untouched) ═══ */
 /* Segmented view control */
@@ -20801,7 +20839,7 @@ function _c360PartWarrantyAlert(t){
   var ap=_c360ActivePart(tkts);
   if(!ap)return"";
   var untilStr=ap.until?ap.until.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";
-  var laborTxt=ap.labor?(ap.labor.active?("labor also covered \u2014 "+ap.labor.daysLeft+"d left"):"labor IS chargeable (90 days passed)"):"";
+  var laborTxt=ap.labor?(ap.labor.active?("Labor also covered \u2014 "+ap.labor.daysLeft+"d left"):"Labor IS chargeable (90 days passed)"):"";
   return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--c-warning-bg);border:1px solid var(--c-warning-strong);border-radius:10px;padding:11px 13px;margin-bottom:12px">'
     +'<span style="font-size:18px">\uD83D\uDEE1\uFE0F</span>'
     +'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);font-weight:600"><b>'+esc(ap.label)+'</b> under warranty until <b>'+esc(untilStr)+'</b> ('+ap.daysLeft+'d left).'
@@ -21495,6 +21533,7 @@ function openTktDetail(id){
   // Populate the attachments section (rendered separately so we can re-render in place)
   if(typeof renderTdAttachments==="function")renderTdAttachments(t.id);
   document.getElementById("tktDetailBg").classList.add("open");
+  document.body.classList.add("sheet-open"); // mobileSheetPolishV1: hide chat FAB/panel while the sheet is open
   // AUDIT FIX (May 2026 — Alberto's report): if we just auto-filled missing
   // fields from another ticket of the same family, surface that to the user
   // with a one-time toast so they know the info came from history (and not
@@ -21772,7 +21811,7 @@ async function saveDetailEdits(id){
     setTimeout(refreshAll,500);
   }catch(e){console.error("[saveDetailEdits]",e);toast("Error: "+((e&&e.message)||e),"err")}
 }
-function closeTktDetail(){_curOpenTktId=null;document.getElementById("tktDetailBg").classList.remove("open")}
+function closeTktDetail(){_curOpenTktId=null;document.getElementById("tktDetailBg").classList.remove("open");document.body.classList.remove("sheet-open")}
 
 // ═══════════════════════════════════════════════════════════════════════
 // ROUTE MAP — visualizes the day's stops on a map + opens in Apple/Google Maps

@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.9.5";   // 22 jul 2026 — Calendar: tap en un dia abre directo la vista Route de ese dia
+const CACHE_VERSION = "v1.9.7";   // 22 jul 2026 — Calendar tap→Route + mobile sheet polish + pills de tecnico con ✓ + Date/Arrival con look editable
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to
