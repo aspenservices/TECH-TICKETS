@@ -4052,12 +4052,50 @@ body.role-tech #cvLanes{ display:none !important; }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- ═══ LAZY LIBS (fase 2 auditoría, 22 jul 2026) ═══
+     JSZip, XLSX, jsPDF y Leaflet (js+css) YA NO se cargan en el arranque:
+     ~1 MB de JS que el 90% de las sesiones (un técnico viendo su ruta) nunca
+     usaba, y que en iPhones viejos / señal débil alargaba el arranque. Ahora
+     los carga _lazyLib() bajo demanda la primera vez que se usan (ZIP de fotos,
+     import/export Excel, PDF de estimado, mapas). Lucide y Firebase siguen
+     eager: se usan en toda la app desde el primer render.
+     OFFLINE: sin cambio real — estos CDNs nunca entraron al caché del SW
+     (cdnjs llega opaque y unpkg está excluido); dependían igual del caché HTTP
+     del navegador, que sigue aplicando. -->
+<script>
+var _lazyLibsDef={
+  jszip:{js:["https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"],test:function(){return !!window.JSZip}},
+  xlsx:{js:["https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"],test:function(){return !!window.XLSX}},
+  jspdf:{js:["https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"],test:function(){return !!(window.jspdf&&window.jspdf.jsPDF)}},
+  leaflet:{css:["https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"],js:["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"],test:function(){return !!window.L}}
+};
+var _lazyLibsPending={};
+function _lazyLib(name){
+  var def=_lazyLibsDef[name];
+  if(!def)return Promise.reject(new Error("unknown lib: "+name));
+  if(def.test())return Promise.resolve();
+  if(_lazyLibsPending[name])return _lazyLibsPending[name];
+  _lazyLibsPending[name]=new Promise(function(res,rej){
+    (def.css||[]).forEach(function(href){
+      if(document.querySelector('link[href="'+href+'"]'))return;
+      var l=document.createElement("link");l.rel="stylesheet";l.href=href;l.crossOrigin="";document.head.appendChild(l);
+    });
+    var left=(def.js||[]).length;
+    (def.js||[]).forEach(function(src){
+      var s=document.createElement("script");s.src=src;
+      if(src.indexOf("unpkg.com")>-1)s.crossOrigin="";
+      s.onload=function(){left--;if(left===0){def.test()?res():rej(new Error(name+" loaded but global missing"))}};
+      s.onerror=function(){_lazyLibsPending[name]=null;rej(new Error(name+" failed to load"))}; // reset → un reintento posterior vuelve a intentar
+      document.head.appendChild(s);
+    });
+  });
+  return _lazyLibsPending[name];
+}
+</script>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
 <!-- Leaflet (free maps, no API key) for route visualization -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<!-- Leaflet: ahora lazy — lo carga _lazyLib("leaflet") al abrir cualquier mapa (ver bloque LAZY LIBS arriba) -->
 <!-- Lucide Icons (consistent SVG icon system replacing emojis) -->
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
 <script>
@@ -5526,6 +5564,15 @@ let allUsers=[]; // from Firestore
    Ver DESPLIEGUE-SEGURIDAD.md — el orden importa. */
 var STAFF_LOGIN_FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/staffLogin";
 var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en la caja fuerte (staff_auth)
+/* ═══ VERSIÓN CENTRAL ÚNICA (22 jul 2026) ═══
+   UNA sola fuente de verdad. Regla de deploy: index y sw.js llevan SIEMPRE el
+   mismo número — al subir, bump AQUÍ y en CACHE_VERSION del sw.js, juntos.
+   El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
+   hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
+   index "v1.11.x"). Se acabaron los números paralelos por feature. */
+var APP_VERSION="1.10.0";
+var BUILD_DATE="2026-07-22";
+try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
 async function _isStaffSession(){
@@ -5815,37 +5862,19 @@ function cancelLogin(){
   if(sel)sel.value="";
 }
 // ─── PIN SECURITY (Jul 2026) ─────────────────────────────────────────────────
-// PINs were stored in PLAINTEXT in config/users, which every client downloads
-// BEFORE login — anyone with the public URL could read the admin PIN from the
-// browser console. Now only SHA-256 hashes are stored. Legacy plaintext entries
-// keep working and are migrated in bulk the first time an admin logs in.
+// v1.9.8 (22 jul 2026): el LOGIN ya no toca hashes locales — lo valida SOLO la
+// Cloud Function staffLogin (caja fuerte staff_auth, scrypt+salt). _pinMatches y
+// _migratePinsIfNeeded fueron extirpados. _pinHash se conserva ÚNICAMENTE porque
+// la UI de gestión de PINs en Admin (editUserPin/changeMyPIN) aún escribe hashes
+// en config/users — OJO: eso NO cambia el PIN real del servidor; migrar esa UI a
+// una función (staffSetPin) está pendiente.
 async function _pinHash(pin){
   var p=String(pin==null?"":pin).trim();
   if(!p)return "";
   try{
     var buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("aspen$"+p));
     return Array.prototype.map.call(new Uint8Array(buf),function(b){return b.toString(16).padStart(2,"0")}).join("");
-  }catch(_e){return ""} // crypto unavailable (http:// dev) → hashing disabled, legacy compare still works
-}
-async function _pinMatches(user,entered){
-  var e=String(entered==null?"":entered).trim();
-  if(user&&user.pinHash){var h=await _pinHash(e);return !!h&&h===user.pinHash}
-  var stored=String((user&&user.pin)==null?"":user.pin).trim();
-  return e===stored; // legacy plaintext (pre-migration)
-}
-async function _migratePinsIfNeeded(){
-  try{
-    if(!isAdmin)return; // one write, from an office device
-    var dirty=false;
-    for(var i=0;i<allUsers.length;i++){
-      var u=allUsers[i];
-      if(u&&u.pin!=null&&!u.pinHash){
-        var h=await _pinHash(u.pin);
-        if(h){u.pinHash=h;delete u.pin;dirty=true}
-      }
-    }
-    if(dirty){await saveUsers();console.log("[pin] migrated plaintext PINs to hashes")}
-  }catch(_e){console.warn("[pin migrate]",_e)}
+  }catch(_e){return ""} // crypto unavailable (http:// dev) → hashing disabled
 }
 async function doLogin(){
   if(!selectedLoginUser)return;
@@ -5863,30 +5892,32 @@ async function doLogin(){
   if(_st.locked){toast("Too many attempts. Try again in "+_st.minutes+" min.","err");return false}
   if(_st.badPin){document.getElementById("loginPinErr").style.display="block";return false}
   if(!_st.ok){
-    if(STAFF_REQUIRED){
-      toast("Couldn't start your staff session. Check your connection and try again.","err");
-      return false;
-    }
-    // red de seguridad: como siempre
-    if(!(await _pinMatches(selectedLoginUser,pin))){document.getElementById("loginPinErr").style.display="block";return false}
+    /* v1.9.8 (22 jul 2026): fallback local EXTIRPADO. Con STAFF_REQUIRED activo y
+       la función staffLogin probada en producción desde el 15 jul, el navegador ya
+       NO valida PINs nunca: o el servidor dice OK, o no se entra. El hash local
+       (SHA-256 con sal fija pública) era crackeable offline para un PIN de 4
+       dígitos — lo señaló también el reporte externo del 22 jul. */
+    toast("Couldn't start your staff session. Check your connection and try again.","err");
+    return false;
   }
   currentUser=selectedLoginUser;
   isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
-  // Session: never persist a plaintext PIN; carry the hash for auto-login.
+  /* v1.9.8: la sesión guarda SOLO identidad (nunca pin ni pinHash). La CONFIANZA
+     vive en el token de personal de Firebase (claim staff) — _staffGuard la
+     verifica al restaurar y expulsa si el token murió. Antes se guardaba el
+     pinHash en localStorage como "prueba": material crackeable y, desde que
+     config/users quedó sin hashes, además INÚTIL (la restauración por hash nunca
+     matcheaba y la app re-pedía PIN en cada apertura). */
   try{
     var _sess=Object.assign({},currentUser);
-    if(_sess.pin!=null){_sess.pinHash=_sess.pinHash||await _pinHash(_sess.pin);delete _sess.pin}
+    delete _sess.pin;delete _sess.pinHash;
     sessionStorage.setItem("aspUser",JSON.stringify(_sess));
-  }catch(_e){sessionStorage.setItem("aspUser",JSON.stringify(currentUser))}
-  // PERF ingreso (Jul 2026): sesión persistente 12h — iOS mata las PWAs y con
-  // ellas sessionStorage, forzando login en CADA apertura. Guardamos solo el
-  // hash del PIN (nunca el PIN) con expiración; logout la borra.
-  try{
-    var _pu=Object.assign({},currentUser);
-    if(_pu.pin!=null){_pu.pinHash=_pu.pinHash||await _pinHash(_pu.pin);}
-    localStorage.setItem("aspSessPersist",JSON.stringify({n:_pu.name||"",h:_pu.pinHash||"",exp:Date.now()+12*3600*1000}));
   }catch(_e){}
-  try{_migratePinsIfNeeded()}catch(_e){}
+  // Sesión persistente 12h (iOS mata las PWAs y con ellas sessionStorage):
+  // solo nombre + expiración. Sin el token staff real, _staffGuard re-pide PIN.
+  try{
+    localStorage.setItem("aspSessPersist",JSON.stringify({n:currentUser.name||"",exp:Date.now()+12*3600*1000}));
+  }catch(_e){}
   // v1.11.0: siembra de seguridad AUTOMÁTICA. Corre una sola vez, en silencio, la
   // primera vez que un admin entra tras subir esta versión — reusa el PIN que ya
   // tenemos en mano en este preciso instante, así no hay que guardarlo ni pedirlo
@@ -5983,13 +6014,17 @@ async function _staffGuard(){
   try{logout()}catch(_e){}
 }
 function tryAutoLogin(){
+  /* v1.9.8: la restauración es por NOMBRE + expiración. Ya no se compara ningún
+     hash local — la seguridad real la pone _staffGuard justo después del
+     auto-login (línea del arranque): si la sesión Firebase no trae el claim
+     staff, logout + PIN de nuevo. Manipular localStorage solo te da el cascarón
+     de la UI: las reglas de Firestore (isStaff) niegan todo sin token real. */
   // 1) sesión viva (misma pestaña/lanzamiento)
   try{
     const ss=sessionStorage.getItem("aspUser");
     if(ss){
       const u=JSON.parse(ss);
-      const _pn=String(u.pin==null?"":u.pin).trim();
-      const found=allUsers.find(x=>x.name===u.name&&((u.pinHash&&x.pinHash&&u.pinHash===x.pinHash)||(x.pin!=null&&String(x.pin==null?"":x.pin).trim()===_pn&&_pn!=="")));
+      const found=allUsers.find(x=>x.name===u.name&&!x.hidden);
       if(found){currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";try{if(typeof _calHiddenLoad==="function"&&typeof calHiddenTechs!=="undefined")calHiddenTechs=_calHiddenLoad()}catch(_e){}return true}
     }
   }catch(_e){}
@@ -5999,10 +6034,10 @@ function tryAutoLogin(){
     if(ps){
       const p2=JSON.parse(ps);
       if(!p2||!p2.exp||Date.now()>p2.exp){localStorage.removeItem("aspSessPersist");return false;}
-      const found=allUsers.find(x=>x.name===p2.n&&x.pinHash&&p2.h&&x.pinHash===p2.h&&!x.hidden);
+      const found=allUsers.find(x=>x.name===p2.n&&!x.hidden);
       if(found){
         currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";
-        try{var _s2=Object.assign({},found);if(_s2.pin!=null){delete _s2.pin;}sessionStorage.setItem("aspUser",JSON.stringify(_s2));}catch(_e){}
+        try{var _s2=Object.assign({},found);delete _s2.pin;delete _s2.pinHash;sessionStorage.setItem("aspUser",JSON.stringify(_s2));}catch(_e){}
         try{if(typeof _calHiddenLoad==="function"&&typeof calHiddenTechs!=="undefined")calHiddenTechs=_calHiddenLoad()}catch(_e){}
         return true;
       }
@@ -9405,10 +9440,13 @@ function adminZipHandleDrop(e){
   var dz=document.getElementById("zipDropArea");if(dz)dz.classList.remove("over");
   var f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)adminZipHandleFile(f);
 }
-function adminZipHandleFile(file){
+async function adminZipHandleFile(file){
   if(!file)return;
-  if(typeof XLSX==="undefined"){_zipImportNotice("Spreadsheet library not loaded — refresh the page and try again","error");return}
   var ext=file.name.split(".").pop().toLowerCase();
+  // Lazy XLSX: solo para .xlsx/.xls — un CSV se parsea local y funciona igual offline
+  if(ext!=="csv"){
+    try{await _lazyLib("xlsx")}catch(_l){_zipImportNotice("Couldn't load the spreadsheet library — check your connection, or import a CSV instead","error");return}
+  }
   var reader=new FileReader();
   reader.onload=function(ev){
     try{
@@ -9885,7 +9923,23 @@ function initFirebase(){
     // forever even when the user's actual ticket changes were long since saved.
     // snap.metadata.hasPendingWrites reflects ONLY this (tickets) query, updates in
     // real time on write + ack, and can never hang.
-    try{ _hasPendingWrites=!!(snap.metadata&&snap.metadata.hasPendingWrites); _refreshSyncBadge(); }catch(_e){}
+    try{
+      _hasPendingWrites=!!(snap.metadata&&snap.metadata.hasPendingWrites);
+      // PENDING COUNT (fase 3 auditoría, 22 jul 2026): además del booleano, un
+      // CONTADOR real de tickets con escrituras sin confirmar por el servidor.
+      // Incremental vía docChanges(includeMetadataChanges) — costo ~0: solo se
+      // tocan los docs que cambiaron, nunca se recorre la ventana completa.
+      window._pendingTktIds=window._pendingTktIds||new Set();
+      snap.docChanges({includeMetadataChanges:true}).forEach(function(c){
+        try{
+          if(c.type==="removed"){window._pendingTktIds.delete(c.doc.id);return}
+          if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)window._pendingTktIds.add(c.doc.id);
+          else window._pendingTktIds.delete(c.doc.id);
+        }catch(_ig){}
+      });
+      window._pendingWriteCount=window._pendingTktIds.size;
+      _refreshSyncBadge();
+    }catch(_e){}
     // Metadata-only event (a write just got acknowledged, or a cache→server flip
     // with identical data): the document SET didn't change — we already refreshed
     // the badge above, so skip the heavy rebuild + cleanup + heal + re-render below.
@@ -12167,7 +12221,8 @@ function buildEstimatePdf(e){
 // local — funciona aunque el cliente NO tenga sesión (el caso del navegador de
 // Mensajes). Se lo mandamos a la Cloud Function, que lo sube a Storage con
 // permisos de admin. Así el PDF NUNCA depende de que el cliente logre sesión.
-function buildEstimatePdfBase64(e){
+async function buildEstimatePdfBase64(e){
+  try{await _lazyLib("jspdf")}catch(_l){console.warn("[PDF base64] jsPDF no cargó",_l);return ""}
   try{
     var blob=buildEstimatePdf(e);          // devuelve un Blob PDF
     return new Promise(function(resolve){
@@ -12187,6 +12242,7 @@ function buildEstimatePdfBase64(e){
 async function makeEstimatePdfMedia(e,ticketKey){
   try{
     if(!storage||!navigator.onLine)return null;
+    try{await _lazyLib("jspdf")}catch(_l){console.warn("[estimate PDF] jsPDF no cargó",_l);return null}
     var blob=buildEstimatePdf(e);
     var path="tickets/"+ticketKey+"/estimate_"+Date.now()+".pdf";
     var ref=storage.ref().child(path);
@@ -13402,7 +13458,10 @@ function _activityDone(){try{var b=document.getElementById("actBar");if(b)setTim
     }else{
       clearTimeout(b._hideT);
       b.style.background="#b45309";
-      b.innerHTML="\u26A0 Offline \u2014 your work is saved and will sync automatically";
+      var _pn=Number(window._pendingWriteCount||0);
+      b.innerHTML=_pn>0
+        ?("\u26A0 Offline \u2014 "+_pn+" change"+(_pn!==1?"s":"")+" saved on this device, will sync automatically")
+        :"\u26A0 Offline \u2014 your work is saved and will sync automatically";
       b.style.display="inline-flex";
       b.dataset.wasOffline="1";
     }
@@ -14485,6 +14544,7 @@ async function _fetchMediaBlob(m){
 // ═══ DOWNLOAD ═══
 async function dlZip(ticketIdx,list,ev){
   const t=list[ticketIdx];if(!t||!t.media||!t.media.length)return;
+  try{await _lazyLib("jszip")}catch(_l){toast("Couldn't load the ZIP library — check your connection and try again","err");return}
   // PHOTO-LOSS FIX (Jun 2026 — reported by Alberto: "ZIP opens empty but the
   // photos were deleted from Firebase"). Root causes in the old flow:
   //   1. Per-photo fetch failures were swallowed (console.warn) and NOT counted,
@@ -20146,6 +20206,7 @@ async function calDropOnDay(e,ds){
       upd.fieldReportSubmittedAt=firebase.firestore.FieldValue.delete();
       upd.cleanedUpBy=firebase.firestore.FieldValue.delete();
     }
+    _revStamp(_orig,upd); // revision+1 + updatedBy (fase 3, 22 jul 2026)
     await db.collection("tickets").doc(dragTktId).update(upd);
     toast(_reopened?("Moved to "+ds+" · reopened for new visit \u21BB"):("Moved to "+ds));
     // Only offer SMS when the ticket already has techs assigned (otherwise
@@ -20180,6 +20241,7 @@ async function calDropOnTech(e,techName,ds){
       update.fieldReportSubmittedAt=firebase.firestore.FieldValue.delete();
       update.cleanedUpBy=firebase.firestore.FieldValue.delete();
     }
+    _revStamp(_orig,update); // revision+1 + updatedBy (fase 3, 22 jul 2026)
     await db.collection("tickets").doc(dragTktId).update(update);
     toast(techName?("Reassigned to "+techName+(_reopened?" · reopened \u21BB":"")+" \u2713"):"Set to Unassigned \u2713");
     // Offer the appointment SMS — only when we just ASSIGNED a tech (not when
@@ -21059,6 +21121,10 @@ function _custPhotoHistory(name,excludeId){
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
+  // CONFLICT GUARD (fase 3): recordar la revision con la que se abrió este
+  // detalle — saveDetailEdits compara contra la fresca antes de escribir.
+  window._dtOpenTktId=id;
+  window._dtOpenRev=Number(t.revision||0);
   // AUDIT FIX (May 2026 — Alberto's report): If this dispatch ticket arrived
   // with only a customer name (typical for chemical-maintenance ingest from
   // other Aspen apps), look up the same family in history and auto-fill the
@@ -21723,8 +21789,31 @@ function dtToggleTechList(btn){
     btn.textContent="Change";
   }
 }
+/* ═══ REVISION STAMP (fase 3 auditoría, 22 jul 2026) ═══
+   Cada escritura de ticket desde el editor / drag lleva revision+1, updatedBy y
+   updatedAtISO. Sirve para dos cosas: (1) el editor detecta si OTRA persona
+   modificó el ticket mientras lo tenías abierto (conflicto Nela-oficina vs
+   técnico) y pregunta antes de pisar; (2) queda rastro de quién escribió último.
+   LÍMITE HONESTO: un conflicto solo se detecta ONLINE (el listener trae el
+   cambio ajeno). Offline no hay datos del otro lado — ahí el sello al menos
+   deja la auditoría de quién pisó a quién. */
+function _revStamp(orig,upd){
+  upd.revision=Number((orig&&orig.revision)||0)+1;
+  upd.updatedBy=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
+  upd.updatedAtISO=new Date().toISOString();
+  return upd;
+}
 async function saveDetailEdits(id){
   if(!db)return;
+  // CONFLICT GUARD: si el ticket cambió (revision distinta) desde que se abrió
+  // el detalle, avisar ANTES de escribir. orig viene de active/done, que el
+  // listener mantiene fresco — capta el conflicto típico oficina↔campo online.
+  var _fresh=[...active,...done].find(function(x){return x.id===id});
+  if(_fresh&&window._dtOpenTktId===id&&Number(_fresh.revision||0)!==Number(window._dtOpenRev||0)){
+    var _who=_fresh.updatedBy||"someone else";
+    var _keep=await confirmDialog("\u26A0 This ticket was modified by "+_who+" while you had it open.\n\nSave anyway (your edits overwrite theirs on the fields you changed), or reload to see the latest version first.",{title:"Ticket changed",okLabel:"Save anyway",cancelLabel:"Reload latest"});
+    if(!_keep){openTktDetail(id);return;}
+  }
   var techs=[];document.querySelectorAll("#tktDetailBody .pill.on").forEach(function(b){techs.push(b.textContent)});
   var dEl=document.getElementById("dtDate");var date=dEl?dEl.value:"";
   var aEl=document.getElementById("dtArrival");var arrival=aEl?aEl.value:"";
@@ -21792,6 +21881,7 @@ async function saveDetailEdits(id){
     var zo=document.getElementById("dtZone");if(zo)upd.zone=zo.value.trim();
   }
   try{
+    _revStamp(orig,upd); // revision+1 + updatedBy + updatedAtISO (fase 3, 22 jul 2026)
     await db.collection("tickets").doc(id).update(upd);
     toast("Saved ✓");
     // If admin made a meaningful assignment change AND the customer has a phone,
@@ -22084,6 +22174,7 @@ function setSlogMapCat(cat){
   renderSlogMap();
 }
 async function renderSlogMap(){
+  try{await _lazyLib("leaflet")}catch(_l){var _me=document.getElementById("slogMap");if(_me)_me.innerHTML='<div style="padding:20px;text-align:center;color:var(--i3)">Map library couldn\'t load — check your connection and reopen this view.</div>';return}
   var cat=_slogMapCat;
   if(typeof _renderSlogStats==="function")_renderSlogStats(cat);
   var mapEl=document.getElementById("slogMap");if(!mapEl)return;
@@ -22184,6 +22275,7 @@ function _renderSlogStats(cat){
 }
 
 async function openRouteMap(dateStr){
+  try{await _lazyLib("leaflet")}catch(_l){toast("Map library couldn't load — check your connection","err");return}
   // Find tickets for this date (matching current calendar filter — same as Day view)
   const isTech=currentUser&&currentUser.role==="tech";
   const allTkts=[...active,...done];
@@ -24348,6 +24440,7 @@ async function _mapsTechDayRoute(techName,dateStr,techStops){
 // Main entry point: re-render the Maps page for the picked date.
 async function mapsLoad(){
   if(!isAdmin){document.getElementById("mapsStatus").textContent="Admin only";return}
+  try{await _lazyLib("leaflet")}catch(_l){document.getElementById("mapsStatus").textContent="Map library couldn't load — check your connection and retry.";return}
   const dateInp=document.getElementById("mapsDate");
   if(!dateInp.value)dateInp.value=fmtD(new Date());
   const dateStr=dateInp.value;
@@ -25837,7 +25930,7 @@ async function _verifyShowMap(i){
   }catch(_e){}
 }
 async function _renderVerifyMiniMaps(tickets){
-  if(typeof L==="undefined")return;
+  try{await _lazyLib("leaflet")}catch(_l){return} // sin lib no hay mini-mapas; la tabla de verificación sigue funcionando
   try{_checkinVerifyLast=tickets}catch(_e){}
   // PERF (Jul 2026): verified (green, checked-out) rows no longer auto-build a
   // Leaflet map + OSM tiles + a possible network geocode each — they get a
@@ -25861,9 +25954,9 @@ async function _renderVerifyMiniMaps(tickets){
 // ─── Excel export for the currently-loaded check-in list ─────────────────
 // Mirrors what the admin sees on screen, so they can audit a week or a
 // month in one sheet without copy-pasting.
-function _exportCheckinVerify(){
+async function _exportCheckinVerify(){
   if(!_checkinVerifyLast||!_checkinVerifyLast.length){toast("Nothing to export — load a date with check-ins first","warn");return}
-  if(typeof XLSX==="undefined"){toast("Excel library not loaded","err");return}
+  try{await _lazyLib("xlsx")}catch(_l){toast("Couldn't load the Excel library — check your connection","err");return}
   const rng=(typeof _compareGetDateRange==="function")?_compareGetDateRange():{start:"",end:"",multi:false};
   const dateStr=rng.start||(document.getElementById("compareDate")||{}).value||fmtD(new Date());
   const tFilter=(document.getElementById("compareTech")||{}).value||"";
@@ -26064,8 +26157,17 @@ function _mountSyncBadge(){
 }
 function _setSyncBadge(state){ // "ok" | "offline" | "pending"
   if(!_syncBadgeEl)return;
-  if(state==="offline"){_syncBadgeEl.className="offline";_syncBadgeEl.textContent="\uD83D\uDCF4 Offline — changes saved on this device";}
-  else if(state==="pending"){_syncBadgeEl.className="pending";_syncBadgeEl.textContent="\u23F3 Syncing changes\u2026";}
+  var _n=Number(window._pendingWriteCount||0);
+  if(state==="offline"){
+    _syncBadgeEl.className="offline";
+    _syncBadgeEl.textContent=_n>0
+      ?("\uD83D\uDCF4 Offline \u2014 "+_n+" change"+(_n!==1?"s":"")+" saved on this device")
+      :"\uD83D\uDCF4 Offline \u2014 changes saved on this device";
+  }
+  else if(state==="pending"){
+    _syncBadgeEl.className="pending";
+    _syncBadgeEl.textContent=_n>1?("\u23F3 Syncing "+_n+" changes\u2026"):"\u23F3 Syncing changes\u2026";
+  }
   else{_syncBadgeEl.className="";}
 }
 // Pending-writes state for the TICKETS query, kept current in real time by the
@@ -28332,13 +28434,21 @@ window.bsCopySummary=async function(){
   try{await navigator.clipboard.writeText(txt);}catch(e){}
   try{toast("Resumen copiado ✓");}catch(e){}
 };
-/* Version badge: the service worker announces its CACHE_VERSION on activate. */
+/* Version badge: the service worker announces its CACHE_VERSION on activate.
+   v1.9.8: además COMPARA contra APP_VERSION — si difieren, hay mezcla de
+   versiones (index nuevo con sw viejo o viceversa) y se avisa en vez de callar. */
 try{
   if(navigator.serviceWorker){
     navigator.serviceWorker.addEventListener("message",function(ev){
       if(ev.data&&ev.data.type==="SW_ACTIVATED"){
+        var _swv=String(ev.data.version||"").replace(/^v/,"");
         try{localStorage.setItem("aspVer",String(ev.data.version||""));}catch(e){}
-        try{toast(TT("App actualizada · ","App updated · ")+(ev.data.version||"")+" ✓");}catch(e){}
+        if(typeof APP_VERSION!=="undefined"&&_swv&&_swv!==APP_VERSION){
+          console.warn("[Aspen] VERSION MISMATCH — app v"+APP_VERSION+" pero sw v"+_swv+". Subir index y sw JUNTOS con el mismo número.");
+          try{toast("⚠ Version mix: app v"+APP_VERSION+" / sw v"+_swv+" — re-upload both files","warn");}catch(e){}
+        }else{
+          try{toast(TT("App actualizada · ","App updated · ")+(ev.data.version||"")+" ✓");}catch(e){}
+        }
       }
     });
   }

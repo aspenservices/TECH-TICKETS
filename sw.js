@@ -31,8 +31,12 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.9.7";   // 22 jul 2026 — Calendar tap→Route + mobile sheet polish + pills de tecnico con ✓ + Date/Arrival con look editable
+const CACHE_VERSION = "v1.10.0";  // 22 jul 2026 — mismo numero que APP_VERSION, bump juntos. v1.10.0 = fases 1-3 auditoria (version central, PIN local fuera, lazy libs, sync count + revision guard)
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
+
+// Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell
+// URLs are never evicted. Without a cap the cache grows forever (audit 22 jul).
+const MAX_RUNTIME_ENTRIES = 180;
 
 // How long to wait for the network on an HTML navigation before falling back to
 // the cached app shell. Long enough that a normal connection serves fresh code,
@@ -76,7 +80,11 @@ self.addEventListener("install", function (event) {
   self.skipWaiting();
 });
 
-// ─── ACTIVATE: Clean up old caches ───────────────────────────────────
+// ─── ACTIVATE: Clean up old caches → claim tabs → announce version ──────────
+// (22 jul 2026) Antes había DOS listeners de "activate" (limpieza aquí y el
+// anuncio de version al final del archivo). Unificados en UNO para controlar el
+// orden: primero limpiar y reclamar, y solo DESPUES anunciar SW_ACTIVATED a las
+// ventanas — asi el index nunca recibe el anuncio antes de que el SW controle.
 self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches.keys().then(function (cacheNames) {
@@ -88,10 +96,16 @@ self.addEventListener("activate", function (event) {
           }
         })
       );
+    }).then(function () {
+      // Take control of all open tabs immediately
+      return self.clients.claim();
+    }).then(function () {
+      // Version badge: anunciar CACHE_VERSION a las ventanas ya controladas
+      return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (cs) {
+        cs.forEach(function (c) { try { c.postMessage({ type: "SW_ACTIVATED", version: CACHE_VERSION }); } catch (_e) {} });
+      });
     })
   );
-  // Take control of all open tabs immediately
-  self.clients.claim();
 });
 
 // ─── FETCH: Serve from cache, fall back to network ──────────────────
@@ -175,11 +189,31 @@ function fetchAndCache(req) {
     if (resp.type === "basic" || (isCDN && resp.type === "cors")) {
       const respClone = resp.clone();
       caches.open(CACHE_NAME).then(function (cache) {
-        cache.put(req, respClone).catch(function () {}); // silent
+        cache.put(req, respClone).then(function () {
+          _maybeTrimCache(cache);
+        }).catch(function () {}); // silent
       });
     }
     return resp;
   });
+}
+
+// Runtime cache cap (22 jul 2026): every ~10 puts, if the cache exceeds
+// MAX_RUNTIME_ENTRIES, evict the oldest entries that are NOT part of the
+// app shell. Cache keys preserve insertion order, so the front is the oldest.
+var _trimCounter = 0;
+function _maybeTrimCache(cache) {
+  _trimCounter++;
+  if (_trimCounter % 10 !== 0) return;
+  cache.keys().then(function (keys) {
+    if (keys.length <= MAX_RUNTIME_ENTRIES) return;
+    var shellSet = APP_SHELL.map(function (u) { return new URL(u, self.location.href).href; });
+    var evictable = keys.filter(function (k) { return shellSet.indexOf(k.url) === -1; });
+    var excess = keys.length - MAX_RUNTIME_ENTRIES;
+    evictable.slice(0, excess).forEach(function (k) {
+      cache.delete(k).catch(function () {});
+    });
+  }).catch(function () {});
 }
 
 // Network-first for the HTML shell, with a timeout fallback to cache so a slow
@@ -252,9 +286,5 @@ self.addEventListener('notificationclick',function(e){
 });
 
 
-/* Version badge: anunciar CACHE_VERSION a las ventanas al activar (Jul 2026) */
-self.addEventListener('activate',function(e){
-  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
-    cs.forEach(function(c){try{c.postMessage({type:'SW_ACTIVATED',version:CACHE_VERSION})}catch(_e){}});
-  }));
-});
+/* Version badge: el anuncio de CACHE_VERSION vive ahora DENTRO del unico
+   listener de "activate" de arriba (unificado 22 jul 2026). */
