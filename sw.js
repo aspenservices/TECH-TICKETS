@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.9.4";   // 21 jul 2026 — Customer 360: visitas, comentarios del tecnico, Service Report + PDF con logo oficial
+const CACHE_VERSION = "v1.9.5";   // 22 jul 2026 — Calendar: tap en un dia abre directo la vista Route de ese dia
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // How long to wait for the network on an HTML navigation before falling back to

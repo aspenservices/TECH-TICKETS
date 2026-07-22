@@ -19585,8 +19585,11 @@ function calSelectDay(ds){
   // Cada clic en un día lanzaba TypeError — y el reporter global lo escribía en
   // client_errors, gastando el cupo de 5 errores/sesión y tapando los fallos
   // REALES de los técnicos en el panel de Admin.
+  // UX (22 jul 2026): tapping a day now jumps STRAIGHT to the Route (timeline)
+  // view for that date — no intermediate detail panel. setCalView() handles the
+  // view-button highlight + rndrCal(), so we just set the date first.
   calSelectedDate=ds;
-  rndrCal();
+  setCalView("timeline");
   var _cd=document.getElementById("calDate");
   if(_cd)_cd.value=ds;
 }
@@ -20809,6 +20812,102 @@ function _c360Btn(t){
   if(!t||!t.id)return"";
   return '<button onclick="openCustomer360ByTicket(\''+t.id+'\')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--br);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:var(--fs-base);cursor:pointer;margin:4px 0 10px">\uD83D\uDC64 Customer 360 \u2014 full history & warranties</button>';
 }
+/* \u2550\u2550\u2550 TICKET DETAIL \u2014 LAYOUT V2 (v1.11.8, elegido por Alberto: opciones B+C) \u2550\u2550\u2550
+   M\u00D3VIL = opci\u00F3n C: esencial a la vista (banners, check-in, llamar/text, t\u00E9cnico,
+   fecha, spa, notas) + bot\u00F3n "\u22EF M\u00E1s opciones" que revela el resto + barra fija
+   abajo con Save / Text / Report. ESCRITORIO (\u22651100px) = opci\u00F3n B: columnas
+   Visita \u00B7 Cliente \u00B7 Trabajo, todo visible.
+   ADITIVO Y REVERSIBLE: el detalle se construye id\u00E9ntico que siempre y esta
+   pasada solo REAGRUPA los nodos ya renderizados (ids y onclicks sobreviven al
+   moverse, as\u00ED que saveDetailEdits/renderTdAttachments/chgAdd siguen igual).
+   Si algo lanza, la vista cl\u00E1sica queda intacta. Solo admin/organizer \u2014 los
+   t\u00E9cnicos conservan su vista minimal. Para revertir: borrar este bloque y la
+   llamada _dtLayoutV2() tras innerHTML=h. */
+function _dtv2Css(){
+  if(document.getElementById("dtv2Css"))return;
+  var s=document.createElement("style");s.id="dtv2Css";
+  s.textContent=
+    '@media(min-width:1100px){#tktDetailBg .modal{max-width:1240px;width:96vw}}'
+   +'.dtv2-colhead{display:none}'
+   +'.dtv2-morebtn{display:block;width:100%;padding:13px;margin:2px 0 12px;border:1.5px dashed var(--ln);border-radius:11px;background:var(--cd);color:var(--i2);font-weight:700;font-size:var(--fs-base);cursor:pointer;font-family:inherit;text-align:center}'
+   +'.dtv2-actbar{position:sticky;bottom:-1px;z-index:6;display:flex;gap:8px;padding:10px 2px calc(8px + env(safe-area-inset-bottom));background:var(--cd);border-top:1px solid var(--ln);margin:8px -2px 0}'
+   +'.dtv2-actbar button{flex:1 1 0;min-width:0;padding:12px 6px!important;font-size:var(--fs-sm)!important;justify-content:center!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+   +'@media(max-width:1099px){.dtv2-grid:not(.dtv2-open) .dtv2-more{display:none!important}}'
+   +'@media(min-width:1100px){'
+     +'.dtv2-grid{display:grid;grid-template-columns:1.05fr 1fr 1.2fr;gap:0 18px;grid-template-areas:"top top top" "v c w" "acts acts acts";align-items:start}'
+     +'.dtv2-top{grid-area:top}.dtv2-colV{grid-area:v}.dtv2-colC{grid-area:c}.dtv2-colW{grid-area:w}.dtv2-acts{grid-area:acts}'
+     +'.dtv2-colhead{display:block;font-size:var(--fs-xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--i3);margin:2px 2px 8px;border-bottom:1px solid var(--ln);padding-bottom:5px}'
+     +'.dtv2-morebtn,.dtv2-actbar{display:none}'
+   +'}';
+  document.head.appendChild(s);
+}
+function _dtLayoutV2(){
+ try{
+  if(!isAdmin)return;                             // techs keep their minimal view
+  var body=document.getElementById("tktDetailBody");
+  if(!body||body.querySelector(".dtv2-grid"))return;
+  _dtv2Css();
+  var kids=Array.prototype.slice.call(body.children);
+  function col(cls,title){
+    var d=document.createElement("div");d.className=cls;
+    if(title){var t=document.createElement("div");t.className="dtv2-colhead";t.textContent=title;d.appendChild(t);}
+    return d;
+  }
+  var L=(typeof L2==="function")?L2:function(a,b){return b};
+  var grid=document.createElement("div");grid.className="dtv2-grid";
+  var top=col("dtv2-top"),
+      V=col("dtv2-colV",L("\uD83D\uDDD3 Visita","\uD83D\uDDD3 Visit")),
+      C=col("dtv2-colC",L("\uD83D\uDCC7 Cliente","\uD83D\uDCC7 Customer")),
+      W=col("dtv2-colW",L("\uD83E\uDDFE Trabajo","\uD83E\uDDFE Work")),
+      A=col("dtv2-acts");
+  var seenCust=false;
+  kids.forEach(function(el){
+    var id=el.id||"";
+    var oc=(el.getAttribute&&el.getAttribute("onclick"))||"";
+    var sect="";try{var tt=el.querySelector?el.querySelector(".dt-sec-t"):null;sect=tt?(tt.textContent||""):"";}catch(_e){}
+    var dest,more=false;
+    if(id==="tktDetailActionsWrap"){dest=A;more=true;}                       // resto de acciones \u2192 "M\u00E1s" en m\u00F3vil
+    else if(id.indexOf("tdAttSection_")===0){dest=W;more=true;}              // adjuntos
+    else if(el.querySelector&&el.querySelector("#dtTechRow,#dtDate"))dest=V; // t\u00E9cnico + fecha/hora
+    else if(oc.indexOf("dtPickSuggested")>-1)dest=V;                         // sugerencia de t\u00E9cnico
+    else if(el.querySelector&&el.querySelector("#dtCust,#dtAddr,#dtCcFile")){dest=C;more=true;seenCust=true;} // editor cliente+flags
+    else if(/Spa Info|Notes|Historial del spa|Spa history/i.test(sect))dest=V; // esenciales de la visita
+    else if(el.classList&&el.classList.contains("dt-sec")){dest=W;more=true;}  // reported/warranty/billing/report/charge log
+    else if(seenCust&&(el.tagName==="DETAILS"||el.tagName==="A")){dest=C;more=true;} // review link + more messages
+    else if(seenCust&&el.querySelector&&(el.querySelector('a[href^="tel:"]')||el.querySelector('a[href^="sms:"]'))){
+      dest=C; more=!el.querySelector('a[href^="tel:"]');                     // Llamar/Text esencial; fila de ETAs \u2192 M\u00E1s
+    }
+    else dest=top;                                                           // banners, check-in, chips
+    if(more)el.classList.add("dtv2-more");
+    dest.appendChild(el);
+  });
+  // Bot\u00F3n "M\u00E1s opciones" (solo m\u00F3vil por CSS)
+  var moreBtn=document.createElement("button");
+  moreBtn.type="button";moreBtn.className="dtv2-morebtn";
+  var LBL_MORE=L("\u22EF M\u00E1s opciones \u2014 cliente \u00B7 reporte \u00B7 fotos \u00B7 avanzado","\u22EF More options \u2014 customer \u00B7 report \u00B7 photos \u00B7 advanced");
+  var LBL_LESS=L("\u25B2 Menos opciones","\u25B2 Fewer options");
+  moreBtn.textContent=LBL_MORE;
+  moreBtn.onclick=function(){
+    grid.classList.toggle("dtv2-open");
+    moreBtn.textContent=grid.classList.contains("dtv2-open")?LBL_LESS:LBL_MORE;
+  };
+  // Barra fija m\u00F3vil: CLONES de las 3 acciones primarias (onclick inline se clona intacto)
+  var bar=document.createElement("div");bar.className="dtv2-actbar";
+  var actsInner=A.querySelector("#tktDetailActions");
+  if(actsInner){
+    ["saveDetailEdits","_textCustomerFromModal","startTicketFrom"].forEach(function(fn){
+      var btns=actsInner.querySelectorAll("button");
+      for(var i=0;i<btns.length;i++){
+        if(((btns[i].getAttribute("onclick"))||"").indexOf(fn+"(")===0){bar.appendChild(btns[i].cloneNode(true));break;}
+      }
+    });
+  }
+  grid.appendChild(top);grid.appendChild(C);grid.appendChild(V);grid.appendChild(W);
+  grid.appendChild(moreBtn);grid.appendChild(A);
+  if(bar.children.length)grid.appendChild(bar);
+  body.appendChild(grid);
+ }catch(e){console.warn("[dtv2] layout fallback to classic:",e);}
+}
 // Open Customer 360 BY NAME — the robust path. Name-based so it never depends on
 // a ticket id / _curOpenTktId (which can be stale on mobile and was the real cause
 // of the empty "Select a customer" screen, confirmed by simulation Jun 2026).
@@ -20972,7 +21071,10 @@ function openTktDetail(id){
   try{if(typeof _reportedFoundHTML==="function")h+=_reportedFoundHTML(t)}catch(_e){}
   try{if(typeof _visitWarrantyEditorHTML==="function")h+=_visitWarrantyEditorHTML(t)}catch(_e){}
   try{if(typeof _billingSummaryHTML==="function")h+=_billingSummaryHTML(t)}catch(_e){}
-  try{if(typeof _followUpHTML==="function")h+=_followUpHTML(t)}catch(_e){}
+  /* v1.11.7 (limpieza Alberto): Follow-up reminder retirado del detalle del ticket.
+     Las funciones _setFollowUp/_followUpBadge siguen vivas (badges y card de Admin
+     muestran los follow-ups ya existentes); para re-activar la sección, restaurar:
+     try{if(typeof _followUpHTML==="function")h+=_followUpHTML(t)}catch(_e){} */
   h+='<div style="margin-bottom:16px">';
   if(isAdmin){
     h+='<div class="dt-sec"><div class="dt-sec-t">📇 Customer &amp; Address</div>';
@@ -21380,9 +21482,16 @@ function openTktDetail(id){
     h+='</div></div>';
   }
   h+='</div>';
-  try{if(typeof _c360Btn==="function"){if(isAdmin)h+=_c360Btn(t)}}catch(_e){}
-  if(isAdmin)h+=_chargeTrailHTML(t);
+  /* v1.11.7 (limpieza Alberto): barra "Customer 360 — full history & warranties"
+     retirada — el encabezado del ticket ya abre el 360 (chip "👤 360 ›"), y el
+     Daily conserva su botón en Quick actions. Charge Log: solo ORGANIZERS (Nela
+     lo usa para Authorize.Net); admin ya no lo ve aquí. El Daily card y el panel
+     Por Cobrar conservan el suyo. Para restaurar:
+     try{if(typeof _c360Btn==="function"){if(isAdmin)h+=_c360Btn(t)}}catch(_e){}
+     if(isAdmin)h+=_chargeTrailHTML(t); */
+  if(currentUser&&currentUser.role==="organizer")h+=_chargeTrailHTML(t);
   document.getElementById("tktDetailBody").innerHTML=h;
+  try{_dtLayoutV2()}catch(_e){} /* v1.11.8: layout B+C — si falla, queda la vista clásica */
   // Populate the attachments section (rendered separately so we can re-render in place)
   if(typeof renderTdAttachments==="function")renderTdAttachments(t.id);
   document.getElementById("tktDetailBg").classList.add("open");
