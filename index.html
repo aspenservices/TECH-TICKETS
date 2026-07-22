@@ -3903,13 +3903,19 @@ body.role-tech #cvLanes{ display:none !important; }
 </div>
 
 <!-- ══ ATTACHMENT PREVIEW MODAL — full-screen viewer for photos & PDFs ══ -->
+<!-- FOTOS v2 (Jul 2026): galería con ‹ › / swipe / flechas del teclado + contador,
+     y zoom (pellizco, doble tap, rueda). Las fotos hermanas se recolectan del DOM
+     al abrir — ver _attHarvest(). PDFs siguen igual (iframe, sin galería). -->
 <div class="mbg" id="attPreviewBg" onclick="if(event.target===this)closeAttPreview()" style="z-index:var(--z-dialog)">
-  <div class="modal" style="max-width:1100px;width:96vw;height:92vh;height:92dvh;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:1100px;width:96vw;height:92vh;height:92dvh;display:flex;flex-direction:column;position:relative">
     <div class="mt"><div class="mt-bar"></div><div class="mt-t">
-      <h3 id="attPreviewTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw">Preview</h3>
+      <h3 id="attPreviewTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw">Preview</h3>
+      <span id="attPreviewCount" style="font-size:var(--fs-sm);color:var(--i3);font-weight:800;margin-left:8px;white-space:nowrap;flex:none"></span>
       <button class="mcl" onclick="closeAttPreview()">×</button>
     </div></div>
     <div id="attPreviewBody" style="flex:1;overflow:auto;padding:8px;background:var(--ink);display:flex;align-items:center;justify-content:center"></div>
+    <button id="attNavPrev" onclick="_attNav(-1)" title="Previous (←)" style="display:none;position:absolute;left:10px;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:26px;line-height:1;cursor:pointer;z-index:5;align-items:center;justify-content:center;padding:0 2px 4px 0">‹</button>
+    <button id="attNavNext" onclick="_attNav(1)" title="Next (→)" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:26px;line-height:1;cursor:pointer;z-index:5;align-items:center;justify-content:center;padding:0 0 4px 2px">›</button>
     <div style="padding:12px 16px;border-top:1px solid var(--ln);display:flex;gap:8px;justify-content:flex-end;background:#fff;flex-shrink:0">
       <a id="attPreviewOpen" href="#" target="_blank" rel="noopener" style="padding:10px 16px;background:var(--bg);border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-base);font-weight:600;color:var(--i2);text-decoration:none">↗ Open in tab</a>
       <a id="attPreviewDownload" href="#" download style="padding:10px 16px;background:var(--ac);color:#fff;border-radius:8px;font-size:var(--fs-base);font-weight:600;text-decoration:none">⬇ Download</a>
@@ -5929,8 +5935,13 @@ async function _pushInit(){
    Con STAFF_REQUIRED en false esto no hace nada. */
 async function _staffGuard(){
   if(!STAFF_REQUIRED||!currentUser)return;
+  /* v1.11.5: esperar a que Auth restaure la sesión persistida antes de juzgarla —
+     al arrancar, el usuario de Firebase puede ser null unos ms y echaríamos a
+     alguien con sesión staff válida. */
+  try{if(typeof _awaitAuth==="function")await _awaitAuth(8000);}catch(_e){}
   if(await _isStaffSession())return;
   console.warn("[staff] sesión de personal perdida — pidiendo PIN");
+  try{if(typeof toast==="function")toast("Your staff session expired — please sign in again.","warn")}catch(_e){}
   try{logout()}catch(_e){}
 }
 function tryAutoLogin(){
@@ -7416,15 +7427,32 @@ async function _dmOpenThread(peer){
       body.scrollTop=body.scrollHeight;
     },function(err){console.warn("[dm] msgs",err);});
 }
+function _dmSendErr(e,inp,txt){
+  /* v1.11.5: el catch ya no se traga el motivo. permission-denied = la sesión de
+     Firebase perdió el claim staff (reglas STAFF_REQUIRED) → avisar claro y
+     disparar _staffGuard para re-pedir el PIN, en vez del "Could not send" mudo. */
+  var perm=!!(e&&(e.code==="permission-denied"||/insufficient|permission/i.test(e.message||"")));
+  console.warn("[dm] send failed:",e&&e.code,(e&&e.message)||e);
+  if(typeof toast==="function")toast(perm?"Session expired — sign in again to send":"Could not send","err");
+  if(inp)inp.value=txt;
+  if(perm){try{_staffGuard()}catch(_e){}}
+}
 async function _dmSend(){
   var inp=document.getElementById("dmInput");if(!inp||!db||!currentUser||!_dm.peer)return;
   var txt=(inp.value||"").trim();if(!txt)return;inp.value="";
-  var me=currentUser.name,peer=_dm.peer,tid=_dmTid(me,peer);
+  var me=currentUser.name,peer=_dm.peer;
   try{
-    await db.collection("dmThreads").doc(tid).collection("msgs").add({from:me,to:peer,text:txt,ts:firebase.firestore.FieldValue.serverTimestamp()});
-    var u={};u[peer]=firebase.firestore.FieldValue.increment(1);u[me]=0;
-    await db.collection("dmThreads").doc(tid).set({users:[me,peer],last:{text:txt.slice(0,80),from:me,ts:firebase.firestore.FieldValue.serverTimestamp()},unread:u,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  }catch(e){if(typeof toast==="function")toast("Could not send","err");inp.value=txt;}
+    var tid=_dmTid(me,peer);   // v1.11.5: dentro del try — si lanza, el catch restaura el texto (antes se perdía mudo)
+    var SV=firebase.firestore.FieldValue;
+    var u={};u[peer]=SV.increment(1);u[me]=0;
+    /* v1.11.5: batch atómico — antes eran 2 escrituras sueltas; si la 1ª pasaba y
+       la 2ª fallaba, el mensaje quedaba huérfano (el peer nunca ve el hilo) y el
+       reintento lo duplicaba. */
+    var b=db.batch();
+    b.set(db.collection("dmThreads").doc(tid).collection("msgs").doc(),{from:me,to:peer,text:txt,ts:SV.serverTimestamp()});
+    b.set(db.collection("dmThreads").doc(tid),{users:[me,peer],last:{text:txt.slice(0,80),from:me,ts:SV.serverTimestamp()},unread:u,updatedAt:SV.serverTimestamp()},{merge:true});
+    await b.commit();
+  }catch(e){_dmSendErr(e,inp,txt);}
 }
 // ── group channel (reuses the existing teamChat collection) ──
 function _dmOpenGroup(){
@@ -7453,7 +7481,7 @@ async function teamSend(){
   var inp=document.getElementById("dmInput");if(!inp||!db)return;
   var txt=(inp.value||"").trim();if(!txt)return;inp.value="";
   try{await db.collection("teamChat").add({text:txt,author:(currentUser&&currentUser.name)||"?",role:(currentUser&&currentUser.role)||"",ts:firebase.firestore.FieldValue.serverTimestamp()});}
-  catch(e){if(typeof toast==="function")toast("Could not send","err");inp.value=txt;}
+  catch(e){_dmSendErr(e,inp,txt);}
 }
 function openTeamChat(){_dmOpenPanel();}
 function rndrConversations(){ convLoad(false); }
@@ -11853,7 +11881,7 @@ async function init(){
   TECHS.forEach(t=>{if(!allUsers.find(u=>u.name===t)){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});
   if(synced)await saveUsers();
   initTodoCollapse();
-  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{_presenceOnLogin()}catch(_e){}try{if(typeof initFirebase==="function")initFirebase()}catch(e){console.warn("[initFirebase]",e)}try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
+  if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{_presenceOnLogin()}catch(_e){}try{if(typeof initFirebase==="function")initFirebase()}catch(e){console.warn("[initFirebase]",e)}try{_staffGuard()}catch(_e){} /* v1.11.5: el guardián existía pero NUNCA se llamaba — auto-login con sesión staff perdida = escrituras denegadas en silencio */try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
     if(currentUser&&currentUser.role==="admin"&&typeof _mapsAutoBackfillOncePerDay==="function")setTimeout(_mapsAutoBackfillOncePerDay,2000);
     // ─── Traccar startup hooks DISABLED 2026-05-13 ───
     // See comment in doLogin(). Clear any stale banner from prior session.
@@ -12395,35 +12423,180 @@ function slClearMedia(){
 // Photos render as <img>, PDFs as <iframe> (browsers render PDFs natively in iframes).
 // Both have Open-in-tab and Download links. Closing clears the body so the iframe
 // stops loading.
-function previewAttachment(url,type,name){
+/* ── FOTOS v2 (Jul 2026): galería + zoom ─────────────────────────────────
+   La firma de previewAttachment gana un 4º parámetro opcional srcEl (el
+   elemento clicado). Con él, _attHarvest recolecta TODAS las fotos hermanas
+   del mismo contexto (detalle de ticket = Photos + Photo History + Attachments;
+   pestaña de fotos del cliente = todo el grid; tarjeta del Daily = sus fotos)
+   y el visor navega con ‹ ›, swipe, ← →, con contador "2 / 7". Sin srcEl se
+   comporta como antes (una sola foto, pero ya con zoom). */
+var _attGal={list:[],idx:0};
+function _attHarvest(srcEl){
+  var scope=null;
+  try{scope=srcEl&&srcEl.closest?srcEl.closest("#tktDetailBody,.ent-w,.tkt,.modal,.sheet,.wrap"):null;}catch(_e){}
+  if(!scope)scope=document;
+  var out=[],seen=Object.create(null);
+  function unq(s){return String(s||"").replace(/\\(['\\])/g,"$1").replace(/&quot;/g,'"');}
+  function push(u,nm){u=String(u||"").trim();if(!u||seen[u])return;seen[u]=1;out.push({url:u,name:nm||"Photo"});}
+  var els=scope.querySelectorAll("[onclick]");
+  for(var i=0;i<els.length;i++){
+    var el=els[i],oc=el.getAttribute("onclick")||"";
+    if(oc.indexOf("_previewTktImg")>-1){push(el.getAttribute("src"),"Photo");continue;}
+    if(oc.indexOf("previewAttachment")<0)continue;
+    if(el.dataset&&el.dataset.u){push(el.dataset.u,el.dataset.c);continue;}
+    var m=oc.match(/previewAttachment\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'photo'\s*(?:,\s*'((?:[^'\\]|\\.)*)')?/);
+    if(m)push(unq(m[1]),unq(m[2]||""));
+  }
+  return out;
+}
+function previewAttachment(url,type,name,srcEl){
   if(!url)return;
   const body=document.getElementById("attPreviewBody");
   const title=document.getElementById("attPreviewTitle");
   const open=document.getElementById("attPreviewOpen");
   const dl=document.getElementById("attPreviewDownload");
-  title.textContent=name||(type==="pdf"?"PDF Document":"Photo");
-  open.href=url;dl.href=url;
+  const cnt=document.getElementById("attPreviewCount");
+  const pv=document.getElementById("attNavPrev"),nx=document.getElementById("attNavNext");
   if(type==="pdf"){
+    _attGal.list=[];
+    title.textContent=name||"PDF Document";
+    if(cnt)cnt.textContent="";
+    if(pv)pv.style.display="none";if(nx)nx.style.display="none";
+    open.href=url;dl.href=url;
     body.innerHTML='<iframe src="'+esc(url)+'" style="width:100%;height:100%;border:none;background:#fff;border-radius:6px"></iframe>';
-  }else{
-    body.innerHTML='<img src="'+esc(url)+'" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;display:block">';
+    document.getElementById("attPreviewBg").classList.add("open");
+    return;
   }
+  var list=srcEl?_attHarvest(srcEl):[];
+  if(!list.length)list=[{url:String(url),name:name||"Photo"}];
+  var idx=-1;
+  for(var i=0;i<list.length;i++){if(list[i].url===String(url)){idx=i;break;}}
+  if(idx<0){list.unshift({url:String(url),name:name||"Photo"});idx=0;}
+  else if(name&&(!list[idx].name||list[idx].name==="Photo"))list[idx].name=name;
+  _attGal.list=list;_attGal.idx=idx;
   document.getElementById("attPreviewBg").classList.add("open");
+  _attShow(idx);
+}
+function _attShow(i){
+  var g=_attGal;if(!g.list.length)return;
+  g.idx=((i%g.list.length)+g.list.length)%g.list.length;
+  var it=g.list[g.idx];
+  var body=document.getElementById("attPreviewBody");
+  var title=document.getElementById("attPreviewTitle");
+  var cnt=document.getElementById("attPreviewCount");
+  var open=document.getElementById("attPreviewOpen"),dl=document.getElementById("attPreviewDownload");
+  if(title)title.textContent=it.name||"Photo";
+  if(cnt)cnt.textContent=g.list.length>1?((g.idx+1)+" / "+g.list.length):"";
+  if(open)open.href=it.url;if(dl)dl.href=it.url;
+  body.innerHTML='<div id="attZoomWrap" style="width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab">'
+    +'<img id="attZoomImg" src="'+esc(it.url)+'" draggable="false" onerror="_imgFallback(this)" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;display:block;transform-origin:center center;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">'
+    +'</div>';
+  _attZoomInit();
+  var multi=g.list.length>1;
+  var pv=document.getElementById("attNavPrev"),nx=document.getElementById("attNavNext");
+  if(pv)pv.style.display=multi?"flex":"none";
+  if(nx)nx.style.display=multi?"flex":"none";
+  if(multi){try{new Image().src=g.list[(g.idx+1)%g.list.length].url;new Image().src=g.list[(g.idx-1+g.list.length)%g.list.length].url;}catch(_e){}}
+}
+function _attNav(d){var g=_attGal;if(g.list.length<2)return;_attShow(g.idx+d);}
+/* Zoom: pellizco (2 dedos), doble tap / doble clic (2.5x en el punto tocado),
+   rueda del ratón, y arrastre para desplazarse cuando hay zoom. Con zoom en 1x,
+   un swipe horizontal navega la galería. */
+var _attZ={s:1,tx:0,ty:0,ptrs:{},startDist:0,startS:1,startTx:0,startTy:0,panX:0,panY:0,swipe:null,lastTap:0};
+function _attZoomApply(){var im=document.getElementById("attZoomImg");if(im)im.style.transform="translate("+_attZ.tx+"px,"+_attZ.ty+"px) scale("+_attZ.s+")";}
+function _attZoomReset(){_attZ.s=1;_attZ.tx=0;_attZ.ty=0;_attZoomApply();}
+function _attZoomInit(){
+  _attZ.s=1;_attZ.tx=0;_attZ.ty=0;_attZ.ptrs={};_attZ.swipe=null;
+  var wrap=document.getElementById("attZoomWrap");
+  if(!wrap)return;
+  function pts(){var o=_attZ.ptrs;return Object.keys(o).map(function(k){return o[k];});}
+  function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+  function clampPan(){
+    var lim=(Math.max(0,_attZ.s-1))*Math.max(wrap.clientWidth,wrap.clientHeight)/2+40;
+    _attZ.tx=Math.max(-lim,Math.min(lim,_attZ.tx));
+    _attZ.ty=Math.max(-lim,Math.min(lim,_attZ.ty));
+  }
+  wrap.addEventListener("pointerdown",function(e){
+    try{wrap.setPointerCapture&&wrap.setPointerCapture(e.pointerId);}catch(_e){}
+    _attZ.ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    var p=pts();
+    if(p.length===2){
+      _attZ.startDist=dist(p[0],p[1]);_attZ.startS=_attZ.s;_attZ.swipe=null;
+    }else if(p.length===1){
+      _attZ.panX=e.clientX;_attZ.panY=e.clientY;_attZ.startTx=_attZ.tx;_attZ.startTy=_attZ.ty;
+      _attZ.swipe=(_attZ.s<=1.02)?{x:e.clientX,y:e.clientY,t:Date.now()}:null;
+      var now=Date.now(),r=wrap.getBoundingClientRect();
+      if(now-_attZ.lastTap<300){
+        if(_attZ.s>1.02){_attZoomReset();}
+        else{
+          _attZ.s=2.5;
+          _attZ.tx=(e.clientX-(r.left+r.width/2))*(1-_attZ.s);
+          _attZ.ty=(e.clientY-(r.top+r.height/2))*(1-_attZ.s);
+          clampPan();_attZoomApply();
+        }
+        _attZ.lastTap=0;_attZ.swipe=null;
+      }else _attZ.lastTap=now;
+    }
+  });
+  wrap.addEventListener("pointermove",function(e){
+    if(!_attZ.ptrs[e.pointerId])return;
+    _attZ.ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    var p=pts();
+    if(p.length===2){
+      if(_attZ.startDist>0){
+        _attZ.s=Math.min(6,Math.max(1,_attZ.startS*dist(p[0],p[1])/_attZ.startDist));
+        clampPan();_attZoomApply();
+      }
+      e.preventDefault();
+    }else if(p.length===1&&_attZ.s>1.02){
+      _attZ.tx=_attZ.startTx+(e.clientX-_attZ.panX);
+      _attZ.ty=_attZ.startTy+(e.clientY-_attZ.panY);
+      clampPan();_attZoomApply();
+      e.preventDefault();
+    }
+  });
+  function up(e){
+    delete _attZ.ptrs[e.pointerId];
+    if(_attZ.swipe&&_attZ.s<=1.02){
+      var dx=e.clientX-_attZ.swipe.x,dy=e.clientY-_attZ.swipe.y;
+      if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5&&Date.now()-_attZ.swipe.t<600)_attNav(dx<0?1:-1);
+      _attZ.swipe=null;
+    }
+    if(_attZ.s<1.05&&!Object.keys(_attZ.ptrs).length)_attZoomReset();
+  }
+  wrap.addEventListener("pointerup",up);
+  wrap.addEventListener("pointercancel",function(e){delete _attZ.ptrs[e.pointerId];_attZ.swipe=null;});
+  wrap.addEventListener("wheel",function(e){
+    e.preventDefault();
+    var r=wrap.getBoundingClientRect(),mx=e.clientX-(r.left+r.width/2),my=e.clientY-(r.top+r.height/2);
+    var ns=Math.min(6,Math.max(1,_attZ.s*(e.deltaY<0?1.15:1/1.15)));
+    _attZ.tx=mx-(mx-_attZ.tx)*ns/_attZ.s;
+    _attZ.ty=my-(my-_attZ.ty)*ns/_attZ.s;
+    _attZ.s=ns;
+    if(ns<=1.02){_attZoomReset();}else{clampPan();_attZoomApply();}
+  },{passive:false});
+  wrap.addEventListener("gesturestart",function(e){e.preventDefault();});
 }
 function closeAttPreview(){
   document.getElementById("attPreviewBg").classList.remove("open");
+  _attGal.list=[];_attGal.idx=0;
   // Clear body to stop iframe rendering / free memory
   setTimeout(function(){var b=document.getElementById("attPreviewBody");if(b)b.innerHTML=""},250);
 }
 document.addEventListener("keydown",function(e){
-  if(e.key==="Escape"&&document.getElementById("attPreviewBg")&&document.getElementById("attPreviewBg").classList.contains("open"))closeAttPreview();
+  var bg=document.getElementById("attPreviewBg");
+  if(!bg||!bg.classList.contains("open"))return;
+  if(e.key==="Escape")closeAttPreview();
+  else if(e.key==="ArrowRight")_attNav(1);
+  else if(e.key==="ArrowLeft")_attNav(-1);
 });
 // Ticket-card thumbnails: open the same fullscreen viewer on tap. Reads the
 // element's own src so there is zero URL-escaping to get wrong, and the card's
 // open handler is suppressed by event.stopPropagation() at the call site.
+// FOTOS v2: pasa el propio <img> para que el visor recolecte las fotos hermanas.
 function _previewTktImg(img){
   if(!img)return;
-  try{previewAttachment(img.getAttribute("src")||img.src,"photo","Photo")}catch(_e){}
+  try{previewAttachment(img.getAttribute("src")||img.src,"photo","Photo",img)}catch(_e){}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -12467,7 +12640,7 @@ function renderTdAttachments(ticketId){
       var safeName=esc(fileName);
       var rawForJs=fileName.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
       var kind=m.type==="pdf"?"pdf":"photo";
-      h+='<div onclick="previewAttachment(\''+safeUrl+'\',\''+kind+'\',\''+rawForJs+'\')" style="position:relative;background:#fff;border:2px solid var(--ln);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .12s" onmouseover="this.style.borderColor=\'var(--ac)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--ln)\';this.style.transform=\'\'">';
+      h+='<div onclick="previewAttachment(\''+safeUrl+'\',\''+kind+'\',\''+rawForJs+'\',this)" style="position:relative;background:#fff;border:2px solid var(--ln);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .12s" onmouseover="this.style.borderColor=\'var(--ac)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--ln)\';this.style.transform=\'\'">';
       if(m.type==="pdf"){
         h+='<div style="height:120px;background:linear-gradient(135deg,var(--c-danger-bg) 0%,var(--c-danger-bg) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b91c1c"><div style="font-size:46px;line-height:1">📄</div><div style="font-size:var(--fs-xs);font-weight:800;letter-spacing:1.5px;margin-top:4px">PDF</div></div>';
         h+='<div style="padding:6px 8px;font-size:var(--fs-sm);font-weight:600;color:var(--c-danger-fg);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff" title="'+safeName+'">'+safeName+'</div>';
@@ -17669,7 +17842,24 @@ function _authSignInWithFallback(){
       .then(function(){return chain[i][0]})
       .catch(function(){return step(i+1)});   // ese modo no va en este navegador: baja uno
   }
-  return step(0);
+  /* v1.11.5 — FIX "Could not send". Antes esta función llamaba signInAnonymously()
+     en CADA arranque sin mirar si Auth ya estaba restaurando una sesión de PERSONAL
+     (custom token con claim staff) desde IndexedDB. signInAnonymously() encima de
+     esa sesión la REEMPLAZA por una anónima nueva → con STAFF_REQUIRED las reglas
+     deniegan toda escritura y el messenger (y cualquier guardado) moría con
+     "Could not send" tras cada recarga/auto-login. Ahora esperamos la PRIMERA
+     emisión de onAuthStateChanged (Auth siempre emite usuario-o-null al terminar
+     de leer el almacenamiento) y solo si NO hay sesión creamos la anónima. El
+     timeout es un respaldo por si Auth nunca emite (navegadores embebidos raros). */
+  return new Promise(function(res){
+    var done=false,unsub=null;
+    function fin(u){if(done)return;done=true;try{if(unsub)unsub()}catch(_e){}res(u);}
+    try{unsub=auth.onAuthStateChanged(function(u){fin(u)});}catch(_e){fin(auth.currentUser);}
+    setTimeout(function(){fin(auth.currentUser)},3500);
+  }).then(function(u){
+    if(u)return "KEPT-"+(u.isAnonymous?"anon":"staff");   // conservar la sesión existente
+    return step(0);
+  });
 }
 
 /* PLAN B (v1.9.3): si NINGÚN modo de sesión funciona en ese navegador, la firma se
@@ -22905,7 +23095,7 @@ function qbCustRenderDetail(customers){
       h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:0 0 6px">';
       _allPhotos.forEach(function(ph){
         var cap=(ph.date||'')+(ph.tech?(' \u00b7 '+ph.tech):'');
-        h+='<div onclick="previewAttachment(this.dataset.u,\'photo\',this.dataset.c)" data-u="'+esc(ph.url)+'" data-c="'+esc(cap)+'" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--ln);background:var(--bg)">'
+        h+='<div onclick="previewAttachment(this.dataset.u,\'photo\',this.dataset.c,this)" data-u="'+esc(ph.url)+'" data-c="'+esc(cap)+'" style="cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--ln);background:var(--bg)">'
           +'<img src="'+esc(ph.url)+'" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#0002">'
           +'<div style="font-size:10px;color:var(--i3);padding:4px 6px;line-height:1.25"><div style="font-weight:700;color:var(--i2)">'+esc(ph.date||'')+'</div>'+(ph.tech?'<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ph.tech)+'</div>':'')+'</div></div>';
       });
@@ -27093,7 +27283,7 @@ function showTicketDetail(p,i){
     var h='<div class="ent-w"><div class="ent-w-h">\uD83D\uDCF7 Photos<span class="ent-w-tag">'+media.length+'</span></div><div class="ent-photos">';
     media.filter(function(m){return m.type!=="pdf";}).forEach(function(m){
       var u=String(m.url||m.data||""),nm=String(m.name||"Photo");
-      h+='<div class="ent-photo" style="background-image:url(\''+esc2(u)+'\')" onclick="event.stopPropagation();(typeof previewAttachment===\'function\')&&previewAttachment(\''+jsq(u)+'\',\'photo\',\''+jsq(nm)+'\')"></div>';
+      h+='<div class="ent-photo" style="background-image:url(\''+esc2(u)+'\')" onclick="event.stopPropagation();(typeof previewAttachment===\'function\')&&previewAttachment(\''+jsq(u)+'\',\'photo\',\''+jsq(nm)+'\',this)"></div>';
     });
     media.filter(function(m){return m.type==="pdf";}).forEach(function(m){
       h+='<a class="ent-pdf" href="'+esc2(m.url||"#")+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">\uD83D\uDCC4 '+esc2(m.name||"PDF")+'</a>';
@@ -28737,7 +28927,7 @@ function _aspTechCardHTML(t){
   var photos=[];(t.media||[]).forEach(function(m){if(m&&m.type!=="pdf"&&(m.url||m.data))photos.push(m.url||m.data);});
   var chips=_aspWarChip(t)+(vn===4?'<span class="asp-chip asp-chip-warn">🔁 '+TT("Repetición","Repeat")+'</span>':'')+(parts.length?'<span class="asp-chip">🧰 '+parts.length+' '+TT("parte(s)","part(s)")+'</span>':'')+(photos.length?'<span class="asp-chip">📷 '+photos.length+'</span>':'');
   var partsHTML=parts.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">'+parts.map(function(p){return '<span class="asp-chip">✓ '+esc3((p.qty||1)+"× "+(p.n||p.name||""))+'</span>';}).join("")+'</div>':'';
-  var photoHTML=photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+photos.map(function(u){return '<img data-u="'+esc3(u)+'" data-c="'+esc3((t.date||"")+" · "+techs)+'" onclick="try{previewAttachment(this.dataset.u,\'photo\',this.dataset.c)}catch(e){}" loading="lazy" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--ln,#e5e0d8);cursor:pointer">';}).join("")+'</div>':'';
+  var photoHTML=photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">'+photos.map(function(u){return '<img data-u="'+esc3(u)+'" data-c="'+esc3((t.date||"")+" · "+techs)+'" onclick="try{previewAttachment(this.dataset.u,\'photo\',this.dataset.c,this)}catch(e){}" loading="lazy" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--ln,#e5e0d8);cursor:pointer">';}).join("")+'</div>':'';
   var body=''
     +(rep?'<div style="font-size:12.5px;line-height:1.6;white-space:pre-line;color:var(--ink,#222)">'+esc3(rep)+'</div>':'<div style="font-size:11.5px;color:var(--i3,#8a8073);font-style:italic">'+TT("Sin reporte del técnico ese día","No tech report for that day")+'</div>')
     +partsHTML+photoHTML
