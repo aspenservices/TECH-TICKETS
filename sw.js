@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.13.0";  // 23 jul 2026 — v1.13.0 = rol Viewer (solo Tech Tools > YE-6, sin listeners de Firestore). v1.12.0 = YE-6 rediseno (paleta Aspen, color por terminal, fix A6, fixes movil) + BluFusion. mismo numero que APP_VERSION, bump juntos. v1.11.0 = Cover Tracker → Service Log bridge (structured deep-link intake, idempotent by srcId, cleanup-exempt). v1.10.0 = fases 1-3 auditoria.
+const CACHE_VERSION = "v1.13.1";  // 23 jul 2026 — v1.13.1 = fix aterrizaje del Viewer (caia en calendario) + etiqueta de rol. v1.13.0 = rol Viewer (solo Tech Tools > YE-6, sin listeners de Firestore). v1.12.0 = YE-6 rediseno (paleta Aspen, color por terminal, fix A6, fixes movil) + BluFusion. mismo numero que APP_VERSION, bump juntos. v1.11.0 = Cover Tracker → Service Log bridge (structured deep-link intake, idempotent by srcId, cleanup-exempt). v1.10.0 = fases 1-3 auditoria.
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell

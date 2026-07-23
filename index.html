@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="1.13.0";
+var APP_VERSION="1.13.1";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -6106,8 +6106,6 @@ function updAdmin(){
       var t=document.getElementById("tab"+n); if(t)t.classList.add("hidden");
     });
     var _t10=document.getElementById("tab10"); if(_t10)_t10.classList.remove("hidden");
-    // aterrizar en Tech Tools una sola vez (no en cada updAdmin)
-    if(!window._viewerLanded){window._viewerLanded=true;try{showTab(10)}catch(_e){}}
   }
   // Time Off button: office staff (admin/organizer) only — techs don't manage it.
   var _tob=document.getElementById("timeOffBtn");if(_tob)_tob.style.display=isAdmin?"":"none";
@@ -6149,9 +6147,9 @@ function updAdmin(){
     const sub=document.querySelector(".hdr-sub");
     if(sub){
       if(currentUser){
-        const role=currentUser.role==="admin"?"Admin":(currentUser.role==="organizer"?"Organizer":"Tech");
+        const role=currentUser.role==="admin"?"Admin":(currentUser.role==="organizer"?"Organizer":(currentUser.role==="viewer"?"Viewer":"Tech"));
         // Techs: PINs are managed by the office only — no self-service entry.
-        var _subTech=currentUser.role==="tech";
+        var _subTech=currentUser.role==="tech"||_isViewer();
         sub.textContent=`${currentUser.name} · ${role}`+(_subTech?"":" · 🔑 PIN");
         sub.style.display="";
         sub.style.cursor=_subTech?"":"pointer";
@@ -6189,6 +6187,9 @@ function updAdmin(){
   // Floating To-Do widget: shown only on Calendar page, only for admin/organizer (NOT techs)
   updateTodoVisibility();
   if(!currentUser)showTab(0);
+  /* VIEWER: siempre a Tech Tools. Va ANTES que las ramas de abajo porque un
+     viewer no es admin ni organizer y caia en "!isAdmin" -> calendario. */
+  else if(_isViewer())showTab(10);
   else if(isTechRole){calView="timeline";calSelectedDate=fmtD(new Date());showTab(4)}
   else if(!isAdmin){calView="timeline";calSelectedDate=fmtD(new Date());showTab(4)}
 }
