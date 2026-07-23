@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v1.10.0";  // 22 jul 2026 — mismo numero que APP_VERSION, bump juntos. v1.10.0 = fases 1-3 auditoria (version central, PIN local fuera, lazy libs, sync count + revision guard)
+const CACHE_VERSION = "v1.11.0";  // 23 jul 2026 — mismo numero que APP_VERSION, bump juntos. v1.11.0 = Cover Tracker → Service Log bridge (structured deep-link intake, idempotent by srcId, cleanup-exempt). v1.10.0 = fases 1-3 auditoria.
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell

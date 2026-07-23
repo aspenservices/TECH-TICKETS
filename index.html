@@ -5570,7 +5570,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="1.10.0";
+var APP_VERSION="1.11.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -8564,6 +8564,7 @@ async function _runDispatchCleanup(opts){
   var GRACE_MS=5*60*1000; // 5 minutes — don't auto-eat tickets just created
   var stale=[...active,...done].filter(function(t){
     if(t.source!=="dispatch")return false;
+    if(t.fromCoverTracker)return false;   // cover-origin tickets are exempt from auto-cleanup (Option A)
     if(t.fieldReportSubmitted)return false;
     if(t.status==="canceled")return false;
     var dispatchDate=(t.date||"").trim();if(!dispatchDate)return false;
@@ -11931,10 +11932,101 @@ function _renderPresenceCluster(){
     +'<span class="pres-more">'+online.length+' active</span>';
 }
 
+// ═══ COVER TRACKER → SERVICE LOG BRIDGE (Option A · Jul 2026) ═══
+// Cover Tracker opens TECH-TICKETS with STRUCTURED params (srcId, customer, po,
+// phone, address, dateISO, tech, bw, notes). We stash them, wait until the user
+// is logged in, then pre-fill the "New Service Call" form. Creating the ticket
+// stays a deliberate click (slCreateCall) and is IDEMPOTENT by srcId — reopening
+// the same cover never makes a duplicate ticket.
+var _coverIntake = null;
+function _stashCoverIntake(){
+  var p;
+  try{ p = new URLSearchParams(window.location.search); }catch(_e){ return; }
+  if(p.get("new")!=="1" || !p.get("srcId")) return;   // not a cover-intake link
+  _coverIntake = {
+    srcId:   p.get("srcId")||"",
+    type:    p.get("type")||"",
+    mode:    (String(p.get("type")||"").indexOf("install")!==-1) ? "install" : "schedule",
+    customer:p.get("customer")||"",
+    po:      p.get("po")||"",
+    dateISO: p.get("dateISO")||"",
+    dateUS:  p.get("date")||"",
+    tech:    p.get("tech")||"",
+    phone:   p.get("phone")||"",
+    address: p.get("address")||"",
+    bw:      p.get("bw")==="1",
+    notes:   p.get("notes")||""
+  };
+  // Wait for login + the form, then apply once (bounded so we never spin forever).
+  var tries=0;
+  var iv=setInterval(function(){
+    tries++;
+    var ready = (typeof currentUser!=="undefined" && currentUser) && document.getElementById("slCustName");
+    if(ready){ clearInterval(iv); try{ _applyCoverIntake(); }catch(_e){ console.warn("[cover-intake apply]",_e); } }
+    else if(tries>360){ clearInterval(iv); }   // ~360×500ms = 3 min, then give up
+  }, 500);
+}
+function _coverTicketExists(srcId){
+  if(!srcId) return null;
+  var pool = (typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  return pool.find(function(t){ return t && t.coverSrcId===srcId; }) || null;
+}
+async function _applyCoverIntake(){
+  if(!_coverIntake) return;
+  var ci = _coverIntake;
+  // Idempotency: if this cover already has a ticket, open it — never duplicate.
+  var existing = _coverTicketExists(ci.srcId);
+  if(existing){
+    try{ showTab(5); slogSwitchSub("log"); }catch(_e){}
+    var _sq=document.getElementById("searchSlog"); if(_sq){ _sq.value=ci.customer||ci.po||""; try{rndrSlog()}catch(_e){} }
+    toast("🎫 This cover is already in the Service Log — opened it (no duplicate).","warn");
+    _coverIntake=null;
+    try{ history.replaceState(null,"",location.pathname); }catch(_e){}
+    return;
+  }
+  // Switch to Service Log → New Service Call and pre-fill STRUCTURED fields.
+  try{ showTab(5); }catch(_e){}
+  try{ slogSwitchSub("new"); }catch(_e){}
+  function _set(id,val){ var el=document.getElementById(id); if(el && val){ el.value=val; } }
+  _set("slCustName", ci.customer);
+  _set("slCustPhone", ci.phone);
+  _set("slCustAddr", ci.address);
+  if(ci.dateISO){ _set("slDate", ci.dateISO); var _sd=document.getElementById("slDate"); if(_sd)_sd.dataset.userTouched="1"; }
+  // Structured context in the right fields (not one free-text blob):
+  var reported = (ci.bw?"🌊 BLUEWATER (BW) special-order cover. ":"")
+    + (ci.po?("Cover PO# "+ci.po+". "):"")
+    + (ci.mode==="install" ? "Cover delivered — installation follow-up." : "Cover delivery — schedule with customer.");
+  _set("slReported", reported.trim());
+  _set("slNotes", ci.notes);
+  // Fire the app's own auto-fill so warranty / zone / history populate as usual.
+  try{ if(typeof slAutoFillCust==="function") slAutoFillCust(); }catch(_e){}
+  try{ if(typeof _slLoadHistory==="function") _slLoadHistory(); }catch(_e){}
+  try{ if(typeof slAutoZone==="function") slAutoZone(); }catch(_e){}
+  _showCoverIntakeBanner(ci);
+  toast("📦 From Cover Tracker — review the pre-filled call and click + Create Ticket.","warn");
+}
+function _showCoverIntakeBanner(ci){
+  try{
+    var host = document.querySelector("#pg5 .cal-call-form") || document.getElementById("pg5");
+    if(!host) return;
+    var old=document.getElementById("coverIntakeBanner"); if(old) old.remove();
+    var b=document.createElement("div");
+    b.id="coverIntakeBanner";
+    b.style.cssText="margin:0 0 12px;padding:11px 13px;border-radius:10px;background:#EFDFFF;border:1px solid #C9A6F0;color:#5B2A86;font-size:13px;font-weight:600;line-height:1.4";
+    b.innerHTML='📦 <b>From Cover Tracker</b>'+(ci.bw?' · 🌊 BW':'')+(ci.po?' · PO# '+esc(ci.po):'')+(ci.dateUS?' · 🗓️ '+esc(ci.dateUS):' · pending schedule')
+      +'<br><span style="font-weight:500;color:#6B4C8A">Review the pre-filled fields, assign a tech, then <b>+ Create Ticket</b>. Sending the same cover again won\'t duplicate it.</span>';
+    host.insertBefore(b, host.firstChild);
+  }catch(_e){}
+}
+
 async function init(){
   // Check if this is a customer-facing estimate link
   const isEstLink=await loadCustEstimate();
   if(isEstLink)return;
+  // ── Cover Tracker → Service Log bridge (Option A · Jul 2026) ──
+  // Stash any incoming ?new=1&srcId=… params now; they are applied once the user
+  // is logged in and the New Service Call form exists in the DOM.
+  try{ _stashCoverIntake(); }catch(_e){ console.warn("[cover-intake]", _e); }
   // Mount any static Lucide icons in the HTML (replaces .lucide-mount spans with SVG)
   mountLucideIcons();
   // Apply saved/system theme and add the header light/dark toggle button
@@ -17207,6 +17299,11 @@ async function slCreateCall(){
   const ccReq=document.getElementById("slCcReq").checked;
   var _slP=document.getElementById("slPaid");var paid=_slP?_slP.checked:false;
   if(!cu){toast("Enter customer name","warn");return}
+  // Cover Tracker bridge: never create a second ticket for the same cover.
+  if(_coverIntake && _coverIntake.srcId){
+    var _cdup=_coverTicketExists(_coverIntake.srcId);
+    if(_cdup){ toast("🎫 This cover is already in the Service Log — not duplicated.","warn"); return; }
+  }
   // ORPHAN PREVENTION · Layer 1 (Jul 2026): duplicate open calls for the same
   // household are the raw material for "shared report" orphans — one real
   // visit can only ever fulfil ONE dispatch, so the extra one lingers until
@@ -17258,6 +17355,15 @@ async function slCreateCall(){
       partWarranty90Start:((document.getElementById("slPart90Chk")||{}).checked)?(((document.getElementById("slPart90Date")||{}).value||"")||null):null,
       partWarranty90Name:(((document.getElementById("slPart90Chk")||{}).checked)?((document.getElementById("slPart90Name")||{}).value||""):""),
       media:[],videoLinks:null,source:"dispatch",status:"pending",
+      // Cover Tracker origin (Option A): stamp the join key + exempt from the
+      // stale-dispatch auto-cleanup so a "thin" cover ticket never vanishes
+      // before it's actually serviced. cleanupExempt is honored by the cleanup
+      // engine's fresh-read guard; fromCoverTracker also short-circuits the
+      // stale[] build. Non-cover calls keep the historical shape (false/null).
+      fromCoverTracker:!!(_coverIntake&&_coverIntake.srcId),
+      coverSrcId:(_coverIntake&&_coverIntake.srcId)||null,
+      coverMode:(_coverIntake&&_coverIntake.mode)||null,
+      cleanupExempt:!!(_coverIntake&&_coverIntake.srcId),
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:new Date().toLocaleString()
     });
@@ -17275,6 +17381,14 @@ async function slCreateCall(){
       }
     }
     toast("Ticket created ✓");
+    // Cover Tracker bridge: audit the cross-app creation + clear the pending
+    // intake so the next manual call isn't mistaken for a cover ticket.
+    if(_coverIntake && _coverIntake.srcId){
+      try{ if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent) AspenBrain.logEvent({customer:cu,app:"tickets",type:"ticket.from_cover",title:"📦 Ticket from Cover Tracker ("+(_coverIntake.mode||"schedule")+")",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",meta:{po:_coverIntake.po||"",bw:!!_coverIntake.bw,date:_coverIntake.dateUS||""},dedup:"cover|"+_coverIntake.srcId,ref:{app:"tickets",id:docRef.id}}); }catch(_be){}
+      _coverIntake=null;
+      var _cib=document.getElementById("coverIntakeBanner"); if(_cib)_cib.remove();
+      try{ history.replaceState(null,"",location.pathname); }catch(_e){}
+    }
     // Reset the form
     document.getElementById("slRepeat").checked=false;
     var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;
