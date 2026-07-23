@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="1.14.0";
+var APP_VERSION="1.15.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -14175,7 +14175,13 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     var techStr=(srcData.techs||[]).join(", ");
     var reason=(srcData.reschedReason||"").trim();
     var reasonNote=(srcData.reschedNote||"").trim();
-    var noteHead="\u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"+(origDate?(" on "+origDate):"")+". Needs a new appointment date.";
+    /* La nota ARRANCA con la fecha del reagendo, en el mismo formato MM/DD/YYYY
+       que usan las demas notas: asi la linea de tiempo la reconoce, la fecha
+       queda visible y la entrada cae en su lugar cronologico (antes empezaba
+       con "\u21BB" y se mostraba con ese simbolo como fecha). */
+    var _rsD=new Date();
+    var _rsMDY=("0"+(_rsD.getMonth()+1)).slice(-2)+"/"+("0"+_rsD.getDate()).slice(-2)+"/"+_rsD.getFullYear();
+    var noteHead=_rsMDY+" \u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"+(origDate?(" scheduled for "+origDate):"")+". Needs a new appointment date.";
     if(reason)noteHead+="\nReason: "+reason+(reasonNote?(" \u2014 "+reasonNote):"");
     // REAGENDAR v2: el encabezado lleva QUE FALTA y CUANDO PUEDE el cliente,
     // que es lo que la oficina necesita para re-agendar sin llamar de nuevo.
@@ -21266,6 +21272,60 @@ function _custPhotoHistory(name,excludeId){
   out.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   return out;
 }
+/* ═══ FRANJA DE REAGENDAR (jul 2026) ══════════════════════════════
+   markResched guardaba fecha, motivo, bloqueo, disponibilidad y urgencia
+   desde hace meses, pero NADA de eso se pintaba: ni en la hoja del ticket
+   ni en la tarjeta. El tecnico llenaba el formulario y su respuesta
+   desaparecia de su propia vista. Esta franja va ARRIBA DE TODO en el
+   ticket, tanto en el que se reagendo como en la llamada de vuelta. */
+function _reschedBannerHTML(t){
+  try{
+    if(!t)return "";
+    var isSrc = (t.status==="reschedule");
+    var isBack= !!t.autoFromResched;
+    if(!isSrc && !isBack && !t.reschedAt) return "";
+
+    var when = String(t.reschedAt||"").trim();
+    var reason = String(t.reschedReason||"").trim();
+    var rnote  = String(t.reschedNote||"").trim();
+    var blk="", av="";
+    try{ blk = (typeof _reschedBlockerLabel==="function") ? (_reschedBlockerLabel(t)||"") : ""; }catch(_e){}
+    try{ av  = (typeof _reschedAvailLabel==="function")   ? (_reschedAvailLabel(t)||"")   : ""; }catch(_e){}
+    var sug = (Array.isArray(t.techsSuggested)?t.techsSuggested:[]).filter(Boolean).join(", ");
+    var urgent = !!(t.reschedUrgent);
+
+    var rows=[];
+    if(when)   rows.push(["\uD83D\uDD52", L2("Se reagend\u00f3","Rescheduled"), when]);
+    if(reason) rows.push(["\u2753", L2("Motivo","Reason"), reason + (rnote?(" \u2014 "+rnote):"")]);
+    else if(rnote) rows.push(["\u2753", L2("Motivo","Reason"), rnote]);
+    if(blk)    rows.push(["\u26A0\uFE0F", L2("Para volver","Blocked on"), blk]);
+    if(av)     rows.push(["\uD83D\uDCC5", L2("Disponibilidad","Availability"), av]);
+    if(sug)    rows.push(["\uD83D\uDC64", L2("T\u00e9cnico sugerido","Suggested tech"), sug]);
+    if(!rows.length && !urgent) return "";
+
+    var head = isBack ? L2("LLAMADA DE VUELTA \u2014 falta fecha","RETURN CALL \u2014 needs a date")
+                      : L2("ESTE TICKET SE REAGEND\u00d3","THIS TICKET WAS RESCHEDULED");
+
+    var h = '<div class="dt-sec" style="border:1px solid var(--ac);background:var(--acl);'
+          + 'border-radius:12px;padding:13px 15px;margin:0 0 14px">'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(rows.length?'10px':'0')+'">'
+          + '<span style="font-size:15px">\u21BB</span>'
+          + '<span style="font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--acd)">'+esc(head)+'</span>'
+          + (urgent?'<span style="margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.05em;'
+                   +'background:var(--r,#c0392b);color:#fff;border-radius:999px;padding:3px 8px">'
+                   +esc(L2("URGENTE","URGENT"))+'</span>':'')
+          + '</div>';
+    rows.forEach(function(r){
+      h += '<div style="display:flex;gap:9px;align-items:flex-start;padding:4px 0">'
+        +  '<span style="flex:none;font-size:12px;line-height:1.5">'+r[0]+'</span>'
+        +  '<span style="flex:none;min-width:112px;font-size:11px;font-weight:700;color:var(--i2);'
+        +  'text-transform:uppercase;letter-spacing:.04em;line-height:1.55">'+esc(r[1])+'</span>'
+        +  '<span style="font-size:13px;color:var(--ink);line-height:1.5;min-width:0">'+esc(r[2])+'</span>'
+        +  '</div>';
+    });
+    return h+'</div>';
+  }catch(_e){ return ""; }
+}
 function openTktDetail(id){
   const t=[...active,...done].find(x=>x.id===id);if(!t)return;
   _curOpenTktId=id;
@@ -21742,7 +21802,7 @@ function openTktDetail(id){
      try{if(typeof _c360Btn==="function"){if(isAdmin)h+=_c360Btn(t)}}catch(_e){}
      if(isAdmin)h+=_chargeTrailHTML(t); */
   if(currentUser&&currentUser.role==="organizer")h+=_chargeTrailHTML(t);
-  document.getElementById("tktDetailBody").innerHTML=h;
+  document.getElementById("tktDetailBody").innerHTML=_reschedBannerHTML(t)+h;
   try{_dtLayoutV2()}catch(_e){} /* v1.11.8: layout B+C — si falla, queda la vista clásica */
   // Populate the attachments section (rendered separately so we can re-render in place)
   if(typeof renderTdAttachments==="function")renderTdAttachments(t.id);
@@ -30733,7 +30793,26 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   function dparts(s){try{var d=new Date(String(s||'')+'T00:00:00');if(isNaN(d))throw 0;return{m:d.toLocaleDateString('en-US',{month:'short'}),d:d.getDate(),y:d.getFullYear()}}catch(_){return{m:'',d:s||'—',y:''}}}
   function counts(t){var m=Array.isArray(t.media)?t.media:[];return{photos:(t.photoUrls||[]).filter(Boolean).length+m.filter(function(x){return x&&x.type!=='pdf'&&(x.url||x.data||x.dataUrl)}).length,pdfs:m.filter(function(x){return x&&x.type==='pdf'}).length}}
   function work(t){var a=(t.workTypes||[]).filter(function(x){return x&&!/^service call$/i.test(x)});return a.join(', ')||'Technician Visit'}
-  function notes(tkts){var id='';try{id=typeof _aspLogDocId==='function'?_aspLogDocId():''}catch(_){}try{var c=window._aspLogCache&&window._aspLogCache[id];if(Array.isArray(c)&&c.length)return c.slice().sort(function(a,b){return(a.ts||0)-(b.ts||0)})}catch(_){}var story='';try{story=((typeof _compileCustomerStory==='function'?_compileCustomerStory(tkts):{})||{}).text||''}catch(_){}if(!story.trim())return[];return story.replace(/\r/g,'').split(/\n(?=\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/).filter(Boolean).map(function(x,i){var f=x.split('\n')[0]||'';return{when:(f.match(/^\S+/)||['History'])[0],by:'',text:x,ts:i}})}
+  /* Saca una fecha real del encabezado de la nota. Acepta 07/23/2026,
+     7/28/25, 2026-07-23 y variantes con ":" o texto pegado (11/05/2025:Robert). */
+  function _v7NoteTs(w){
+    var t=String(w||'');
+    var m=t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if(m)return Date.UTC(+m[1],+m[2]-1,+m[3]);
+    m=t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);
+    if(m){var y=+m[3];if(y<100)y+=2000;return Date.UTC(y,+m[1]-1,+m[2]);}
+    return null;
+  }
+  /* Ordena de lo VIEJO a lo NUEVO hacia abajo. Un trozo sin fecha propia
+     (continuacion del anterior) hereda la fecha del que lo precede para no
+     desprenderse de su contexto; si no hay ninguno antes, se va al principio.
+     El sort de JS es estable, asi que a igual fecha se respeta el orden original. */
+  function _v7SortNotes(rows){
+    var last=-8640000000000000;
+    rows.forEach(function(n){ if(n.ts==null){n.ts=last;} else {last=n.ts;} });
+    return rows.sort(function(a,b){return a.ts-b.ts});
+  }
+  function notes(tkts){var id='';try{id=typeof _aspLogDocId==='function'?_aspLogDocId():''}catch(_){}try{var c=window._aspLogCache&&window._aspLogCache[id];if(Array.isArray(c)&&c.length)return c.slice().sort(function(a,b){return(a.ts||0)-(b.ts||0)})}catch(_){}var story='';try{story=((typeof _compileCustomerStory==='function'?_compileCustomerStory(tkts):{})||{}).text||''}catch(_){}if(!story.trim())return[];var _rows=story.replace(/\r/g,'').split(/\n(?=\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/).filter(Boolean).map(function(x,i){var f=x.split('\n')[0]||'';var w=(f.match(/^\S+/)||['History'])[0];return{when:w,by:'',text:x,ts:_v7NoteTs(w)}});return _v7SortNotes(_rows)}
   function noteHTML(n){return '<div class="v7-note"><span class="v7-dot"></span><div class="v7-note-card"><div class="v7-note-meta">'+escV(n.when||'')+(n.by?' · '+escV(n.by):'')+'</div><div class="v7-note-text">'+escV(n.text||'')+'</div></div></div>'}
   window.v7Toggle=function(id){var b=document.getElementById('v7x_'+id);if(!b)return;var on=!b.style.display||b.style.display==='none';b.style.display=on?'block':'none';var x=document.getElementById('v7t_'+id);if(x)x.textContent=on?'Hide full details ▲':'View full details →'};
   function visitHTML(t){var raw=String(t.id||Math.random().toString(36).slice(2)),sid=raw.replace(/[^A-Za-z0-9_-]/g,''),js=raw.replace(/'/g,"\\'"),dp=dparts(t.date),tech=(t.techs||[]).filter(Boolean).join(', ')||'—',_v7full=report(t),rep=_v7Entry(_v7full,t)||'No technician description was recorded for this visit.',mc=counts(t),parts=Array.isArray(t.parts)?t.parts:[],war=String((t.warranty&&t.warranty.label)||'').trim(),amt=total(t),chips='';if(parts.length)chips+='<span class="v7-chip">🧰 '+parts.length+' part'+(parts.length===1?'':'s')+'</span>';if(mc.photos)chips+='<span class="v7-chip">📷 '+mc.photos+' photo'+(mc.photos===1?'':'s')+'</span>';if(mc.pdfs)chips+='<span class="v7-chip">📄 '+mc.pdfs+' PDF</span>';if(war)chips+='<span class="v7-chip">🛡 '+escV(war)+'</span>';var expanded='';try{expanded=typeof _c360ExpandBodyHTML==='function'?_c360ExpandBodyHTML(t):''}catch(_){}try{if(_v7full&&String(_v7full).trim()!==String(rep).trim()){expanded+='<div class="v7-hist"><div class="v7-report-label">Full customer history</div><div class="v7-report-text">'+escV(_v7full)+'</div></div>'}}catch(_){}return '<article class="v7-visit"><div class="v7-visit-top"><div class="v7-date"><div class="mo">'+escV(dp.m)+'</div><div class="dy">'+escV(dp.d)+'</div><div class="yr">'+escV(dp.y)+'</div><span class="v7-status">'+(isDone(t)?'Completed':'Scheduled')+'</span></div><div><div class="v7-label">Technician</div><div class="v7-tech">'+escV(tech)+'</div><div class="v7-work">'+escV(work(t))+'</div></div><div class="v7-report"><div class="v7-report-label">Service Performed</div><div class="v7-report-text">'+escV(rep)+'</div></div><div class="v7-total"><div class="amount">$'+amt.toFixed(2)+'</div><div class="caption">Visit total</div></div></div><div class="v7-chips">'+chips+'</div><div class="v7-actions">'+_v7Btn('ticket',raw,'View Ticket','')+''+_v7Btn('toggle',sid,'View full details','','v7t_'+sid)+''+_v7Btn('report',raw,'Full Report / PDF','primary')+''+(mc.photos?_v7Btn('ticket',raw,'Photos ('+mc.photos+')',''):'')+''+((typeof openReportModalById==='function')?_v7Btn('email',raw,'Email Full Report','send'):'')+'</div><div class="v7-proof">Customer-ready proof includes the full technician description, parts, charge details, photos and attached PDFs. Print/PDF expands naturally without clipped text or scroll boxes.</div><div id="v7x_'+sid+'" class="v7-expanded">'+expanded+'</div></article>'}
