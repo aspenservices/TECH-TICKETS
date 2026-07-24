@@ -29235,7 +29235,7 @@ function _alertsTools(){
     try{if(typeof _renderCollAlertTop==="function")_renderCollAlertTop();}catch(e){}
     hdr.style.display="";hdr.innerHTML=cabHeaderHTML(apAll,"cabCollTop");
     // Mirror the reschedule/critical banner (native #collAlertTop) into the board header.
-    try{var _ct=document.getElementById("cabCollTop"),_src=document.getElementById("collAlertTop");if(_ct&&_src)_ct.innerHTML=_src.innerHTML;}catch(e){}
+    try{var _ct=document.getElementById("cabCollTop"),_src=document.getElementById("collAlertTop");if(_ct&&_src){_ct.innerHTML=_src.innerHTML;var _dd=_ct.querySelectorAll(".ca-danger");for(var _di=0;_di<_dd.length;_di++)_dd[_di].parentNode&&_dd[_di].parentNode.removeChild(_dd[_di]);}}catch(e){}
   }else{hdr.style.display="none";hdr.innerHTML="";}
   var sig=bon?((typeof _alertsAgeFilter!=="undefined"?_alertsAgeFilter:"all")+"|"+ap.length+"|"+ap.map(function(x){return x.id+(x.collectionStage==="proceso"?"*":"");}).join(",")):"off";
   if(inl.dataset.sig!==sig){inl.dataset.sig=sig;inl.innerHTML=bon?cabHTML(ap):"";}
@@ -29825,7 +29825,7 @@ window.cabOpen=function(){
     +'<button onclick="document.getElementById(\'cabOv\').style.display=\'none\';document.body.style.overflow=\'\'" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer">×</button></div>'
     +cabHeaderHTML(poolAll,"cabCollTop2")
     +cabHTML(pool);
-  try{var _ct2=document.getElementById("cabCollTop2"),_src2=document.getElementById("collAlertTop");if(_ct2&&_src2)_ct2.innerHTML=_src2.innerHTML;}catch(e){}
+  try{var _ct2=document.getElementById("cabCollTop2"),_src2=document.getElementById("collAlertTop");if(_ct2&&_src2){_ct2.innerHTML=_src2.innerHTML;var _dd2=_ct2.querySelectorAll(".ca-danger");for(var _di2=0;_di2<_dd2.length;_di2++)_dd2[_di2].parentNode&&_dd2[_di2].parentNode.removeChild(_dd2[_di2]);}}catch(e){}
   ov.style.display="block";document.body.style.overflow="hidden";
 };
 window.qaSave=function(){
