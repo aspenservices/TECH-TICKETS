@@ -3722,7 +3722,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 
 <!-- ══ ALERTS TAB (pg8) — cross-app payment alerts overview ══ -->
 <div class="wrap" id="pg8">
-  <div style="max-width:880px;margin:0 auto;padding:14px 16px 30px">
+  <div id="alertsLinearView" style="max-width:880px;margin:0 auto;padding:14px 16px 30px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <span style="font-size:22px">🔔</span>
       <h2 style="margin:0;font-size:20px;font-weight:700;color:var(--i1)">Active Alerts</h2>
@@ -10498,7 +10498,7 @@ function _filterAlertsByAge(events){
   if(!bucket)return events;
   return (events||[]).filter(function(ev){var d=_alertAgeDays(ev);return d>=bucket.min&&d<=bucket.max});
 }
-function _setAlertsAgeFilter(key){_alertsAgeFilter=key||"all";if(typeof rndrAlerts==="function")rndrAlerts()}
+function _setAlertsAgeFilter(key){_alertsAgeFilter=key||"all";if(typeof rndrAlerts==="function")rndrAlerts();try{if(typeof _alertsTools==="function")_alertsTools();var _o=document.getElementById("cabOv");if(_o&&_o.style.display==="block"&&typeof cabOpen==="function")cabOpen();}catch(e){}}
 // ── EMAIL TEMPLATES for collection reminders (IDEA 4) ─────────────────────
 // Picked from a modal when Nela clicks the Remind button. Each template has
 // the same variables (name, invoice, amount, days) but different tone and
@@ -11025,6 +11025,8 @@ function rndrAlerts(){
     html+='</div>';
   });
   body.innerHTML=html;
+  // Keep the collections board (and linear-view hide) in sync on every alerts re-render.
+  try{if(typeof _alertsTools==="function")_alertsTools();}catch(e){}
 }
 
 function goToCustomerFromAlert(eventId){
@@ -29070,6 +29072,71 @@ function _cbCC(name){
     return ((typeof active!=="undefined"&&active)||[]).some(function(t){return t&&t.ccOnFile&&((typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").trim().toLowerCase())===k;});
   }catch(e){return false;}
 }
+/* ── TECH-TICKETS CONTEXT for a collection card (Jul 2026) ──
+   The payment alert originates in Invoice Tracker, but Tech-Tickets HOLDS the
+   service/billing data. This surfaces it next to the money, matched by the
+   canonical household identity key (_custGroupKey — NEVER a last-name subset,
+   per the identity rule). Returns {n, open, billed, warranty, tech, sub, last, list}. */
+function _cbTixInfo(name){
+  var out={n:0,open:0,billed:false,warranty:false,tech:"",sub:0,last:null,list:[]};
+  try{
+    var k=(typeof _custGroupKey==="function")?_custGroupKey(name||""):String(name||"").trim().toLowerCase();
+    if(!k)return out;
+    var pool=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+    var mine=pool.filter(function(t){
+      if(!t||!t.customer||t.source==="dispatch")return false;
+      var kk=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").trim().toLowerCase();
+      return kk===k;
+    });
+    mine.sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""));});
+    out.n=mine.length;out.list=mine;
+    mine.forEach(function(t){if(!(t.status==="done"||t.status==="complete"))out.open++;});
+    if(mine.length){
+      var t=mine[0];out.last=t;
+      out.billed=!!(t.qbCopied||t.qbCopiedAt);
+      try{out.warranty=(typeof verdictFor==="function"&&verdictFor(t).cls==="no");}catch(e){}
+      out.tech=(t.techs&&t.techs[0])||"";
+      try{out.sub=(typeof moneySub==="function")?moneySub(t):0;}catch(e){}
+    }
+  }catch(e){}
+  return out;
+}
+/* Compact one-line Tech-Tickets chip for a board card. */
+function _cbTixChip(name){
+  var x=_cbTixInfo(name);
+  if(!x.n)return '<div style="font-size:10.5px;color:var(--i3,#8a8073);margin-top:4px">🎫 '+TT("Sin ticket en Tech-Tickets","No Tech-Tickets record")+'</div>';
+  var bits=[];
+  bits.push('🎫 '+x.n+' '+TT("visita(s)","visit(s)"));
+  if(x.last&&x.last.date)bits.push(esc3(x.last.date));
+  bits.push(x.billed?'💵 '+TT("Facturada","Billed"):'🕗 '+TT("Sin facturar","Unbilled"));
+  if(x.warranty)bits.push('🛡 '+TT("Garantía","Warranty"));
+  if(x.open)bits.push('⏳ '+x.open+' '+TT("abierto","open"));
+  if(x.tech)bits.push(esc3(x.tech));
+  return '<div style="font-size:10.5px;color:var(--i2,#5a5248);background:var(--c-ash,#f2f0ec);border-radius:6px;padding:3px 7px;margin-top:4px;line-height:1.35">'+bits.join(' · ')+'</div>';
+}
+/* Full Tech-Tickets service history panel for the Cobro Sprint detail view.
+   Shows up to 6 recent visits with date · status · verdict · billed · $. */
+function _cbTixPanel(name){
+  var x=_cbTixInfo(name);
+  if(!x.n)return '<div style="text-align:left;background:var(--c-ash,#f2f0ec);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:11.5px;color:var(--i3,#8a8073)">🎫 '+TT("Sin tickets de servicio en Tech-Tickets para este cliente.","No Tech-Tickets service records for this customer.")+'</div>';
+  var head='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b style="font-size:12px;color:var(--ink,#1f1a15)">🎫 Tech-Tickets</b>'
+    +'<span style="font-size:10.5px;color:var(--i3,#8a8073);font-weight:700">'+x.n+' '+TT("visita(s)","visit(s)")+(x.open?' · ⏳ '+x.open+' '+TT("abierto","open"):'')+'</span></div>';
+  var rows=x.list.slice(0,6).map(function(t){
+    var vb=false;try{vb=(typeof verdictFor==="function"&&verdictFor(t).cls==="no");}catch(e){}
+    var billed=!!(t.qbCopied||t.qbCopiedAt);
+    var sub=0;try{sub=(typeof moneySub==="function")?moneySub(t):0;}catch(e){}
+    var st=(t.status==="done"||t.status==="complete")?TT("completo","done"):(t.status||"—");
+    var tags=[];
+    tags.push('<span style="color:var(--i3,#8a8073)">'+esc3(t.date||"—")+'</span>');
+    tags.push('<span style="color:var(--i2,#5a5248)">'+esc3(st)+'</span>');
+    if(vb)tags.push('<span style="color:var(--c-danger-fg,#991b1b);font-weight:700">🛡 '+TT("garantía","warranty")+'</span>');
+    tags.push(billed?'<span style="color:var(--c-money-fg,#065f46);font-weight:700">💵 '+TT("facturada","billed")+'</span>':'<span style="color:var(--c-warning-fg,#92400e);font-weight:700">🕗 '+TT("sin facturar","unbilled")+'</span>');
+    if(t.techs&&t.techs[0])tags.push('<span style="color:var(--i3,#8a8073)">'+esc3(t.techs[0])+'</span>');
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px dashed var(--ln,#e5e0d8);font-size:11px"><span style="display:flex;flex-wrap:wrap;gap:6px;min-width:0">'+tags.join('')+'</span><b style="font-weight:800;color:var(--ink,#1f1a15);white-space:nowrap">$'+sub.toFixed(2)+'</b></div>';
+  }).join("");
+  var more=x.n>6?'<div style="font-size:10.5px;color:var(--i3,#8a8073);text-align:center;margin-top:4px">+'+(x.n-6)+' '+TT("más","more")+'</div>':'';
+  return '<div style="text-align:left;background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:10px;padding:10px 12px;margin:0 0 10px">'+head+rows+more+'</div>';
+}
 window.cbOpen=function(focusId){
   cbQ=cbPool();cbIdx=0;cbDone={};cbSkip={};cbMail={};
   try{var cab=document.getElementById("cabOv");if(cab)cab.style.display="none";}catch(e){}
@@ -29116,6 +29183,7 @@ window.cbShow=function(){
     +(ev.lastAttemptAt?'<div style="font-size:10.5px;font-weight:700;color:var(--i3,#8a8073);margin-bottom:6px">🕘 '+TT("Último intento: ","Last attempt: ")+esc3(String(ev.lastAttemptAt))+' · '+esc3(String(ev.lastAttemptBy||""))+' · '+esc3(String(ev.lastAttemptAction||""))+'</div>':'')
     +(cc?'<div style="display:inline-block;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:999px;padding:2px 12px;font-size:11px;font-weight:800;margin-bottom:10px">CC ✓ '+TT("perfil en PayTrace","PayTrace profile")+'</div>':'<div style="display:inline-block;background:var(--c-warning-bg,#fef3c7);color:var(--c-warning-fg,#92400e);border-radius:999px;padding:2px 12px;font-size:11px;font-weight:800;margin-bottom:10px">'+TT("sin CC registrada","no card on file")+'</div>')
     +(isDone?'<div style="background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);border-radius:10px;padding:10px;font-weight:800;font-size:13px;margin-bottom:8px">✓ '+TT("Cobrada en esta sesión","Collected this session")+'</div>':'')
+    +_cbTixPanel(ev.customerName)
     +'<button onclick="cbGo()" style="width:100%;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;margin-bottom:6px">1 · '+TT("Copiar datos + abrir PayTrace ↗","Copy data + open PayTrace ↗")+'</button>'
     +'<button onclick="cbPaid()" '+(isDone?"disabled ":"")+'style="width:100%;padding:13px;border-radius:10px;border:1.5px solid var(--c-money-fg,#065f46);background:transparent;color:var(--c-money-fg,#065f46);font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;margin-bottom:6px'+(isDone?';opacity:.5':'')+'">2 · ✓ '+TT("Cobrada → marcar pagada → siguiente","Collected → mark paid → next")+'</button>'
     +'<div style="display:flex;gap:6px">'
@@ -29146,14 +29214,30 @@ function _alertsTools(){
   var pg=document.getElementById("pg8");if(!pg||!pg.classList.contains("show"))return;
   var bar=document.getElementById("cbTools");
   if(!bar){bar=document.createElement("div");bar.id="cbTools";bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px";pg.insertBefore(bar,pg.firstChild);}
-  var ap=cbPool(),at=0;ap.forEach(function(x){try{at+=_alertAmount(x);}catch(e){}});
+  var apAll=cbPool();                                  // full pool (drives Sprint + summary)
+  var ap=(typeof _filterAlertsByAge==="function")?_filterAlertsByAge(apAll):apAll; // aging-filtered (drives columns)
+  var at=0;apAll.forEach(function(x){try{at+=_alertAmount(x);}catch(e){}});
   var bon=true;try{bon=localStorage.getItem("aspCabInline")!=="0";}catch(e){}
-  bar.innerHTML='<button onclick="cbOpen()" style="flex:2;min-width:200px;padding:12px 14px;border:1.5px solid var(--c-money-fg,#065f46);border-radius:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("credit-card",14)+' '+TT("Cobro Sprint","Collections Sprint")+' — '+ap.length+' · $'+Math.round(at).toLocaleString("en-US")+'</button>'
+  bar.innerHTML='<button onclick="cbOpen()" style="flex:2;min-width:200px;padding:12px 14px;border:1.5px solid var(--c-money-fg,#065f46);border-radius:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("credit-card",14)+' '+TT("Cobro Sprint","Collections Sprint")+' — '+apAll.length+' · $'+Math.round(at).toLocaleString("en-US")+'</button>'
     +'<button onclick="cabToggle()" style="flex:1;min-width:130px;padding:12px 14px;border:1.5px solid '+(bon?'var(--c-money-fg,#065f46)':'var(--ln,#d5d0c8)')+';border-radius:12px;background:var(--card,#fff);color:'+(bon?'var(--c-money-fg,#065f46)':'var(--i2,#5a5248)')+';font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("layout-kanban",13)+' '+TT("Board","Board")+(bon?" ✓":"")+'</button>'
     +'<button onclick="qaOpen()" style="flex:1;min-width:150px;padding:12px 14px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">+ '+TT("Factura abierta","Open invoice")+'</button>';
+  // Board ON = board is the ONLY view; ALL linear-list functions now live in the
+  // board header (summary + aging filter + weekly email + reschedule banner) and
+  // on each card (Resolve / Remind / Note / PDF). Board OFF = classic linear list.
+  try{var lin=document.getElementById("alertsLinearView");if(lin)lin.style.display=bon?"none":"";}catch(e){}
+  // Header (moved functions) — sits between the toolbar and the columns.
+  var hdr=document.getElementById("cabHeader");
+  if(!hdr){hdr=document.createElement("div");hdr.id="cabHeader";bar.insertAdjacentElement("afterend",hdr);}
   var inl=document.getElementById("cabInline");
-  if(!inl){inl=document.createElement("div");inl.id="cabInline";inl.style.cssText="margin:0 0 14px";bar.insertAdjacentElement("afterend",inl);}
-  var sig=bon?(ap.length+"|"+Math.round(at)+"|"+ap.map(function(x){return x.id;}).join(",")):"off";
+  if(!inl){inl=document.createElement("div");inl.id="cabInline";inl.style.cssText="margin:0 0 14px";hdr.insertAdjacentElement("afterend",inl);}
+  else if(inl.previousElementSibling!==hdr){hdr.insertAdjacentElement("afterend",inl);}
+  if(bon){
+    try{if(typeof _renderCollAlertTop==="function")_renderCollAlertTop();}catch(e){}
+    hdr.style.display="";hdr.innerHTML=cabHeaderHTML(apAll,"cabCollTop");
+    // Mirror the reschedule/critical banner (native #collAlertTop) into the board header.
+    try{var _ct=document.getElementById("cabCollTop"),_src=document.getElementById("collAlertTop");if(_ct&&_src)_ct.innerHTML=_src.innerHTML;}catch(e){}
+  }else{hdr.style.display="none";hdr.innerHTML="";}
+  var sig=bon?((typeof _alertsAgeFilter!=="undefined"?_alertsAgeFilter:"all")+"|"+ap.length+"|"+ap.map(function(x){return x.id+(x.collectionStage==="proceso"?"*":"");}).join(",")):"off";
   if(inl.dataset.sig!==sig){inl.dataset.sig=sig;inl.innerHTML=bon?cabHTML(ap):"";}
 }
 window.qaOpen=function(){
@@ -29616,10 +29700,69 @@ window.qaParse=function(){
     rd.readAsArrayBuffer(f);
   });
 };
-/* Board de cobranza por categoría (CC declined / pending / etc.) */
+/* Board de cobranza por categoría (CC declined / pending / etc.)
+   v2.1.0 — Trello-style manual column "EN PROCESO DE COBRANZA":
+   drag any card into it (desktop) or tap the → button (mobile/iPad).
+   Persisted in Firestore (collectionStage on the cross_app_events doc),
+   so the move is shared live across devices. Fully reversible: drag the
+   card out (or tap ←) and it returns to its original category column. */
+var CAB_STAGE_COLOR="#0e7490";
+/* Mini action button for a board card. All handlers stopPropagation so the
+   card's own click (open Cobro Sprint) does not also fire. rid = RAW event id
+   (matched by markAlertResolved / _sendAlertReminder / _addAlertNote / openAlertPdf,
+   which look up crossAppEvents by exact id — NOT the sanitized sid). */
+function _cabActBtn(fn,rid,label,title,bg,fg,bd){
+  return '<button onclick="event.stopPropagation();'+fn+'(\''+rid+'\')" title="'+title+'" style="border:1px solid '+bd+';background:'+bg+';color:'+fg+';border-radius:7px;padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">'+label+'</button>';
+}
+function _cabCard(ev,inProc){
+  var p=ev.payload||{};var days=0;try{days=(typeof _alertAgeDays==="function")?_alertAgeDays(ev):0;}catch(e){}
+  var sid=String(ev.id).replace(/[^\w-]/g,"");
+  var rid=String(ev.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+  var overdue=days>=(typeof ALERTS_REMINDER_THRESHOLD_DAYS!=="undefined"?ALERTS_REMINDER_THRESHOLD_DAYS:7);
+  var hasEmail=!!(p.customerEmail&&String(p.customerEmail).trim());
+  // Per-card actions moved from the old linear list: Resolve / Remind / Note / PDF.
+  var acts=_cabActBtn("markAlertResolved",rid,"✓ "+TT("Resolver","Resolve"),TT("Marcar como resuelta","Mark resolved"),"var(--card,#fff)","var(--i2,#5a5248)","var(--ln,#d5d0c8)");
+  if(overdue&&hasEmail)acts+=_cabActBtn("_sendAlertReminder",rid,"✉ "+TT("Recordar","Remind"),TT("Enviar recordatorio por email","Send email reminder"),"#dbeafe","#1e40af","#93c5fd");
+  acts+=_cabActBtn("_addAlertNote",rid,"📝",TT("Nota privada para el equipo","Private team note"),"#fefce8","#854d0e","#fde68a");
+  if(p.pdfBase64)acts+=_cabActBtn("openAlertPdf",rid,"📄 PDF",TT("Ver factura PDF","View invoice PDF"),"var(--card,#fff)","var(--c-danger-fg,#991b1b)","#fecaca");
+  var notes=(ev.userNotes&&ev.userNotes.length)?'<div style="font-size:10.5px;color:#854d0e;background:var(--c-warning-bg,#fef3c7);border-left:2.5px solid var(--c-warning-fg,#92400e);padding:3px 7px;border-radius:4px;margin-top:5px;font-style:italic">📝 '+ev.userNotes.length+' '+TT("nota(s)","note(s)")+'</div>':'';
+  return '<div class="nv-card" draggable="true" ondragstart="cabDragStart(event,\''+sid+'\')" onclick="cbOpen(\''+sid+'\')">'
+    +'<div style="font-weight:800;font-size:13px;color:var(--ink,#1f1a15)">'+esc3(ev.customerName||"—")+'</div>'
+    +'<div style="font-size:11px;color:var(--i3,#8a8073);margin-top:2px">'+((p.invoiceNumber||p.invoiceNum)?"#"+esc3(String(p.invoiceNumber||p.invoiceNum))+" · ":"")+days+"d"+(ev.lastAttemptAction?" · 🕘 "+esc3(String(ev.lastAttemptAction)):"")+'</div>'
+    +(inProc&&ev.collectionStageBy?'<div style="font-size:10.5px;color:'+CAB_STAGE_COLOR+';font-weight:700;margin-top:2px">📌 '+esc3(String(ev.collectionStageBy))+(ev.collectionStageAt?' · '+esc3(String(ev.collectionStageAt).split(",")[0]):'')+'</div>':'')
+    +_cbTixChip(ev.customerName)
+    +notes
+    +'<div style="display:flex;align-items:center;gap:8px;margin-top:5px"><span style="font-size:12.5px;font-weight:800;color:var(--ink,#1f1a15)">$'+_alertAmount(ev).toFixed(2)+'</span>'
+    +'<button onclick="event.stopPropagation();cabStage(\''+sid+'\','+(inProc?0:1)+')" title="'+(inProc?TT("Regresar a su categoría","Return to its category"):TT("Mover a En proceso de cobranza","Move to In collection process"))+'" style="margin-left:auto;border:1.5px solid '+CAB_STAGE_COLOR+';background:'+(inProc?'transparent':CAB_STAGE_COLOR)+';color:'+(inProc?CAB_STAGE_COLOR:'#fff')+';border-radius:7px;padding:3px 9px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit">'+(inProc?'←':'→ '+TT("cobranza","collect"))+'</button></div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--ln,#e5e0d8)">'+acts+'</div>'
+  +'</div>';
+}
+/* Board header — all the non-card functions moved out of the linear "Active Alerts"
+   list: summary stats, aging filter pills, weekly-summary email, and the
+   reschedule/critical banner (mirrored from #collAlertTop). ctId lets the
+   full-screen overlay use a distinct banner slot so ids stay unique. */
+function cabHeaderHTML(poolAll,ctId){
+  ctId=ctId||"cabCollTop";
+  var sum=(typeof _alertsSummary==="function")?_alertsSummary(poolAll||[]):{total:(poolAll||[]).length,totalAmount:0,oldestDays:0,byBucket:{}};
+  var af=(typeof _alertsAgeFilter!=="undefined")?_alertsAgeFilter:"all";
+  function stat(lbl,val,col){return '<div><div style="font-size:10.5px;color:var(--i3,#8a8073);font-weight:700;text-transform:uppercase;letter-spacing:.4px">'+lbl+'</div><div style="font-size:20px;font-weight:800;line-height:1.1;color:'+(col||"var(--ink,#1f1a15)")+'">'+val+'</div></div>';}
+  function pill(key,label,count,amt,color,bg){var active=af===key;return '<button onclick="_setAlertsAgeFilter(\''+key+'\')" style="padding:5px 11px;border-radius:999px;border:1.5px solid '+color+';background:'+(active?color:bg)+';color:'+(active?'#fff':color)+';font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">'+label+' ('+count+(amt!=null?' · $'+Math.round(amt).toLocaleString("en-US"):'')+')</button>';}
+  var oldCol=sum.oldestDays>=31?'var(--c-danger-fg,#991b1b)':(sum.oldestDays>=8?'var(--c-warning-fg,#92400e)':'var(--c-money-fg,#065f46)');
+  var h='<div style="background:var(--card,#fff);border:1px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px;margin:0 0 12px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">'
+    +'<div style="display:flex;gap:22px;flex-wrap:wrap">'+stat(TT("Abiertas","Open"),sum.total)+stat(TT("Por cobrar","Outstanding"),"$"+Math.round(sum.totalAmount).toLocaleString("en-US"))+stat(TT("Más antigua","Oldest"),sum.oldestDays+"d",oldCol)+'</div>'
+    +'<button onclick="_sendWeeklyAlertsSummary()" title="'+TT("Email de resumen a Nela, Alberto y Celia","Email summary to Nela, Alberto and Celia")+'" style="background:var(--br,#3D2B1F);border:none;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">✉ '+TT("Resumen semanal","Weekly summary")+'</button>'
+    +'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px"><span style="font-size:11px;color:var(--i3,#8a8073);font-weight:700;margin-right:2px">'+TT("FILTRO","FILTER")+':</span>'
+    +pill("all",TT("Todas","All"),sum.total,null,"#7c2d12","var(--card,#fff)");
+  try{(ALERTS_AGING_BUCKETS||[]).forEach(function(b){var s=sum.byBucket&&sum.byBucket[b.key];if(!s||!s.count)return;h+=pill(b.key,b.label,s.count,s.amount,b.color,b.bg);});}catch(e){}
+  h+='</div><div id="'+ctId+'" style="margin-top:2px"></div></div>';
+  return h;
+}
 function cabHTML(pool){
-  var groups={},order=[];
+  var groups={},order=[],proc=[];
   pool.forEach(function(ev){
+    if(ev.collectionStage==="proceso"){proc.push(ev);return;}
     var p=ev.payload||{};
     var gi=null;try{gi=(typeof _alertReasonInfo==="function")?_alertReasonInfo(p.reason):null;}catch(e){}
     var g=(gi&&gi.group)||p.reasonLabel||"Payment";
@@ -29627,21 +29770,44 @@ function cabHTML(pool){
     groups[g].items.push(ev);groups[g].tot+=_alertAmount(ev);
   });
   order.sort(function(a,b){return groups[b].tot-groups[a].tot;});
-  if(!order.length)return '<div style="font-size:12.5px;color:var(--i3,#8a8073);font-weight:700;padding:8px 2px">'+TT("Sin cobros pendientes ✓","No pending collections ✓")+'</div>';
-  return '<div class="nv-cols">'+order.map(function(g){
+  if(!order.length&&!proc.length)return '<div style="font-size:12.5px;color:var(--i3,#8a8073);font-weight:700;padding:8px 2px">'+TT("Sin cobros pendientes ✓","No pending collections ✓")+'</div>';
+  var pTot=0;proc.forEach(function(x){pTot+=_alertAmount(x);});
+  var procCol='<div class="nv-col" style="border:1.5px dashed '+CAB_STAGE_COLOR+'55;border-radius:12px;padding:6px" ondragover="event.preventDefault();this.style.background=\''+CAB_STAGE_COLOR+'14\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';cabDrop(event,1)">'
+    +'<div class="nv-colh" style="background:'+CAB_STAGE_COLOR+'22;color:'+CAB_STAGE_COLOR+'">📌 '+TT("EN PROCESO DE COBRANZA","IN COLLECTION PROCESS")+' · '+proc.length+'<span>$'+Math.round(pTot).toLocaleString("en-US")+'</span></div>'
+    +(proc.length?proc.map(function(ev){return _cabCard(ev,true);}).join(""):'<div class="nv-more" style="cursor:default">'+TT("Arrastra facturas aquí, o toca → en una tarjeta","Drag invoices here, or tap → on a card")+'</div>')
+  +'</div>';
+  return '<div class="nv-cols">'+procCol+order.map(function(g){
       var G=groups[g];
-      return '<div class="nv-col"><div class="nv-colh" style="background:'+G.color+'22;color:'+G.color+'">'+esc3(g.toUpperCase())+' · '+G.items.length+'<span>$'+Math.round(G.tot).toLocaleString("en-US")+'</span></div>'
-        +G.items.map(function(ev){
-          var p=ev.payload||{};var days=0;try{days=(typeof _alertAgeDays==="function")?_alertAgeDays(ev):0;}catch(e){}
-          var sid=String(ev.id).replace(/[^\w-]/g,"");
-          return '<div class="nv-card" onclick="cbOpen(\''+sid+'\')">'
-            +'<div style="font-weight:800;font-size:13px;color:var(--ink,#1f1a15)">'+esc3(ev.customerName||"—")+'</div>'
-            +'<div style="font-size:11px;color:var(--i3,#8a8073);margin-top:2px">'+((p.invoiceNumber||p.invoiceNum)?"#"+esc3(String(p.invoiceNumber||p.invoiceNum))+" · ":"")+days+"d"+(ev.lastAttemptAction?" · 🕘 "+esc3(String(ev.lastAttemptAction)):"")+'</div>'
-            +'<div style="font-size:12.5px;font-weight:800;margin-top:4px;color:var(--ink,#1f1a15)">$'+_alertAmount(ev).toFixed(2)+'</div>'
-          +'</div>';
-        }).join("")+'</div>';
+      return '<div class="nv-col" ondragover="event.preventDefault()" ondrop="cabDrop(event,0)"><div class="nv-colh" style="background:'+G.color+'22;color:'+G.color+'">'+esc3(g.toUpperCase())+' · '+G.items.length+'<span>$'+Math.round(G.tot).toLocaleString("en-US")+'</span></div>'
+        +G.items.map(function(ev){return _cabCard(ev,false);}).join("")+'</div>';
     }).join("")+'</div>';
 }
+window.cabDragStart=function(e,sid){try{e.dataTransfer.setData("text/plain",sid);e.dataTransfer.effectAllowed="move";}catch(err){}};
+window.cabDrop=function(e,on){
+  e.preventDefault();
+  var sid="";try{sid=e.dataTransfer.getData("text/plain");}catch(err){}
+  if(sid)cabStage(sid,on);
+};
+window.cabStage=function(sid,on){
+  var ev=null;
+  try{ev=((typeof crossAppEvents!=="undefined"&&crossAppEvents)||[]).find(function(x){return x&&String(x.id).replace(/[^\w-]/g,"")===String(sid);});}catch(e){}
+  if(!ev)return;
+  if(on&&ev.collectionStage==="proceso")return;
+  if(!on&&ev.collectionStage!=="proceso")return;
+  var user=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
+  try{
+    if(typeof db!=="undefined"&&db&&ev.id)db.collection("cross_app_events").doc(ev.id).update(
+      on?{collectionStage:"proceso",collectionStageBy:user,collectionStageAt:new Date().toLocaleString()}
+        :{collectionStage:firebase.firestore.FieldValue.delete(),collectionStageBy:firebase.firestore.FieldValue.delete(),collectionStageAt:firebase.firestore.FieldValue.delete()}
+    ).catch(function(){});
+  }catch(e){}
+  ev.collectionStage=on?"proceso":null;
+  if(on){ev.collectionStageBy=user;ev.collectionStageAt=new Date().toLocaleString();}
+  try{toast((ev.customerName||"")+(on?TT(" → En proceso de cobranza ✓"," → In collection process ✓"):TT(" ← regresó a su categoría ✓"," ← back to its category ✓")));}catch(e){}
+  try{var inl=document.getElementById("cabInline");if(inl)inl.dataset.sig="";}catch(e){}
+  try{_alertsTools();}catch(e){}
+  try{var ov=document.getElementById("cabOv");if(ov&&ov.style.display==="block")cabOpen();}catch(e){}
+};
 window.cabToggle=function(){
   try{localStorage.setItem("aspCabInline",localStorage.getItem("aspCabInline")==="0"?"1":"0");}catch(e){}
   try{_alertsTools();}catch(e){}
@@ -29649,13 +29815,17 @@ window.cabToggle=function(){
 window.cabOpen=function(){
   var ov=document.getElementById("cabOv");
   if(!ov){ov=document.createElement("div");ov.id="cabOv";document.body.appendChild(ov);}
-  var pool=cbPool();
+  var poolAll=cbPool();
+  var pool=(typeof _filterAlertsByAge==="function")?_filterAlertsByAge(poolAll):poolAll;
+  try{if(typeof _renderCollAlertTop==="function")_renderCollAlertTop();}catch(e){}
   ov.innerHTML='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg,#faf8f4);z-index:5;padding:calc(4px + env(safe-area-inset-top,0px)) 0 8px">'
     +'<h2 style="margin:0;font-size:19px;font-weight:800;color:var(--ink,#1f1a15)">'+bico("layout-kanban",18)+' '+TT("Cobranza por categoría","Collections by category")+'</h2>'
-    +'<span style="font-size:12px;color:var(--i3,#8a8073);font-weight:700">'+pool.length+' · $'+Math.round(pool.reduce(function(t,x){return t+_alertAmount(x);},0)).toLocaleString("en-US")+'</span>'
+    +'<span style="font-size:12px;color:var(--i3,#8a8073);font-weight:700">'+poolAll.length+' · $'+Math.round(poolAll.reduce(function(t,x){return t+_alertAmount(x);},0)).toLocaleString("en-US")+'</span>'
     +'<button onclick="cbOpen()" style="margin-left:auto;border:none;background:var(--c-money-fg,#065f46);color:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">'+TT("Cobro Sprint","Collections Sprint")+' →</button>'
     +'<button onclick="document.getElementById(\'cabOv\').style.display=\'none\';document.body.style.overflow=\'\'" style="border:none;background:none;font-size:24px;color:var(--i3,#999);cursor:pointer">×</button></div>'
+    +cabHeaderHTML(poolAll,"cabCollTop2")
     +cabHTML(pool);
+  try{var _ct2=document.getElementById("cabCollTop2"),_src2=document.getElementById("collAlertTop");if(_ct2&&_src2)_ct2.innerHTML=_src2.innerHTML;}catch(e){}
   ov.style.display="block";document.body.style.overflow="hidden";
 };
 window.qaSave=function(){
