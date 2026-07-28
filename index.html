@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.1.0";
+var APP_VERSION="2.4.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -5933,7 +5933,13 @@ async function doLogin(){
   // Sesión persistente 12h (iOS mata las PWAs y con ellas sessionStorage):
   // solo nombre + expiración. Sin el token staff real, _staffGuard re-pide PIN.
   try{
-    localStorage.setItem("aspSessPersist",JSON.stringify({n:currentUser.name||"",exp:Date.now()+12*3600*1000}));
+    // v2.2.0: eran 12 HORAS. Un tecnico que entraba a las 7am estaba vencido a
+    // las 7pm, asi que TODOS volvian a teclear PIN cada manana. Y esta caja no
+    // es la seguridad: es el cascaron de la UI. La seguridad real es el token
+    // staff de Firebase + las reglas isStaff() de Firestore — _staffGuard corre
+    // justo despues del auto-login y si el token no esta, echa al usuario.
+    // Alargarla no abre ninguna puerta; solo deja de pedir el PIN sin motivo.
+    localStorage.setItem("aspSessPersist",JSON.stringify({n:currentUser.name||"",exp:Date.now()+SESSION_DAYS*24*3600*1000}));
   }catch(_e){}
   // v1.11.0: siembra de seguridad AUTOMÁTICA. Corre una sola vez, en silencio, la
   // primera vez que un admin entra tras subir esta versión — reusa el PIN que ya
@@ -6030,6 +6036,9 @@ async function _staffGuard(){
   try{if(typeof toast==="function")toast("Your staff session expired — please sign in again.","warn")}catch(_e){}
   try{logout()}catch(_e){}
 }
+// Cuanto dura el cascaron de sesion antes de re-pedir PIN. El token staff de
+// Firebase y las reglas de Firestore siguen mandando: esto solo evita teclear.
+var SESSION_DAYS=30;
 function tryAutoLogin(){
   /* v1.9.8: la restauración es por NOMBRE + expiración. Ya no se compara ningún
      hash local — la seguridad real la pone _staffGuard justo después del
@@ -6055,6 +6064,9 @@ function tryAutoLogin(){
       if(found){
         currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";
         try{var _s2=Object.assign({},found);delete _s2.pin;delete _s2.pinHash;sessionStorage.setItem("aspUser",JSON.stringify(_s2));}catch(_e){}
+        // v2.2.0: renovar la ventana en cada apertura. Quien usa la app todos
+        // los dias no vuelve a ver el pinpad; quien la abandona 30 dias, si.
+        try{localStorage.setItem("aspSessPersist",JSON.stringify({n:p2.n,exp:Date.now()+SESSION_DAYS*24*3600*1000}));}catch(_e){}
         try{if(typeof _calHiddenLoad==="function"&&typeof calHiddenTechs!=="undefined")calHiddenTechs=_calHiddenLoad()}catch(_e){}
         return true;
       }
@@ -8502,6 +8514,33 @@ function _normalizePhone(raw){
 }
 // Day-difference helper used by all matching code. Returns days between two
 // YYYY-MM-DD strings (positive if d2 is after d1). Returns -999 on error.
+// ═══════════════════════════════════════════════════════════════════════════
+//   LA EVIDENCIA FISICA PERTENECE A UNA SOLA VISITA          (v2.2.0)
+// ═══════════════════════════════════════════════════════════════════════════
+// Sintoma (28 jul 2026): el calendario pedia "⚠ NEEDS REPORT" en una visita a
+// la que el tecnico TODAVIA NO HA IDO. Y los tecnicos se quejaban de que la app
+// no los dejaba hacer check-out: les decia "You already checked out".
+//
+// Es el MISMO hecho las dos veces. Esos tickets son reagendos creados ANTES de
+// v2.1.0, cuando el reagendo reutilizaba el documento de la visita anterior:
+// siguen cargando el check-in y el check-out del tecnico que fue la vez pasada.
+//   · needsReport = checkInAt && checkOutAt && !reportado  -> pide reporte
+//   · _doCheckOut ve un checkOutAt viejo -> "You already checked out" y no deja
+//
+// v2.1.0 hace que los reagendos NUEVOS nazcan limpios, pero no dice nada sobre
+// los que ya estaban sucios. La regla que faltaba, y que no es una heuristica
+// sino identidad: UN CHECK-IN PERTENECE A LA VISITA CUYA FECHA LLEVA. Si el
+// sello es de otro dia, es de otra visita, y esta no lo hereda.
+// Con eso el dato viejo deja de mentir sin que haya que migrar nada, y se
+// autocorrige solo: el primer check-in real de esa visita pisa los sellos viejos.
+function _sameVisitStamp(t,iso){
+  if(!iso)return false;
+  var d=(t&&t.date||"").trim();
+  if(!d)return true;                       // sin fecha no hay con que contrastar
+  try{ return fmtD(new Date(iso))===d; }catch(_e){ return true; }
+}
+function _visitCheckInAt(t){ return _sameVisitStamp(t,t&&t.checkInAt)?(t.checkInAt||""):"" }
+function _visitCheckOutAt(t){ return _sameVisitStamp(t,t&&t.checkOutAt)?(t.checkOutAt||""):"" }
 function _dayDiff(d1,d2){
   if(!d1||!d2)return -999;
   var t1=Date.parse(d1+"T00:00:00");var t2=Date.parse(d2+"T00:00:00");
@@ -13414,21 +13453,75 @@ async function _reportWriteGuard(ref, formCustomer){
     return String(x||"").trim().toLowerCase();
   };
   var prevCust=String(prev.customer||"").trim();
-  var mismatch=!!(prevCust&&formCustomer&&_k(prevCust)!==_k(formCustomer));
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //   LA IDENTIDAD DE UN REPORTE ES SU VINCULO, NO SU TEXTO      (v2.3.0)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 28 jul 2026: Angel intentaba llenar el reporte de Strong, Michael y la app
+  // le respondia "Este ticket es de Taylor, Cathy" y lo bloqueaba. No podia
+  // enviarlo NUNCA.
+  //
+  // Causa: el documento rep_rTQKzf8igA6LjtiiR9bA ES, por construccion, el
+  // reporte del dispatch rTQKzf8igA6LjtiiR9bA — que es el de Strong, Michael.
+  // Pero su CONTENIDO quedo con los datos de Taylor, Cathy, porque el bug del
+  // 24 de julio (editingDocId vivo, arreglado en v1.21.0) lo sobrescribio. Este
+  // guardia comparaba el formulario contra el TEXTO guardado, veia el
+  // desacuerdo y bloqueaba. O sea: protegia la corrupcion y dejaba al tecnico
+  // sin poder trabajar. El slot quedaba envenenado de por vida.
+  //
+  // El principio es el mismo que ya rige el resto de la app desde v2.0.0: la
+  // identidad se LEE DEL VINCULO, no se deduce comparando texto libre.
+  //   rep_<dispatch>  ES el reporte de ese dispatch. Punto.
+  // Si el contenido guardado nombra a otro cliente, el equivocado es el
+  // CONTENIDO, no el id. Se respalda y se deja pasar.
+  // El bloqueo se conserva para el caso que este guardia venia a atrapar: que
+  // el tecnico este escribiendo en el ticket de otro cliente de verdad — que
+  // ahora se detecta contra el DISPATCH, que es la fuente confiable.
+  var duenoReal="";
+  try{
+    var _rid=String(ref.id||"");
+    if(_rid.indexOf("rep_")===0){
+      var _did=_rid.slice(4);
+      var _pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+      var _d=_pool.find(function(x){return x&&x.id===_did&&x.source==="dispatch"});
+      if(!_d){
+        try{ var _ds=await db.collection("tickets").doc(_did).get();
+             if(_ds&&_ds.exists&&(_ds.data()||{}).source==="dispatch")_d=_ds.data(); }catch(_e){}
+      }
+      if(_d&&_d.customer)duenoReal=String(_d.customer).trim();
+    }
+  }catch(_e){}
+
+  var mismatch;
+  if(duenoReal){
+    // Hay vinculo: manda el dispatch.
+    mismatch=!!(formCustomer&&_k(duenoReal)!==_k(formCustomer));
+    if(!mismatch&&prevCust&&_k(prevCust)!==_k(duenoReal)){
+      // El formulario coincide con el dueno real, pero el contenido guardado no.
+      // Eso es dato corrupto ocupando el slot: se respalda abajo y se reemplaza.
+      console.warn("[guardia] slot con contenido ajeno ("+prevCust+") en el reporte de "+duenoReal+" \u2014 se reemplaza y queda copia en auditLog");
+      try{_audit("report_slot_recovered",{ticketId:ref.id||"",customer:duenoReal,
+        note:"el documento tenia datos de \""+prevCust+"\"; se recupero para su dueno real"});}catch(_a){}
+    }
+  }else{
+    // Sin vinculo (reporte suelto o edicion directa): lo unico que hay es el texto.
+    mismatch=!!(prevCust&&formCustomer&&_k(prevCust)!==_k(formCustomer));
+  }
 
   if(mismatch){
     var esAdmin=false;
     try{esAdmin=!!(typeof isAdmin!=="undefined"&&isAdmin)}catch(_e){}
     if(!esAdmin){
-      try{toast("Este ticket es de "+prevCust+", no de "+formCustomer+". Abre el ticket correcto y vuelve a intentar.","err")}catch(_e){}
-      console.warn("[guardia] BLOQUEADO:",prevCust,"!=",formCustomer,"doc",ref.id);
+      var _quien=duenoReal||prevCust;
+      try{toast("Este ticket es de "+_quien+", no de "+formCustomer+". Abre el ticket correcto y vuelve a intentar.","err")}catch(_e){}
+      console.warn("[guardia] BLOQUEADO:",_quien,"!=",formCustomer,"doc",ref.id);
       return {ok:false,prev:prev};
     }
     var _ok=false;
     try{
       _ok=await confirmDialog(
         "\u26A0 Vas a guardar ENCIMA del ticket de otro cliente.\n\n"+
-        "Guardado ahora: "+prevCust+"\n"+
+        "Guardado ahora: "+(duenoReal||prevCust)+"\n"+
         "Lo que vas a escribir: "+formCustomer+"\n\n"+
         "Queda una copia en el registro de auditor\u00eda, pero el ticket se queda con los datos nuevos.\n\n"+
         "\u00bfContinuar?",
@@ -13483,6 +13576,14 @@ async function submitTkt(st){
   // a parent dispatch (rare — happens when tech files a report for a
   // walk-in not on the calendar), we don't enforce because there's no
   // dispatch to check against.
+  /* v2.4.0 · EL DESTINO ES EL DE CUANDO SE ABRIO EL FORMULARIO.
+     Se restituye desde _formTarget antes de decidir nada. Si algo movio las
+     globales mientras el tecnico llenaba el reporte (abrio otro ticket, un
+     aviso, un enlace), aqui se descarta: el reporte va a donde lo abrio. */
+  if(_formTarget){
+    editingDocId=_formTarget.editDocId||null;
+    _backToTktId=_formTarget.dispatchId||null;
+  }
   if(editingDocId&&typeof _validateCheckInForSubmit==="function"){
     const _origTkt=[...active,...done].find(function(x){return x.id===editingDocId});
     if(_origTkt&&_origTkt.source==="dispatch"){
@@ -13686,7 +13787,7 @@ async function submitTkt(st){
             });
           }
         }catch(linkErr){console.warn("Could not mark dispatch ticket as submitted:",linkErr)}
-        _backToTktId=null;
+        _setReportTarget();   // v2.4.0: el ultimo sitio que asignaba a medias
       }
       // Auto-match: find ANY pending dispatch ticket with matching customer (and date within ±30 days)
       // and mark it complete. Ensures the dispatch ticket disappears from BOTH assigned techs' calendars
@@ -13770,11 +13871,47 @@ async function submitTkt(st){
   btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//   EL DESTINO SE FIJA AL ABRIR EL FORMULARIO, EN UN SOLO LUGAR   (v2.4.0)
+// ═══════════════════════════════════════════════════════════════════════════
+// A donde se escribe un reporte lo decidian DOS variables globales sueltas
+// (editingDocId, _backToTktId) que TRES sitios escribian y OTROS TRES
+// limpiaban. El 24 de julio uno se olvido de limpiar editingDocId y el reporte
+// de Strong, Michael se escribio encima del de Taylor, Cathy. v1.21.0 parcho
+// ESE sitio — pero cualquier entrada nueva al formulario reabria el agujero, y
+// el 28 de julio ese mismo documento seguia envenenado y bloqueando a Angel.
+//
+// Dos defectos estructurales, no un descuido:
+//   (a) el destino se asignaba a PEDAZOS desde varios sitios, asi que siempre
+//       se podia olvidar de limpiar una de las dos variables;
+//   (b) se LEIA AL ENVIAR, no al abrir — o sea que entre que el tecnico abria
+//       el formulario y apretaba Send, cualquier cosa (abrir otro ticket, un
+//       aviso, un enlace) podia moverlo a otro documento.
+//
+// La correccion no es acordarse mejor: es que no haya nada que olvidar.
+//   · _setReportTarget() es el UNICO sitio que asigna el destino, y lo escribe
+//     ENTERO cada vez. Limpiar es llamarlo sin argumentos.
+//   · el destino queda CONGELADO en _formTarget en el momento de abrir, y
+//     submitTkt lo restituye antes de escribir: lo que se haya movido en el
+//     camino no cuenta. El reporte va a donde lo abrio el tecnico.
+var _formTarget=null;
+function _setReportTarget(o){
+  o=o||{};
+  editingDocId=o.editDocId||null;
+  _backToTktId=o.dispatchId||null;
+  _formTarget=(o.editDocId||o.dispatchId)?{
+    kind:o.editDocId?"edit":"visit",
+    editDocId:o.editDocId||"",
+    dispatchId:o.dispatchId||"",
+    customer:String(o.customer||""),
+    at:Date.now()
+  }:null;
+  return _formTarget;
+}
 let editingDocId=null;
 function resetForm(){
   // Reset state
-  editingDocId=null;
-  if(typeof _backToTktId!=="undefined")_backToTktId=null;
+  _setReportTarget();   // v2.4.0: limpiar = asignar el destino vacio, entero
   _carryEstimate=null;_carryEstMedia=null;
   techs=[];wTypes=[];sel=[];mediaFiles=[];videoLinks=[];
   wHas=null;wMod="";wYr=0;
@@ -14791,7 +14928,7 @@ function editTkt(i,isDone){
   else { t=isDone?done[i]:active[i]; }
   if(!t)return;
   resetForm();
-  editingDocId=t.id;
+  _setReportTarget({editDocId:t.id,customer:(t&&t.customer)||""});  // v2.4.0
 
   // Populate form fields
   document.getElementById("fCust").value=t.customer||"";
@@ -17772,7 +17909,7 @@ function setMode(m){
     var bb=document.getElementById("backToTktBtn");
     var bbE=document.getElementById("backToEstBtn");
     var bbVisible=(bb&&bb.style.display!=="none")||(bbE&&bbE.style.display!=="none");
-    if(!bbVisible)_backToTktId=null;
+    if(!bbVisible)_setReportTarget();   // v2.4.0
   },300);
 }
 
@@ -20275,7 +20412,8 @@ function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return ""
 function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;const _isTechView=currentUser&&currentUser.role==="tech";
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
   // Highlights the card in amber so it doesn't get lost in the calendar.
-  const needsReport=t.source==="dispatch"&&!!t.checkInAt&&!!t.checkOutAt&&!t.fieldReportSubmitted&&t.status!=="canceled";
+  // v2.2.0: solo cuenta la evidencia de ESTA visita, no la heredada de otra.
+  const needsReport=t.source==="dispatch"&&!!_visitCheckInAt(t)&&!!_visitCheckOutAt(t)&&!t.fieldReportSubmitted&&t.status!=="canceled";
   // REPORTED (Jun 2026, Option A): a dispatch whose field report is already in.
   // Stays in the calendar as a green "✓ Reported" card instead of disappearing.
   // v2.0.0: la insignia verde sale del VINCULO, no del booleano. Si el dato
@@ -23022,8 +23160,8 @@ function startTicketFrom(id){
   /* FIX 24 jul 2026: limpiar el destino de edicion ANTES de precargar.
      Sin esto, un editingDocId sobrante de un editTkt() previo se lleva
      el guardado y el reporte cae encima del ticket de otro cliente. */
-  editingDocId=null;
-  _backToTktId=id;closeTktDetail();showTab(0);setMode("ticket");
+  _setReportTarget({dispatchId:id,customer:(t&&t.customer)||""});   // v2.4.0
+  closeTktDetail();showTab(0);setMode("ticket");
   setTimeout(()=>{
     document.getElementById("fCust").value=t.customer||"";
     document.getElementById("fDate").value=t.date||localDateStr();
@@ -23152,8 +23290,8 @@ function startEstimateFrom(id){
   /* FIX 24 jul 2026: limpiar el destino de edicion ANTES de precargar.
      Sin esto, un editingDocId sobrante de un editTkt() previo se lleva
      el guardado y el reporte cae encima del ticket de otro cliente. */
-  editingDocId=null;
-  _backToTktId=id;_estFromTktId=id;closeTktDetail();showTab(0);setMode("estimate");
+  _setReportTarget({dispatchId:id,customer:(t&&t.customer)||""});   // v2.4.0
+  _estFromTktId=id;closeTktDetail();showTab(0);setMode("estimate");
   setTimeout(()=>{
     document.getElementById("eCust").value=t.customer||"";
     document.getElementById("eDate").value=t.date||localDateStr();
@@ -25501,6 +25639,14 @@ async function _doCheckIn(ticketId){
     checkInVerified:verified,
     checkInBy:currentUser.name
   };
+  // v2.2.0: si este ticket arrastraba el check-out de OTRA visita, se borra aqui.
+  // Asi el dato viejo se autocorrige con el uso normal, sin migracion ni batch.
+  if(t.checkOutAt&&!_sameVisitStamp(t,t.checkOutAt)){
+    var _D=firebase.firestore.FieldValue.delete();
+    payload.checkOutAt=_D;payload.checkOutBy=_D;payload.checkOutLat=_D;payload.checkOutLng=_D;
+    payload.checkOutDist=_D;payload.checkOutVerified=_D;payload.checkOutDuration=_D;
+    try{delete t.checkOutAt;delete t.checkOutBy;delete t.checkOutDuration}catch(_e){}
+  }
   try{
     await db.collection("tickets").doc(ticketId).update(payload);
     // Update local cache so UI re-renders correctly
@@ -25527,25 +25673,30 @@ async function _doCheckOut(ticketId){
   const t=[...active,...done].find(function(x){return x.id===ticketId});
   if(!t){toast("Ticket not found","err");return}
   if(!currentUser){toast("Please log in first","err");return}
-  if(!t.checkInAt){toast("You need to check in first","warn");return}
-  if(t.checkOutAt){toast("You already checked out","warn");return}
+  // v2.2.0: se juzga la evidencia de ESTA visita. Un reagendo que arrastraba el
+  // check-out de la visita anterior dejaba al tecnico atrapado en
+  // "You already checked out" sin haber llegado siquiera.
+  if(!_visitCheckInAt(t)){toast("You need to check in first","warn");return}
+  if(_visitCheckOutAt(t)){toast("You already checked out","warn");return}
 
   const btn=document.getElementById("checkOutBtn_"+ticketId);
   if(btn){btn.disabled=true;btn.textContent="Getting GPS…"}
 
-  let gps;
-  try{gps=await _getCurrentGPS()}
-  catch(e){
-    if(btn){btn.disabled=false;btn.innerHTML='<span style="font-size:var(--fs-xl)">⏹</span>&nbsp; CHECK OUT — I\'m leaving'}
-    toast(e.message||"GPS error","err");
-    return;
-  }
+  // v2.2.0: EL GPS YA NO PUEDE BLOQUEAR LA SALIDA. El check-out existe para
+  // registrar la HORA; el geocerco es un extra. En un patio trasero, en un
+  // sotano, con el permiso de ubicacion negado o sin senal, el tecnico se
+  // quedaba sin poder cerrar el trabajo. Si no hay GPS se registra igual y se
+  // marca sin verificar — un registro honesto vale mas que ninguno.
+  let gps=null,gpsErr="";
+  try{gps=await _getCurrentGPS()}catch(e){gps=null;gpsErr=(e&&e.message)||"GPS no disponible"}
 
   let distanceM=null,verified=false;
-  const addrCoords=await _ticketAddressCoords(t);
-  if(addrCoords){
-    distanceM=Math.round(_haversineMeters(gps.lat,gps.lng,addrCoords.lat,addrCoords.lng));
-    verified=distanceM<=CHECKIN_GEOFENCE_OK_M;
+  if(gps){
+    const addrCoords=await _ticketAddressCoords(t);
+    if(addrCoords){
+      distanceM=Math.round(_haversineMeters(gps.lat,gps.lng,addrCoords.lat,addrCoords.lng));
+      verified=distanceM<=CHECKIN_GEOFENCE_OK_M;
+    }
   }
 
   // Compute duration from check-in
@@ -25555,19 +25706,20 @@ async function _doCheckOut(ticketId){
 
   const payload={
     checkOutAt:nowIso,
-    checkOutLat:gps.lat,
-    checkOutLng:gps.lng,
+    checkOutLat:gps?gps.lat:null,
+    checkOutLng:gps?gps.lng:null,
     checkOutDist:distanceM!==null?distanceM:-1,
     checkOutVerified:verified,
     checkOutBy:currentUser.name,
-    checkOutDuration:durationMin
+    checkOutDuration:durationMin,
+    checkOutNoGps:!gps
   };
   try{
     await db.collection("tickets").doc(ticketId).update(payload);
     Object.assign(t,payload);
     // Remove from "reminded" set since they checked out
     _checkOutRemindedTktIds.delete(ticketId);
-    toast("✓ Check-out recorded · duration "+_fmtElapsed(durationMin),"ok");
+    toast("✓ Check-out recorded · duration "+_fmtElapsed(durationMin)+(gps?"":" · sin GPS"),gps?"ok":"warn");
     if(typeof openTktDetail==="function")openTktDetail(ticketId);
     try{rndrA();rndrD();if(typeof rndrCal==="function")rndrCal()}catch(_e){}
   }catch(e){
