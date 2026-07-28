@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.8.0";
+var APP_VERSION="2.8.1";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -10226,7 +10226,15 @@ function _stripForeignVisitEvidence(t){
       t.checkOutAt="";t.checkOutBy="";t.checkOutLat=null;t.checkOutLng=null;t.checkOutDist=null;
       t.checkOutVerified=false;t.checkOutDuration=null;
     }
-    if(g)t._ghostVisit=g; else if(t._ghostVisit)delete t._ghostVisit;
+    /* OJO (hallado en la verificacion, 28 jul): despues de la PRIMERA pasada
+       checkInAt ya quedo vacio, asi que "nada ajeno" NO significa "ya no hay
+       fantasma". Con el `else` original, el segundo merge -- que ocurre con
+       cada snapshot de Firestore, o sea a los segundos -- borraba _ghostVisit
+       y el check-in real se quedaba sin saber que habia que reparar en la base.
+       El fantasma solo se descarta cuando aparece un sello LEGITIMO de esta
+       visita, que es justamente el que lo reemplaza. */
+    if(g)t._ghostVisit=Object.assign(t._ghostVisit||{},g);
+    else if(t._ghostVisit&&(t.checkInAt||t.checkOutAt))delete t._ghostVisit;
   }catch(_e){}
   return t;
 }
