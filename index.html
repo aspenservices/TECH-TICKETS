@@ -2919,8 +2919,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <div class="wrap show" id="pg0">
   <!-- Mode Selector -->
   <div class="mode-sel" id="modeSel">
-    <button class="mode-btn" onclick="setMode('ticket')"><span class="mode-ico"><span class="lucide-mount" data-lucide="wrench" data-size="22" data-color="var(--ac)"></span></span><span class="mode-t">Field Report</span><span class="mode-d">Labor performed, photos & notes</span></button>
-    <button class="mode-btn" onclick="setMode('estimate')"><span class="mode-ico"><span class="lucide-mount" data-lucide="clipboard-list" data-size="22" data-color="var(--ac)"></span></span><span class="mode-t">Estimate</span><span class="mode-d">Quick preview to show the customer</span></button>
+    <button class="mode-btn" onclick="setMode('ticket',{user:true})"><span class="mode-ico"><span class="lucide-mount" data-lucide="wrench" data-size="22" data-color="var(--ac)"></span></span><span class="mode-t">Field Report</span><span class="mode-d">Labor performed, photos & notes</span></button>
+    <button class="mode-btn" onclick="setMode('estimate',{user:true})"><span class="mode-ico"><span class="lucide-mount" data-lucide="clipboard-list" data-size="22" data-color="var(--ac)"></span></span><span class="mode-t">Estimate</span><span class="mode-d">Quick preview to show the customer</span></button>
   </div>
 
   <!-- ══ TICKET MODE ══ -->
@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.7.0";
+var APP_VERSION="2.8.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -8561,8 +8561,14 @@ function _looseReportId(d){
     var c="";
     try{c=_custGroupKey(d.customer||"")||""}catch(_e){}
     if(!c)c=String(d.customer||"").trim().toLowerCase();
-    var k=c+"|"+String(d.date||"").trim()+"|"+String(((d.techs||[])[0]||"")).trim().toLowerCase();
-    if(!c||!String(d.date||"").trim())return "";      // sin identidad clara, id aleatorio
+    /* v2.8.0 · LA HORA FORMA PARTE DE LA IDENTIDAD. Angel visito a Zito dos
+       veces el mismo dia (08:08 y 14:08): son DOS visitas, no una. Con la clave
+       cliente+fecha+tecnico las dos caian en el MISMO documento y la segunda
+       borraba a la primera. Sin hora de llegada no hay identidad completa, asi
+       que se vuelve al id aleatorio: duplicar es malo, perder es peor. */
+    var arr=String(d.arrival||"").trim();
+    var k=c+"|"+String(d.date||"").trim()+"|"+String(((d.techs||[])[0]||"")).trim().toLowerCase()+"|"+arr;
+    if(!c||!String(d.date||"").trim()||!arr)return "";   // identidad incompleta -> id aleatorio
     var h=0; for(var i=0;i<k.length;i++){h=(h*31+k.charCodeAt(i))|0}
     return "vr_"+Math.abs(h).toString(36)+"_"+k.replace(/[^a-z0-9]+/g,"").slice(0,28);
   }catch(_e){return ""}
@@ -18018,7 +18024,20 @@ function _frInitCollapseWiring(){
 
 // ═══ MODE SELECTOR ═══
 let currentMode="";
-function setMode(m){
+function setMode(m,opts){
+  /* ═══ setMode NO DECIDE A DONDE SE ESCRIBE (v2.8.0) ═══════════════════════
+     Aqui abajo habia un setTimeout de 300ms que ADIVINABA la intencion del
+     usuario mirando si un boton estaba visible en el DOM: "si no hay boton de
+     volver, esto debe ser un cambio manual de modo, asi que limpio el destino".
+     Adivinar intencion mirando el DOM es justo el patron que venimos sacando.
+     Y en v2.4.0, al pasar esa linea por la puerta unica, empezo a limpiar
+     TAMBIEN el documento que se estaba editando: se abria un reporte para
+     actualizar, 300ms despues el destino se destruia, y al enviar caia en la
+     rama de CREAR. Por eso "actualizar un ticket creaba otro".
+     Ahora no se adivina: quien cambia de modo A PROPOSITO lo dice.
+     Los botones de modo llaman setMode(m,{user:true}); editTkt /
+     startTicketFrom / startEstimateFrom llaman sin eso y su destino sobrevive. */
+  if(opts&&opts.user)_setReportTarget();
   currentMode=m;
   document.querySelectorAll(".mode-btn").forEach((b,i)=>{b.classList.toggle("on",i===0&&m==="ticket"||i===1&&m==="estimate")});
   document.getElementById("ticketMode").style.display=m==="ticket"?"block":"none";
@@ -18026,18 +18045,6 @@ function setMode(m){
   if(m==="estimate"){document.getElementById("eDate").value=localDateStr();buildETechPills();eRndr()}
   // Wire + update auto-collapse for ticket mode
   if(m==="ticket"){try{_frInitCollapseWiring();_frUpdateCollapse()}catch(e){console.warn("[fr collapse]",e)}}
-  // If startTicketFrom() / startEstimateFrom() set _backToTktId, they call
-  // setMode immediately AFTER setting it — so resetting here would clear that
-  // intent. We only reset _backToTktId when setMode is called by the user
-  // clicking the mode buttons in the menu (not via startTicketFrom). Detect
-  // by checking if the call stack came through startTicketFrom: if there's no
-  // back-to-ticket button currently visible, this is a manual mode switch.
-  setTimeout(function(){
-    var bb=document.getElementById("backToTktBtn");
-    var bbE=document.getElementById("backToEstBtn");
-    var bbVisible=(bb&&bb.style.display!=="none")||(bbE&&bbE.style.display!=="none");
-    if(!bbVisible)_setReportTarget();   // v2.4.0
-  },300);
 }
 
 // ═══ ESTIMATE ═══
