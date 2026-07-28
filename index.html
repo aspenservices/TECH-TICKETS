@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.4.0";
+var APP_VERSION="2.5.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -8533,6 +8533,83 @@ function _normalizePhone(raw){
 // sello es de otro dia, es de otra visita, y esta no lo hereda.
 // Con eso el dato viejo deja de mentir sin que haya que migrar nada, y se
 // autocorrige solo: el primer check-in real de esa visita pisa los sellos viejos.
+// ═══════════════════════════════════════════════════════════════════════════
+//   UNA VISITA TIENE COMO MAXIMO UN REPORTE            (v2.5.0)
+// ═══════════════════════════════════════════════════════════════════════════
+// Taylor, Cathy aparecia DOS VECES en el tablero del 24 de julio. Dos causas
+// distintas, las dos son la misma falta de identidad:
+//
+//   (1) EL REPORTE SUELTO NO TENIA IDENTIDAD. Cuando el reporte se abre desde
+//       una visita, el documento es rep_<dispatch> y reenviar NO duplica. Pero
+//       si se levanta suelto, la app hacia .add() con id ALEATORIO: dos toques,
+//       dos pestanas o un reintento por mala senal = dos documentos = el
+//       cliente duplicado. La visita que el tecnico DECLARA (cliente + fecha +
+//       tecnico) ES su identidad; no hay que adivinarla, la escribio el.
+//       Ahora el id se deriva de eso y el segundo envio cae en el MISMO
+//       documento.
+//
+//   (2) UN DOCUMENTO EN SLOT AJENO SE PINTABA COMO VISITA DEL CLIENTE
+//       EQUIVOCADO. rep_rTQKzf8igA6LjtiiR9bA es el slot de Strong, Michael pero
+//       su contenido quedo con datos de Taylor (bug del 24 jul). El tablero
+//       agrupaba por el campo de TEXTO customer, asi que pintaba una segunda
+//       tarjeta de Taylor. Ese documento no es una visita de Taylor: es el slot
+//       de Strong con contenido corrupto. v2.3.0 aplico esta regla al ESCRIBIR;
+//       faltaba aplicarla al LEER.
+// ═══════════════════════════════════════════════════════════════════════════
+function _looseReportId(d){
+  try{
+    var c="";
+    try{c=_custGroupKey(d.customer||"")||""}catch(_e){}
+    if(!c)c=String(d.customer||"").trim().toLowerCase();
+    var k=c+"|"+String(d.date||"").trim()+"|"+String(((d.techs||[])[0]||"")).trim().toLowerCase();
+    if(!c||!String(d.date||"").trim())return "";      // sin identidad clara, id aleatorio
+    var h=0; for(var i=0;i<k.length;i++){h=(h*31+k.charCodeAt(i))|0}
+    return "vr_"+Math.abs(h).toString(36)+"_"+k.replace(/[^a-z0-9]+/g,"").slice(0,28);
+  }catch(_e){return ""}
+}
+// Mapa dispatchId -> clave de cliente. Se recalcula solo cuando cambia el
+// tamano del pool: sin esto seria un find() por cada reporte en cada render,
+// y esto corre en el telefono de los tecnicos.
+var _slotOwnerCache=null,_slotOwnerN=-1;
+function _slotOwnerMap(){
+  var a=(typeof active!=="undefined"&&Array.isArray(active))?active:[];
+  var b=(typeof done!=="undefined"&&Array.isArray(done))?done:[];
+  var n=a.length+b.length;
+  if(_slotOwnerCache&&_slotOwnerN===n)return _slotOwnerCache;
+  var m=Object.create(null);
+  a.concat(b).forEach(function(x){
+    if(!x||x.source!=="dispatch"||!x.id||!x.customer)return;
+    var k=""; try{k=_custGroupKey(x.customer)||""}catch(_e){}
+    m[x.id]=k||String(x.customer).trim().toLowerCase();
+  });
+  _slotOwnerCache=m;_slotOwnerN=n;return m;
+}
+// ¿Este reporte vive en el slot de OTRO cliente? (contenido vs. vinculo)
+function _reportSlotMismatch(t){
+  try{
+    if(!t||t.source==="dispatch")return false;
+    var id=String(t.id||""); if(id.indexOf("rep_")!==0)return false;
+    var a=_slotOwnerMap()[id.slice(4)];
+    if(!a||!t.customer)return false;
+    var d={customer:a};
+    var b=""; try{b=_custGroupKey(t.customer)||""}catch(_e){}
+    if(!b)b=String(t.customer).trim().toLowerCase();
+    return a!==b;
+  }catch(_e){return false}
+}
+// ═══ LA UNICA LISTA DE VISITAS REPORTADAS ═════════════════════════════════
+// Seis sitios armaban esta misma lista por su cuenta (tablero, diario, badges,
+// buscador, exportes). Cada uno podia quedarse atras cuando la regla cambiara
+// — y de hecho se quedaron. Ahora hay una sola: si manana hay que excluir algo
+// mas, se excluye aqui y lo ven los seis.
+function _visitReports(){
+  var a=(typeof active!=="undefined"&&Array.isArray(active))?active:[];
+  return a.filter(function(t){
+    return t&&t.source!=="dispatch"
+      &&(t.status==="complete"||t.status==="reschedule")
+      &&!_reportSlotMismatch(t);
+  });
+}
 function _sameVisitStamp(t,iso){
   if(!iso)return false;
   var d=(t&&t.date||"").trim();
@@ -10246,7 +10323,10 @@ function initFirebase(){
     try{ _runReschedHeal(); }catch(_e){console.warn("reschedHeal error:",_e)}
     // Update badges — count only what actually shows in Daily tab (field reports with status complete/reschedule)
     const b1=document.getElementById("bdg1"),b2=document.getElementById("bdg2");
-    const dailyPool=active.filter(t=>t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule"));
+    // v2.5.0: un documento cuyo slot pertenece a OTRO cliente no es una visita
+    // de este — es un slot corrupto esperando reparacion. No se cuenta ni se
+    // pinta como visita duplicada.
+    const dailyPool=_visitReports();
     const isTechNow=currentUser&&currentUser.role==="tech";
     const dailyCount=isTechNow?dailyPool.filter(t=>_tktIsMine(t)).length:dailyPool.length;
     if(b1){if(dailyCount){b1.style.display="inline";b1.textContent=dailyCount}else b1.style.display="none"}
@@ -13770,7 +13850,16 @@ async function submitTkt(st){
         if(!_gRes2.ok){window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";return}
         await newRef.set(cleanData,{merge:true});
       }else{
-        newRef=await db.collection("tickets").add(cleanData);
+        // v2.5.0: identidad determinista tambien para el reporte suelto.
+        var _lid=_looseReportId(cleanData);
+        if(_lid){
+          newRef=db.collection("tickets").doc(_lid);
+          var _gRes3=await _reportWriteGuard(newRef,cu);
+          if(!_gRes3.ok){window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update \u2713":"Send \u2713";return}
+          await newRef.set(cleanData,{merge:true});
+        }else{
+          newRef=await db.collection("tickets").add(cleanData);
+        }
         try{AspenBrain.logEvent({customer:(cleanData&&cleanData.customer)||"",app:"tickets",type:"ticket.created",title:"Service ticket created",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",meta:{phone:(cleanData&&(cleanData.phone||cleanData.customerPhone))||"",address:(cleanData&&cleanData.address)||""},ref:{app:"tickets",id:newRef.id}});}catch(_be){}
       }
       try{await _frStashOverflow(newRef.id)}catch(_e){}
@@ -15676,7 +15765,7 @@ function _renderDailyFilters(){
   if(typeof _dataLoaded!=="undefined"&&!_dataLoaded){bar.innerHTML="";return;}
   var qp=0,rp=0,cm=0,pc=0,un=0,_zoneCounts={};
   try{
-    var pool=(Array.isArray(active)?active:[]).filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});
+    var pool=_visitReports();
     qp=pool.filter(function(t){return !t.qbCopied&&t.status==="complete";}).length;
     rp=pool.filter(function(t){return t.visitNum===4;}).length;
     cm=pool.filter(function(t){return t.visitNum===3;}).length;
@@ -15732,7 +15821,7 @@ function _renderDailySummary(){
   if(currentUser&&currentUser.role==="tech"){bar.innerHTML="";return;}
   if(typeof _dataLoaded!=="undefined"&&!_dataLoaded){bar.innerHTML="";return;}
   var pool=[];
-  try{pool=(Array.isArray(active)?active:[]).filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});}catch(_e){}
+  try{pool=_visitReports();}catch(_e){}
   var open=pool.length;
   var urg=pool.filter(function(t){return t.isUrgent;}).length;
   var rep=pool.filter(function(t){return t.visitNum===4;}).length;
@@ -16797,7 +16886,7 @@ function rndrA(){
   const isTech=currentUser&&currentUser.role==="tech";
   const q=(document.getElementById("searchActive")||{}).value||"";
   // Only show field tickets (tech submitted work or reschedule), not dispatch
-  let pool=active.filter(t=>t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule"));
+  let pool=_visitReports();   // v2.5.0: el tablero, por la lista unica
   if(q)pool=pool.filter(t=>tktMatchesSearch(t,q));
   try{pool=_applyDailyFilter(pool)}catch(_e){}
   
@@ -27924,7 +28013,7 @@ function showTicketDetail(p,i){
     try{
       var isTech=currentUser&&currentUser.role==="tech";
       var q=($("searchActive")||{}).value||"";
-      out=active.filter(function(t){return t.source!=="dispatch"&&(t.status==="complete"||t.status==="reschedule");});
+      out=_visitReports();
       if(q&&typeof tktMatchesSearch==="function")out=out.filter(function(t){return tktMatchesSearch(t,q);});
       try{out=_applyDailyFilter(out);}catch(_e){}
       // Tech match with PILL RESOLUTION (Jul 2026): same rule as the Calendar's
