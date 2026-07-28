@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="1.26.0";
+var APP_VERSION="2.1.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -8508,6 +8508,100 @@ function _dayDiff(d1,d2){
   if(isNaN(t1)||isNaN(t2))return -999;
   return Math.round((t2-t1)/86400000);
 }
+// ═══════════════════════════════════════════════════════════════════════════
+//   LA VERDAD SE REGISTRA, NO SE ADIVINA        (v2.0.0 - 27 jul 2026)
+// ═══════════════════════════════════════════════════════════════════════════
+// Hasta v1.26.0 la app RE-DERIVABA en cada render si un reporte cumplia una
+// visita: comparaba nombre de cliente + cercania de fechas (±30 dias con
+// Math.abs) + solapamiento de tecnicos + marcas de creacion. Cinco heuristicas
+// encadenadas, y encima DUPLICADAS en tres motores distintos (el pairing del
+// indice y los dos auto-match de submitTkt), cada uno con reglas ligeramente
+// diferentes. Toda esta familia de bugs salio de ahi:
+//   · el reporte que aterrizo en el cliente equivocado
+//   · las visitas agendadas que desaparecian del calendario
+//   · los huerfanos y los "shared report victims"
+//   · el ticket de MANANA que ya decia "REPORTED" (27 jul 2026)
+// Cada arreglo anterior le agrego una condicion mas al adivinador. Este no.
+//
+// EL DATO YA TIENE LA RESPUESTA. Medido sobre los 1.260 tickets reales:
+//   · 97,3% de los dispatches cerrados YA guardan dispatch.fieldReportId
+//     apuntando a un reporte que existe
+//   · la cola sin vinculo son 15 tickets, todos de abril-junio 2026
+// O sea: el hecho correcto estaba escrito y el motor lo tiraba para volver
+// a adivinarlo desde cero en cada render.
+//
+// Desde v2.0.0 hay UN SOLO predicado y lee el hecho registrado:
+//     ¿este dispatch tiene un fieldReportId que apunta a un reporte real?
+// Sin fechas. Sin ±30 dias. Sin Math.abs. Sin solapamiento de tecnicos.
+//
+// Con DOS INVARIANTES, que no son heuristicas sino contradicciones logicas
+// verificables dentro del propio documento:
+//   I1  un reporte no puede cumplir la visita que EL MISMO creo
+//       (fieldReportId === reschedFromId  =>  el vinculo es invalido)
+//   I2  un reporte cumple como maximo UNA visita
+//       (si dos dispatches reclaman el mismo reporte gana el que lo sello
+//        primero; el otro queda ABIERTO, que es el estado seguro)
+//
+// Y una consecuencia importante: `fieldReportSubmitted` deja de ser una
+// segunda fuente de verdad que puede contradecir al vinculo. Pasa a ser un
+// campo DERIVADO que el ciclo de limpieza reconcilia en ambas direcciones.
+// ═══════════════════════════════════════════════════════════════════════════
+// LA FECHA DEL CORTE. Desde este instante TODO cierre escribe su vinculo, asi
+// que un cierre sin vinculo posterior al corte es un bug y hay que deshacerlo.
+// Antes del corte el vinculo todavia no se guardaba siempre: esos cierres son
+// LEGACY y se respetan tal cual — esas visitas se hicieron hace meses y
+// devolverlas al calendario seria peor que el bug. Unica excepcion: una
+// contradiccion I1 se deshace SIEMPRE, tenga la edad que tenga, porque no es
+// un vinculo faltante sino un vinculo que el propio documento desmiente.
+var LINK_TRUTH_SINCE="2026-07-27T00:00:00.000Z";
+var _LINK_TRUTH_MS=Date.parse(LINK_TRUTH_SINCE);
+function _linkIndex(){
+  var byId=Object.create(null), claim=Object.create(null), servedBy=Object.create(null), legacy=Object.create(null);
+  var pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+  pool.forEach(function(t){ if(t&&t.id)byId[t.id]=t; });
+  pool.forEach(function(t){
+    if(!t||t.source!=="dispatch")return;
+    var rid=t.fieldReportId||""; if(!rid)return;
+    if(!byId[rid])return;                                   // el reporte no existe
+    if(t.reschedFromId&&t.reschedFromId===rid)return;        // I1
+    var prev=claim[rid];
+    if(prev){                                                // I2, desempate estable
+      var a=byId[prev]||{}, sa=String(a.fieldReportSubmittedAt||""), sb=String(t.fieldReportSubmittedAt||"");
+      var gana = sa&&sb ? (sa<=sb?prev:t.id) : (String(prev)<String(t.id)?prev:t.id);
+      if(gana!==t.id)return;
+      delete servedBy[prev];
+    }
+    claim[rid]=t.id; servedBy[t.id]=rid;
+  });
+  // Segunda pasada: cierres LEGACY (anteriores al corte, sin vinculo valido y
+  // sin contradiccion I1). Se dan por buenos y se marcan aparte, para que los
+  // 8 consumidores los respeten sin que nadie tenga que acordarse de la regla.
+  pool.forEach(function(t){
+    if(!t||t.source!=="dispatch")return;
+    if(servedBy[t.id])return;
+    if(t.fieldReportSubmitted!==true||t.status==="canceled")return;
+    if(t.reschedFromId&&t.reschedFromId===t.fieldReportId)return;   // I1: nunca legacy
+    // OJO: fieldReportSubmittedAt viene en DOS formatos segun quien lo escribio
+    // — ISO ("2026-07-27T12:55:29.368Z") y locale ("4/28/2026, 8:04:13 AM").
+    // Comparar como TEXTO daba falso ("4/..." > "2026-...") y resucitaba visitas
+    // de abril. Se comparan milisegundos, y lo ilegible cae del lado seguro.
+    var when=Date.parse(String(t.fieldReportSubmittedAt||t.linkBackfilledAt||""));
+    if(isNaN(when)||when<_LINK_TRUTH_MS){ legacy[t.id]=1; servedBy[t.id]=t.fieldReportId||"legacy"; }
+  });
+  return {byId:byId, servedBy:servedBy, claimedBy:claim, legacy:legacy};
+}
+function _isDispatchServed(t,lnk){
+  if(!t||t.source!=="dispatch")return false;
+  return !!(lnk||_linkIndex()).servedBy[t.id];
+}
+// Cerrado = tiene un vinculo valido, o una persona lo cerro a mano a proposito.
+// El booleano fieldReportSubmitted NO decide por si solo: es campo derivado.
+function _dispatchClosed(t,lnk){
+  if(!t)return false;
+  if(t.status==="canceled")return true;
+  if(String(t.cleanedUpBy||"").indexOf("manual-dismiss")===0)return true;
+  return _isDispatchServed(t,lnk);
+}
 // A dispatch ticket counts as "work done" (for capacity / dedup) if ANY of:
 //   • someone marked fieldReportSubmitted=true (cleanup ran or submit succeeded)
 //   • a non-dispatch report record exists for this customer
@@ -8518,7 +8612,7 @@ function _dayDiff(d1,d2){
 function _dispatchIsDone(t){
   if(!t)return false;
   if(t.source!=="dispatch")return true; // it IS a report
-  if(t.fieldReportSubmitted===true)return true; // a field report was actually filed / paired
+  if(_dispatchClosed(t))return true;    // v2.0.0: manda el vinculo, no el booleano
   // FIX (Jun 2026, reported by Alberto): a check-in/out ALONE used to count as
   // "done" here, so Daily Capacity showed "All done · X filed" for visits the
   // tech had NOT yet filed a report for — directly contradicting the Calendar,
@@ -8613,11 +8707,51 @@ async function _runDispatchCleanup(opts){
     return !!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id));
   });
   _lastCleanupAt=Date.now();
-  // Layer 3: heal any "shared report" victims already in the data (runs under
-  // the same admin/online guards; has its own 30s debounce).
-  try{await _autoHealSharedVictims()}catch(_vh){}
-  try{await _autoHealOrphans()}catch(_hv){}
-  if(!stale.length)return{cleaned:0,failed:0,scanned:0};
+  // ── v2.0.0 · ESTE CICLO YA NO CIERRA NADA POR PARECIDO ────────────────────
+  // Ahora hace tres cosas, todas deterministas:
+  //   A) DERIVAR   vinculo valido + booleano en false  ->  poner el booleano
+  //      (eso es `stale`, que con el vinculo duro ya significa exactamente eso)
+  //   B) RECONCILIAR  booleano en true SIN vinculo valido -> abrir la visita
+  //      Aqui es donde el ticket de manana con "REPORTED" se destraba solo:
+  //      su fieldReportId apunta al reporte que lo CREO (I1) -> vinculo invalido.
+  //   C) RESPALDAR  la cola legacy sin vinculo, SOLO cuando es inequivoco.
+  // Los sanadores (_autoHealOrphans / _autoHealSharedVictims) existian para
+  // reparar lo que el adivinador rompia. Sin adivinador no hay que reparar, asi
+  // que salen del ciclo automatico. Quedan en el archivo, invocables a mano.
+  var _rec=0;
+  try{
+    var _lnkR=idx.link||_linkIndex();
+    var _mal=[...active,...done].filter(function(t){
+      if(!t||t.source!=="dispatch")return false;
+      if(t.status==="canceled")return false;
+      if(t.fieldReportSubmitted!==true)return false;
+      if(String(t.cleanedUpBy||"").indexOf("manual-dismiss")===0)return false; // decision humana
+      return !_lnkR.servedBy[t.id];   // legacy ya viene marcado como servido
+    }).slice(0,15);
+    for(var _m=0;_m<_mal.length;_m++){
+      try{
+        var _ms=await db.collection("tickets").doc(_mal[_m].id).get();
+        if(!_ms.exists)continue;
+        var _md=_ms.data()||{};
+        if(_md.fieldReportSubmitted!==true||_md.status==="canceled")continue;
+        if(String(_md.cleanedUpBy||"").indexOf("manual-dismiss")===0)continue;
+        var _rid=_md.fieldReportId||"";
+        var _ok=_rid&&_lnkR.byId[_rid]&&!(_md.reschedFromId&&_md.reschedFromId===_rid)&&_lnkR.claimedBy[_rid]===_mal[_m].id;
+        if(_ok)continue;                                  // el dato cambio: ya es valido
+        await db.collection("tickets").doc(_mal[_m].id).update({
+          fieldReportSubmitted:false,
+          fieldReportId:firebase.firestore.FieldValue.delete(),
+          fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
+          cleanedUpBy:firebase.firestore.FieldValue.delete(),
+          linkReconciledAt:new Date().toISOString()
+        });
+        try{_audit("link-reconcile",{ticketId:_mal[_m].id,customer:_mal[_m].customer||"",note:"decia reportada sin vinculo valido - vuelve al calendario"});}catch(_a){}
+        _rec++;
+      }catch(_me){console.warn("[reconcile]",_mal[_m].id,_me)}
+    }
+  }catch(_re){console.warn("[reconcile]",_re)}
+  try{ await _backfillMissingLinks(idx); }catch(_bf){ console.warn("[backfill]",_bf); }
+  if(!stale.length)return{cleaned:0,failed:0,scanned:0,reconciled:_rec};
   if(!opts.silent)console.log("[cleanup] Cleaning "+stale.length+" stale dispatch ticket(s)");
   var ok=0,fail=0;
   for(var i=0;i<stale.length;i++){
@@ -8664,6 +8798,60 @@ async function _runDispatchCleanup(opts){
   return{cleaned:ok,failed:fail,scanned:stale.length};
 }
 
+// ─── RESPALDO DE LA COLA LEGACY (v2.0.0) ────────────────────────────────────
+// Los tickets viejos (abril-junio 2026, 15 en total al 27 jul) se cerraron
+// cuando el vinculo aun no se guardaba. En vez de dejar que el adivinador
+// siga corriendo para siempre por culpa de ese 2,7%, se les ESCRIBE el vinculo
+// UNA vez y nunca vuelven a pasar por ninguna heuristica.
+// Condiciones para escribirlo, todas obligatorias:
+//   · la cita ya paso (nunca se respalda una visita futura)
+//   · hay UNA Y SOLO UNA propuesta para ese dispatch
+//   · el reporte propuesto no lo reclama nadie mas
+//   · el reporte no es el que engendro ese reagendo (I1)
+// Si hay ambiguedad NO se toca nada: la visita queda abierta, que es el
+// estado seguro, y una persona decide.
+var _lastBackfillAt=0;
+async function _backfillMissingLinks(idx){
+  if(!db)return 0;
+  if(!currentUser||currentUser.role==="tech")return 0;
+  if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return 0;
+  if(Date.now()-_lastBackfillAt<60000)return 0;
+  _lastBackfillAt=Date.now();
+  idx=idx||_buildFieldReportIndex();
+  var prop=idx.proposedLinks||{}, lnk=idx.link||_linkIndex();
+  var hoy=fmtD(new Date());
+  var ids=Object.keys(prop).filter(function(id){
+    var t=lnk.byId[id]; if(!t||t.source!=="dispatch")return false;
+    if(t.fieldReportId)return false;                     // ya tiene vinculo
+    var d=(t.date||"").trim(); if(!d||d>hoy)return false; // nunca una cita futura
+    var rid=prop[id];
+    if(lnk.claimedBy[rid])return false;                  // el reporte ya esta tomado
+    if(t.reschedFromId&&t.reschedFromId===rid)return false; // I1
+    return true;
+  }).slice(0,10);
+  var n=0;
+  for(var i=0;i<ids.length;i++){
+    try{
+      var snap=await db.collection("tickets").doc(ids[i]).get();
+      if(!snap.exists)continue;
+      var d2=snap.data()||{};
+      if(d2.fieldReportId)continue;                      // otro dispositivo lo respaldo
+      if(d2.status==="canceled")continue;
+      var q=await db.collection("tickets").where("fieldReportId","==",prop[ids[i]]).limit(1).get();
+      if(!q.empty)continue;                              // el reporte ya cerro otra visita
+      await db.collection("tickets").doc(ids[i]).update({
+        fieldReportId:prop[ids[i]],
+        fieldReportSubmitted:true,
+        fieldReportSubmittedAt:d2.fieldReportSubmittedAt||new Date().toISOString(),
+        linkBackfilledAt:new Date().toISOString()
+      });
+      try{_audit("link-backfill",{ticketId:ids[i],customer:d2.customer||"",note:"vinculo legacy escrito: "+prop[ids[i]]});}catch(_a){}
+      n++;
+    }catch(_e){console.warn("[backfill]",ids[i],_e)}
+  }
+  if(n)console.log("[backfill] vinculos legacy escritos:",n);
+  return n;
+}
 // Backward-compat shim: keep the old name pointing to the unified engine.
 // The previous bug-repair path (repairBadAutoCleanups) has been removed —
 // any historical bad cleanups have already been corrected in production.
@@ -13407,7 +13595,9 @@ async function submitTkt(st){
               // Allow up to ±30 days between the dispatch date and the field-report date
               // (tech may visit days or weeks earlier/later than originally scheduled).
               var diff=_dayDiff((t.date||"").trim(),targetDateE);
-              if(diff===-999||Math.abs(diff)>30)return false;
+              // v2.0.0: se acabo el barrido de ±30 dias. Un reporte solo puede
+              // cerrar la visita DEL MISMO DIA, y solo si no hay ambiguedad.
+              if(diff!==0)return false;
               var _dispatchMs=_ticketCreatedMs(t);
               if(_dispatchMs&&_dispatchMs>_editReportCreatedMs)return false;
               return true;
@@ -13421,7 +13611,11 @@ async function submitTkt(st){
               var sb=Math.abs(_dayDiff((b.date||"").trim(),targetDateE))-(_pairTechOverlap(cleanData.techs,b.techs)?1.5:0);
               return sa-sb;
             });
-            for(const dt of matchesE.slice(0,1)){
+            // v2.1.0: ni se adivina ni se pregunta. Si hay UNA sola visita de ese
+            // cliente ESE MISMO DIA, no es una suposicion: es identidad. Si hay
+            // varias, el reporte se queda suelto y la visita abierta — que es la
+            // verdad, no un atajo.
+            for(const dt of (matchesE.length===1?matchesE:[])){
               try{
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
@@ -13514,7 +13708,9 @@ async function submitTkt(st){
               if(t.status==="canceled")return false;
               if(!_custSameHousehold(t.customer,cleanData.customer))return false;
               var diff=_dayDiff((t.date||"").trim(),targetDate);
-              if(diff===-999||Math.abs(diff)>30)return false;
+              // v2.0.0: se acabo el barrido de ±30 dias. Un reporte solo puede
+              // cerrar la visita DEL MISMO DIA, y solo si no hay ambiguedad.
+              if(diff!==0)return false;
               // Don't close a dispatch that was created AFTER this report
               var _dispatchMs=_ticketCreatedMs(t);
               if(_dispatchMs&&_dispatchMs>_newReportCreatedMs)return false;
@@ -13528,7 +13724,11 @@ async function submitTkt(st){
               var sb=Math.abs(_dayDiff((b.date||"").trim(),targetDate))-(_pairTechOverlap(cleanData.techs,b.techs)?1.5:0);
               return sa-sb;
             });
-            for(const dt of matches.slice(0,1)){
+            // v2.1.0: ni se adivina ni se pregunta. Si hay UNA sola visita de ese
+            // cliente ESE MISMO DIA, no es una suposicion: es identidad. Si hay
+            // varias, el reporte se queda suelto y la visita abierta — que es la
+            // verdad, no un atajo.
+            for(const dt of (matches.length===1?matches:[])){
               try{
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
@@ -14239,259 +14439,171 @@ function _custBestSpaDesc(custName,excludeId){
   }catch(_e){return "";}
 }
 async function _autoCreateReschedDispatch(srcDocId,srcData){
+  // ═══════════════════════════════════════════════════════════════════════════
+  //   EL REAGENDO ES UN HECHO DECLARADO, NO UNA INFERENCIA      (v2.1.0)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // El tecnico FUE, no pudo terminar, y NOS DIJO por que. Eso ya es conocimiento
+  // nuestro. El sistema no tiene que buscar nada, ni deducir nada, ni preguntar
+  // nada. Sabe que esto es un reagendo, asi que hace tres cosas y ninguna mas:
+  //
+  //   1. LA VISITA VIEJA SE CIERRA SIENDO LO QUE FUE: una visita que SI ocurrio,
+  //      documentada por su reporte. Eso es verdad, no una mentira: el tecnico
+  //      estuvo ahi. Queda ligada a su reporte y sale del calendario.
+  //   2. SE CREA UN TICKET NUEVO. Siempre. Uno. Nunca se reutiliza otro
+  //      documento del cliente.
+  //   3. EL TICKET NUEVO SE LLEVA TODO lo que el tecnico ya nos informo: el
+  //      reporte completo, lo que encontro, las fotos, que falta para volver,
+  //      cuando puede el cliente, quien estuvo ahi, el spa, el historial.
+  //
+  // POR QUE ESTO ES LA RAIZ Y NO OTRO PARCHE:
+  // Hasta v2.0.0 esta funcion BUSCABA en el hogar un dispatch abierto para
+  // REUTILIZARLO, y le borraba la fecha para que resurgiera como "necesita
+  // fecha". Ese unico movimiento — un mismo documento representando DOS visitas
+  // distintas en el tiempo — es el origen de casi toda la familia de bugs:
+  //   · el ticket arrastraba el check-in/out del tecnico de la visita ANTERIOR
+  //   · arrastraba el fieldReportId viejo, y por eso el reporte que CREO la cita
+  //     terminaba dandola por cumplida (el ticket de manana con "REPORTED")
+  //   · si el cliente ya tenia OTRA cita futura, la busqueda se la comia
+  //   · y sobre todo: obligaba al emparejador a ADIVINAR cual visita era cual,
+  //     porque la identidad del documento era ambigua
+  // Un documento = una visita. Sin excepciones. Con eso, no queda nada que
+  // adivinar: la cadena esta escrita (reschedOfTicketId / reschedReportId).
+  // ═══════════════════════════════════════════════════════════════════════════
   if(!db||!srcData||!srcData.customer)return;
   try{
-    var _pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
-    var live=_pool.find(function(x){return x.id===srcDocId})||srcData;
-
-    // ── Guard: an auto-dispatch was already created for this reschedule and
-    //    it's still OPEN (not served, not done, not canceled) → don't duplicate.
-    //    A prior dispatch that was already field-report-submitted or completed
-    //    is NOT a valid open call, so we must create a fresh one.
-    if(live.reschedDispatchId){
-      var prior=(typeof active!=="undefined"?active:[]).find(function(x){return x.id===live.reschedDispatchId&&x.status!=="canceled"&&x.status!=="done"&&!x.fieldReportSubmitted});
-      if(prior)return;
-    }
-    // SYNC-SIM FINDING (Jun 2026 — reuse-path duplicate): the local `live` can be
-    // a STALE snapshot that hasn't yet seen another device record reschedDispatchId
-    // (e.g. it reused an open parent dispatch). The deterministic resched_<src> id
-    // makes the CREATE path idempotent, but the REUSE path was not — two stale
-    // devices could reuse two DIFFERENT parents for the same reschedule. Re-read
-    // the SOURCE doc from the server and honor its current link so a second
-    // invocation cannot open a SECOND follow-up call.
-    try{
-      var _fSrc=await db.collection("tickets").doc(srcDocId).get();
-      var _fSrcD=(_fSrc&&_fSrc.exists)?(_fSrc.data()||{}):{};
-      if(_fSrcD.reschedDispatchId){
-        var _fLink=await db.collection("tickets").doc(_fSrcD.reschedDispatchId).get();
-        var _fLinkD=(_fLink&&_fLink.exists)?(_fLink.data()||{}):{};
-        if(_fLinkD&&_fLinkD.status!=="canceled"&&_fLinkD.status!=="done"&&!_fLinkD.fieldReportSubmitted)return;
-      }
-    }catch(_e){}
-
     var cust=srcData.customer;
-    var origDate=(srcData.date||"").trim();
-    var techStr=(srcData.techs||[]).join(", ");
-    var reason=(srcData.reschedReason||"").trim();
-    var reasonNote=(srcData.reschedNote||"").trim();
-    /* La nota ARRANCA con la fecha del reagendo, en el mismo formato MM/DD/YYYY
-       que usan las demas notas: asi la linea de tiempo la reconoce, la fecha
-       queda visible y la entrada cae en su lugar cronologico (antes empezaba
-       con "\u21BB" y se mostraba con ese simbolo como fecha). */
-    var _rsD=new Date();
-    var _rsMDY=("0"+(_rsD.getMonth()+1)).slice(-2)+"/"+("0"+_rsD.getDate()).slice(-2)+"/"+_rsD.getFullYear();
-    var noteHead=_rsMDY+" \u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"+(origDate?(" scheduled for "+origDate):"")+". Needs a new appointment date.";
-    if(reason)noteHead+="\nReason: "+reason+(reasonNote?(" \u2014 "+reasonNote):"");
-    // REAGENDAR v2: el encabezado lleva QUE FALTA y CUANDO PUEDE el cliente,
-    // que es lo que la oficina necesita para re-agendar sin llamar de nuevo.
-    var _blkTxt=(typeof _reschedBlockerLabel==="function")?_reschedBlockerLabel(srcData):"";
-    var _avTxt=(typeof _reschedAvailLabel==="function")?_reschedAvailLabel(srcData):"";
-    if(_blkTxt)noteHead+="\n\u26A0\uFE0F Para volver: "+_blkTxt;
-    if(_avTxt)noteHead+="\n\uD83D\uDCC5 "+_avTxt;
-    var origNotes=(srcData.notes||"").trim();
-    var newNotes=noteHead+(origNotes?("\n\n\u2014 Tech notes \u2014\n"+origNotes):"");
-    var stamp=new Date().toLocaleString();
-    var stampMs=Date.now();
+    var stamp=new Date().toLocaleString(), stampMs=Date.now();
 
-    // ── SIM FINDING (Jun 2026 — 2-device race): device A (post-cleanup view)
-    //    creates the deterministic resched_<src> call while device B (stale
-    //    view) reuses the parent → TWO open "needs a date" calls. A fresh
-    //    server read (bypasses the stale snapshot) before reusing prevents it.
+    // ── (0) ¿de que visita venimos? La cadena esta REGISTRADA, no se busca.
+    //    El reporte de campo nace con id determinista rep_<dispatch>, y si no,
+    //    lleva dispatchId. Si no hay ninguno, el reporte era suelto: no habia
+    //    visita agendada, asi que no hay nada que cerrar.
+    var oldTktId=(String(srcDocId).indexOf("rep_")===0)?String(srcDocId).slice(4):(srcData.dispatchId||"");
+    var _pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+    var oldTkt=oldTktId?_pool.find(function(x){return x&&x.id===oldTktId}):null;
+
+    // ── (1) idempotencia: id determinista + relectura del servidor.
+    var newId="resched_"+srcDocId;
     try{
-      var _freshR=await db.collection("tickets").doc("resched_"+srcDocId).get();
-      if(_freshR.exists){
-        var _fd=_freshR.data()||{};
-        if(_fd.status!=="canceled"&&_fd.status!=="done"&&!_fd.fieldReportSubmitted){
-          try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:"resched_"+srcDocId})}catch(_e){}
-          return; // an open auto-call already exists — don't duplicate
+      var _f=await db.collection("tickets").doc(newId).get();
+      if(_f.exists){
+        var _fd=_f.data()||{};
+        if(_fd.status!=="canceled"){
+          try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:newId})}catch(_e){}
+          return; // ya existe la cita de vuelta — no se duplica
         }
       }
     }catch(_e){}
 
-    // ── Carry an APPROVED estimate forward to the re-booked dispatch, so the
-    //    return visit already has the customer-signed estimate + PDF. The
-    //    reschedule field report carries srcData.estimate (set at submit). ──
-    var _estCarry={},_estPdfMedia=[];
-    // Trigger on the estimate PACKET (the report no longer carries the to-do
-    // flag). The re-booked dispatch DOES get approvedEstimate:true — it is the
-    // open work awaiting the return visit.
-    if(srcData&&srcData.estimate){
-      _estCarry.approvedEstimate=true;_estCarry.estimate=srcData.estimate;
-      _estPdfMedia=(Array.isArray(srcData.media)?srcData.media:[]).filter(function(m){return m&&m.fromEstimate});
-    }
-    // ── If an OPEN dispatch already exists for this customer (typically the
-    //    parent the field report was filed against), reuse it instead of
-    //    creating a duplicate: clear its date so it resurfaces as "needs a
-    //    new date", and flag it as a reschedule.
-    var openDisp=(function(){
-      // SIM FINDING (Jun 2026 — duplicate "needs a date" calls): when a
-      // household has SEVERAL open dispatches, `.find` returned whichever came
-      // first in each device's local array — two devices could reuse DIFFERENT
-      // docs for the same reschedule. Deterministic scored pick (the dispatch
-      // dated the visit being rescheduled, then tech overlap, then oldest id)
-      // makes every device converge on the same doc.
-      // AUDIT FIX (20 jul 2026 — cita futura destruida): este filtro agarraba
-      // CUALQUIER dispatch abierto del hogar y le borraba date+techs. Si el
-      // cliente ya tenia OTRA cita agendada a futuro (ej. cambio de filtro el
-      // 25), reagendar la visita del 20 se comia esa cita: desaparecia del
-      // calendario, sin tecnico y sin aviso. Ahora solo se reutiliza un
-      // dispatch SIN fecha, o el de la visita que se esta reagendando, o uno
-      // ya vencido — nunca una cita futura viva.
-      var _todayISO=(typeof fmtD==="function")?fmtD(new Date()):new Date().toISOString().slice(0,10);
-      var _cands=(typeof active!=="undefined"?active:[]).filter(function(t){
-        if(!(t&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"
-          &&!t.fieldReportSubmitted&&t.id!==srcDocId
-          &&_custSameHousehold(t.customer,cust)))return false;
-        var td=(t.date||"").trim();
-        if(!td)return true;                       // ya esta en "necesita fecha"
-        if(origDate&&td===origDate)return true;   // ES la visita que se reagenda
-        if(td<_todayISO)return true;              // cita vencida, no se pierde nada
-        return false;                             // cita futura viva -> NO tocar
-      });
-      if(!_cands.length)return null;
-      _cands.sort(function(a,b){
-        var sa=((a.date||"").trim()===origDate&&origDate?0:1)-( _pairTechOverlap(srcData.techs,a.techs)?0.5:0);
-        var sb=((b.date||"").trim()===origDate&&origDate?0:1)-( _pairTechOverlap(srcData.techs,b.techs)?0.5:0);
-        if(sa!==sb)return sa-sb;
-        return String(a.id).localeCompare(String(b.id));
-      });
-      return _cands[0];
-    })();
-    if(openDisp){
-      // AUDIT FIX Jun 2026: the reused dispatch's ORIGINAL notes are the
-      // customer's last call comment ("LEAKING — call before arriving", gate
-      // codes, etc.). Overwriting them with only the tech's reschedule note
-      // silently destroyed that context — the office re-booked blind. Now the
-      // previous call notes are PRESERVED below the reschedule header.
-      var keepNotes=(openDisp.notes||"").trim();
-      var mergedNotes=newNotes+(keepNotes&&newNotes.indexOf(keepNotes)<0?("\n\n\u2014 Previous call notes \u2014\n"+keepNotes):"");
-      await db.collection("tickets").doc(openDisp.id).update({
-        date:"",status:"pending",techs:[],autoFromResched:true,
-        reschedFromId:srcDocId,notes:mergedNotes,reschedAt:stamp,reschedAtMs:stampMs,
-        reschedReason:reason||"",reschedNote:reasonNote||"",
-        // REAGENDAR v2 (20 jul 2026): la llamada de vuelta ya no nace vacia.
-        // techs:[] se mantiene (queda SIN asignar, es correcto), pero el tecnico
-        // que estuvo ahi viaja como SUGERIDO — antes se perdia y la oficina
-        // re-decidia a ciegas quien conoce el trabajo.
-        techsSuggested:(srcData.techs||[]).slice(0,3),
-        reschedBlocker:srcData.reschedBlocker||"",
-        reschedBlockerPart:srcData.reschedBlockerPart||"",
-        reschedNotBefore:srcData.reschedNotBefore||"",
-        reschedAvailability:srcData.reschedAvailability||"",
-        reschedUrgent:!!srcData.reschedUrgent,
-        isUrgent:(!!srcData.reschedUrgent)||srcData.isUrgent||false,
-        // COLA: "waiting" (esperando parte/2o tecnico) vs "ready" (solo falta
-        // fecha). Antes estaban mezcladas y la oficina llamaba en vano.
-        reschedQueue:((srcData.reschedBlocker==="part"||srcData.reschedBlocker==="tech2"||srcData.reschedBlocker==="equip")?"waiting":"ready"),
+    // ── (2) LO QUE EL TECNICO YA NOS DIJO. Se asimila, no se resume.
+    var techStr=(srcData.techs||[]).join(", ");
+    var origDate=(srcData.date||"").trim();
+    var reason=(srcData.reschedReason||"").trim();
+    var reasonNote=(srcData.reschedNote||"").trim();
+    var _rsD=new Date();
+    var _rsMDY=("0"+(_rsD.getMonth()+1)).slice(-2)+"/"+("0"+_rsD.getDate()).slice(-2)+"/"+_rsD.getFullYear();
+    var noteHead=_rsMDY+" \u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"
+      +(origDate?(" scheduled for "+origDate):"")+". Needs a new appointment date.";
+    if(reason)noteHead+="\nReason: "+reason+(reasonNote?(" \u2014 "+reasonNote):"");
+    var _blkTxt=(typeof _reschedBlockerLabel==="function")?_reschedBlockerLabel(srcData):"";
+    var _avTxt=(typeof _reschedAvailLabel==="function")?_reschedAvailLabel(srcData):"";
+    if(_blkTxt)noteHead+="\n\u26A0\uFE0F Para volver: "+_blkTxt;
+    if(_avTxt)noteHead+="\n\uD83D\uDCC5 "+_avTxt;
 
-        // FIX (Jul 2026): never resurface a call with empty SPA INFO
-        spaDesc:(((openDisp.spaDesc||"").trim())?openDisp.spaDesc:(((srcData.spaDesc||"").trim())?srcData.spaDesc:_custBestSpaDesc(cust,srcDocId))),
-        // AUDIT FIX (Jun 2026 — reschedule-orphan race): if auto-cleanup closed
-        // this dispatch milliseconds before we reuse it (it saw the reschedule
-        // report as a same-day fulfilment), the resurfaced call kept
-        // fieldReportSubmitted:true and was INVISIBLE in every view forever.
-        // Resurfacing must always reopen it.
-        fieldReportSubmitted:false,
-        fieldReportId:firebase.firestore.FieldValue.delete(),
-        fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
-        cleanedUpBy:firebase.firestore.FieldValue.delete()
-      });
-      try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:openDisp.id})}catch(_e){}
-      try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:cust,app:"tickets",type:"ticket.rescheduled",title:"↻ Rescheduled"+(reason?" — "+reason:""),actor:techStr||""});}catch(_be){}
-      if(_estCarry.estimate){
-        try{
-          var _upd=Object.assign({},_estCarry);
-          if(_estPdfMedia.length)_upd.media=firebase.firestore.FieldValue.arrayUnion.apply(null,_estPdfMedia);
-          await db.collection("tickets").doc(openDisp.id).update(_upd);
-        }catch(_ee){console.warn("[resched estimate carry reuse]",_ee)}
-      }
-      return;
-    }
+    // El REPORTE COMPLETO del tecnico, no un extracto. Es lo que el proximo
+    // tecnico necesita leer antes de subirse a la camioneta.
+    var techReport=String(srcData.aiReportNotes||srcData.servicePerformed||srcData.notes||"").trim();
+    var newNotes=noteHead+(techReport?("\n\n\u2014 Tech notes \u2014\n"+techReport):"");
+    // ...y las notas de oficina del ticket que se reagenda (codigos de puerta,
+    // "llamar antes", etc). Se conservan: se re-agenda sabiendo lo mismo.
+    var officeNotes=oldTkt?String(oldTkt.notes||"").trim():"";
+    if(officeNotes&&newNotes.indexOf(officeNotes)<0)
+      newNotes+="\n\n\u2014 Previous call notes \u2014\n"+officeNotes;
 
-    // ── Otherwise build a fresh dispatch ticket, enriching contact info from
-    //    customer history (field reports don't carry phone/address).
+    // ── (3) el ticket nuevo, con TODO lo que ya sabemos ────────────────────
+    var base=oldTkt||{};
     var cd=null;try{cd=_findExistingCustomerData(cust,srcDocId)}catch(_e){}
-    // AUDIT FIX Jun 2026: also carry the customer's most recent prior comment
-    // (their last call notes / gate code / access info) into the new call, so
-    // the office never re-books without the context the last ticket had.
-    try{
-      var _hist=_pool.filter(function(x){
-        return x&&x.id!==srcDocId&&x.customer&&(x.notes||"").trim()
-          &&_custSameHousehold(x.customer,cust);
-      }).sort(function(a,b){
-        // Prefer DISPATCH-source notes: those are the customer's actual call
-        // comments (gate codes, access info). A newer tech-report note must
-        // not shadow them — the tech notes already travel in the header above.
-        var sa=a.source==="dispatch"?0:1, sb=b.source==="dispatch"?0:1;
-        if(sa!==sb)return sa-sb;
-        var ma=(typeof _ticketCreatedMs==="function")?_ticketCreatedMs(a):0;
-        var mb=(typeof _ticketCreatedMs==="function")?_ticketCreatedMs(b):0;
-        return mb-ma;
-      });
-      var _lastN=_hist.length?(_hist[0].notes||"").trim():"";
-      if(_lastN&&newNotes.indexOf(_lastN)<0){
-        newNotes+="\n\n\u2014 Last customer notes"+(_hist[0].date?(" ("+_hist[0].date+")"):"")+" \u2014\n"+_lastN;
-      }
-    }catch(_e){}
-    var w=srcData.warranty||{};
-    var wt=(srcData.workTypes||[]).filter(function(x){return x&&x!=="Service Call"});
+    var pick=function(a,b,c){return (a!==undefined&&a!==null&&a!=="")?a:((b!==undefined&&b!==null&&b!=="")?b:c)};
+    var w=srcData.warranty||base.warranty||{};
+    var wt=(base.workTypes||srcData.workTypes||[]).filter(function(x){return x&&x!=="Service Call"});
     if(!wt.length)wt=["Service Call"];
-    // AUDIT FIX Jun 2026 (validated by 1000-device concurrency simulation):
-    // add() gave the auto-dispatch a RANDOM id, so two devices processing the
-    // SAME reschedule concurrently (double-tap, edit+submit double path, or two
-    // open tabs) each created their own dispatch — duplicate "needs a date"
-    // calls for one customer. A DETERMINISTIC id derived from the source report
-    // makes creation idempotent: the second writer lands on the SAME doc.
-    var docRef=db.collection("tickets").doc("resched_"+srcDocId);
-    await docRef.set({
+    // Las fotos y PDFs que el tecnico subio VIAJAN con la cita nueva.
+    var carryMedia=(Array.isArray(srcData.media)?srcData.media:[]).slice(0,20);
+
+    var doc={
       customer:(cd&&cd.bestName&&cd.bestName.length>cust.length)?cd.bestName:cust,
-      date:"",techs:[],workTypes:wt,
-      warranty:{has:w.has===true?true:w.has===false?false:null,model:w.model||"",year:w.year||0,type:w.type||"rda",label:w.label||"N/W"},
-      visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
-      spaDesc:(((srcData.spaDesc||"").trim())?srcData.spaDesc:_custBestSpaDesc(cust,srcDocId)),notes:newNotes,
-      phone:(cd&&cd.phone)||srcData.phone||"",phone2:(cd&&cd.phone2)||srcData.phone2||"",
-      email:(cd&&cd.email)||srcData.email||"",
-      address:(cd&&cd.address)||srcData.address||"",city:(cd&&cd.city)||srcData.city||"",
-      zip:(cd&&cd.zip)||srcData.zip||"",zone:(cd&&cd.zone)||srcData.zone||"",
-      ccOnFile:srcData.ccOnFile||false,ccRequested:srcData.ccRequested||false,
-      isRepeat:false,isNewSpa:false,
-      payCheck:srcData.payCheck||false,payCredit:srcData.payCredit||false,
-      media:[],videoLinks:null,source:"dispatch",status:"pending",
-      autoFromResched:true,reschedFromId:srcDocId,reschedAt:stamp,reschedAtMs:stampMs,
+      source:"dispatch",status:"pending",
+      date:"",techs:[],                       // la oficina pone fecha y asigna
+      workTypes:wt,
+      // ── la cadena, ESCRITA. Nada de esto se vuelve a deducir nunca.
+      autoFromResched:true,
+      reschedOfTicketId:oldTktId||"",          // la visita que continua
+      reschedReportId:srcDocId,                // el reporte que la declaro
+      reschedFromId:srcDocId,                  // (nombre historico, mismo valor)
+      reschedAt:stamp,reschedAtMs:stampMs,
+      visitNum:(Number(base.visitNum)||Number(srcData.visitNum)||1)+1,
+      // ── lo que el tecnico informo, estructurado
       reschedReason:reason||"",reschedNote:reasonNote||"",
-        // REAGENDAR v2 (20 jul 2026): la llamada de vuelta ya no nace vacia.
-      // techs:[] se mantiene (queda SIN asignar, es correcto), pero el tecnico
-      // que estuvo ahi viaja como SUGERIDO — antes se perdia y la oficina
-      // re-decidia a ciegas quien conoce el trabajo.
-      techsSuggested:(srcData.techs||[]).slice(0,3),
       reschedBlocker:srcData.reschedBlocker||"",
       reschedBlockerPart:srcData.reschedBlockerPart||"",
       reschedNotBefore:srcData.reschedNotBefore||"",
       reschedAvailability:srcData.reschedAvailability||"",
       reschedUrgent:!!srcData.reschedUrgent,
-      isUrgent:(!!srcData.reschedUrgent)||srcData.isUrgent||false,
-      // COLA: "waiting" (esperando parte/2o tecnico) vs "ready" (solo falta
-      // fecha). Antes estaban mezcladas y la oficina llamaba en vano.
+      isUrgent:(!!srcData.reschedUrgent)||base.isUrgent||false,
       reschedQueue:((srcData.reschedBlocker==="part"||srcData.reschedBlocker==="tech2"||srcData.reschedBlocker==="equip")?"waiting":"ready"),
-
-      // FRESH-CREATE FLAG-CLEAR (Jun 2026 — sim): this is set({merge:true}) on the
-      // DETERMINISTIC doc id "resched_<src>". If that doc already exists in a CLOSED
-      // state (a prior auto-call that was dismissed or auto-cleaned), merge would
-      // KEEP its stale fieldReportSubmitted:true and the re-booking call would be
-      // born invisible. The reuse path already clears these; the create path must
-      // too, so a re-created call is always born OPEN.
-      fieldReportSubmitted:false,
-      fieldReportId:firebase.firestore.FieldValue.delete(),
-      fieldReportSubmittedAt:firebase.firestore.FieldValue.delete(),
-      cleanedUpBy:firebase.firestore.FieldValue.delete(),
+      techsSuggested:(srcData.techs||[]).slice(0,3),
+      // ── el reporte previo, ENTERO, para que el proximo tecnico lo lea
+      priorVisit:{
+        ticketId:oldTktId||"",reportId:srcDocId,
+        date:origDate||"",techs:(srcData.techs||[]).slice(0,4),
+        arrival:srcData.arrival||"",departure:srcData.departure||"",
+        report:techReport.slice(0,4000),
+        parts:(Array.isArray(srcData.parts)?srcData.parts:[]).slice(0,20),
+        blocker:srcData.reschedBlocker||"",reason:reason||""
+      },
+      notes:newNotes,
+      media:carryMedia,
+      // ── el cliente y su spa: se lleva todo, no se re-busca
+      spaDesc:pick((base.spaDesc||"").trim(),(srcData.spaDesc||"").trim(),_custBestSpaDesc(cust,srcDocId)),
+      phone:pick(base.phone,(cd&&cd.phone),srcData.phone||""),
+      phone2:pick(base.phone2,(cd&&cd.phone2),srcData.phone2||""),
+      email:pick(base.email,(cd&&cd.email),srcData.email||""),
+      address:pick(base.address,(cd&&cd.address),srcData.address||""),
+      city:pick(base.city,(cd&&cd.city),srcData.city||""),
+      zip:pick(base.zip,(cd&&cd.zip),srcData.zip||""),
+      zone:pick(base.zone,(cd&&cd.zone),srcData.zone||""),
+      warranty:{has:w.has===true?true:w.has===false?false:null,model:w.model||"",year:w.year||0,type:w.type||"rda",label:w.label||"N/W"},
+      ccOnFile:!!(base.ccOnFile||srcData.ccOnFile),ccRequested:!!(base.ccRequested||srcData.ccRequested),
+      payCheck:!!(base.payCheck||srcData.payCheck),payCredit:!!(base.payCredit||srcData.payCredit),
+      isRepeat:false,isNewSpa:false,
+      // ── NACE LIMPIA. Es una visita que todavia no ocurrio.
+      noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
+      videoLinks:null,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:stamp
-    },{merge:true});
-    try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:docRef.id})}catch(_e){}
-    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:cust,app:"tickets",type:"ticket.rescheduled",title:"↻ Rescheduled"+(reason?" — "+reason:""),actor:techStr||""});}catch(_be){}
-    if(_estCarry.estimate){
-      try{await docRef.update(Object.assign({media:_estPdfMedia},_estCarry))}catch(_ee){console.warn("[resched estimate carry fresh]",_ee)}
+    };
+    // El estimado aprobado, si lo hay, viaja con la cita de vuelta.
+    if(srcData&&srcData.estimate){doc.approvedEstimate=true;doc.estimate=srcData.estimate;}
+    await db.collection("tickets").doc(newId).set(doc,{merge:true});
+
+    // ── (4) la visita vieja se cierra SIENDO LO QUE FUE ────────────────────
+    //    El tecnico estuvo ahi y lo reporto. Marcarla como servida por SU
+    //    reporte es la verdad. El ticket nuevo es OTRO documento, asi que ya
+    //    no existe la contradiccion de que un reporte cierre la cita que creo.
+    if(oldTkt&&oldTkt.source==="dispatch"){
+      try{
+        await db.collection("tickets").doc(oldTktId).update({
+          fieldReportSubmitted:true,
+          fieldReportId:srcDocId,
+          fieldReportSubmittedAt:new Date().toISOString(),
+          reschedDispatchId:newId,
+          cleanedUpBy:firebase.firestore.FieldValue.delete()
+        });
+      }catch(_oe){console.warn("[resched cerrar visita vieja]",_oe)}
     }
+    try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:newId,dispatchId:oldTktId||""})}catch(_e){}
+    try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:cust,app:"tickets",type:"ticket.rescheduled",title:"\u21BB Rescheduled"+(reason?" \u2014 "+reason:""),actor:techStr||""});}catch(_be){}
+    try{_audit("resched-new-visit",{ticketId:newId,customer:cust,note:"visita nueva creada desde el reporte "+srcDocId+(oldTktId?(" (continua "+oldTktId+")"):"")});}catch(_a){}
   }catch(e){console.warn("[_autoCreateReschedDispatch]",e)}
 }
 // Safety net: find reschedule field reports whose customer has NO open Service
@@ -19232,9 +19344,17 @@ function _buildFieldReportIndex(){
   // one open dispatch (nearest date first, ±30 days, report created AFTER the
   // dispatch when both timestamps exist; legacy/no-timestamp pairs only count
   // once the dispatch date is in the past).
-  const servedDispatchIds=new Set();
-  const servedDispatchReportId={}; // dispatchId -> reportId that fulfilled it
+  // ── v2.0.0 ─────────────────────────────────────────────────────────────
+  // servedDispatchIds ya NO se adivina: se LEE del vinculo duro. Cambiando
+  // esto en UN solo lugar, los 8 consumidores (calendario, mapas, service log,
+  // capacidad, cleanup, KPIs) pasan a leer el hecho registrado sin tocarlos.
+  // El emparejamiento por cercania queda abajo, pero YA NO DECIDE NADA: solo
+  // PROPONE vinculos para la cola legacy, y solo cuando son inequivocos.
+  const _lnk=_linkIndex();
+  const servedDispatchIds=new Set(Object.keys(_lnk.servedBy));
+  const servedDispatchReportId=Object.assign({},_lnk.servedBy);
   const _prToday=fmtD(new Date());
+  const proposedLinks={};   // dispatchId -> reportId  (propuesta, no decision)
   Object.keys(_openByCust).forEach(cust=>{
     const reps=(customerReports[cust]||[]).filter(r=>r.id&&!consumedReportIds.has(r.id));
     if(!reps.length)return;
@@ -19273,11 +19393,12 @@ function _buildFieldReportIndex(){
     cand.forEach(c=>{
       if(ru.has(c.ri)||du.has(c.dj))return;
       ru.add(c.ri);du.add(c.dj);
-      servedDispatchIds.add(disps[c.dj].id);
-      servedDispatchReportId[disps[c.dj].id]=reps[c.ri].id;
+      // PROPUESTA, no decision. Solo el respaldo de legacy la puede usar, y
+      // solo si es inequivoca (ver _backfillMissingLinks).
+      if(!servedDispatchIds.has(disps[c.dj].id))proposedLinks[disps[c.dj].id]=reps[c.ri].id;
     });
   });
-  return {fieldReportKeys,customerHasCompletedReport,customerReports,servedDispatchIds,servedDispatchReportId,consumedReportIds};
+  return {fieldReportKeys,customerHasCompletedReport,customerReports,servedDispatchIds,servedDispatchReportId,consumedReportIds,proposedLinks,link:_lnk};
 }
 
 // Is there a field report within ±30 days of this dispatch's visit date,
@@ -19312,8 +19433,11 @@ function _hasMatchingReport(cust,dispatchDate,dispatchCreatedMs,customerReports,
 function _isVisibleDispatch(t,idx,today,isTech){
   if(!t)return false;
   if(t.source!=="dispatch")return false;
-  if(t.fieldReportSubmitted)return false;
   if(t.status==="canceled")return false;
+  // v2.0.0: el booleano ya no decide. Si dice "reportado" pero no hay vinculo
+  // valido, la visita SIGUE PENDIENTE y tiene que verse. Ese era exactamente
+  // el caso del ticket de manana con la insignia verde.
+  if(String(t.cleanedUpBy||"").indexOf("manual-dismiss")===0)return false;
   // AUDIT FIX (Jun 2026): membership in the one-report-one-dispatch pairing
   // replaces the old same-day-any-report + broad ±30d checks. A reschedule
   // report no longer hides anything, and one completed report can hide at
@@ -20154,7 +20278,9 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   const needsReport=t.source==="dispatch"&&!!t.checkInAt&&!!t.checkOutAt&&!t.fieldReportSubmitted&&t.status!=="canceled";
   // REPORTED (Jun 2026, Option A): a dispatch whose field report is already in.
   // Stays in the calendar as a green "✓ Reported" card instead of disappearing.
-  const reported=t.source==="dispatch"&&t.fieldReportSubmitted===true&&t.status!=="canceled";
+  // v2.0.0: la insignia verde sale del VINCULO, no del booleano. Si el dato
+  // dice "reportada" pero no hay reporte real ligado, la tarjeta no lo afirma.
+  const reported=t.source==="dispatch"&&t.status!=="canceled"&&_isDispatchServed(t);
   const reschedReport=t.source!=="dispatch"&&t.status==="reschedule"; // a filed reschedule report — tech went & reported; visit still needs re-booking
   let cardEdge="";
   if(t.isUrgent)cardEdge=";border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)";
