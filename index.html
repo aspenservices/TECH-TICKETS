@@ -5587,7 +5587,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.5.0";
+var APP_VERSION="2.7.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -10187,10 +10187,48 @@ async function toggleUserHidden(i){
 const LIVE_WINDOW_MONTHS=6;
 const _liveSinceISO=(function(){var d=new Date();d.setMonth(d.getMonth()-LIVE_WINDOW_MONTHS);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
 var _liveDocs=new Map(),_staleActiveDocs=new Map(),_archiveDocs=new Map(),_archiveLoaded=false,_archiveLoading=false;
+// ═══════════════════════════════════════════════════════════════════════════
+//   LA EVIDENCIA ENTRA LIMPIA                              (v2.7.0)
+// ═══════════════════════════════════════════════════════════════════════════
+// v2.2.0 escribio la regla correcta -- un check-in pertenece a la visita cuya
+// FECHA lleva -- pero la aplico en DOS sitios: la insignia del calendario y el
+// check-out. En el archivo hay CINCUENTA Y DOS lugares que leen t.checkInAt /
+// t.checkOutAt directo: la hoja del ticket, el check-in, la capacidad diaria,
+// los mapas, los exportes, los KPI. Cada uno era una oportunidad de mentir, y
+// el numero 53 que alguien agregue manana tambien lo seria. Por eso el tecnico
+// seguia viendo "Visit complete" en la cita de HOY con el check-in de Angel del
+// 23 de julio, y no podia registrar el suyo.
+//
+// Ensenarle la regla a 52 lectores no es la solucion: es 52 oportunidades de
+// olvidarse. El dato entra LIMPIO por la unica puerta por la que entra.
+// take() de _mergeTicketSources es esa puerta: TODO ticket pasa por ahi, venga
+// del listener en vivo, del barrido de viejos o del archivo.
+// Lo que se quita no se pierde: queda en _ghostVisit para poder repararlo en
+// Firestore cuando el tecnico haga su check-in de verdad.
+function _stripForeignVisitEvidence(t){
+  try{
+    if(!t||t.source!=="dispatch")return t;
+    var d=String(t.date||"").trim(); if(!d)return t;
+    var ajeno=function(iso){ if(!iso)return false; try{return fmtD(new Date(iso))!==d}catch(_e){return false} };
+    var g=null;
+    if(ajeno(t.checkInAt)){
+      g=g||{}; g.checkInAt=t.checkInAt; g.checkInBy=t.checkInBy||"";
+      t.checkInAt="";t.checkInBy="";t.checkInLat=null;t.checkInLng=null;t.checkInDist=null;t.checkInVerified=false;
+    }
+    if(ajeno(t.checkOutAt)){
+      g=g||{}; g.checkOutAt=t.checkOutAt; g.checkOutBy=t.checkOutBy||"";
+      t.checkOutAt="";t.checkOutBy="";t.checkOutLat=null;t.checkOutLng=null;t.checkOutDist=null;
+      t.checkOutVerified=false;t.checkOutDuration=null;
+    }
+    if(g)t._ghostVisit=g; else if(t._ghostVisit)delete t._ghostVisit;
+  }catch(_e){}
+  return t;
+}
 function _mergeTicketSources(){
   var seen=new Set();active=[];done=[];coachingCalls=[];
   function take(d){
     if(seen.has(d.id))return;seen.add(d.id);
+    _stripForeignVisitEvidence(d);   // v2.7.0: nadie ve evidencia de otra visita
     if(d.source==="coaching"){coachingCalls.push(d);return;}
     if(d.status==="done")done.push(d);else active.push(d);
   }
@@ -25728,13 +25766,17 @@ async function _doCheckIn(ticketId){
     checkInVerified:verified,
     checkInBy:currentUser.name
   };
-  // v2.2.0: si este ticket arrastraba el check-out de OTRA visita, se borra aqui.
-  // Asi el dato viejo se autocorrige con el uso normal, sin migracion ni batch.
-  if(t.checkOutAt&&!_sameVisitStamp(t,t.checkOutAt)){
+  // v2.7.0: el fantasma ya no se ve en memoria (se limpia al entrar), pero
+  // sigue en Firestore. El check-in real es el momento honesto de borrarlo:
+  // el dato se autocorrige con el uso, sin migracion ni batch.
+  if(t._ghostVisit){
     var _D=firebase.firestore.FieldValue.delete();
     payload.checkOutAt=_D;payload.checkOutBy=_D;payload.checkOutLat=_D;payload.checkOutLng=_D;
     payload.checkOutDist=_D;payload.checkOutVerified=_D;payload.checkOutDuration=_D;
-    try{delete t.checkOutAt;delete t.checkOutBy;delete t.checkOutDuration}catch(_e){}
+    payload.ghostVisitCleared=new Date().toISOString();
+    try{delete t._ghostVisit}catch(_e){}
+    try{_audit("ghost-visit-cleared",{ticketId:t.id,customer:t.customer||"",
+      note:"se borro el check-in/out heredado de otra visita al registrar el real"});}catch(_a){}
   }
   try{
     await db.collection("tickets").doc(ticketId).update(payload);
@@ -31631,7 +31673,7 @@ body.v8r-open .toast{z-index:1000010}
   try{window.ensureOverlay=ensureOverlay}catch(_){}
   window.openCustomerReportPreview=function(id){
     var t=findTicket(id);if(!t){try{toast('Ticket not found','warn')}catch(_){}return}
-    window.__v8CurrentTicketId=String(id);var ci=customerInfo(t),ph=photos(t),pd=pdfs(t),rep=report(t),before=ph.slice(0,Math.ceil(ph.length/2)),after=ph.slice(Math.ceil(ph.length/2)),lg=logo(),tech=(t.techs||[]).filter(Boolean).join(', ')||'—',amt=total(t),rid='SR-'+String(t.date||'').replace(/-/g,'')+'-'+String(t.id||'').slice(-4).toUpperCase();
+    window.__v8CurrentTicketId=String(id);try{var _pp=document.getElementById("v8ReportPaper");if(_pp)_pp.setAttribute("data-tkt",String(id))}catch(_e){}var ci=customerInfo(t),ph=photos(t),pd=pdfs(t),rep=report(t),before=ph.slice(0,Math.ceil(ph.length/2)),after=ph.slice(Math.ceil(ph.length/2)),lg=logo(),tech=(t.techs||[]).filter(Boolean).join(', ')||'—',amt=total(t),rid='SR-'+String(t.date||'').replace(/-/g,'')+'-'+String(t.id||'').slice(-4).toUpperCase();
     var brand=lg?'<img src="'+esc(lg)+'" alt="Aspen Spas">':'<div class="v8r-wordmark">ASPEN SPAS</div>';
     var paper='<div class="v8r-brand">'+brand+'<div class="v8r-doc-title"><b>SERVICE REPORT</b><span>#'+esc(rid)+'</span></div></div>'
       +'<div class="v8r-grid2"><div><div class="v8r-sec-title">Customer Information</div><div class="v8r-info"><b>'+esc(ci.name)+'</b><br>'+esc(ci.phone)+'<br>'+esc(ci.email)+'<br>'+esc(ci.address)+'</div></div><div><div class="v8r-sec-title">Report Information</div><div class="v8r-info">Date: '+esc(t.date||'—')+'<br>Technician: '+esc(tech)+'<br>Work Order: '+esc(t.invoice||t.workOrder||t.id||'—')+'<br>Time on Site: '+esc((t.arrival||'—')+' – '+(t.departure||'—'))+'</div></div></div>'
@@ -31662,9 +31704,68 @@ body.v8r-open .toast{z-index:1000010}
     document.documentElement.style.overflow='';
   };
   window.v8PrintReport=function(){
-    // body.v8r-open + la regla @media print dejan SOLO el reporte en el papel.
-    try{ window.print() }
-    catch(e){ _v8Say('Your browser blocked printing. Use File \u2192 Print.','warn') }
+    /* ═══════════════════════════════════════════════════════════════════════
+         EL PAPEL SOLO CONTIENE EL REPORTE                    (v2.6.0)
+       ═══════════════════════════════════════════════════════════════════════
+       Esto era window.print() sobre el documento del app, mas una regla
+       @media print que ESCONDE todo lo demas. Pero esconder no es no tener:
+       el navegador igual tiene que construir el arbol de impresion de los
+       3,5 MB de app -- calendario, todas las pestanas, miles de nodos, las
+       imagenes -- y recien despues aplicar display:none. Con un reporte con
+       fotos eso desborda la memoria de Safari y la pagina SE CAE: es el
+       "This webpage was reloaded because a problem occurred" que veia Alberto.
+       Encima habia CUATRO bloques @media print de capas distintas compitiendo,
+       asi que el resultado dependia del orden en que quedaran.
+       Ahora el reporte se imprime en SU PROPIO documento aislado. El navegador
+       maqueta solo el reporte: sin app, sin reglas en pugna, sin caida. Y sale
+       igual en Safari, en Chrome y en el iPhone, porque ya no depende de que
+       @media print gane la pelea. */
+    var paper=document.getElementById('v8ReportPaper');
+    if(!paper||!String(paper.innerHTML).trim()){_v8Say('El reporte todavia no esta cargado.','warn');return}
+    var fr=null;
+    try{
+      var css='';
+      ['customerServiceReportV11Style','customerUltraTechV8ReportStyle'].forEach(function(sid){
+        try{var el=document.getElementById(sid); if(el)css+=(el.textContent||'')}catch(_e){}
+      });
+      var old=document.getElementById('v8PrintFrame'); if(old)old.remove();
+      fr=document.createElement('iframe');
+      fr.id='v8PrintFrame'; fr.setAttribute('aria-hidden','true');
+      fr.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0';
+      document.body.appendChild(fr);
+      var d=fr.contentWindow.document;
+      d.open();
+      d.write('<!doctype html><html><head><meta charset="utf-8"><title>Aspen Service Report</title><style>'
+        +css
+        +'@page{margin:12mm}'
+        +'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+        +'.v8r-paper{width:auto!important;max-width:none!important;box-shadow:none!important;border-radius:0!important;padding:0!important;background:#fff}'
+        +'.v8r-block,.v8r-photo,.v8r-parts tr,.v11-section,.v11-table tr{break-inside:avoid;page-break-inside:avoid}'
+        +'img{max-width:100%}'
+        +'</style></head><body><div class="v8r-paper">'+paper.innerHTML+'</div></body></html>');
+      d.close();
+      var lanzado=false;
+      var imprimir=function(){
+        if(lanzado)return; lanzado=true;
+        try{ fr.contentWindow.focus(); fr.contentWindow.print(); }
+        catch(e){ _v8Say('El navegador bloqueo la impresion. Usa Archivo \u2192 Imprimir.','warn'); }
+        // se retira solo; si se quita antes, Safari cancela el dialogo
+        setTimeout(function(){try{fr.remove()}catch(_e){}},60000);
+      };
+      // Esperar a que carguen las imagenes del reporte: sin esto salen en blanco.
+      var imgs=[];try{imgs=Array.prototype.slice.call(d.images||[])}catch(_e){}
+      var faltan=imgs.filter(function(i){return !i.complete}).length;
+      if(!faltan){ setTimeout(imprimir,120); }
+      else{
+        var listas=0;
+        var tick=function(){listas++; if(listas>=faltan)setTimeout(imprimir,80)};
+        imgs.forEach(function(i){ if(!i.complete){i.addEventListener('load',tick);i.addEventListener('error',tick)} });
+        setTimeout(imprimir,4000);   // tope duro: nunca dejarlo colgado
+      }
+    }catch(e){
+      try{if(fr)fr.remove()}catch(_e){}
+      _v8Say('No se pudo preparar la impresion: '+((e&&e.message)||e),'err');
+    }
   };
   window.v8OpenTicket=function(){
     var id=window.__v8CurrentTicketId;
@@ -31679,8 +31780,18 @@ body.v8r-open .toast{z-index:1000010}
     },60);
   };
   window.v8EmailCurrentReport=function(){
+    /* v2.6.0: si la pagina se recargo (o el visor se abrio por otro camino),
+       el global se pierde y el boton parecia muerto. El reporte pintado lleva
+       su propio id, asi que se resuelve del DOM antes de rendirse. */
     var id=window.__v8CurrentTicketId;
-    if(!id){_v8Say('No ticket is loaded in this report.');return}
+    if(!id){
+      try{
+        var pp=document.getElementById('v8ReportPaper');
+        id=(pp&&(pp.getAttribute('data-tkt')||pp.dataset&&pp.dataset.tkt))||'';
+      }catch(_e){}
+    }
+    if(!id){_v8Say('El reporte todavia no esta cargado. Cierra y vuelve a abrirlo.','warn');return}
+    window.__v8CurrentTicketId=String(id);
     if(typeof openReportModalById!=='function'){
       _v8Say('The customer-report sender is not available in this build.');return;
     }
@@ -31829,7 +31940,7 @@ body.v8r-open .toast{z-index:1000010}
   function ensure(){var o=document.getElementById('v8ReportOverlay');if(o)return o;return typeof ensureOverlay==='function'?ensureOverlay():null}
   window.openCustomerReportPreview=function(id){
     var t=find(id);if(!t){try{toast('Ticket not found','warn')}catch(_){}return}
-    window.__v8CurrentTicketId=String(id);var o=ensure();if(!o)return;
+    window.__v8CurrentTicketId=String(id);try{var _pp=document.getElementById("v8ReportPaper");if(_pp)_pp.setAttribute("data-tkt",String(id))}catch(_e){}var o=ensure();if(!o)return;
     var ci=customer(t),rep=techReport(t),ph=photos(t),docs=pdfs(t),m=mins(t),ch=charges(t),lg=logo(),tech=(t.techs||[]).filter(Boolean).join(', ')||'Not recorded',rid='SR-'+String(t.date||'').replace(/-/g,'')+'-'+String(t.id||'').slice(-5).toUpperCase();
     var brand=brandMark();
     var summary=(t.outcome||t.finalStatus||'').trim()||('Service visit completed. '+(t.operational===false?'Further service may be required.':'The recorded work and test results are documented below.'));
