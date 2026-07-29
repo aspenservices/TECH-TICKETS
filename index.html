@@ -2096,6 +2096,7 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   #tabBar.tabs #tab1 { order:4; }   /* Daily        */
   #tabBar.tabs #tab2 { order:5; }   /* Completed    */
   #tabBar.tabs #tab12{ order:6; }   /* Coaching     */
+  #tabBar.tabs #tab14{ order:7; }   /* Intake       */
   #tabBar.tabs .nav-grp[data-g="manage"]{ order:10; }
   #tabBar.tabs #tab4 { order:11; }  /* Calendar  */
   #tabBar.tabs #tab6 { order:12; }  /* Customers */
@@ -2910,7 +2911,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 </div>
 <div class="hdr"><img src="data:image/png;base64,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" alt="Aspen Spas" class="hdr-logo"><button class="lock-btn" id="lockBtn" onclick="toggleAdmin()"><span class="lucide-mount" data-lucide="lock" data-size="20" data-color="currentColor"></span></button></div>
 <div class="hdr-sub" data-i18n-es="Sistema de Tickets de Servicio" data-i18n-en="Service Ticket System">Sistema de Tickets de Servicio</div>
-<div class="tabs" id="tabBar"><span class="nav-grp" data-g="work">Trabajo</span><span class="nav-grp" data-g="manage">Gestión</span><span class="nav-grp" data-g="tools">Herramientas</span><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log <span class="badge" id="bdg5" style="display:none">0</span></div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab13" onclick="showTab(13)">💬 Conversations</div><div class="tab hidden" id="tab8" onclick="showTab(8)">Alerts</div><div class="tab hidden" id="tab10" onclick="showTab(10)">🧰 Tech Tools</div><div class="tab hidden" id="tab9" onclick="showTab(9)">💼 My Apps</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab12" onclick="showTab(12)">📞 Coaching <span class="badge" id="bdg12" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div><div class="tab hidden" id="tab7" onclick="showTab(7)">Maps</div><div class="tab hidden" id="tab11" onclick="showTab(11)">📓 Journal</div></div>
+<div class="tabs" id="tabBar"><span class="nav-grp" data-g="work">Trabajo</span><span class="nav-grp" data-g="manage">Gestión</span><span class="nav-grp" data-g="tools">Herramientas</span><div class="tab on" id="tab0" onclick="showTab(0)">Field Report</div><div class="tab hidden" id="tab4" onclick="showTab(4)">Calendar</div><div class="tab hidden" id="tab5" onclick="showTab(5)">Service Log <span class="badge" id="bdg5" style="display:none">0</span></div><div class="tab hidden" id="tab1" onclick="showTab(1)">Daily <span class="badge" id="bdg1" style="display:none">0</span></div><div class="tab hidden" id="tab6" onclick="showTab(6)">Customers</div><div class="tab hidden" id="tab13" onclick="showTab(13)">💬 Conversations</div><div class="tab hidden" id="tab8" onclick="showTab(8)">Alerts</div><div class="tab hidden" id="tab10" onclick="showTab(10)">🧰 Tech Tools</div><div class="tab hidden" id="tab9" onclick="showTab(9)">💼 My Apps</div><div class="tab hidden" id="tab2" onclick="showTab(2)">Completed <span class="badge bg-g" id="bdg2" style="display:none">0</span></div><div class="tab hidden" id="tab12" onclick="showTab(12)">📞 Coaching <span class="badge" id="bdg12" style="display:none">0</span></div><div class="tab hidden" id="tab3" onclick="showTab(3)">Admin</div><div class="tab hidden" id="tab7" onclick="showTab(7)">Maps</div><div class="tab hidden" id="tab11" onclick="showTab(11)">📓 Journal</div><div class="tab hidden" id="tab14" onclick="showTab(14)">📨 Intake <span class="badge" id="bdg14" style="display:none">0</span></div></div>
 <div id="presenceStrip" class="pres-strip pres-strip--global" style="display:none"></div>
 
 <div id="cfgErr" style="display:none"></div>
@@ -3209,6 +3210,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 </div>
 
 <!-- ══ ADMIN PAGE ══ -->
+<div class="wrap" id="pg14"><div id="intakeBody"></div></div>
 <div class="wrap" id="pg13">
   <div style="display:flex;align-items:center;gap:10px;margin:2px 0 12px">
     <span style="font-size:20px">💬</span>
@@ -6104,6 +6106,8 @@ function updAdmin(){
   document.getElementById("tab3").classList.toggle("hidden",!(currentUser&&currentUser.role==="admin"));
   document.getElementById("tab6").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
   {var _t13=document.getElementById("tab13");if(_t13)_t13.classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));}
+  // Intake: admin y organizer. Un tecnico no manda links ni tria clientes.
+  {var _t14=document.getElementById("tab14");if(_t14)_t14.classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));}
   document.getElementById("tab8").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
   // Bullet Journal: shared organization log for office staff (Alberto + Nela).
   document.getElementById("tab11").classList.toggle("hidden",!isAdmin&&!(currentUser&&currentUser.role==="organizer"));
@@ -6114,7 +6118,7 @@ function updAdmin(){
      tiene candado propio arriba, y tab1/tab4/tab12 solo comprueban "hay sesion",
      asi que se colarian si no se cierran aqui explicitamente. */
   if(_isViewer()){
-    [0,1,2,3,4,5,6,7,8,9,11,12,13].forEach(function(n){
+    [0,1,2,3,4,5,6,7,8,9,11,12,13,14].forEach(function(n){
       var t=document.getElementById("tab"+n); if(t)t.classList.add("hidden");
     });
     var _t10=document.getElementById("tab10"); if(_t10)_t10.classList.remove("hidden");
@@ -11572,7 +11576,7 @@ function showTab(i){
   if(document.startViewTransition&&!_reduce){try{document.startViewTransition(function(){_showTabImpl(i)});return}catch(_e){}}
   _showTabImpl(i);
 }
-function _showTabImpl(i){try{closeMoreSheet()}catch(_e){}[0,1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(n=>{var _t=document.getElementById("tab"+n),_p=document.getElementById("pg"+n);if(_t)_t.classList.toggle("on",n===i);if(_p)_p.classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
+function _showTabImpl(i){try{closeMoreSheet()}catch(_e){}[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].forEach(n=>{var _t=document.getElementById("tab"+n),_p=document.getElementById("pg"+n);if(_t)_t.classList.toggle("on",n===i);if(_p)_p.classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
   try{if(typeof _renderPresenceCluster==="function")_renderPresenceCluster()}catch(_e){}
   // Tech Tools hub — render the tool list on entry
   if(i===10){if(typeof renderTechTools==="function")renderTechTools()}
@@ -11594,7 +11598,7 @@ if(i===0&&!editingDocId&&currentUser&&currentUser.role==="tech"&&TECHS.indexOf(c
 // Field Report card shows visual selection on first entry — was previously
 // indeterminate until the user tapped one of the buttons).
 if(i===0&&typeof setMode==="function"){setMode(currentMode||"ticket")}
-if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){if(typeof _restoreSlogSub==="function")_restoreSlogSub();rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();if(i===8)rndrAlerts();if(i===11){bujoInit();rndrBujo();}if(i===12)rndrCoaching();if(i===13)rndrConversations();
+if(i===1)rndrA();if(i===2)rndrD();if(i===3)rndrAdmin();if(i===4)rndrCal();if(i===5){if(typeof _restoreSlogSub==="function")_restoreSlogSub();rndrSlog();if(typeof slRndrMedia==="function")slRndrMedia()}if(i===6)rndrCust();if(i===8)rndrAlerts();if(i===11){bujoInit();rndrBujo();}if(i===12)rndrCoaching();if(i===13)rndrConversations();if(i===14&&typeof rndrIntake==="function")rndrIntake();
 if(typeof updateTodoVisibility==="function")updateTodoVisibility();
 if(typeof buildBottomNav==="function")buildBottomNav();
 _curTab=i;try{if(typeof renderTechReminder==="function")renderTechReminder()}catch(_e){}
@@ -11717,7 +11721,7 @@ function openMoreSheet(){
   var current=-1;[0,1,2,3,4,5,6,7,9,10].forEach(function(n){var el=document.getElementById("tab"+n);if(el&&el.classList.contains("on"))current=n});
   var meta={0:["📋",L2("Reporte de Campo","Field Report")],1:["✅",(currentUser.role==="tech")?L2("Mis Tickets","My Tickets"):L2("Diario","Daily")],
     2:["✔️",L2("Completados","Completed")],3:["⚙️","Admin"],4:["📅",L2("Calendario","Calendar")],5:["📞",L2("Llamadas de Servicio","Service Log")],
-    6:["👥",L2("Clientes","Customers")],7:["🗺️",L2("Mapas","Maps")],8:["🔔",L2("Alertas","Alerts")],9:["💼",L2("Mis Apps","My Apps")],10:["🧰",L2("Herramientas","Tech Tools")],11:["📓",L2("Bitácora","Journal")],12:["📞",L2("Coaching","Coaching Calls")]};
+    6:["👥",L2("Clientes","Customers")],7:["🗺️",L2("Mapas","Maps")],8:["🔔",L2("Alertas","Alerts")],9:["💼",L2("Mis Apps","My Apps")],10:["🧰",L2("Herramientas","Tech Tools")],11:["📓",L2("Bitácora","Journal")],12:["📞",L2("Coaching","Coaching Calls")],14:["📨",L2("Intake","Intake")]};
   var out="";
   // Every tab the user can actually reach (its top-tab exists & isn't .hidden)
   // and isn't already one of the 4 hot tabs. Roles stay the source of truth.
@@ -18360,6 +18364,10 @@ async function shareLinkEstimate(){
 // if it can't be solved remotely — escalated into a real dispatch ticket.
 // ═══════════════════════════════════════════════════════════════════════════
 let _coachNewOpen=false,_coachNewType="phone",_coachReportId=null,_coachRptResolved=true;
+/* v2.9.0: candado de un solo escalado en vuelo. El chequeo de escalatedTicketId
+   solo cubre el estado YA guardado; entre el clic y el update habia ventana
+   para crear dos dispatches con doble tap. */
+let _coachEscBusy=false;
 
 function _coachPhoneClean(p){return String(p||"").replace(/[^\d]/g,"")}
 function _coachH12(t){var m=String(t||"").match(/^(\d{1,2}):(\d{2})/);if(!m)return t||"";var h=+m[1],mn=m[2],ap=h>=12?"PM":"AM";h=h%12||12;return h+":"+mn+" "+ap;}
@@ -18374,7 +18382,14 @@ function _coachSmsBody(c){
     +"Please be right next to your hot tub during the call so we can walk you through it together.\n\n"
     +"Before the call, please text us a few photos of the problem so we can be ready to guide you.\n\nReply to confirm — thank you!";
 }
-function _coachSmsHref(c){return "sms:"+_coachPhoneClean(c.phone)+"?&body="+encodeURIComponent(_coachSmsBody(c));}
+/* v2.9.0: "sms:NUM?&body=" solo funciona en iOS. En Android el separador es
+   "?body=" y con el formato de iOS el mensaje llegaba VACIO. */
+function _smsHref(phone,body){
+  var num=String(phone||"").replace(/[^\d]/g,"");
+  var ios=/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent||"");
+  return "sms:"+num+(ios?"&body=":"?body=")+encodeURIComponent(body||"");
+}
+function _coachSmsHref(c){return _smsHref(c.phone,_coachSmsBody(c));}
 
 // ── CREATE ──────────────────────────────────────────────────────────────────
 function coachToggleNew(){_coachNewOpen=!_coachNewOpen;rndrCoaching();if(_coachNewOpen)setTimeout(function(){var el=document.getElementById("coNewName");if(el)el.focus();},60);}
@@ -18385,12 +18400,17 @@ async function coachCreate(){
   var phone=((document.getElementById("coNewPhone")||{}).value||"").trim();
   var addr=((document.getElementById("coNewAddr")||{}).value||"").trim();
   var city=((document.getElementById("coNewCity")||{}).value||"").trim();
+  /* v2.9.0: email y ZIP se capturan aqui. Sin ellos, coachEscalate creaba el
+     ticket con email:"" y sin zona -- justo los dos datos que hacen falta para
+     mandar el reporte y para rutear al tecnico. */
+  var email=((document.getElementById("coNewEmail")||{}).value||"").trim();
+  var zip=((document.getElementById("coNewZip")||{}).value||"").trim();
   var problem=((document.getElementById("coNewProblem")||{}).value||"").trim();
   var btn=document.getElementById("coCreateBtn");if(btn){btn.disabled=true;btn.textContent="Saving…";}
   try{
     await db.collection("tickets").add({
       source:"coaching",status:"pending",
-      customer:name,phone:phone,phone2:"",address:addr,city:city,zip:"",
+      customer:name,phone:phone,phone2:"",email:email,address:addr,city:city,zip:zip,
       problem:problem,callType:_coachNewType,date:"",time:"",
       coachingReport:null,escalatedTicketId:null,
       createdBy:(currentUser&&currentUser.name)||"",
@@ -18410,7 +18430,14 @@ async function coachSchedule(id){
   catch(e){console.error(e);toast("Could not schedule","err");}
 }
 async function coachUnschedule(id){try{await db.collection("tickets").doc(id).update({status:"pending"});toast("Moved back to To-Schedule");setTimeout(refreshAll,400);}catch(e){toast("Error","err");}}
-async function coachReopen(id){try{await db.collection("tickets").doc(id).update({status:"scheduled"});toast("Reopened");setTimeout(refreshAll,400);}catch(e){toast("Error","err");}}
+/* v2.9.0: reabrir SIN fecha mandaba la llamada a "Scheduled" con la fecha vacia,
+   donde se quedaba atorada: la tarjeta de Scheduled no tiene forma de agendar. */
+async function coachReopen(id){
+  var c=coachingCalls.find(function(x){return x.id===id;})||{};
+  var next=c.date?"scheduled":"pending";
+  try{await db.collection("tickets").doc(id).update({status:next});
+      toast(next==="scheduled"?"Reopened":"Reopened \u2014 back in To-Schedule");
+      setTimeout(refreshAll,400);}catch(e){toast("Error","err");}}
 async function coachDelete(id){if(!(await confirmDialog("Delete this coaching call? This cannot be undone.")))return;try{await db.collection("tickets").doc(id).delete();toast("Deleted");setTimeout(refreshAll,400);}catch(e){toast("Error deleting","err");}}
 
 // ── REPORT (separate from the field report) ─────────────────────────────────
@@ -18443,7 +18470,12 @@ async function coachEscalate(id){
   var c=coachingCalls.find(function(x){return x.id===id;});if(!c)return;
   // Defense in depth: never create a second dispatch for an already-escalated call
   if(c.escalatedTicketId){toast("Already sent to Service Log","warn");return;}
-  if(!(await confirmDialog("Send a technician for "+(c.customer||"this customer")+"?\nThis creates a Service Log ticket for a physical visit.")))return;
+  if(_coachEscBusy){return;}
+  /* El candado se enciende ANTES de abrir el dialogo. Si se encendiera despues,
+     dos taps rapidos entrarian los dos mientras el primero espera la respuesta
+     del usuario, y se crearian DOS dispatches. Verificado con el banco. */
+  _coachEscBusy=true;
+  if(!(await confirmDialog("Send a technician for "+(c.customer||"this customer")+"?\nThis creates a Service Log ticket for a physical visit."))){_coachEscBusy=false;return;}
   var r=c.coachingReport||{};
   var notes="From coaching call ("+(c.callType==="video"?"video":"phone")+")."
     +(c.problem?("\nReported: "+c.problem):"")
@@ -18455,15 +18487,18 @@ async function coachEscalate(id){
       customer:c.customer||"",date:"",techs:[],workTypes:["Service Call"],warranty:null,visitNum:1,noLabor:false,
       arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
       spaDesc:"",notes:notes,reportedIssue:c.problem||"",
-      phone:c.phone||"",phone2:"",email:"",address:c.address||"",city:c.city||"",zip:c.zip||"",zone:"",
+      phone:c.phone||"",phone2:"",email:c.email||"",address:c.address||"",city:c.city||"",zip:c.zip||"",zone:"",
       ccOnFile:false,ccRequested:false,paid:false,paidAt:null,isRepeat:false,isUrgent:false,isNewSpa:false,
       payCheck:false,payCredit:false,paymentBeforeService:false,needsOtherTech:false,daySlots:1,allDay:false,
       media:[],videoLinks:null,source:"dispatch",status:"pending",fromCoaching:true,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()
     });
-    await db.collection("tickets").doc(id).update({escalatedTicketId:ref.id});
+    /* v2.9.0: la llamada se CIERRA al escalar. Antes se quedaba en Scheduled
+       para siempre con solo un pill, y la columna se llenaba de trabajo ya hecho. */
+    await db.collection("tickets").doc(id).update({escalatedTicketId:ref.id,status:"done"});
     toast("Sent to Service Log ✓ — under unassigned calls");setTimeout(refreshAll,400);
   }catch(e){console.error(e);toast("Could not escalate: "+(e.message||e),"err");}
+  finally{_coachEscBusy=false;}
 }
 
 // ── RENDER ──────────────────────────────────────────────────────────────────
@@ -18497,7 +18532,10 @@ function _coachCard(c){
   var resPill=r.resolved===false?'<span class="co-pill co-unres">'+icon("alert-triangle",12)+' Not resolved</span>':'<span class="co-pill co-res">'+icon("check",12)+' Resolved</span>';
   var head='<div class="co-head"><div><div class="co-name">'+esc(c.customer||"—")+'</div><div class="co-sub">'+(c.callType==="video"?icon("video",12)+" Video":icon("phone",12)+" Phone")+' · '+esc(_coachDateLong(c.date)+(c.time?(" · "+_coachH12(c.time)):""))+'</div></div>'+resPill+'</div>';
   var escD=c.escalatedTicketId?' <span class="co-pill co-esc">→ Sent to Service Log</span>':'';
+  var _noRpt=!(r.discussed||r.errorFound||r.recommendation);
   var rptHtml='<div class="co-rpt">'
+    +((_noRpt&&c.escalatedTicketId)?'<div style="color:var(--i3)">Closed by sending a technician \u2014 no coaching report was filled.</div>':'')
+    +((_noRpt&&!c.escalatedTicketId)?'<div style="color:var(--i3)">No report was filled for this call.</div>':'')
     +(r.discussed?('<div><b>Discussed:</b> '+esc(r.discussed)+'</div>'):'')
     +(r.errorFound?('<div><b>Error found:</b> '+esc(r.errorFound)+'</div>'):'')
     +(r.recommendation?('<div><b>Recommended:</b> '+esc(r.recommendation)+'</div>'):'')
@@ -18510,7 +18548,7 @@ function _coachCard(c){
 function rndrCoaching(){
   var box=document.getElementById("coachBody");if(!box)return;
   // Preserve any in-progress New-call form values across background re-renders.
-  var _np={};if(_coachNewOpen){["coNewName","coNewPhone","coNewAddr","coNewCity","coNewProblem"].forEach(function(idd){var e=document.getElementById(idd);if(e)_np[idd]=e.value;});}
+  var _np={};if(_coachNewOpen){["coNewName","coNewPhone","coNewEmail","coNewAddr","coNewCity","coNewZip","coNewProblem"].forEach(function(idd){var e=document.getElementById(idd);if(e)_np[idd]=e.value;});}
   var pending=coachingCalls.filter(function(c){return c.status==="pending";});
   var sched=coachingCalls.filter(function(c){return c.status==="scheduled";});
   var doneC=coachingCalls.filter(function(c){return c.status==="done";});
@@ -18518,21 +18556,28 @@ function rndrCoaching(){
   pending.sort(byNew);doneC.sort(byNew);
   sched.sort(function(a,b){return (a.date+(a.time||"")).localeCompare(b.date+(b.time||""));});
   // KPI summary row
-  var resolvedDone=doneC.filter(function(c){return !(c.coachingReport&&c.coachingReport.resolved===false);}).length;
-  var rate=doneC.length?Math.round(resolvedDone/doneC.length*100)+"%":"—";
+  /* v2.9.0: el porcentaje solo puede salir de llamadas CON reporte guardado.
+     Antes toda llamada cerrada sin reporte contaba como "resuelta" y el numero
+     que se reportaba a los duenos estaba inflado. */
+  var rated=doneC.filter(function(c){return !!c.coachingReport;});
+  var resolvedDone=rated.filter(function(c){return c.coachingReport.resolved!==false;}).length;
+  var rate=rated.length?Math.round(resolvedDone/rated.length*100)+"%":"—";
+  var rateLbl=rated.length?("Resolved on call ("+rated.length+" reported)"):"Resolved on call";
   var kpis='<div class="co-kpis">'
     +'<div class="co-kpi k-am"><span class="ki">'+icon("clipboard-list",16)+'</span><div class="kn">'+pending.length+'</div><div class="kl">To schedule</div></div>'
     +'<div class="co-kpi k-cu"><span class="ki">'+icon("calendar",16)+'</span><div class="kn">'+sched.length+'</div><div class="kl">Scheduled</div></div>'
     +'<div class="co-kpi k-gr"><span class="ki">'+icon("check",16)+'</span><div class="kn">'+doneC.length+'</div><div class="kl">Completed</div></div>'
-    +'<div class="co-kpi"><span class="ki">📈</span><div class="kn">'+rate+'</div><div class="kl">Resolved on call</div></div>'
+    +'<div class="co-kpi"><span class="ki">📈</span><div class="kn">'+rate+'</div><div class="kl">'+rateLbl+'</div></div>'
     +'</div>';
   var form="";
   if(_coachNewOpen){
     form='<div class="co-form"><div class="co-form-title">New coaching call</div>'
       +'<input id="coNewName" class="co-inp co-inp-full" placeholder="Customer name *">'
       +'<input id="coNewPhone" class="co-inp co-inp-full" placeholder="Phone" inputmode="tel">'
+      +'<input id="coNewEmail" class="co-inp co-inp-full" placeholder="Email (needed to send the report)" inputmode="email">'
       +'<input id="coNewAddr" class="co-inp co-inp-full" placeholder="Address (optional)">'
       +'<input id="coNewCity" class="co-inp co-inp-full" placeholder="City (optional)">'
+      +'<input id="coNewZip" class="co-inp co-inp-full" placeholder="ZIP (routes the tech if this becomes a visit)" inputmode="numeric">'
       +'<textarea id="coNewProblem" class="co-inp co-inp-full" rows="3" placeholder="What is the problem? (what the customer described on the phone)"></textarea>'
       +'<div class="co-type-row"><span class="co-sub" style="align-self:center">Call type:</span>'
       +'<button id="coTypePhone" class="co-type'+(_coachNewType==="phone"?" on":"")+'" onclick="coachSetType(\'phone\')">'+icon("phone",13)+' Phone</button>'
@@ -23487,7 +23532,7 @@ let qbCustTab="info"; // 'info' | 'spa' | 'history'
 })();
 /* ═══ ADS móvil · bottom navigation (Jul 2026) ═══ */
 var _MN_ICO={tab0:"📝",tab1:"📋",tab2:"✅",tab3:"👑",tab4:"📅",tab5:"🧾",tab6:"👥",tab7:"🗺️",tab8:"🔔",tab9:"💼",tab10:"🧰",tab11:"📓",tab12:"📞",tab13:"💬"};
-var _MN_LBL={tab0:["Reporte","Report"],tab1:["Daily","Daily"],tab2:["Listos","Done"],tab3:["Admin","Admin"],tab4:["Agenda","Calendar"],tab5:["Registro","Log"],tab6:["Clientes","Customers"],tab7:["Mapas","Maps"],tab8:["Alertas","Alerts"],tab9:["Apps","My Apps"],tab10:["Tools","Tools"],tab11:["Journal","Journal"],tab12:["Coach","Coaching"],tab13:["Chat","Chat"]};
+var _MN_LBL={tab0:["Reporte","Report"],tab1:["Daily","Daily"],tab2:["Listos","Done"],tab3:["Admin","Admin"],tab4:["Agenda","Calendar"],tab5:["Registro","Log"],tab6:["Clientes","Customers"],tab7:["Mapas","Maps"],tab8:["Alertas","Alerts"],tab9:["Apps","My Apps"],tab10:["Tools","Tools"],tab11:["Journal","Journal"],tab12:["Coach","Coaching"],tab13:["Chat","Chat"],tab14:["Intake","Intake"]};
 /* Una sola fuente de verdad para las etiquetas: respeta el idioma de la app y
    evita el emoji duplicado (varios tabs ya traen el emoji en su texto). */
 function _mnLbl(id){var pr=_MN_LBL[id];if(!pr)return String(id);try{return TT(pr[0],pr[1]);}catch(_e){return pr[1];}}
@@ -31981,5 +32026,581 @@ body.v8r-open .toast{z-index:1000010}
   };
 })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     INTAKE STATION (v2.9.0) — delete these 2 blocks to revert
+     Send a customer a unique link, get back their story + photos, then triage
+     the result into the Service Log or into a Coaching Call.
+
+     The customer's browser NEVER talks to Firebase. intake.html posts to the
+     Cloud Functions intakeGet / intakeSubmit, which write with the Admin SDK.
+     That is deliberate: the estimate link taught us that anonymous auth dies
+     inside the Messages/WhatsApp webview (IndexedDB blocked), and Firestore
+     then serves a stale local cache so the failure is INVISIBLE until a write
+     is denied. No client auth here means that whole class of bug cannot happen.
+     This block is the STAFF side only, and staff are already isStaff().
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="aspenIntakeStyle">
+#pg14{max-width:1180px}
+.itk-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3);margin-bottom:var(--sp-5)}
+.itk-kpi{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-lg);padding:14px 16px;position:relative;overflow:hidden}
+.itk-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--i3)}
+.itk-kpi.k-am:before{background:var(--c-warning-strong)}
+.itk-kpi.k-cu:before{background:var(--ac)}
+.itk-kpi.k-gr:before{background:var(--c-success-strong)}
+.itk-kpi .n{font-size:var(--fs-2xl,26px);font-weight:800;line-height:1.1}
+.itk-kpi .l{font-size:var(--fs-xs);color:var(--i3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.itk-head{display:flex;align-items:flex-start;gap:var(--sp-3);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+.itk-head h2{font-size:var(--fs-xl);font-weight:800;margin:0}
+.itk-head p{font-size:var(--fs-sm);color:var(--i3);margin:2px 0 0}
+.itk-form{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-lg);padding:var(--sp-5);margin-bottom:var(--sp-5)}
+.itk-form h3{margin:0 0 4px;font-size:var(--fs-lg);font-weight:800}
+.itk-g2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+.itk-g3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--sp-3)}
+.itk-lbl{display:block;font-size:var(--fs-xs);font-weight:700;color:var(--i2);text-transform:uppercase;letter-spacing:.4px;margin:var(--sp-3) 0 5px}
+.itk-inp{width:100%;padding:11px 13px;border:1.5px solid var(--ln);border-radius:var(--r-md);background:#fff;outline:none;font-family:inherit;font-size:var(--fs-base);color:var(--ink);box-sizing:border-box}
+.itk-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acl)}
+textarea.itk-inp{resize:vertical;min-height:64px}
+.itk-btn{border:0;border-radius:var(--r-md);padding:10px 16px;font-size:var(--fs-sm);font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:6px;cursor:pointer;text-decoration:none}
+.itk-btn:hover{filter:brightness(.94)}
+.itk-pri{background:var(--ac);color:#fff}
+.itk-dark{background:var(--br);color:#fff}
+.itk-ok{background:var(--c-success-strong);color:#fff}
+.itk-warn{background:var(--c-warning-strong);color:#fff}
+.itk-gh{background:transparent;color:var(--i2);border:1px solid var(--ln)}
+.itk-sm{padding:7px 12px;font-size:var(--fs-xs)}
+.itk-linkbox{margin-top:var(--sp-4);border:2px dashed var(--ac);background:var(--acl);border-radius:var(--r-lg);padding:var(--sp-4)}
+.itk-url{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-sm);background:#fff;border:1px solid var(--ln);border-radius:var(--r-sm);padding:10px 12px;word-break:break-all;margin:8px 0 12px}
+.itk-prev{background:#fff;border:1px solid var(--ln);border-radius:var(--r-md);padding:12px 14px;font-size:var(--fs-sm);color:var(--i2);white-space:pre-wrap;line-height:1.55;margin-top:10px}
+.itk-prev .pl{display:block;font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.itk-tray{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4);align-items:start}
+.itk-col{background:rgba(255,255,255,.5);border:1px solid var(--ln);border-radius:var(--r-xl);padding:var(--sp-3)}
+.itk-col-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;padding:4px 6px 10px;text-transform:uppercase;letter-spacing:.5px;color:var(--i2)}
+.itk-col-h .d{width:9px;height:9px;border-radius:3px}
+.itk-col-h .c{margin-left:auto;background:var(--c-neutral-bg);color:var(--i2);border-radius:999px;padding:1px 9px;font-size:var(--fs-xs)}
+.itk-card{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-lg);margin-bottom:var(--sp-3);overflow:hidden;display:flex}
+.itk-card .rail{width:4px;flex:0 0 4px}
+.itk-card.s-w .rail{background:var(--c-warning-strong)}
+.itk-card.s-r .rail{background:var(--ac)}
+.itk-card.s-t .rail{background:var(--c-success-strong)}
+.itk-card .bd{padding:12px 14px;flex:1;min-width:0}
+.itk-nm{font-weight:800;font-size:var(--fs-md);line-height:1.25;word-break:break-word}
+.itk-mt{font-size:var(--fs-xs);color:var(--i3);margin-top:2px}
+.itk-story{font-size:var(--fs-sm);color:var(--i2);background:var(--c-neutral-bg);border-radius:var(--r-sm);padding:9px 11px;margin-top:9px;line-height:1.5;max-height:98px;overflow:hidden}
+.itk-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.itk-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.itk-chip{font-size:var(--fs-xs);font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid transparent}
+.itk-chip.am{background:var(--c-warning-bg);color:var(--c-warning-fg);border-color:var(--c-warning-border)}
+.itk-chip.cu{background:var(--acl);color:var(--acd);border-color:#f3d6b8}
+.itk-chip.gr{background:var(--c-success-bg);color:var(--c-success-fg);border-color:var(--c-success-border)}
+.itk-chip.in{background:var(--c-info-bg);color:var(--c-info-fg);border-color:var(--c-info-border)}
+.itk-chip.ne{background:var(--c-neutral-bg);color:var(--c-neutral-fg);border-color:var(--c-neutral-border)}
+.itk-thumbs{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.itk-thumbs img{width:52px;height:52px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--ln);cursor:pointer}
+.itk-emp{text-align:center;padding:26px 12px;color:var(--i3)}
+.itk-emp .t{font-weight:700;font-size:var(--fs-sm);color:var(--i2)}
+.itk-emp .s{font-size:var(--fs-xs);margin-top:3px}
+.itk-kv{display:grid;grid-template-columns:140px 1fr;gap:7px 14px;font-size:var(--fs-sm)}
+.itk-kv .k{color:var(--i3);font-weight:700;text-transform:uppercase;font-size:var(--fs-xs);letter-spacing:.4px;padding-top:2px}
+.itk-pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.itk-pgrid a{display:block;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--ln)}
+.itk-pgrid img{width:100%;height:110px;object-fit:cover;display:block}
+@media(max-width:900px){
+  .itk-tray{grid-template-columns:1fr}
+  .itk-kpis{grid-template-columns:1fr 1fr}
+  .itk-g2,.itk-g3{grid-template-columns:1fr}
+}
+</style>
+<script id="aspenIntakeScript">
+/* ── Estado ──────────────────────────────────────────────────────────────── */
+var _itkList=[], _itkNewOpen=false, _itkLastToken=null, _itkUnsub=null, _itkBusy={};
+var ITAKE_LINK_BASE="https://aspenservices.github.io/TECH-TICKETS/intake.html";
+var ITK_EXPIRE_DAYS=14;
+
+/* ── Arranque: esperamos sesion de personal y encendemos el listener ───────
+   Mismo patron acotado que _stashCoverIntake. No se engancha en el arranque
+   del app: con las reglas v3 la coleccion es isStaff(), y leerla antes del
+   login se deniega y Firestore reintenta en bucle (esa fue la lentitud de
+   julio). ───────────────────────────────────────────────────────────────── */
+function _itkCanSee(){
+  return !!(typeof currentUser!=="undefined"&&currentUser&&
+           (currentUser.role==="admin"||currentUser.role==="organizer"));
+}
+function _itkStart(){
+  if(_itkUnsub)return;
+  if(typeof db==="undefined"||!db||!_itkCanSee())return;
+  try{
+    _itkUnsub=db.collection("intakes").orderBy("createdAtMs","desc").limit(200)
+      .onSnapshot(function(snap){
+        _itkList=[];
+        snap.forEach(function(d){_itkList.push(Object.assign({token:d.id},d.data()))});
+        _itkBadge();
+        var pg=document.getElementById("pg14");
+        if(pg&&pg.classList.contains("show"))rndrIntake();
+      },function(err){console.warn("[intake] listener",err)});
+  }catch(e){console.warn("[intake] no se pudo escuchar",e)}
+}
+(function _itkBoot(){
+  var tries=0;
+  var iv=setInterval(function(){
+    tries++;
+    if(_itkUnsub){clearInterval(iv);return}
+    if(typeof db!=="undefined"&&db&&_itkCanSee()){clearInterval(iv);_itkStart()}
+    else if(tries>360){clearInterval(iv)}     /* ~3 min y se rinde */
+  },500);
+})();
+
+function _itkBadge(){
+  try{
+    var b=document.getElementById("bdg14");if(!b)return;
+    var n=_itkList.filter(function(x){return x.status==="received"}).length;
+    if(n){b.style.display="inline";b.textContent=n}else b.style.display="none";
+  }catch(_e){}
+}
+
+/* ── Utilidades ──────────────────────────────────────────────────────────── */
+function _itkToken(){
+  var a=new Uint8Array(16);
+  (window.crypto||window.msCrypto).getRandomValues(a);
+  return Array.prototype.map.call(a,function(b){return ("0"+b.toString(16)).slice(-2)}).join("");
+}
+function _itkLink(tok){return ITAKE_LINK_BASE+"?t="+tok}
+function _itkFind(tok){for(var i=0;i<_itkList.length;i++)if(_itkList[i].token===tok)return _itkList[i];return null}
+function _itkFirst(n){var s=String(n||"").trim();
+  /* "Meyer, Doug & Karla" -> Doug ; "Doug Meyer" -> Doug */
+  if(s.indexOf(",")>-1)s=s.split(",")[1]||s.split(",")[0];
+  s=s.replace(/&.*$/,"").trim();
+  return (s.split(/\s+/)[0]||"there");
+}
+function _itkAgo(ms){
+  if(!ms)return "";
+  var d=Date.now()-ms;
+  if(d<3600000)return Math.max(1,Math.round(d/60000))+" min ago";
+  if(d<86400000)return Math.round(d/3600000)+" h ago";
+  var n=Math.round(d/86400000);return n+(n===1?" day ago":" days ago");
+}
+function _itkExpired(it){return !!(it.expiresAtMs&&Date.now()>it.expiresAtMs)}
+
+/* ── Los textos que se le mandan al cliente ──────────────────────────────── */
+function _itkSmsBody(it){
+  return "Hi "+_itkFirst(it.customer)+", this is Aspen Spas Service. To get you scheduled faster, "
+    +"please open this link and tell us what's happening with your spa \u2014 it takes about two "
+    +"minutes and you can add photos:\n\n"+_itkLink(it.token)
+    +"\n\nOnce we have it, we'll call you back with next steps. Thank you!";
+}
+function _itkEmailText(it){
+  return "Hi "+_itkFirst(it.customer)+",\n\n"
+    +"Thanks for calling Aspen Spas Service. So we can help you as fast as possible, please open "
+    +"the link below and describe what your spa is doing. You can add photos of the control panel, "
+    +"the equipment bay, or anything that looks wrong \u2014 that is what lets us show up with the "
+    +"right part the first time.\n\n"+_itkLink(it.token)+"\n\n"
+    +"It takes about two minutes. Once you send it, we'll review it and call you back with next steps.\n\n"
+    +"Alberto Crespo\nService Manager \u00b7 Aspen Spas\n314-776-5050 ext. 114 \u00b7 service1@aspenspas.com";
+}
+function _itkEmailHTML(it){
+  var link=_itkLink(it.token);
+  return '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F8F5F0">'
+    +'<table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F5F0;padding:24px 12px">'
+    +'<tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;font-family:Helvetica,Arial,sans-serif">'
+    +'<tr><td style="background:#211712;padding:22px 26px;text-align:center">'
+    +'<div style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:2px">ASPEN <span style="color:#D4772C">SPAS</span></div>'
+    +'<div style="color:#c7b8ad;font-size:11px;letter-spacing:1.5px;margin-top:3px">SERVICE REQUEST</div></td></tr>'
+    +'<tr><td style="padding:26px">'
+    +'<p style="margin:0 0 14px;font-size:15px;color:#1f1a15">Hi '+esc(_itkFirst(it.customer))+',</p>'
+    +'<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#574E45">Thanks for calling Aspen Spas Service. So we can help you as fast as possible, please tap the button below and tell us what your spa is doing. You can add photos of the control panel, the equipment bay, or anything that looks wrong &mdash; that is what lets us show up with the right part the first time.</p>'
+    +'<p style="margin:22px 0;text-align:center"><a href="'+esc(link)+'" style="background:#D4772C;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:bold;display:inline-block">Tell us about your spa</a></p>'
+    +'<p style="margin:0 0 14px;font-size:13px;line-height:1.6;color:#938A7E">It takes about two minutes. If the button does not work, copy this link into your browser:<br><span style="color:#A85C1F;word-break:break-all">'+esc(link)+'</span></p>'
+    +'<hr style="border:0;border-top:1px solid #EBE4DA;margin:20px 0">'
+    +'<p style="margin:0;font-size:13px;line-height:1.6;color:#574E45"><b>Alberto Crespo</b><br>Service Manager &middot; Aspen Spas<br>314-776-5050 ext. 114 &middot; service1@aspenspas.com</p>'
+    +'</td></tr></table></td></tr></table></body></html>';
+}
+
+/* ── Alta del link ───────────────────────────────────────────────────────── */
+function itkToggleNew(){
+  _itkNewOpen=!_itkNewOpen;rndrIntake();
+  if(_itkNewOpen)setTimeout(function(){var e=document.getElementById("itkName");if(e)e.focus()},60);
+}
+async function itkCreate(){
+  var v=function(id){var e=document.getElementById(id);return e?String(e.value||"").trim():""};
+  var name=v("itkName");
+  if(!name){toast("Customer name is required","warn");var e=document.getElementById("itkName");if(e)e.focus();return}
+  var phone=v("itkPhone"), email=v("itkEmail");
+  if(!phone&&!email){toast("Add a phone or an email \u2014 there is no way to send the link otherwise","warn");return}
+  var btn=document.getElementById("itkCreateBtn");
+  if(btn){btn.disabled=true;btn.textContent="Creating\u2026"}
+  var tok=_itkToken();
+  try{
+    await db.collection("intakes").doc(tok).set({
+      status:"waiting",
+      customer:name, phone:phone, email:email,
+      address:v("itkAddr"), city:v("itkCity"), zip:v("itkZip"),
+      note:v("itkNote"),
+      sentVia:null, sentAtMs:null,
+      sentBy:(currentUser&&currentUser.name)||"",
+      openedAtMs:null, submittedAtMs:null,
+      reply:null, convertedTicketId:null, convertedTo:null,
+      createdAtMs:Date.now(),
+      expiresAtMs:Date.now()+ITK_EXPIRE_DAYS*86400000,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    _itkLastToken=tok;_itkNewOpen=false;
+    toast("Link created \u2014 "+name+" is now waiting");
+    rndrIntake();
+  }catch(e){
+    console.error("[intake create]",e);
+    toast("Could not create the link: "+(e.message||e),"err");
+    if(btn){btn.disabled=false;btn.textContent="Create link"}
+  }
+}
+
+/* ── Envio. Nada sale solo: el usuario revisa y aprieta enviar. ──────────── */
+async function _itkMarkSent(tok,how){
+  try{await db.collection("intakes").doc(tok).update({sentVia:how,sentAtMs:Date.now()})}
+  catch(e){console.warn("[intake sent]",e)}
+}
+function itkCopy(tok){
+  var it=_itkFind(tok);if(!it)return;
+  var url=_itkLink(tok);
+  var done=function(){toast("Link copied");_itkMarkSent(tok,"copy")};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done,function(){_itkFallbackCopy(url,done)});
+  }else _itkFallbackCopy(url,done);
+}
+function _itkFallbackCopy(txt,cb){
+  try{
+    var ta=document.createElement("textarea");
+    ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();document.execCommand("copy");
+    document.body.removeChild(ta);cb();
+  }catch(_e){toast("Copy it by hand: "+txt,"warn")}
+}
+function itkSms(tok){
+  var it=_itkFind(tok);if(!it)return;
+  if(!it.phone){toast("No phone on file for this customer","warn");return}
+  /* _smsHref es global (bloque de coaching): elige el separador por plataforma */
+  var href=(typeof _smsHref==="function")
+      ? _smsHref(it.phone,_itkSmsBody(it))
+      : ("sms:"+String(it.phone).replace(/[^\d]/g,"")+"?body="+encodeURIComponent(_itkSmsBody(it)));
+  _itkMarkSent(tok,"sms");
+  try{window.location.href=href}catch(_e){toast("Could not open Messages","err")}
+}
+function itkEml(tok){
+  var it=_itkFind(tok);if(!it)return;
+  if(!it.email){toast("No email on file for this customer","warn");return}
+  var b="ASPEN-"+tok.slice(0,12);
+  var eml=""
+    +"To: "+it.email+"\r\n"
+    +"Subject: Aspen Spas \u2014 tell us about your spa\r\n"
+    +"X-Unsent: 1\r\n"
+    +"MIME-Version: 1.0\r\n"
+    +'Content-Type: multipart/alternative; boundary="'+b+'"\r\n\r\n'
+    +"--"+b+"\r\n"
+    +'Content-Type: text/plain; charset="utf-8"\r\n'
+    +"Content-Transfer-Encoding: 8bit\r\n\r\n"
+    +_itkEmailText(it)+"\r\n\r\n"
+    +"--"+b+"\r\n"
+    +'Content-Type: text/html; charset="utf-8"\r\n'
+    +"Content-Transfer-Encoding: 8bit\r\n\r\n"
+    +_itkEmailHTML(it)+"\r\n\r\n"
+    +"--"+b+"--\r\n";
+  try{
+    var blob=new Blob([eml],{type:"message/rfc822"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="intake-"+String(it.customer||"customer").replace(/[^\w]+/g,"-").toLowerCase()+".eml";
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
+    _itkMarkSent(tok,"email");
+    toast("Draft downloaded \u2014 open it in Outlook, review, then send");
+  }catch(e){console.error("[intake eml]",e);toast("Could not build the draft","err")}
+}
+
+/* ── Cancelar / descartar ────────────────────────────────────────────────── */
+async function itkCancel(tok){
+  var it=_itkFind(tok);if(!it)return;
+  if(!(await confirmDialog("Cancel the link for "+(it.customer||"this customer")+"?\nThe link stops working immediately.")))return;
+  try{await db.collection("intakes").doc(tok).delete();
+      if(_itkLastToken===tok)_itkLastToken=null;
+      toast("Link cancelled");}
+  catch(e){toast("Could not cancel","err")}
+}
+async function itkDiscard(tok){
+  var it=_itkFind(tok);if(!it)return;
+  if(!(await confirmDialog("Discard what "+(it.customer||"this customer")+" sent?\nThis cannot be undone.")))return;
+  try{await db.collection("intakes").doc(tok).delete();toast("Discarded");}
+  catch(e){toast("Could not discard","err")}
+}
+
+/* ── Triage: de intake a ticket real ─────────────────────────────────────── */
+async function itkTriage(tok,dest){
+  var it=_itkFind(tok);if(!it)return;
+  if(it.convertedTicketId){toast("Already sent to "+(it.convertedTo==="coaching"?"Coaching":"the Service Log"),"warn");return}
+  if(_itkBusy[tok])return;
+  var r=it.reply||{};
+  var q=dest==="coaching"
+    ? "Turn this into a coaching call for "+(it.customer||"this customer")+"?"
+    : "Send a technician to "+(it.customer||"this customer")+"?\nThis creates a Service Log ticket for a physical visit.";
+  /* Mismo criterio que coachEscalate: candado ANTES del dialogo. */
+  _itkBusy[tok]=true;
+  if(!(await confirmDialog(q))){_itkBusy[tok]=false;return;}
+  /* Las fotos ya viven en Storage: se pasan al ticket con la MISMA forma que
+     usa tdAddMedia, para que se vean en el ticket sin codigo extra. */
+  var media=(r.photos||[]).map(function(p){
+    return {url:p.url,path:p.path||"",type:"photo",storage:true};
+  });
+  var story=[
+    r.problem?r.problem:"",
+    r.since?("How long: "+r.since):"",
+    r.errorCode?("Code on the panel: "+r.errorCode):"",
+    (r.powerOn===false)?"Customer says the spa has NO power.":"",
+    (r.brand||r.model)?("Spa: "+[r.brand,r.model].filter(Boolean).join(" ")):"",
+    r.serial?("Serial: "+r.serial):"",
+    r.extra?("Also: "+r.extra):"",
+    (r.contactPref||r.bestTime)?("Prefers: "+[r.contactPref,r.bestTime].filter(Boolean).join(" \u00b7 ")):""
+  ].filter(Boolean).join("\n");
+  var notes="From the customer's own intake form ("+_itkAgo(it.submittedAtMs)+")."
+    +(it.note?("\nWhat we wrote down on the phone: "+it.note):"")
+    +(story?("\n"+story):"");
+  try{
+    var payload;
+    if(dest==="coaching"){
+      payload={
+        source:"coaching",status:"pending",
+        customer:it.customer||"",phone:it.phone||"",phone2:"",email:it.email||"",
+        address:it.address||"",city:it.city||"",zip:it.zip||"",
+        problem:story||it.note||"",callType:"phone",date:"",time:"",
+        media:media,
+        coachingReport:null,escalatedTicketId:null,
+        fromIntake:tok,
+        createdBy:(currentUser&&currentUser.name)||"",
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdAtMs:Date.now(),submitted:new Date().toLocaleString()
+      };
+    }else{
+      payload={
+        customer:it.customer||"",date:"",techs:[],workTypes:["Service Call"],warranty:null,visitNum:1,noLabor:false,
+        arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,
+        spaDesc:[r.brand,r.model].filter(Boolean).join(" "),
+        notes:notes,reportedIssue:(r.problem||it.note||""),
+        phone:it.phone||"",phone2:"",email:it.email||"",
+        address:it.address||"",city:it.city||"",zip:it.zip||"",zone:"",
+        ccOnFile:false,ccRequested:false,paid:false,paidAt:null,isRepeat:false,isUrgent:false,isNewSpa:false,
+        payCheck:false,payCredit:false,paymentBeforeService:false,needsOtherTech:false,daySlots:1,allDay:false,
+        media:media,videoLinks:null,source:"dispatch",status:"pending",
+        fromIntake:tok,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdAtMs:Date.now(),submitted:new Date().toLocaleString()
+      };
+    }
+    var ref=await db.collection("tickets").add(payload);
+    await db.collection("intakes").doc(tok).update({
+      status:"triaged",convertedTicketId:ref.id,convertedTo:dest,
+      convertedAtMs:Date.now(),convertedBy:(currentUser&&currentUser.name)||""
+    });
+    toast(dest==="coaching"
+      ? "Coaching call created \u2713 \u2014 it is in To-Schedule"
+      : "Ticket created \u2713 \u2014 Service Log, unassigned calls");
+    try{if(typeof refreshAll==="function")setTimeout(refreshAll,400)}catch(_e){}
+  }catch(e){
+    console.error("[intake triage]",e);
+    toast("Could not create the ticket: "+(e.message||e),"err");
+  }
+  finally{_itkBusy[tok]=false}
+}
+
+/* ── Detalle ─────────────────────────────────────────────────────────────── */
+function itkDetail(tok){
+  var it=_itkFind(tok);if(!it)return;
+  var r=it.reply||{};
+  var rows=[
+    ["Customer",it.customer],["Phone",it.phone],["Email",it.email],
+    ["Address",[it.address,it.city,it.zip].filter(Boolean).join(", ")],
+    ["Noted on the phone",it.note],
+    ["Their description",r.problem],["How long",r.since],
+    ["Spa",[r.brand,r.model].filter(Boolean).join(" ")],["Serial",r.serial],
+    ["Code on the panel",r.errorCode],
+    ["Has power",r.powerOn===true?"Yes":(r.powerOn===false?"No":"")],
+    ["Anything else",r.extra],
+    ["Best way to reach them",[r.contactPref,r.bestTime].filter(Boolean).join(" \u00b7 ")],
+    ["Link sent",it.sentAtMs?(_itkAgo(it.sentAtMs)+(it.sentVia?(" ("+it.sentVia+")"):"")):"not sent yet"],
+    ["Opened",it.openedAtMs?_itkAgo(it.openedAtMs):"not opened"],
+    ["Answered",it.submittedAtMs?_itkAgo(it.submittedAtMs):"\u2014"],
+    ["Sent by",it.sentBy]
+  ].filter(function(x){return x[1]});
+  var h='<div class="itk-kv">'+rows.map(function(x){
+      return '<div class="k">'+esc(x[0])+'</div><div>'+esc(x[1])+'</div>'}).join("")+'</div>';
+  if(r.photos&&r.photos.length){
+    h+='<div style="margin-top:18px"><div class="k" style="font-size:var(--fs-xs);color:var(--i3);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Photos the customer sent</div>'
+      +'<div class="itk-pgrid">'+r.photos.map(function(p){
+        return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt=""></a>'
+      }).join("")+'</div></div>';
+  }
+  if(it.status==="received"){
+    h+='<div class="itk-acts" style="margin-top:20px">'
+      +'<button type="button" class="itk-btn itk-ok" onclick="itkTriage(\''+tok+'\',\'dispatch\')">Send a tech</button>'
+      +'<button type="button" class="itk-btn itk-warn" onclick="itkTriage(\''+tok+'\',\'coaching\')">Coaching call</button>'
+      +'</div>';
+  }
+  _itkModal(it.customer||"Intake",h);
+}
+function _itkModal(title,html){
+  var ov=document.getElementById("itkOverlay");
+  if(!ov){
+    ov=document.createElement("div");ov.id="itkOverlay";
+    ov.style.cssText="position:fixed;inset:0;background:rgba(25,16,10,.6);display:none;align-items:center;justify-content:center;z-index:4600;padding:18px";
+    ov.addEventListener("click",function(e){if(e.target===ov)itkCloseModal()});
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML='<div style="background:#fff;border-radius:var(--r-2xl,20px);max-width:640px;width:100%;max-height:88vh;overflow:auto">'
+    +'<div style="padding:16px 20px;border-bottom:1px solid var(--ln);display:flex;align-items:center;gap:10px;position:sticky;top:0;background:#fff;z-index:1">'
+    +'<h3 style="margin:0;font-size:var(--fs-lg);font-weight:800">'+esc(title)+'</h3>'
+    +'<button type="button" style="margin-left:auto;background:none;border:0;font-size:22px;color:var(--i3);cursor:pointer;line-height:1" onclick="itkCloseModal()">\u00d7</button></div>'
+    +'<div style="padding:20px">'+html+'</div></div>';
+  ov.style.display="flex";
+}
+function itkCloseModal(){var ov=document.getElementById("itkOverlay");if(ov)ov.style.display="none"}
+
+/* ── Render ──────────────────────────────────────────────────────────────── */
+function _itkCard(it){
+  var t=it.token, r=it.reply||{};
+  var h='<div class="itk-card s-'+(it.status==="waiting"?"w":it.status==="received"?"r":"t")+'">'
+    +'<div class="rail"></div><div class="bd"><div class="itk-nm">'+esc(it.customer||"\u2014")+'</div>';
+
+  if(it.status==="waiting"){
+    var via=it.sentVia==="sms"?"by text":it.sentVia==="email"?"by email":it.sentVia==="copy"?"link copied":"not sent yet";
+    var when=it.sentAtMs?("sent "+_itkAgo(it.sentAtMs)+" "+via):"link not sent yet";
+    h+='<div class="itk-mt">'+esc(it.phone||it.email||"no contact on file")+' \u00b7 '+esc(when)+'</div>'
+      +'<div class="itk-chips">'
+      +(it.openedAtMs?'<span class="itk-chip in">Opened '+esc(_itkAgo(it.openedAtMs))+'</span>'
+                     :'<span class="itk-chip ne">Not opened yet</span>')
+      +(_itkExpired(it)?'<span class="itk-chip am">Expired</span>':'')
+      +((!_itkExpired(it)&&it.sentAtMs&&Date.now()-it.sentAtMs>2*86400000)?'<span class="itk-chip am">Follow up</span>':'')
+      +'</div>'
+      +(it.note?'<div class="itk-story">'+esc(it.note)+'</div>':'')
+      +'<div class="itk-acts">'
+        +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="itkCopy(\''+t+'\')">Copy link</button>'
+        +(it.phone?'<button type="button" class="itk-btn itk-pri itk-sm" onclick="itkSms(\''+t+'\')">Text</button>':'')
+        +(it.email?'<button type="button" class="itk-btn itk-pri itk-sm" onclick="itkEml(\''+t+'\')">Email draft</button>':'')
+        +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="itkCancel(\''+t+'\')">Cancel</button>'
+      +'</div>';
+  }
+
+  if(it.status==="received"){
+    h+='<div class="itk-mt">'+esc(it.phone||it.email||"")+' \u00b7 answered '+esc(_itkAgo(it.submittedAtMs))+'</div>'
+      +'<div class="itk-chips">'
+      +((r.photos&&r.photos.length)?'<span class="itk-chip cu">'+r.photos.length+' photos</span>'
+                                   :'<span class="itk-chip ne">No photos</span>')
+      +(r.errorCode?'<span class="itk-chip am">Code '+esc(r.errorCode)+'</span>':'')
+      +(r.since?'<span class="itk-chip ne">'+esc(r.since)+'</span>':'')
+      +(r.powerOn===false?'<span class="itk-chip am">No power</span>':'')
+      +(r.contactPref?'<span class="itk-chip in">Prefers '+esc(String(r.contactPref).toLowerCase())+'</span>':'')
+      +'</div>'
+      +(r.problem?'<div class="itk-story">'+esc(r.problem)+'</div>':'')
+      +((r.photos&&r.photos.length)?'<div class="itk-thumbs">'+r.photos.slice(0,6).map(function(p){
+          return '<img src="'+esc(p.url)+'" alt="" onclick="itkDetail(\''+t+'\')">'}).join("")+'</div>':'')
+      +'<div class="itk-acts">'
+        +'<button type="button" class="itk-btn itk-dark itk-sm" onclick="itkDetail(\''+t+'\')">See everything</button>'
+        +'<button type="button" class="itk-btn itk-ok itk-sm" onclick="itkTriage(\''+t+'\',\'dispatch\')">Send a tech</button>'
+        +'<button type="button" class="itk-btn itk-warn itk-sm" onclick="itkTriage(\''+t+'\',\'coaching\')">Coaching call</button>'
+        +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="itkDiscard(\''+t+'\')">Discard</button>'
+      +'</div>';
+  }
+
+  if(it.status==="triaged"){
+    var where=it.convertedTo==="coaching"?"Coaching \u00b7 to schedule":"Service Log \u00b7 unassigned calls";
+    h+='<div class="itk-mt">'+esc(it.phone||it.email||"")+' \u00b7 triaged '+esc(_itkAgo(it.convertedAtMs||it.submittedAtMs))+(it.convertedBy?(" by "+esc(it.convertedBy)):"")+'</div>'
+      +'<div class="itk-chips"><span class="itk-chip gr">'+esc(where)+'</span>'
+      +((r.photos&&r.photos.length)?'<span class="itk-chip ne">'+r.photos.length+' photos carried over</span>':'')
+      +'</div>'
+      +'<div class="itk-acts"><button type="button" class="itk-btn itk-gh itk-sm" onclick="itkDetail(\''+t+'\')">See what they sent</button></div>';
+  }
+  return h+'</div></div>';
+}
+
+function rndrIntake(){
+  var box=document.getElementById("intakeBody");if(!box)return;
+  /* conserva lo que se este escribiendo si el listener repinta por detras */
+  var keep={};
+  if(_itkNewOpen)["itkName","itkPhone","itkEmail","itkAddr","itkCity","itkZip","itkNote"]
+    .forEach(function(id){var e=document.getElementById(id);if(e)keep[id]=e.value});
+
+  var W=_itkList.filter(function(x){return x.status==="waiting"});
+  var R=_itkList.filter(function(x){return x.status==="received"});
+  var T=_itkList.filter(function(x){return x.status==="triaged"});
+  R.sort(function(a,b){return (b.submittedAtMs||0)-(a.submittedAtMs||0)});
+  T.sort(function(a,b){return (b.convertedAtMs||0)-(a.convertedAtMs||0)});
+  var sent=_itkList.filter(function(x){return !!x.sentAtMs}).length;
+  var back=R.length+T.length;
+  var rate=sent?Math.round(back/sent*100)+"%":"\u2014";
+
+  function kpi(c,n,l){return '<div class="itk-kpi '+c+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'}
+  var kpis='<div class="itk-kpis">'
+    +kpi("k-am",W.length,"Waiting on customer")
+    +kpi("k-cu",R.length,"Ready to triage")
+    +kpi("k-gr",T.length,"Triaged")
+    +kpi("",rate,"Response rate")+'</div>';
+
+  var head='<div class="itk-head"><div><h2>Intake</h2>'
+    +'<p>Send a customer a link, get back everything you need before you dispatch anyone.</p></div>'
+    +'<button type="button" class="itk-btn itk-pri" style="margin-left:auto" onclick="itkToggleNew()">'
+    +(_itkNewOpen?"Cancel":"+ New link")+'</button></div>';
+
+  var form="";
+  if(_itkNewOpen){
+    form='<div class="itk-form"><h3>New intake link</h3>'
+      +'<p style="font-size:var(--fs-sm);color:var(--i3);margin:0">Take what they told you on the phone. Everything else, they fill in.</p>'
+      +'<label class="itk-lbl">Customer name *</label>'
+      +'<input id="itkName" class="itk-inp" placeholder="Last, First &amp; Spouse \u2014 exactly as in QuickBooks">'
+      +'<div class="itk-g2">'
+        +'<div><label class="itk-lbl">Phone</label><input id="itkPhone" class="itk-inp" inputmode="tel" placeholder="314-555-0142"></div>'
+        +'<div><label class="itk-lbl">Email</label><input id="itkEmail" class="itk-inp" inputmode="email" placeholder="name@example.com"></div>'
+      +'</div>'
+      +'<div class="itk-g3">'
+        +'<div><label class="itk-lbl">Address</label><input id="itkAddr" class="itk-inp" placeholder="812 Oakfield Dr"></div>'
+        +'<div><label class="itk-lbl">City</label><input id="itkCity" class="itk-inp" placeholder="Ballwin"></div>'
+        +'<div><label class="itk-lbl">ZIP</label><input id="itkZip" class="itk-inp" inputmode="numeric" placeholder="63021"></div>'
+      +'</div>'
+      +'<label class="itk-lbl">What did they say on the phone?</label>'
+      +'<textarea id="itkNote" class="itk-inp" rows="2" placeholder="One line is enough \u2014 the customer will tell the rest."></textarea>'
+      +'<div class="itk-acts" style="margin-top:16px">'
+        +'<button type="button" id="itkCreateBtn" class="itk-btn itk-pri" onclick="itkCreate()">Create link</button>'
+        +'<button type="button" class="itk-btn itk-gh" onclick="itkToggleNew()">Cancel</button>'
+      +'</div></div>';
+  }else if(_itkLastToken&&_itkFind(_itkLastToken)){
+    var it=_itkFind(_itkLastToken);
+    form='<div class="itk-form"><h3>Link ready for '+esc(it.customer)+'</h3>'
+      +'<p style="font-size:var(--fs-sm);color:var(--i3);margin:0">Nothing is sent automatically. Pick how you want to send it and check the wording first.</p>'
+      +'<div class="itk-linkbox">'
+      +'<div style="font-size:var(--fs-xs);font-weight:800;color:var(--acd);text-transform:uppercase;letter-spacing:.5px">Unique link \u00b7 expires in '+ITK_EXPIRE_DAYS+' days</div>'
+      +'<div class="itk-url">'+esc(_itkLink(it.token))+'</div>'
+      +'<div class="itk-acts">'
+        +'<button type="button" class="itk-btn itk-dark itk-sm" onclick="itkCopy(\''+it.token+'\')">Copy link</button>'
+        +(it.phone?'<button type="button" class="itk-btn itk-pri itk-sm" onclick="itkSms(\''+it.token+'\')">Send by text</button>':'')
+        +(it.email?'<button type="button" class="itk-btn itk-pri itk-sm" onclick="itkEml(\''+it.token+'\')">Email draft (.eml)</button>':'')
+      +'</div>'
+      +(it.phone?'<div class="itk-prev"><span class="pl">Text message</span>'+esc(_itkSmsBody(it))+'</div>':'')
+      +(it.email?'<div class="itk-prev"><span class="pl">Email draft \u00b7 opens in Outlook, you press send</span>'+esc(_itkEmailText(it))+'</div>':'')
+      +'</div>'
+      +'<div class="itk-acts" style="margin-top:14px"><button type="button" class="itk-btn itk-gh itk-sm" onclick="_itkLastToken=null;rndrIntake()">Done</button></div>'
+      +'</div>';
+  }
+
+  function col(title,color,arr,et,es){
+    var cards=arr.length?arr.map(_itkCard).join("")
+      :'<div class="itk-emp"><div class="t">'+et+'</div><div class="s">'+es+'</div></div>';
+    return '<div class="itk-col"><div class="itk-col-h"><span class="d" style="background:'+color+'"></span>'
+      +title+'<span class="c">'+arr.length+'</span></div>'+cards+'</div>';
+  }
+  box.innerHTML=kpis+head+form+'<div class="itk-tray">'
+    +col("Waiting on customer","var(--c-warning-strong)",W,"No links out","Every link you send shows up here until the customer answers.")
+    +col("Ready to triage","var(--ac)",R,"Nothing new","Completed forms land here with photos and the customer's story.")
+    +col("Triaged","var(--c-success-strong)",T,"Nothing triaged yet","Once you send an intake to the Service Log or to Coaching it moves here.")
+    +'</div>';
+
+  Object.keys(keep).forEach(function(id){var e=document.getElementById(id);if(e)e.value=keep[id]});
+  _itkBadge();
+}
+</script>
+
 </body>
 </html>

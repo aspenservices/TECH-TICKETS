@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Aspen Spas — Service Request</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  ASPEN SPAS — CUSTOMER INTAKE FORM                          v2.9.0 · Jul 2026
+  ═══════════════════════════════════════════════════════════════════════════
+  This page has NO Firebase SDK and NO service worker, on purpose.
+
+  The estimate-signing link taught us the hard way: inside the Messages and
+  WhatsApp webviews, setPersistence(LOCAL) needs IndexedDB, which those
+  webviews block. signInAnonymously() then never establishes a session, and
+  Firestore happily serves the document from its local cache — so the page
+  LOOKS fine and the failure only surfaces when a write is denied.
+
+  So the customer's browser talks to exactly two HTTP endpoints. The Cloud
+  Functions write with the Admin SDK. No auth, no rules, no IndexedDB, no
+  cached-stale-data class of bug. It works the same in Safari, Chrome,
+  private mode, the Messages webview and Android.
+
+  Deploy: repo root, next to index.html, on GitHub Pages.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{
+  --ac:#D4772C;--acl:#FDF0E3;--acd:#A85C1F;
+  --br:#3D2B1F;--brl:#6B4C3B;--hdr-bg:#211712;
+  --ink:#1f1a15;--i2:#574E45;--i3:#938A7E;
+  --ln:#EBE4DA;--bg:#e8e2da;--cd:#fff;
+  --ok:#16a34a;--okbg:#dcfce7;
+  --dg:#dc2626;--dgbg:#fef2f2;--dgbd:#fca5a5;--dgfg:#991b1b;
+  --r-sm:7px;--r-md:10px;--r-lg:13px;--r-xl:16px;
+  --fs-xs:11px;--fs-sm:13px;--fs-base:14px;--fs-md:15px;--fs-lg:17px;--fs-xl:20px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--ink);font-size:var(--fs-base);line-height:1.45;
+  -webkit-text-size-adjust:100%}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit;font-size:16px;color:var(--ink)} /* 16px = iOS no hace zoom */
+
+.stage{padding:0;min-height:100vh}
+.sheet{max-width:460px;margin:0 auto;background:#fff;min-height:100vh}
+@media(min-width:520px){
+  .stage{padding:26px 14px 50px}
+  .sheet{border-radius:22px;overflow:hidden;min-height:0;box-shadow:0 18px 50px rgba(45,30,18,.2)}
+}
+.hdr{background:var(--hdr-bg);color:#fff;padding:22px 20px 24px;text-align:center}
+.hdr .wm{font-weight:800;font-size:var(--fs-xl);letter-spacing:2.4px}
+.hdr .wm span{color:var(--ac)}
+.hdr .tl{font-size:var(--fs-xs);color:#c7b8ad;letter-spacing:1.6px;text-transform:uppercase;margin-top:3px}
+.body{padding:20px 18px 26px}
+h1{font-size:var(--fs-xl);font-weight:800;line-height:1.25;margin:0 0 4px}
+.intro{font-size:var(--fs-sm);color:var(--i2);line-height:1.55;margin:0 0 18px}
+.step{border-top:1px solid var(--ln);padding-top:16px;margin-top:18px}
+.step .num{font-size:var(--fs-xs);font-weight:800;color:var(--ac);letter-spacing:1.2px;text-transform:uppercase}
+.step h2{margin:3px 0 2px;font-size:var(--fs-md);font-weight:800}
+.step .h{margin:0 0 10px;font-size:var(--fs-sm);color:var(--i3);line-height:1.5}
+label.f{display:block;font-size:var(--fs-xs);font-weight:700;color:var(--i2);
+  text-transform:uppercase;letter-spacing:.4px;margin:12px 0 5px}
+.inp{width:100%;padding:12px 13px;border:1.5px solid var(--ln);border-radius:var(--r-md);
+  background:#fff;outline:none;transition:border-color .12s,box-shadow .12s}
+.inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acl)}
+.inp.bad{border-color:var(--dg);box-shadow:0 0 0 3px var(--dgbg)}
+textarea.inp{resize:vertical;min-height:96px;line-height:1.55}
+.opts{display:flex;gap:7px;flex-wrap:wrap}
+.opt{border:1.5px solid var(--ln);background:#fff;border-radius:999px;padding:10px 15px;
+  font-size:var(--fs-sm);font-weight:600;color:var(--i2);min-height:42px}
+.opt.on{border-color:var(--ac);background:var(--acl);color:var(--acd);font-weight:800}
+.drop{border:2px dashed #d9cec2;border-radius:var(--r-lg);padding:22px 16px;text-align:center;
+  background:#fdfbf9;display:block;cursor:pointer}
+.drop .big{font-size:30px;line-height:1}
+.drop .t{font-weight:800;font-size:var(--fs-md);margin-top:8px}
+.drop .s{font-size:var(--fs-sm);color:var(--i3);margin-top:3px;line-height:1.5}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.pitem{position:relative;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--ln);background:#f2ede8}
+.pitem img{width:100%;height:96px;object-fit:cover;display:block}
+.pitem .x{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;
+  background:rgba(20,14,10,.72);color:#fff;border:0;font-size:15px;font-weight:800;line-height:1;
+  display:flex;align-items:center;justify-content:center}
+.pitem .sz{position:absolute;left:0;right:0;bottom:0;background:rgba(20,14,10,.72);color:#fff;
+  font-size:10px;padding:3px 4px;text-align:center;font-weight:600}
+.pitem.up:after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.55)}
+.bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--ln);
+  padding:13px 18px calc(13px + env(safe-area-inset-bottom,0px));z-index:5}
+.btn{border:0;border-radius:var(--r-md);padding:15px;font-size:var(--fs-md);font-weight:800;
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ac);color:#fff}
+.btn:disabled{opacity:.55}
+.btn.ghost{background:transparent;color:var(--i2);border:1px solid var(--ln);font-size:var(--fs-sm);padding:12px}
+.prog{height:6px;background:var(--ln);border-radius:99px;overflow:hidden;margin-bottom:9px}
+.prog i{display:block;height:100%;width:0;background:var(--ac);transition:width .25s}
+.pmsg{font-size:var(--fs-xs);color:var(--i3);margin:0 0 10px;text-align:center}
+.err{background:var(--dgbg);border:1px solid var(--dgbd);color:var(--dgfg);border-radius:var(--r-md);
+  padding:11px 13px;font-size:var(--fs-sm);font-weight:600;margin-top:12px;line-height:1.5}
+.center{padding:56px 26px;text-align:center}
+.center .mk{width:66px;height:66px;border-radius:50%;background:var(--okbg);color:var(--ok);
+  font-size:32px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.center .mk.bad{background:var(--dgbg);color:var(--dg)}
+.center h2{font-size:var(--fs-xl);font-weight:800;margin:0 0 8px}
+.center p{color:var(--i2);font-size:var(--fs-sm);line-height:1.6;margin:0 auto;max-width:300px}
+.center .ph{margin-top:18px;font-size:var(--fs-sm)}
+.center .ph a{color:var(--acd);font-weight:800;text-decoration:none}
+.foot{text-align:center;font-size:var(--fs-xs);color:var(--i3);padding:16px 18px 26px}
+.spin{width:34px;height:34px;border:3px solid var(--ln);border-top-color:var(--ac);border-radius:50%;
+  margin:0 auto 14px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2s}.prog i{transition:none}}
+</style>
+</head>
+<body>
+<div class="stage"><div class="sheet">
+  <div class="hdr">
+    <div class="wm">ASPEN <span>SPAS</span></div>
+    <div class="tl">Service Request</div>
+  </div>
+  <div id="root">
+    <div class="center"><div class="spin"></div><p>Loading your form…</p></div>
+  </div>
+</div></div>
+
+<script>
+/* ── Endpoints ───────────────────────────────────────────────────────────── */
+var FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/";
+var MAX_PHOTOS=12, MAX_EDGE=1600, JPEG_Q=0.72;
+
+/* ── Estado ──────────────────────────────────────────────────────────────── */
+var TOKEN="", info=null, sending=false, err="";
+var d={problem:"",since:"",brand:"",model:"",serial:"",errorCode:"",powerOn:null,
+       extra:"",contactPref:"",bestTime:"",name:"",phone:"",addr:"",photos:[]};
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function firstName(n){
+  var s=String(n||"").trim();
+  if(s.indexOf(",")>-1)s=s.split(",")[1]||s.split(",")[0];
+  s=s.replace(/&.*$/,"").trim();
+  return s.split(/\s+/)[0]||"there";
+}
+
+/* ── Borrador local: SOLO TEXTO ───────────────────────────────────────────
+   Nunca las fotos. Todas las apps de Aspen se sirven del mismo origen y
+   comparten una sola cuota de ~5 MB, ya ocupada en ~3 MB. Guardar fotos aqui
+   lanzaria QuotaExceededError y podria romper OTRA app (Warehouse, Delivery).
+   ─────────────────────────────────────────────────────────────────────── */
+function draftKey(){return "aspIntake_"+TOKEN}
+function saveDraft(){
+  try{
+    var t={};["problem","since","brand","model","serial","errorCode","powerOn",
+             "extra","contactPref","bestTime","name","phone","addr"]
+      .forEach(function(k){if(d[k])t[k]=d[k]});
+    var s=JSON.stringify(t);
+    if(s.length<12000)localStorage.setItem(draftKey(),s);
+  }catch(_e){/* cuota llena o modo privado: seguimos sin borrador */}
+}
+function loadDraft(){
+  try{
+    var s=localStorage.getItem(draftKey());if(!s)return;
+    var t=JSON.parse(s);Object.keys(t).forEach(function(k){d[k]=t[k]});
+  }catch(_e){}
+}
+function clearDraft(){try{localStorage.removeItem(draftKey())}catch(_e){}}
+
+/* ── Red: POST con reintentos y espera creciente ─────────────────────────── */
+function post(path,body,tries){
+  tries=tries||3;
+  return new Promise(function(resolve,reject){
+    var n=0;
+    (function go(){
+      n++;
+      var ctl=("AbortController" in window)?new AbortController():null;
+      var timer=setTimeout(function(){try{ctl&&ctl.abort()}catch(_e){}},45000);
+      fetch(FN+path,{method:"POST",headers:{"Content-Type":"application/json"},
+                     body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
+      .then(function(r){clearTimeout(timer);return r.json().then(function(j){
+        if(!r.ok||!j||j.ok!==true)throw new Error((j&&j.error)||("HTTP "+r.status));
+        return j;})})
+      .then(resolve)
+      .catch(function(e){
+        clearTimeout(timer);
+        if(n<tries)setTimeout(go,220*Math.pow(2,n-1));
+        else reject(e);
+      });
+    })();
+  });
+}
+
+/* ── Arranque ────────────────────────────────────────────────────────────── */
+(function init(){
+  try{TOKEN=(new URLSearchParams(location.search)).get("t")||""}catch(_e){TOKEN=""}
+  if(!/^[0-9a-f]{16,64}$/.test(TOKEN)){
+    return fail("This link isn’t valid",
+      "Please use the exact link we sent you, or call us and we’ll send a new one.");
+  }
+  fetch(FN+"intakeGet?t="+encodeURIComponent(TOKEN))
+    .then(function(r){return r.json()})
+    .then(function(j){
+      if(!j||j.ok!==true)throw new Error((j&&j.error)||"not_found");
+      info=j;
+      if(j.status==="received"||j.status==="triaged")
+        return done("We already have this one",
+          "Thanks — your information came through. Someone from our service team will be in touch.");
+      if(j.expired)
+        return fail("This link has expired",
+          "Give us a call and we’ll send you a fresh one right away.");
+      d.name=j.customer||"";d.phone=j.phone||"";d.addr=j.address||"";
+      loadDraft();render();
+    })
+    .catch(function(e){
+      console.warn("[intake]",e);
+      fail("We couldn’t open your form",
+        "Check your signal and reload the page. If it keeps happening, call us and we’ll take it over the phone.");
+    });
+})();
+
+/* ── Pantallas simples ───────────────────────────────────────────────────── */
+function fail(title,msg){
+  $("root").innerHTML='<div class="center"><div class="mk bad">!</div><h2>'+esc(title)+'</h2>'
+    +'<p>'+esc(msg)+'</p><div class="ph">Aspen Spas Service<br>'
+    +'<a href="tel:3147765050">314-776-5050</a></div></div>';
+}
+function done(title,msg){
+  $("root").innerHTML='<div class="center"><div class="mk">\u2713</div><h2>'+esc(title)+'</h2>'
+    +'<p>'+esc(msg)+'</p><div class="ph">Aspen Spas Service<br>'
+    +'<a href="tel:3147765050">314-776-5050</a></div></div>';
+}
+
+/* ── Formulario ──────────────────────────────────────────────────────────── */
+function set(k,v){d[k]=v;saveDraft()}
+function pick(k,v){d[k]=v;saveDraft();render()}
+function setPower(v){d.powerOn=v;saveDraft();render()}
+function rmPhoto(i){d.photos.splice(i,1);render()}
+
+function render(){
+  if(!info)return;
+  function opts(field,vals){
+    return '<div class="opts">'+vals.map(function(v){
+      return '<button type="button" class="opt'+(d[field]===v?" on":"")+'" '
+        +'onclick="pick(\''+field+'\',\''+v.replace(/'/g,"\\'")+'\')">'+esc(v)+'</button>'
+    }).join("")+'</div>';
+  }
+  var photos=d.photos.length
+    ? '<div class="pgrid">'+d.photos.map(function(p,i){
+        return '<div class="pitem'+(p.up?" up":"")+'"><img src="'+p.url+'" alt="">'
+          +'<button class="x" type="button" onclick="rmPhoto('+i+')" aria-label="Remove photo">\u00d7</button>'
+          +'<div class="sz">'+p.origKB+' KB \u2192 '+p.sizeKB+' KB</div></div>'
+      }).join("")+'</div>'
+      +'<p class="h" style="margin-top:10px">'+d.photos.length+' of '+MAX_PHOTOS
+      +'. We shrink them right here on your phone so they send fast even on a weak signal.</p>'
+    : "";
+
+  $("root").innerHTML=
+   '<div class="body">'
+  +'<h1>Tell us about your spa, '+esc(firstName(info.customer))+'</h1>'
+  +'<p class="intro">This takes about two minutes. The more you tell us \u2014 especially photos \u2014 '
+  +'the better we can prepare before we call you back.</p>'
+
+  +'<div class="step"><div class="num">Your info</div><h2>Is this right?</h2>'
+  +'<p class="h">We filled this in from your call. Fix anything that\u2019s wrong.</p>'
+  +'<label class="f">Name</label><input class="inp" value="'+esc(d.name)+'" oninput="set(\'name\',this.value)">'
+  +'<label class="f">Phone</label><input class="inp" type="tel" inputmode="tel" value="'+esc(d.phone)+'" oninput="set(\'phone\',this.value)">'
+  +'<label class="f">Address</label><input class="inp" value="'+esc(d.addr)+'" oninput="set(\'addr\',this.value)">'
+  +'</div>'
+
+  +'<div class="step"><div class="num">The problem</div><h2>What is it doing?</h2>'
+  +'<p class="h">Write it however you\u2019d say it out loud. There\u2019s no wrong way.</p>'
+  +'<textarea id="problem" class="inp" placeholder="It runs fine in the morning but shuts off in the afternoon\u2026" '
+  +'oninput="set(\'problem\',this.value)">'+esc(d.problem)+'</textarea>'
+  +'<label class="f">How long has this been going on?</label>'
+  +opts("since",["Today","This week","More than a week","On and off for months"])
+  +'</div>'
+
+  +'<div class="step"><div class="num">Photos</div><h2>Show us what you see</h2>'
+  +'<p class="h">The control panel, the equipment bay, anything leaking or burnt. This is what lets us '
+  +'bring the right part the first time.</p>'
+  +'<label class="drop" for="pk"><div class="big">\uD83D\uDCF7</div>'
+  +'<div class="t">Add photos</div><div class="s">Take a picture or choose from your phone</div></label>'
+  +'<input type="file" id="pk" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files)">'
+  +photos
+  +'</div>'
+
+  +'<div class="step"><div class="num">Your spa</div><h2>A few details</h2>'
+  +'<p class="h">Skip anything you don\u2019t know.</p>'
+  +'<label class="f">Brand</label><input class="inp" placeholder="Aspen, Marquis, Sundance\u2026" value="'+esc(d.brand)+'" oninput="set(\'brand\',this.value)">'
+  +'<label class="f">Model</label><input class="inp" placeholder="Ellis 7-person" value="'+esc(d.model)+'" oninput="set(\'model\',this.value)">'
+  +'<label class="f">Serial number</label><input class="inp" placeholder="Usually inside the cabinet door" value="'+esc(d.serial)+'" oninput="set(\'serial\',this.value)">'
+  +'<label class="f">Any code on the panel?</label><input class="inp" placeholder="FLO, OH, dr, HL\u2026" value="'+esc(d.errorCode)+'" oninput="set(\'errorCode\',this.value)">'
+  +'<label class="f">Does it have power?</label>'
+  +'<div class="opts">'
+  +'<button type="button" class="opt'+(d.powerOn===true?" on":"")+'" onclick="setPower(true)">Yes, lights are on</button>'
+  +'<button type="button" class="opt'+(d.powerOn===false?" on":"")+'" onclick="setPower(false)">No, it\u2019s dead</button>'
+  +'</div></div>'
+
+  +'<div class="step"><div class="num">Anything else</div><h2>What else should we know?</h2>'
+  +'<p class="h">Recent repairs, a new cover, water you just changed \u2014 anything.</p>'
+  +'<textarea class="inp" style="min-height:74px" placeholder="Optional" oninput="set(\'extra\',this.value)">'+esc(d.extra)+'</textarea>'
+  +'<label class="f">Best way to reach you</label>'+opts("contactPref",["Call","Text","Email"])
+  +'<label class="f">Best time</label><input class="inp" placeholder="After 4pm, mornings\u2026" value="'+esc(d.bestTime)+'" oninput="set(\'bestTime\',this.value)">'
+  +'</div>'
+  +(err?'<div class="err">'+esc(err)+'</div>':'')
+  +'</div>'
+
+  +'<div class="bar">'
+  +(sending?'<div class="prog"><i id="pbar"></i></div><p class="pmsg" id="pmsg">Sending\u2026</p>':'')
+  +'<button class="btn" id="go" onclick="submitForm()"'+(sending?" disabled":"")+'>'
+  +(sending?"Sending\u2026":"Send to Aspen Spas")+'</button>'
+  +'</div>'
+  +'<div class="foot">Aspen Spas \u00b7 St. Louis \u00b7 314-776-5050</div>';
+}
+
+/* ── Fotos: se comprimen en el telefono antes de salir ───────────────────── */
+function addPhotos(files){
+  if(!files||!files.length)return;
+  var room=MAX_PHOTOS-d.photos.length;
+  if(room<=0){err="That\u2019s the most photos we can take. Remove one if you want to swap it.";render();return}
+  var list=Array.prototype.slice.call(files,0,room);
+  var pending=list.length;
+  list.forEach(function(file){
+    if(!/^image\//.test(file.type||"")){if(--pending===0)render();return}
+    var origKB=Math.round(file.size/1024);
+    var fr=new FileReader();
+    fr.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var w=img.width,h=img.height;
+          if(w>MAX_EDGE||h>MAX_EDGE){var s=MAX_EDGE/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s)}
+          var c=document.createElement("canvas");c.width=w;c.height=h;
+          var ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+          ctx.drawImage(img,0,0,w,h);
+          var url=c.toDataURL("image/jpeg",JPEG_Q);
+          d.photos.push({url:url,name:file.name||"photo.jpg",origKB:origKB,
+                         sizeKB:Math.round(url.length*0.75/1024)});
+        }catch(_e){/* una foto rara no debe tumbar el formulario */}
+        if(--pending===0)render();
+      };
+      img.onerror=function(){if(--pending===0)render()};
+      img.src=e.target.result;
+    };
+    fr.onerror=function(){if(--pending===0)render()};
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ── Envio: una foto por peticion, luego el formulario ───────────────────── */
+async function submitForm(){
+  if(sending)return;
+  if(!d.problem||d.problem.trim().length<10){
+    err="Please tell us what the spa is doing \u2014 a sentence or two is enough.";
+    render();
+    var el=$("problem");
+    if(el){el.classList.add("bad");el.focus();
+           try{el.scrollIntoView({behavior:"smooth",block:"center"})}catch(_e){}}
+    return;
+  }
+  err="";sending=true;render();
+  var steps=d.photos.length+1, at=0;
+  function tick(msg){
+    at++;var b=$("pbar"),m=$("pmsg");
+    if(b)b.style.width=Math.round(at/steps*100)+"%";
+    if(m)m.textContent=msg;
+  }
+  var uploaded=[];
+  try{
+    for(var i=0;i<d.photos.length;i++){
+      var p=d.photos[i];
+      var res=await post("intakeSubmit",{t:TOKEN,kind:"photo",name:p.name,dataUrl:p.url});
+      uploaded.push({url:res.url,path:res.path,name:p.name,sizeKB:p.sizeKB});
+      tick("Sending photo "+(i+1)+" of "+d.photos.length+"\u2026");
+    }
+    await post("intakeSubmit",{t:TOKEN,kind:"final",photos:uploaded,reply:{
+      problem:d.problem,since:d.since,brand:d.brand,model:d.model,serial:d.serial,
+      errorCode:d.errorCode,powerOn:d.powerOn,extra:d.extra,
+      contactPref:d.contactPref,bestTime:d.bestTime,
+      name:d.name,phone:d.phone,address:d.addr
+    }});
+    tick("Almost done\u2026");
+    clearDraft();
+    done("Got it, "+firstName(info.customer),
+      "Your spa details are with our service team. Someone will call you back to go over next steps \u2014 "
+      +"either a coaching call to walk you through it, or a technician visit.");
+  }catch(e){
+    console.warn("[intake submit]",e);
+    sending=false;
+    err="We couldn\u2019t send it just now \u2014 check your signal and press send again. "
+      +"Nothing you typed was lost. If it keeps failing, call us at 314-776-5050.";
+    render();
+  }
+}
+</script>
+</body>
+</html>
