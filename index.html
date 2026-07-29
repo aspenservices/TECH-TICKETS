@@ -2050,12 +2050,22 @@ body.dark-mode .trem-miss i,body.theme-ember .trem-miss i{background:color-mix(i
   #tabBar.tabs #tab9::before{ content:"\1F4BC"; }
   #tabBar.tabs #tab10::before{ content:"\1F9F0"; }
   #tabBar.tabs #tab12::before{ content:"\1F4DE"; }
+  /* 29 jul 2026: faltaban estas tres. La barra colapsada pone font-size:0 en
+     .tab, asi que el emoji que vive en el TEXTO de la pestana no se ve -- el
+     icono tiene que venir de ::before. Journal y Conversations llevaban asi
+     desde que se anadieron: salian como una pastilla vacia. */
+  #tabBar.tabs #tab11::before{ content:"\1F4D3"; }
+  #tabBar.tabs #tab13::before{ content:"\1F4AC"; }
+  #tabBar.tabs #tab14::before{ content:"\1F4E8"; }
   #tabBar.tabs .tab::before{ font-size:18px; line-height:1; flex:0 0 auto; }
   #tabBar.tabs:hover .tab::before, #tabBar.tabs:focus-within .tab::before{ font-size:15px; }
   /* tab9/tab10 carry their emoji in the label text, so drop the ::before when expanded */
   #tabBar.tabs:hover #tab9::before, #tabBar.tabs:focus-within #tab9::before,
   #tabBar.tabs:hover #tab10::before, #tabBar.tabs:focus-within #tab10::before,
-  #tabBar.tabs:hover #tab12::before, #tabBar.tabs:focus-within #tab12::before{ display:none; }
+  #tabBar.tabs:hover #tab12::before, #tabBar.tabs:focus-within #tab12::before,
+  #tabBar.tabs:hover #tab11::before, #tabBar.tabs:focus-within #tab11::before,
+  #tabBar.tabs:hover #tab13::before, #tabBar.tabs:focus-within #tab13::before,
+  #tabBar.tabs:hover #tab14::before, #tabBar.tabs:focus-within #tab14::before{ display:none; }
 
   /* badges: small dot on the icon when collapsed, full count when expanded */
   #tabBar.tabs .tab .badge{
@@ -2967,6 +2977,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 
   <!-- ══ ESTIMATE MODE ══ -->
   <div id="estMode" style="display:none">
+  <div id="estPendingBox"></div>
   <div class="card"><div class="g2"><div class="field" style="position:relative"><div class="lbl">Customer</div><input type="text" id="eCust" placeholder="Customer name" autocomplete="off" oninput="_suggestFor('eCust')" onblur="_hideSuggestSoon('eCust')"><div class="cust-suggest" id="eCustSuggest"></div></div><div class="field"><div class="lbl">Date</div><input type="date" id="eDate"></div></div></div>
   <div class="card">
     <div class="lbl">Customer Contact <span class="sub">(required for estimate)</span></div>
@@ -18295,7 +18306,12 @@ async function shareLinkEstimate(){
   const tax=eCalcTax();
   const grand=ptot+tax+(lb?lb.amount:0);
 
-  const token=Date.now().toString(36)+Math.random().toString(36).substr(2,8);
+  /* v2.9.3 — TOKEN FUERTE. Antes: Date.now()+Math.random(), o sea mitad marca de
+     tiempo (adivinable) y mitad Math.random, que NO es criptografico. Con la regla
+     `estimates read: if signedIn()` eso significaba que cualquier sesion anonima
+     que acertara el token leia nombre, direccion, telefono, piezas y precios.
+     Ahora 128 bits de crypto.getRandomValues, igual que los links de intake. */
+  const token=EST_NEWTOKEN();
   try{
     await db.collection("estimates").doc(token).set({
       customer:cu,date:dt,techs:eTechs.slice(),
@@ -18310,6 +18326,12 @@ async function shareLinkEstimate(){
       fromTicketId:(typeof _estFromTktId!=="undefined"?_estFromTktId:null)||null,
       signed:false,signatureData:null,signedAt:null,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdAtMs:Date.now(),
+      /* v2.9.3 — CADUCIDAD REAL. El campo `expired` existia desde el principio y
+         la vista del cliente lo comprobaba, pero NADA en toda la app lo ponia en
+         true: los links quedaban abiertos y firmables para siempre, con precios
+         de hace meses. Ahora se guarda la fecha limite y se calcula al leer. */
+      expiresAtMs:Date.now()+EST_EXPIRE_DAYS*86400000,
       expired:false
     });
     const link=window.location.origin+window.location.pathname+"?estimate="+token;
@@ -18320,7 +18342,13 @@ async function shareLinkEstimate(){
     const _phClean=String(ph).replace(/[^\d+]/g,"");
     if(_phClean){
       // iOS/Android: sms: con número + cuerpo abre Mensajes con todo puesto.
-      window.location.href="sms:"+_phClean+"?&body="+encodeURIComponent(_estMsg);
+      /* v2.9.3 — "sms:NUM?&body=" solo funciona en iOS. En Android el separador
+         es "?body=" y con el formato de iOS el mensaje llegaba VACIO: el tecnico
+         abria Mensajes con el numero puesto y sin el link. _smsHref elige el
+         separador segun la plataforma. */
+      window.location.href=(typeof _smsHref==="function")
+        ? _smsHref(_phClean,_estMsg)
+        : ("sms:"+_phClean+"?body="+encodeURIComponent(_estMsg));
     }else if(navigator.share){
       await navigator.share({title:`Estimate — ${cu}`,text:_estMsg,url:link}).catch(()=>{});
     }else{
@@ -18663,6 +18691,25 @@ function _authSignInWithFallback(){
    Requiere desplegar la función `signEstimate` (te la dejo en functions-signEstimate.js).
    Si no está desplegada, esto simplemente devuelve false y no rompe nada. */
 var EST_SIGN_FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/signEstimate";
+var EST_GET_FN ="https://us-central1-tech-tickets-a9485.cloudfunctions.net/estimateGet";
+/* Dias que vive un link de estimado. Un solo numero: cambialo aqui. */
+var EST_EXPIRE_DAYS=60;
+function EST_NEWTOKEN(){
+  var a=new Uint8Array(16);
+  (window.crypto||window.msCrypto).getRandomValues(a);
+  return Array.prototype.map.call(a,function(b){return ("0"+b.toString(16)).slice(-2)}).join("");
+}
+/* Caducidad de un estimado. Los VIEJOS no tienen expiresAtMs (se crearon antes de
+   v2.9.3) y ademas llevan el token debil: se cierran a los EST_EXPIRE_DAYS de su
+   fecha de creacion, que es justo lo que queremos. */
+function _estIsExpired(d){
+  if(!d)return false;
+  if(d.expired===true)return true;
+  if(d.expiresAtMs)return Date.now()>d.expiresAtMs;
+  var born=d.createdAtMs||(d.createdAt&&d.createdAt.seconds?d.createdAt.seconds*1000:0);
+  if(!born)return false;
+  return Date.now()>born+EST_EXPIRE_DAYS*86400000;
+}
 async function _signViaFunction(){
   try{
     // v1.12: sólo mandamos la FIRMA. La Cloud Function genera el PDF del reporte en
@@ -18719,10 +18766,14 @@ async function loadCustEstimate(){
   document.querySelector(".tabs").style.display="none";
   document.querySelectorAll(".wrap").forEach(w=>w.style.display="none");
   document.getElementById("custEstPage").style.display="block";
-  // Init Firebase if not already
-  if(!db)initFirebase();
-
-  if(!db){document.getElementById("custEstContent").innerHTML='<div class="empty">System not configured</div>';return true}
+  /* v2.9.3 — El navegador del cliente YA NO LEE Firestore.
+     Antes: initFirebase() + _awaitAuth(9000) + db.collection("estimates").get().
+     En el webview de Mensajes la persistencia por IndexedDB esta bloqueada, la
+     sesion anonima no cuajaba, y Firestore servia el documento desde su CACHE
+     LOCAL: la pagina se veia bien y el fallo solo aparecia al firmar. Ademas el
+     cliente esperaba hasta 9 segundos en blanco.
+     Ahora se pide a la Cloud Function estimateGet (Admin SDK), igual que hace
+     intake.html. Sin auth, sin IndexedDB, sin espera, y sin depender de reglas. */
   // CRITICAL: the customer's device has never used the app, so anonymous auth is NOT
   // cached. Firestore rules require an authenticated request — wait for sign-in to land
   // before reading, or the first link-open races ahead of auth and is denied.
@@ -18733,11 +18784,18 @@ async function loadCustEstimate(){
      —Firestore lo sirve desde su caché local— y nadie se enteraba de nada... hasta que
      el cliente firmaba y la escritura moría con "Missing or insufficient permissions".
      Ahora lo sabemos desde el primer segundo y se lo decimos. */
-  var _authOk=await _awaitAuth(9000);
+  var _authOk=true;   // ya no dependemos de la sesion anonima para LEER
   try{
-    const doc=await db.collection("estimates").doc(token).get();
-    if(!doc.exists){document.getElementById("custEstContent").innerHTML='<div class="empty" style="padding:60px 20px"><h3 style="font-size:var(--fs-xl);color:var(--r);margin-bottom:8px">Link Not Found</h3><p>This estimate link does not exist or has been removed.</p></div>';return true}
-    const d=doc.data();
+    var _r=await fetch(EST_GET_FN+"?t="+encodeURIComponent(token),{method:"GET"});
+    var _j=await _r.json().catch(function(){return null});
+    if(!_j||_j.ok!==true){
+      var _msg=(_j&&_j.error==="expired")
+        ? '<h3 style="font-size:var(--fs-xl);color:var(--r);margin-bottom:8px">This Estimate Has Expired</h3><p>Estimates are good for '+EST_EXPIRE_DAYS+' days. Give us a call and we will send you an updated one.</p><p style="margin-top:14px"><a href="tel:3147765050" style="color:var(--ac);font-weight:700">314-776-5050</a></p>'
+        : '<h3 style="font-size:var(--fs-xl);color:var(--r);margin-bottom:8px">Link Not Found</h3><p>This estimate link does not exist or has been removed.</p>';
+      document.getElementById("custEstContent").innerHTML='<div class="empty" style="padding:60px 20px">'+_msg+'</div>';
+      return true;
+    }
+    const d=_j.estimate;
     custEstName=d.customer||"";
     if(d.signed||d.expired){document.getElementById("custEstContent").innerHTML=`<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div><div style="margin:20px 0;font-size:var(--fs-lg);color:var(--ac);font-weight:700">${d.signed?"✓ This estimate has been signed and accepted.":"This link has expired."}</div>${d.signed?`<div style="font-size:var(--fs-base);color:var(--i3)">Signed on ${d.signedAt}</div>`:""}<div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">Thank you for choosing Aspen Spas</div></div>`;return true}
 
@@ -32150,6 +32208,32 @@ function _itkStart(){
   },500);
 })();
 
+/* active y done se declaran con `let` (linea 4336), asi que NO existen en
+   window: hay que leerlos como identificador pelado con guard de typeof.
+   Misma leccion que costo dias en la vista Customer V7. */
+function _itkA(){return (typeof active!=="undefined"&&Array.isArray(active))?active:(window.active||[]);}
+function _itkD(){return (typeof done!=="undefined"&&Array.isArray(done))?done:(window.done||[]);}
+
+/* Estado VIVO del ticket que salio de un intake. Cero lecturas extra a
+   Firestore: se apoya en los listeners que el app ya tiene. El ticket nace
+   sin fecha, asi que entra por el listener where("date","==","") -- el que se
+   anadio en la auditoria del 20 jul para las llamadas de reagendar.
+     open  -> sigue en active (sin asignar, o asignado y sin terminar)
+     done  -> el tecnico lo completo
+     gone  -> borrado (o completado sin fecha: tampoco es trabajo pendiente)
+   TRIAGED es una lista de trabajo en curso, no un archivo: solo se queda lo
+   que todavia no termina. */
+function _itkTicketState(it){
+  if(!it||!it.convertedTicketId)return {state:"gone"};
+  var id=it.convertedTicketId,i;
+  var A=_itkA();for(i=0;i<A.length;i++)if(A[i].id===id)return {state:"open",t:A[i]};
+  var D=_itkD();for(i=0;i<D.length;i++)if(D[i].id===id)return {state:"done",t:D[i]};
+  /* Cortesia de 90s: entre que se crea el ticket y que el listener lo entrega
+     hay un instante. Sin esto la tarjeta parpadearia al triar. */
+  if(it.convertedAtMs&&Date.now()-it.convertedAtMs<90000)return {state:"open"};
+  return {state:"gone"};
+}
+
 function _itkBadge(){
   try{
     var b=document.getElementById("bdg14");if(!b)return;
@@ -32180,6 +32264,7 @@ function _itkAgo(ms){
   var n=Math.round(d/86400000);return n+(n===1?" day ago":" days ago");
 }
 function _itkExpired(it){return !!(it.expiresAtMs&&Date.now()>it.expiresAtMs)}
+function _itkPh(n){return n+(n===1?" photo":" photos")}
 
 /* ── Los textos que se le mandan al cliente ──────────────────────────────── */
 function _itkSmsBody(it){
@@ -32488,7 +32573,7 @@ function _itkCard(it){
   if(it.status==="received"){
     h+='<div class="itk-mt">'+esc(it.phone||it.email||"")+' \u00b7 answered '+esc(_itkAgo(it.submittedAtMs))+'</div>'
       +'<div class="itk-chips">'
-      +((r.photos&&r.photos.length)?'<span class="itk-chip cu">'+r.photos.length+' photos</span>'
+      +((r.photos&&r.photos.length)?'<span class="itk-chip cu">'+_itkPh(r.photos.length)+'</span>'
                                    :'<span class="itk-chip ne">No photos</span>')
       +(r.errorCode?'<span class="itk-chip am">Code '+esc(r.errorCode)+'</span>':'')
       +(r.since?'<span class="itk-chip ne">'+esc(r.since)+'</span>':'')
@@ -32507,12 +32592,25 @@ function _itkCard(it){
   }
 
   if(it.status==="triaged"){
-    var where=it.convertedTo==="coaching"?"Coaching \u00b7 to schedule":"Service Log \u00b7 unassigned calls";
-    h+='<div class="itk-mt">'+esc(it.phone||it.email||"")+' \u00b7 triaged '+esc(_itkAgo(it.convertedAtMs||it.submittedAtMs))+(it.convertedBy?(" by "+esc(it.convertedBy)):"")+'</div>'
-      +'<div class="itk-chips"><span class="itk-chip gr">'+esc(where)+'</span>'
-      +((r.photos&&r.photos.length)?'<span class="itk-chip ne">'+r.photos.length+' photos carried over</span>':'')
+    /* La tarjeta ya no dice solo "lo mandaste": dice EN QUE VA. Esta columna se
+       lee de un vistazo para saber que sigue sin dueno. */
+    var st=_itkTicketState(it), tk=st.t||{};
+    var tech=(tk.techs&&tk.techs.length)?tk.techs.join(", "):"";
+    var whereChip=it.convertedTo==="coaching"
+      ? '<span class="itk-chip gr">Coaching call</span>'
+      : '<span class="itk-chip gr">Service Log</span>';
+    var stateChip=tech
+      ? '<span class="itk-chip in">'+esc(tech)+(tk.date?(' \u00b7 '+esc(tk.date)):'')+'</span>'
+      : '<span class="itk-chip am">Nobody assigned yet</span>';
+    h+='<div class="itk-mt">'+esc(it.phone||it.email||"")+' \u00b7 handed off '+esc(_itkAgo(it.convertedAtMs||it.submittedAtMs))+(it.convertedBy?(" by "+esc(it.convertedBy)):"")+'</div>'
+      +'<div class="itk-chips">'+whereChip+stateChip
+      +((r.photos&&r.photos.length)?'<span class="itk-chip ne">'+_itkPh(r.photos.length)+' carried over</span>':'')
       +'</div>'
-      +'<div class="itk-acts"><button type="button" class="itk-btn itk-gh itk-sm" onclick="itkDetail(\''+t+'\')">See what they sent</button></div>';
+      +'<div class="itk-acts">'
+        +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="itkDetail(\''+t+'\')">See what they sent</button>'
+        +((it.convertedTo!=="coaching"&&typeof openTktDetail==="function")
+            ?'<button type="button" class="itk-btn itk-dark itk-sm" onclick="openTktDetail(\''+esc(it.convertedTicketId)+'\')">Open ticket</button>':'')
+      +'</div>';
   }
   return h+'</div></div>';
 }
@@ -32526,7 +32624,10 @@ function rndrIntake(){
 
   var W=_itkList.filter(function(x){return x.status==="waiting"});
   var R=_itkList.filter(function(x){return x.status==="received"});
-  var T=_itkList.filter(function(x){return x.status==="triaged"});
+  /* Solo los que siguen abiertos. Completado o borrado = fuera de la columna. */
+  var T=_itkList.filter(function(x){
+    return x.status==="triaged" && _itkTicketState(x).state==="open";
+  });
   R.sort(function(a,b){return (b.submittedAtMs||0)-(a.submittedAtMs||0)});
   T.sort(function(a,b){return (b.convertedAtMs||0)-(a.convertedAtMs||0)});
   var sent=_itkList.filter(function(x){return !!x.sentAtMs}).length;
@@ -32537,7 +32638,7 @@ function rndrIntake(){
   var kpis='<div class="itk-kpis">'
     +kpi("k-am",W.length,"Waiting on customer")
     +kpi("k-cu",R.length,"Ready to triage")
-    +kpi("k-gr",T.length,"Triaged")
+    +kpi("k-gr",T.length,"Handed off, still open")
     +kpi("",rate,"Response rate")+'</div>';
 
   var head='<div class="itk-head"><div><h2>Intake</h2>'
@@ -32594,12 +32695,141 @@ function rndrIntake(){
   box.innerHTML=kpis+head+form+'<div class="itk-tray">'
     +col("Waiting on customer","var(--c-warning-strong)",W,"No links out","Every link you send shows up here until the customer answers.")
     +col("Ready to triage","var(--ac)",R,"Nothing new","Completed forms land here with photos and the customer's story.")
-    +col("Triaged","var(--c-success-strong)",T,"Nothing triaged yet","Once you send an intake to the Service Log or to Coaching it moves here.")
+    +col("Handed off","var(--c-success-strong)",T,"Nothing in progress","Intakes you send to the Service Log or to Coaching stay here until the job is finished.")
     +'</div>';
 
   Object.keys(keep).forEach(function(id){var e=document.getElementById(id);if(e)e.value=keep[id]});
   _itkBadge();
 }
+</script>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ESTIMADOS PENDIENTES (v2.9.3) — delete these 2 blocks to revert
+     Antes solo existia un listener del estimado que el tecnico ACABABA de
+     mandar: si cerraba la app o cambiaba de pestana, perdia el hilo y no habia
+     ninguna pantalla que dijera cuales siguen sin firmar. Esto es esa pantalla,
+     arriba del constructor, donde se entra a hacer un estimado.
+     El listener se enciende SOLO al entrar en modo estimado (no en el arranque)
+     y pide una sola pagina de 60 documentos ordenada por createdAt: un
+     orderBy de un solo campo, asi que no hace falta indice compuesto.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="aspenEstPendingStyle">
+#estPendingBox:empty{display:none}
+.ep-wrap{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-lg,13px);padding:14px 16px;margin-bottom:16px}
+.ep-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--i2);margin-bottom:10px}
+.ep-h .ep-n{margin-left:auto;background:var(--acl);color:var(--acd);border:1px solid #f3d6b8;border-radius:999px;padding:1px 9px;font-size:var(--fs-xs)}
+.ep-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--ln);flex-wrap:wrap}
+.ep-row:first-of-type{border-top:0}
+.ep-nm{font-weight:700;font-size:var(--fs-base);flex:1;min-width:130px;word-break:break-word}
+.ep-mt{font-size:var(--fs-xs);color:var(--i3);width:100%;margin-top:-4px}
+.ep-amt{font-weight:800;color:var(--ink);font-size:var(--fs-base)}
+.ep-chip{font-size:var(--fs-xs);font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid transparent}
+.ep-chip.w{background:var(--c-warning-bg);color:var(--c-warning-fg);border-color:var(--c-warning-border)}
+.ep-chip.d{background:var(--c-danger-bg);color:var(--c-danger-fg);border-color:var(--c-danger-border)}
+.ep-btn{border:1px solid var(--ln);background:transparent;color:var(--i2);border-radius:var(--r-md,10px);padding:6px 11px;font-size:var(--fs-xs);font-weight:700;font-family:inherit;cursor:pointer}
+.ep-btn.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+</style>
+<script id="aspenEstPendingScript">
+var _epList=[],_epUnsub=null;
+
+/* Se enciende al ENTRAR en modo estimado, nunca en el arranque: con las reglas
+   v3 la coleccion es de personal y leerla antes del login se deniega en bucle
+   (esa fue la lentitud de julio). */
+function _epStart(){
+  if(_epUnsub)return;
+  if(typeof db==="undefined"||!db)return;
+  if(!(typeof currentUser!=="undefined"&&currentUser))return;
+  try{
+    _epUnsub=db.collection("estimates").orderBy("createdAt","desc").limit(60)
+      .onSnapshot(function(snap){
+        _epList=[];snap.forEach(function(d){_epList.push(Object.assign({token:d.id},d.data()))});
+        rndrEstPending();
+      },function(e){console.warn("[est pendientes]",e)});
+  }catch(e){console.warn("[est pendientes]",e)}
+}
+
+function _epAgo(ms){
+  if(!ms)return "";
+  var x=Date.now()-ms;
+  if(x<3600000)return Math.max(1,Math.round(x/60000))+" min ago";
+  if(x<86400000)return Math.round(x/3600000)+" h ago";
+  var n=Math.round(x/86400000);return n+(n===1?" day ago":" days ago");
+}
+function _epBorn(e){
+  return e.createdAtMs||(e.createdAt&&e.createdAt.seconds?e.createdAt.seconds*1000:0);
+}
+function _epLink(tok){
+  return window.location.origin+window.location.pathname+"?estimate="+tok;
+}
+function epResend(tok){
+  var e=null,i;for(i=0;i<_epList.length;i++)if(_epList[i].token===tok)e=_epList[i];
+  if(!e)return;
+  if(!e.phone){toast("No phone on this estimate","warn");return}
+  var msg="Aspen Spas Service Estimate for "+(e.customer||"")
+    +"\nEstimated total: $"+Number(e.total||0).toFixed(2)
+    +"\n\nThis is an estimate, not a final bill \u2014 the total may change if we find more work is needed."
+    +"\n\n"+_epLink(tok);
+  var href=(typeof _smsHref==="function")
+    ? _smsHref(e.phone,msg)
+    : ("sms:"+String(e.phone).replace(/[^\d+]/g,"")+"?body="+encodeURIComponent(msg));
+  try{window.location.href=href}catch(_e){toast("Could not open Messages","err")}
+}
+function epCopy(tok){
+  var url=_epLink(tok);
+  var ok=function(){toast("Link copied")};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(ok,ok);
+  else{try{var ta=document.createElement("textarea");ta.value=url;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);ok();}catch(_e){}}
+}
+
+function rndrEstPending(){
+  var box=document.getElementById("estPendingBox");if(!box)return;
+  var days=(typeof EST_EXPIRE_DAYS!=="undefined")?EST_EXPIRE_DAYS:60;
+  var mine=_epList.filter(function(e){
+    if(e.signed)return false;
+    if(typeof _estIsExpired==="function"&&_estIsExpired(e))return false;
+    return true;
+  });
+  mine.sort(function(a,b){return _epBorn(b)-_epBorn(a)});
+  if(!mine.length){box.innerHTML="";return}
+
+  var rows=mine.slice(0,12).map(function(e){
+    var born=_epBorn(e), age=Date.now()-born;
+    var left=Math.ceil(((born+days*86400000)-Date.now())/86400000);
+    var chip = age>7*86400000
+      ? '<span class="ep-chip d">Cold \u00b7 '+_epAgo(born)+'</span>'
+      : '<span class="ep-chip w">Waiting \u00b7 '+_epAgo(born)+'</span>';
+    return '<div class="ep-row">'
+      +'<div class="ep-nm">'+esc(e.customer||"\u2014")+'</div>'
+      +'<div class="ep-amt">$'+Number(e.total||0).toFixed(2)+'</div>'
+      +chip
+      +(e.phone?'<button type="button" class="ep-btn pri" onclick="epResend(\''+e.token+'\')">Text again</button>':'')
+      +'<button type="button" class="ep-btn" onclick="epCopy(\''+e.token+'\')">Copy link</button>'
+      +'<div class="ep-mt">'+esc((e.techs&&e.techs.length)?e.techs.join(", "):"no technician")
+      +' \u00b7 expires in '+(left>0?left:0)+(left===1?" day":" days")+'</div>'
+      +'</div>';
+  }).join("");
+
+  box.innerHTML='<div class="ep-wrap"><div class="ep-h">Sent, not signed yet'
+    +'<span class="ep-n">'+mine.length+'</span></div>'+rows
+    +(mine.length>12?'<div class="ep-mt" style="padding-top:9px">'+(mine.length-12)+' more not shown</div>':'')
+    +'</div>';
+}
+
+/* Engancha el ciclo real del app: al entrar en modo estimado. */
+(function(){
+  if(typeof setMode!=="function"||window.__epWrapped)return;
+  window.__epWrapped=true;
+  var _origSetMode=setMode;
+  window.setMode=setMode=function(m,opts){
+    var r=_origSetMode.apply(this,arguments);
+    try{
+      if(String(m)==="estimate"){_epStart();rndrEstPending();}
+    }catch(_e){}
+    return r;
+  };
+})();
 </script>
 
 </body>
