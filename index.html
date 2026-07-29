@@ -32264,6 +32264,21 @@ function _itkAgo(ms){
   var n=Math.round(d/86400000);return n+(n===1?" day ago":" days ago");
 }
 function _itkExpired(it){return !!(it.expiresAtMs&&Date.now()>it.expiresAtMs)}
+/* v2.9.4 — un catch que solo dice "Could not X" no sirve para nada: es el mismo
+   fallo mudo que venimos sacando del resto del app. Esto traduce el error real
+   a algo que se pueda actuar, y siempre lo deja en la consola. */
+function _itkErr(e,what){
+  try{console.error("[intake] "+what,e)}catch(_e){}
+  var code=(e&&(e.code||e.name))||"";
+  var msg=(e&&e.message)||String(e||"");
+  if(String(code).indexOf("permission-denied")>-1||/insufficient permissions/i.test(msg))
+    return "Firestore is blocking this. Check the rules: intakes needs `allow read, write: if isStaff();`";
+  if(String(code).indexOf("unavailable")>-1||/offline|network/i.test(msg))
+    return "No connection right now \u2014 try again in a moment.";
+  if(String(code).indexOf("not-found")>-1)
+    return "This one is already gone. Refresh the page.";
+  return what+" failed: "+(code||msg||"unknown error");
+}
 function _itkPh(n){return n+(n===1?" photo":" photos")}
 
 /* ── Los textos que se le mandan al cliente ──────────────────────────────── */
@@ -32333,7 +32348,7 @@ async function itkCreate(){
     rndrIntake();
   }catch(e){
     console.error("[intake create]",e);
-    toast("Could not create the link: "+(e.message||e),"err");
+    toast(_itkErr(e,"Create link"),"err");
     if(btn){btn.disabled=false;btn.textContent="Create link"}
   }
 }
@@ -32341,7 +32356,10 @@ async function itkCreate(){
 /* ── Envio. Nada sale solo: el usuario revisa y aprieta enviar. ──────────── */
 async function _itkMarkSent(tok,how){
   try{await db.collection("intakes").doc(tok).update({sentVia:how,sentAtMs:Date.now()})}
-  catch(e){console.warn("[intake sent]",e)}
+  catch(e){console.warn("[intake sent]",e);
+    /* Si NI SIQUIERA se puede sellar "enviado", el problema es de permisos y
+       hay que decirlo: si no, el usuario cree que mando el link y no es asi. */
+    if(String((e&&e.code)||"").indexOf("permission-denied")>-1)toast(_itkErr(e,"Mark as sent"),"err");}
 }
 function itkCopy(tok){
   var it=_itkFind(tok);if(!it)return;
@@ -32407,13 +32425,13 @@ async function itkCancel(tok){
   try{await db.collection("intakes").doc(tok).delete();
       if(_itkLastToken===tok)_itkLastToken=null;
       toast("Link cancelled");}
-  catch(e){toast("Could not cancel","err")}
+  catch(e){toast(_itkErr(e,"Cancel"),"err")}
 }
 async function itkDiscard(tok){
   var it=_itkFind(tok);if(!it)return;
   if(!(await confirmDialog("Discard what "+(it.customer||"this customer")+" sent?\nThis cannot be undone.")))return;
   try{await db.collection("intakes").doc(tok).delete();toast("Discarded");}
-  catch(e){toast("Could not discard","err")}
+  catch(e){toast(_itkErr(e,"Discard"),"err")}
 }
 
 /* ── Triage: de intake a ticket real ─────────────────────────────────────── */
@@ -32488,7 +32506,7 @@ async function itkTriage(tok,dest){
     try{if(typeof refreshAll==="function")setTimeout(refreshAll,400)}catch(_e){}
   }catch(e){
     console.error("[intake triage]",e);
-    toast("Could not create the ticket: "+(e.message||e),"err");
+    toast(_itkErr(e,"Triage"),"err");
   }
   finally{_itkBusy[tok]=false}
 }
