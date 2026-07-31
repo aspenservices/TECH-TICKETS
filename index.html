@@ -5600,7 +5600,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.8.1";
+var APP_VERSION="2.10.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -32100,7 +32100,14 @@ body.v8r-open .toast{z-index:1000010}
      ═══════════════════════════════════════════════════════════════════════ -->
 <style id="aspenIntakeStyle">
 #pg14{max-width:1180px}
-.itk-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3);margin-bottom:var(--sp-5)}
+.itk-todo{display:flex;align-items:center;gap:12px;border-radius:var(--r-md);padding:10px 13px;margin-bottom:7px}
+.itk-todo .tx{flex:1;min-width:0;font-size:var(--fs-sm)}
+.itk-todo.t-cu{background:var(--acl);color:var(--acd)}
+.itk-todo.t-am{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.itk-todo.t-ne{background:var(--c-neutral-bg);color:var(--i2)}
+.itk-fun{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--i3);padding:0 2px 12px;border-bottom:1px solid var(--ln);margin-bottom:var(--sp-4)}
+.itk-fun b{color:var(--ink);font-weight:700}
+.itk-cfm{display:flex;align-items:center;gap:10px;background:var(--c-info-bg);color:var(--c-info-fg);border-radius:var(--r-md);padding:10px 13px;margin-bottom:7px;font-size:var(--fs-sm)}
 .itk-kpi{background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-lg);padding:14px 16px;position:relative;overflow:hidden}
 .itk-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--i3)}
 .itk-kpi.k-am:before{background:var(--c-warning-strong)}
@@ -32131,7 +32138,7 @@ textarea.itk-inp{resize:vertical;min-height:64px}
 .itk-url{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-sm);background:#fff;border:1px solid var(--ln);border-radius:var(--r-sm);padding:10px 12px;word-break:break-all;margin:8px 0 12px}
 .itk-prev{background:#fff;border:1px solid var(--ln);border-radius:var(--r-md);padding:12px 14px;font-size:var(--fs-sm);color:var(--i2);white-space:pre-wrap;line-height:1.55;margin-top:10px}
 .itk-prev .pl{display:block;font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.itk-tray{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4);align-items:start}
+.itk-tray{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1.2fr) minmax(0,.75fr);gap:var(--sp-3);align-items:start}
 .itk-col{background:rgba(255,255,255,.5);border:1px solid var(--ln);border-radius:var(--r-xl);padding:var(--sp-3)}
 .itk-col-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;padding:4px 6px 10px;text-transform:uppercase;letter-spacing:.5px;color:var(--i2)}
 .itk-col-h .d{width:9px;height:9px;border-radius:3px}
@@ -32141,10 +32148,21 @@ textarea.itk-inp{resize:vertical;min-height:64px}
 .itk-card.s-w .rail{background:var(--c-warning-strong)}
 .itk-card.s-r .rail{background:var(--ac)}
 .itk-card.s-t .rail{background:var(--c-success-strong)}
+.itk-card.h-hot .rail{background:var(--c-danger-strong)}
+.itk-card.h-warn .rail{background:var(--ac)}
+.itk-card.h-calm .rail{background:var(--ln)}
+.itk-card.junk .itk-nm{color:var(--i3);font-weight:600}
+.itk-rail .itk-card .bd{padding:8px 10px}
+.itk-rail .itk-nm{font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.itk-rail .itk-mt{display:none}
+.itk-cold{font-size:var(--fs-xs);color:var(--i3);padding:8px 4px 2px}
 .itk-card .bd{padding:12px 14px;flex:1;min-width:0}
 .itk-nm{font-weight:800;font-size:var(--fs-md);line-height:1.25;word-break:break-word}
 .itk-mt{font-size:var(--fs-xs);color:var(--i3);margin-top:2px}
-.itk-story{font-size:var(--fs-sm);color:var(--i2);background:var(--c-neutral-bg);border-radius:var(--r-sm);padding:9px 11px;margin-top:9px;line-height:1.5;max-height:98px;overflow:hidden}
+.itk-story{font-size:var(--fs-sm);color:var(--i2);background:var(--c-neutral-bg);border-radius:var(--r-sm);padding:9px 11px;margin-top:9px;line-height:1.5;max-height:98px;overflow:hidden;position:relative}
+.itk-story.clip{cursor:pointer}
+.itk-story.clip:after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(to bottom,transparent,var(--c-neutral-bg))}
+.itk-story.open{max-height:none}
 .itk-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
 .itk-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 .itk-chip{font-size:var(--fs-xs);font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid transparent}
@@ -32163,6 +32181,9 @@ textarea.itk-inp{resize:vertical;min-height:64px}
 .itk-pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
 .itk-pgrid a{display:block;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--ln)}
 .itk-pgrid img{width:100%;height:110px;object-fit:cover;display:block}
+.itk-glbl{font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin:14px 2px 7px}
+.itk-list .itk-card{margin-bottom:7px}
+.itk-list .itk-glbl:first-child{margin-top:0}
 @media(max-width:900px){
   .itk-tray{grid-template-columns:1fr}
   .itk-kpis{grid-template-columns:1fr 1fr}
@@ -32207,6 +32228,23 @@ function _itkStart(){
     else if(tries>360){clearInterval(iv)}     /* ~3 min y se rinde */
   },500);
 })();
+
+/* v2.10.0 — al volver de Messages hay que preguntar si de verdad lo mando.
+   El listener de Firestore ya repinta con cada snapshot; esto cubre el caso
+   de volver sin que haya cambiado ningun documento. */
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState !== "visible") return;
+  var pg = document.getElementById("pg14");
+  if(pg && pg.classList.contains("show")) rndrIntake();
+});
+
+/* girar el telefono cruza los 900px: hay que repintar o queda el cuerpo que no es */
+try{
+  window.matchMedia("(max-width:900px)").addEventListener("change", function(){
+    var pg = document.getElementById("pg14");
+    if(pg && pg.classList.contains("show")) rndrIntake();
+  });
+}catch(_e){}
 
 /* active y done se declaran con `let` (linea 4336), asi que NO existen en
    window: hay que leerlos como identificador pelado con guard de typeof.
@@ -32264,6 +32302,128 @@ function _itkAgo(ms){
   var n=Math.round(d/86400000);return n+(n===1?" day ago":" days ago");
 }
 function _itkExpired(it){return !!(it.expiresAtMs&&Date.now()>it.expiresAtMs)}
+
+/* ── v2.10.0 · Intake helpers (pure) ─────────────────────────
+   No DOM, no Firestore, and every one takes `now` so the node bench can
+   pin the clock. Delete this block and the tab renders exactly as before. */
+var ITK_STALE_H = 48;
+var ITK_HOT_H   = 72;
+var ITK_WARN_H  = 24;
+
+function _itkSentOk(it){
+  if(!it) return false;
+  if(it.sentConfirmed === true) return true;
+  if(it.sentConfirmed === false) return false;
+  return !!it.sentAtMs;
+}
+
+function _itkAgeMs(it, now){
+  now = now || Date.now();
+  if(!it) return 0;
+  if(it.status === "received") return now - (it.submittedAtMs || now);
+  if(it.status === "triaged")  return now - (it.convertedAtMs || it.submittedAtMs || now);
+  return now - (it.sentAtMs || it.createdAtMs || now);
+}
+
+function _itkHeat(it, now){
+  now = now || Date.now();
+  if(!it) return "calm";
+  if(it.status === "triaged"){
+    var sinTecnico = !it._tech;
+    return (sinTecnico && _itkAgeMs(it, now) >= ITK_WARN_H*3600000) ? "warn" : "calm";
+  }
+  if(it.status === "received") return "calm";
+  if(!_itkSentOk(it)) return "calm";
+  if(it.openedAtMs)   return "calm";
+  var h = _itkAgeMs(it, now) / 3600000;
+  if(h >= ITK_HOT_H)  return "hot";
+  if(h >= ITK_WARN_H) return "warn";
+  return "calm";
+}
+
+function _itkIsJunk(it){
+  if(!it) return false;
+  var nombre = String(it.customer || "").trim();
+  var nota   = String(it.note || "").trim();
+  var sueltoSinApellido = nombre.length > 0 && nombre.indexOf(" ") === -1 && nombre.indexOf(",") === -1;
+  var notaDePrueba = /^(test|testing|prueba|asdf+|x+|1+|aaa+)$/i.test(nota);
+  var nombreDePrueba = /^(test|prueba)\b/i.test(nombre);
+  return nombreDePrueba || (sueltoSinApellido && notaDePrueba);
+}
+
+function _itkSortWaiting(arr, now){
+  now = now || Date.now();
+  var rank = {hot:0, warn:1, calm:2};
+  return arr.slice().sort(function(a,b){
+    var ra = rank[_itkHeat(a, now)], rb = rank[_itkHeat(b, now)];
+    if(ra !== rb) return ra - rb;
+    return _itkAgeMs(b, now) - _itkAgeMs(a, now);
+  });
+}
+
+function _itkMedian(nums){
+  if(!nums.length) return 0;
+  var s = nums.slice().sort(function(a,b){return a-b});
+  var m = Math.floor(s.length/2);
+  return s.length % 2 ? s[m] : Math.round((s[m-1] + s[m]) / 2);
+}
+
+function _itkFunnel(list){
+  var enviados = (list||[]).filter(_itkSentOk);
+  function corte(via){
+    var g = enviados.filter(function(x){return x.sentVia === via});
+    return {sent:g.length, answered:g.filter(function(x){return !!x.submittedAtMs}).length};
+  }
+  var respuestas = enviados
+    .filter(function(x){return x.submittedAtMs && x.sentAtMs})
+    .map(function(x){return x.submittedAtMs - x.sentAtMs});
+  return {
+    sent:     enviados.length,
+    opened:   enviados.filter(function(x){return !!x.openedAtMs}).length,
+    answered: enviados.filter(function(x){return !!x.submittedAtMs}).length,
+    openedKnown: (list||[]).some(function(x){return !!x.openedAtMs}),
+    byText:   corte("sms"),
+    byEmail:  corte("email"),
+    medianReplyMs: _itkMedian(respuestas)
+  };
+}
+
+function _itkTodo(list, now){
+  now = now || Date.now();
+  var filas = [];
+  var contestados = (list||[]).filter(function(x){return x.status === "received"});
+  if(contestados.length) filas.push({
+    kind:"answered", n:contestados.length, tone:"accent",
+    text: contestados.length === 1
+      ? (contestados[0].customer || "A customer") + " answered \u2014 photos and their story are in"
+      : contestados.length + " customers answered \u2014 photos and their stories are in",
+    cta:"Open it", tokens: contestados.map(function(x){return x.token})
+  });
+  var frios = (list||[]).filter(function(x){
+    return x.status === "waiting" && _itkSentOk(x) && !x.openedAtMs
+        && _itkAgeMs(x, now) >= ITK_STALE_H*3600000;
+  });
+  if(frios.length) filas.push({
+    kind:"nudge", n:frios.length, tone:"warning",
+    text: frios.length + (frios.length === 1 ? " link sent" : " links sent") + " over " + ITK_STALE_H + " h ago, never opened",
+    cta:"Nudge them", tokens: frios.map(function(x){return x.token})
+  });
+  var huerfanos = (list||[]).filter(function(x){
+    return x.status === "triaged" && !x._tech && _itkAgeMs(x, now) >= ITK_WARN_H*3600000;
+  });
+  if(huerfanos.length) filas.push({
+    kind:"assign", n:huerfanos.length, tone:"neutral",
+    text: huerfanos.length + " handed off over a day ago, still no tech assigned",
+    cta:"Assign", tokens: huerfanos.map(function(x){return x.token})
+  });
+  return filas;
+}
+
+function _itkPendingConfirm(list){
+  return (list||[]).filter(function(x){
+    return x.sendAttemptAtMs && !_itkSentOk(x);
+  });
+}
 /* v2.9.4 — un catch que solo dice "Could not X" no sirve para nada: es el mismo
    fallo mudo que venimos sacando del resto del app. Esto traduce el error real
    a algo que se pueda actuar, y siempre lo deja en la consola. */
@@ -32354,6 +32514,48 @@ async function itkCreate(){
 }
 
 /* ── Envio. Nada sale solo: el usuario revisa y aprieta enviar. ──────────── */
+/* v2.10.0 — intento y confirmacion son cosas distintas.
+   Antes se sellaba sentAtMs ANTES de navegar a Messages, asi que un link que
+   nunca se mando contaba igual que uno mandado y el denominador de la tasa de
+   respuesta salia inflado. Ahora se sella el INTENTO, y al volver se pregunta. */
+async function _itkMarkAttempt(tok, how){
+  try{
+    await db.collection("intakes").doc(tok).update({
+      sendAttemptAtMs: Date.now(),
+      sendAttemptVia:  how
+    });
+  }catch(e){
+    console.warn("[intake attempt]", e);
+    if(String((e&&e.code)||"").indexOf("permission-denied") > -1)
+      toast(_itkErr(e, "Mark as sent"), "err");
+  }
+}
+
+async function _itkConfirmSent(tok){
+  var it = _itkFind(tok); if(!it) return;
+  try{
+    await db.collection("intakes").doc(tok).update({
+      sentVia:         it.sendAttemptVia || "copy",
+      sentAtMs:        it.sendAttemptAtMs || Date.now(),
+      sentConfirmed:   true,
+      sendAttemptAtMs: null,
+      sendAttemptVia:  null
+    });
+    rndrIntake();
+  }catch(e){ toast(_itkErr(e, "Confirm sent"), "err"); }
+}
+
+async function _itkDropAttempt(tok){
+  try{
+    await db.collection("intakes").doc(tok).update({
+      sendAttemptAtMs: null,
+      sendAttemptVia:  null
+    });
+    rndrIntake();
+  }catch(e){ toast(_itkErr(e, "Clear attempt"), "err"); }
+}
+
+/* legacy — sella sin confirmar; usar _itkMarkAttempt + _itkConfirmSent */
 async function _itkMarkSent(tok,how){
   try{await db.collection("intakes").doc(tok).update({sentVia:how,sentAtMs:Date.now()})}
   catch(e){console.warn("[intake sent]",e);
@@ -32364,7 +32566,7 @@ async function _itkMarkSent(tok,how){
 function itkCopy(tok){
   var it=_itkFind(tok);if(!it)return;
   var url=_itkLink(tok);
-  var done=function(){toast("Link copied");_itkMarkSent(tok,"copy")};
+  var done=function(){toast("Link copied");_itkMarkAttempt(tok,"copy")};
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(done,function(){_itkFallbackCopy(url,done)});
   }else _itkFallbackCopy(url,done);
@@ -32384,7 +32586,7 @@ function itkSms(tok){
   var href=(typeof _smsHref==="function")
       ? _smsHref(it.phone,_itkSmsBody(it))
       : ("sms:"+String(it.phone).replace(/[^\d]/g,"")+"?body="+encodeURIComponent(_itkSmsBody(it)));
-  _itkMarkSent(tok,"sms");
+  _itkMarkAttempt(tok,"sms");
   try{window.location.href=href}catch(_e){toast("Could not open Messages","err")}
 }
 function itkEml(tok){
@@ -32413,7 +32615,7 @@ function itkEml(tok){
     a.download="intake-"+String(it.customer||"customer").replace(/[^\w]+/g,"-").toLowerCase()+".eml";
     document.body.appendChild(a);a.click();
     setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
-    _itkMarkSent(tok,"email");
+    _itkMarkAttempt(tok,"email");
     toast("Draft downloaded \u2014 open it in Outlook, review, then send");
   }catch(e){console.error("[intake eml]",e);toast("Could not build the draft","err")}
 }
@@ -32563,10 +32765,117 @@ function _itkModal(title,html){
 }
 function itkCloseModal(){var ov=document.getElementById("itkOverlay");if(ov)ov.style.display="none"}
 
+/* ── Cola de nudge ───────────────────────────────────────────
+   itkSms hace window.location.href, o sea que el navegador SE VA. No se pueden
+   disparar tres textos de un toque: un boton que lo prometa miente. La cola
+   guarda los tokens pendientes y ofrece el siguiente en cada regreso.
+   Va en sessionStorage y no en localStorage a proposito: las apps de Aspen
+   comparten un solo origen y una sola cuota de ~5 MB, ya bastante llena. */
+var ITK_NUDGE_KEY = "aspenItkNudgeQ";
+
+function _itkNudgeState(){
+  try{
+    var raw = sessionStorage.getItem(ITK_NUDGE_KEY);
+    if(!raw) return null;
+    var q = JSON.parse(raw);
+    if(!q || !q.pending || !q.pending.length){
+      try{ sessionStorage.removeItem(ITK_NUDGE_KEY); }catch(_e){}
+      return null;
+    }
+    return q;
+  }catch(_e){ return null; }
+}
+
+function _itkNudgeStart(tokens){
+  if(!tokens || !tokens.length) return;
+  try{
+    sessionStorage.setItem(ITK_NUDGE_KEY, JSON.stringify({
+      pending: tokens.slice(), total: tokens.length, done: 0
+    }));
+  }catch(_e){ /* bloqueado o lleno: se sigue de a uno desde las tarjetas */ }
+  rndrIntake();
+}
+
+function _itkNudgeCancel(){
+  try{ sessionStorage.removeItem(ITK_NUDGE_KEY); }catch(_e){}
+  rndrIntake();
+}
+
+/* Texto distinto al primero a proposito: reenviar el mismo mensaje se lee
+   como un bot. Este reconoce que ya hubo uno y ofrece la salida por telefono. */
+function _itkNudgeBody(it){
+  return "Hi " + _itkFirst(it.customer) + ", Aspen Spas Service again \u2014 just making sure "
+    + "the link reached you. It takes about two minutes and it's what gets you on the "
+    + "schedule:\n\n" + _itkLink(it.token)
+    + "\n\nIf it's easier to talk it through, call us at 314-776-5050 and ask for Service.";
+}
+
+async function _itkNudgeNext(){
+  var q = _itkNudgeState(); if(!q) return;
+  var tok = q.pending[0];
+  var it  = _itkFind(tok);
+  /* sin telefono no hay nudge posible: se salta sin gastarle el turno */
+  if(!it || !it.phone){
+    q.pending.shift(); q.done++;
+    try{
+      if(q.pending.length) sessionStorage.setItem(ITK_NUDGE_KEY, JSON.stringify(q));
+      else sessionStorage.removeItem(ITK_NUDGE_KEY);
+    }catch(_e){}
+    return _itkNudgeNext();
+  }
+  q.pending.shift(); q.done++;
+  try{
+    if(q.pending.length) sessionStorage.setItem(ITK_NUDGE_KEY, JSON.stringify(q));
+    else sessionStorage.removeItem(ITK_NUDGE_KEY);
+  }catch(_e){}
+  try{
+    await db.collection("intakes").doc(tok).update({
+      nudgeCount:    (it.nudgeCount || 0) + 1,
+      lastNudgeAtMs: Date.now()
+    });
+  }catch(e){ console.warn("[intake nudge]", e); }
+  var href = (typeof _smsHref === "function")
+    ? _smsHref(it.phone, _itkNudgeBody(it))
+    : ("sms:" + String(it.phone).replace(/[^\d]/g,"") + "?body=" + encodeURIComponent(_itkNudgeBody(it)));
+  try{ window.location.href = href; }catch(_e){ toast("Could not open Messages","err"); }
+}
+
+/* La historia se cortaba en seco a 98px, a media frase. Degradado + toque
+   para abrir; si es corta no se toca nada. */
+function _itkStory(txt){
+  var t = String(txt || "");
+  if(!t) return "";
+  var largo = t.length > 180;
+  return '<div class="itk-story'+(largo?" clip":"")+'"'
+    + (largo?' onclick="this.classList.toggle(\'open\');this.classList.toggle(\'clip\')"':'')
+    + '>' + esc(t) + '</div>';
+}
+
+/* En el telefono estas con el cliente en la linea. Tres columnas apiladas es
+   scroll entre tres cabeceras para encontrar lo que ya sabias: abajo de 900px
+   se cambia por una sola lista, en orden de urgencia. */
+function _itkIsPhone(){
+  try{ return window.matchMedia("(max-width:900px)").matches }catch(_e){ return false }
+}
+function _itkListBody(vivos, R, T, frios){
+  var h="";
+  function grupo(lbl, arr){
+    if(!arr.length) return "";
+    return '<div class="itk-glbl">'+lbl+' \u00b7 '+arr.length+'</div>'+arr.map(_itkCard).join("");
+  }
+  h += grupo("Ready to triage", R);
+  h += grupo("Waiting", vivos);
+  h += grupo("Handed off", T);
+  if(!h) h = '<div class="itk-emp"><div class="t">No links out</div>'
+    + '<div class="s">Every link you send shows up here until the customer answers.</div></div>';
+  if(frios && frios.length) h += '<div class="itk-cold">'+frios.length+' cold or expired</div>';
+  return '<div class="itk-list">'+h+'</div>';
+}
+
 /* ── Render ──────────────────────────────────────────────────────────────── */
 function _itkCard(it){
   var t=it.token, r=it.reply||{};
-  var h='<div class="itk-card s-'+(it.status==="waiting"?"w":it.status==="received"?"r":"t")+'">'
+  var h='<div class="itk-card h-'+_itkHeat(it)+(_itkIsJunk(it)?" junk":"")+'">'
     +'<div class="rail"></div><div class="bd"><div class="itk-nm">'+esc(it.customer||"\u2014")+'</div>';
 
   if(it.status==="waiting"){
@@ -32574,12 +32883,13 @@ function _itkCard(it){
     var when=it.sentAtMs?("sent "+_itkAgo(it.sentAtMs)+" "+via):"link not sent yet";
     h+='<div class="itk-mt">'+esc(it.phone||it.email||"no contact on file")+' \u00b7 '+esc(when)+'</div>'
       +'<div class="itk-chips">'
+      +(_itkIsJunk(it)?'<span class="itk-chip ne">Looks like a test</span>':'')
       +(it.openedAtMs?'<span class="itk-chip in">Opened '+esc(_itkAgo(it.openedAtMs))+'</span>'
                      :'<span class="itk-chip ne">Not opened yet</span>')
       +(_itkExpired(it)?'<span class="itk-chip am">Expired</span>':'')
       +((!_itkExpired(it)&&it.sentAtMs&&Date.now()-it.sentAtMs>2*86400000)?'<span class="itk-chip am">Follow up</span>':'')
       +'</div>'
-      +(it.note?'<div class="itk-story">'+esc(it.note)+'</div>':'')
+      +(it.note?_itkStory(it.note):'')
       +'<div class="itk-acts">'
         +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="itkCopy(\''+t+'\')">Copy link</button>'
         +(it.phone?'<button type="button" class="itk-btn itk-pri itk-sm" onclick="itkSms(\''+t+'\')">Text</button>':'')
@@ -32598,7 +32908,7 @@ function _itkCard(it){
       +(r.powerOn===false?'<span class="itk-chip am">No power</span>':'')
       +(r.contactPref?'<span class="itk-chip in">Prefers '+esc(String(r.contactPref).toLowerCase())+'</span>':'')
       +'</div>'
-      +(r.problem?'<div class="itk-story">'+esc(r.problem)+'</div>':'')
+      +(r.problem?_itkStory(r.problem):'')
       +((r.photos&&r.photos.length)?'<div class="itk-thumbs">'+r.photos.slice(0,6).map(function(p){
           return '<img src="'+esc(p.url)+'" alt="" onclick="itkDetail(\''+t+'\')">'}).join("")+'</div>':'')
       +'<div class="itk-acts">'
@@ -32648,19 +32958,62 @@ function rndrIntake(){
   });
   R.sort(function(a,b){return (b.submittedAtMs||0)-(a.submittedAtMs||0)});
   T.sort(function(a,b){return (b.convertedAtMs||0)-(a.convertedAtMs||0)});
-  var sent=_itkList.filter(function(x){return !!x.sentAtMs}).length;
-  var back=R.length+T.length;
-  var rate=sent?Math.round(back/sent*100)+"%":"\u2014";
+  var NOW=Date.now();
+  /* _tech lo necesita _itkTodo para la fila de "entregado sin tecnico", asi que
+     se rellena ANTES de calcular las filas. */
+  T.forEach(function(x){var st=_itkTicketState(x),tk=st.t||{};x._tech=(tk.techs&&tk.techs.length)?tk.techs.join(", "):""});
 
-  function kpi(c,n,l){return '<div class="itk-kpi '+c+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'}
-  var kpis='<div class="itk-kpis">'
-    +kpi("k-am",W.length,"Waiting on customer")
-    +kpi("k-cu",R.length,"Ready to triage")
-    +kpi("k-gr",T.length,"Handed off, still open")
-    +kpi("",rate,"Response rate")+'</div>';
+  var pend=_itkPendingConfirm(_itkList);
+  var cfm="";
+  if(pend.length){
+    var p0=pend[0];
+    cfm='<div class="itk-cfm"><span class="tx">Did you send '+esc(p0.customer||"that link")+'\u2019s link?</span>'
+      +'<button type="button" class="itk-btn itk-pri itk-sm" onclick="_itkConfirmSent(\''+p0.token+'\')">Yes, sent</button>'
+      +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="_itkDropAttempt(\''+p0.token+'\')">Not yet</button></div>';
+  }
+
+  var nq=_itkNudgeState();
+  var nudge="";
+  if(nq){
+    var nx=_itkFind(nq.pending[0]);
+    nudge='<div class="itk-todo t-am"><span class="tx">Nudge queue \u00b7 '+(nq.done+1)+' of '+nq.total
+      +(nx?(' \u00b7 next: '+esc(nx.customer||"")):"")+'</span>'
+      +'<button type="button" class="itk-btn itk-warn itk-sm" onclick="_itkNudgeNext()">Send</button>'
+      +'<button type="button" class="itk-btn itk-gh itk-sm" onclick="_itkNudgeCancel()">Cancel</button></div>';
+  }
+
+  var todo=_itkTodo(_itkList,NOW), todoHtml="";
+  if(!nq) todo.forEach(function(r){
+    var cls=r.tone==="accent"?"t-cu":r.tone==="warning"?"t-am":"t-ne";
+    var act=r.kind==="nudge"
+      ? 'onclick="_itkNudgeStart('+esc(JSON.stringify(r.tokens))+')"'
+      : r.kind==="answered"
+        ? 'onclick="itkDetail(\''+r.tokens[0]+'\')"'
+        : 'onclick="showTab(5)"';
+    todoHtml+='<div class="itk-todo '+cls+'"><span class="tx">'+esc(r.text)+'</span>'
+      +'<button type="button" class="itk-btn itk-gh itk-sm" '+act+'>'+esc(r.cta)+'</button></div>';
+  });
+
+  var F=_itkFunnel(_itkList);
+  function pct(a,b){return b?Math.round(a/b*100)+"%":"\u2014"}
+  /* Si NINGUN documento trae openedAtMs, "0%" seria una conclusion inventada:
+     no se puede distinguir "nadie lo abre" de "la funcion no escribe el campo".
+     Se muestra raya y se dice por que. */
+  var openTxt=F.openedKnown?pct(F.opened,F.sent):"\u2014";
+  var openTip=F.openedKnown?"":' title="No intake has ever recorded an open. Either nobody opens them, or intakeGet is not writing openedAtMs."';
+  var fun='<div class="itk-fun">'
+    +'<span>Sent <b>'+F.sent+'</b></span>'
+    +'<span'+openTip+'>Opened <b>'+openTxt+'</b></span>'
+    +'<span>Answered <b>'+pct(F.answered,F.sent)+'</b></span>'
+    +'<span>By text <b>'+pct(F.byText.answered,F.byText.sent)+'</b></span>'
+    +'<span>By email <b>'+pct(F.byEmail.answered,F.byEmail.sent)+'</b></span>'
+    +'<span>Median reply <b>'+(F.medianReplyMs?(Math.round(F.medianReplyMs/360000)/10)+" h":"\u2014")+'</b></span>'
+    +'</div>';
+
+  var kpis=cfm+nudge+todoHtml+fun;
 
   var head='<div class="itk-head"><div><h2>Intake</h2>'
-    +'<p>Send a customer a link, get back everything you need before you dispatch anyone.</p></div>'
+    +'<p>'+(todo.length?("Today \u00b7 "+todo.length+(todo.length===1?" thing":" things")+" need you"):"Nothing needs you right now.")+'</p></div>'
     +'<button type="button" class="itk-btn itk-pri" style="margin-left:auto" onclick="itkToggleNew()">'
     +(_itkNewOpen?"Cancel":"+ New link")+'</button></div>';
 
@@ -32704,17 +33057,27 @@ function rndrIntake(){
       +'</div>';
   }
 
-  function col(title,color,arr,et,es){
+  /* foot==="rail" encoge la columna; cualquier otro texto se pinta de pie.
+     NADA de .replace("</div>") sobre el HTML ya armado: reemplazaria el PRIMER
+     cierre, que no es el de la columna, y partiria el marcado. */
+  function col(title,color,arr,et,es,foot){
     var cards=arr.length?arr.map(_itkCard).join("")
       :'<div class="itk-emp"><div class="t">'+et+'</div><div class="s">'+es+'</div></div>';
-    return '<div class="itk-col"><div class="itk-col-h"><span class="d" style="background:'+color+'"></span>'
-      +title+'<span class="c">'+arr.length+'</span></div>'+cards+'</div>';
+    return '<div class="itk-col'+(foot==="rail"?" itk-rail":"")+'"><div class="itk-col-h"><span class="d" style="background:'+color+'"></span>'
+      +title+'<span class="c">'+arr.length+'</span></div>'+cards
+      +((foot&&foot!=="rail")?'<div class="itk-cold">'+esc(foot)+'</div>':'')+'</div>';
   }
-  box.innerHTML=kpis+head+form+'<div class="itk-tray">'
-    +col("Waiting on customer","var(--c-warning-strong)",W,"No links out","Every link you send shows up here until the customer answers.")
-    +col("Ready to triage","var(--ac)",R,"Nothing new","Completed forms land here with photos and the customer's story.")
-    +col("Handed off","var(--c-success-strong)",T,"Nothing in progress","Intakes you send to the Service Log or to Coaching stay here until the job is finished.")
-    +'</div>';
+  var frios=W.filter(_itkExpired);
+  var vivos=_itkSortWaiting(W.filter(function(x){return !_itkExpired(x)}),NOW);
+  var cuerpo = _itkIsPhone()
+    ? _itkListBody(vivos,R,T,frios)
+    : ('<div class="itk-tray">'
+        +col("Waiting","var(--c-warning-strong)",vivos,"No links out","Every link you send shows up here until the customer answers.",
+             frios.length?(frios.length+" cold or expired"):"")
+        +col("Ready to triage","var(--ac)",R,"Nothing new","Answered forms land here with photos and the customer\u2019s story.")
+        +col("Handed off","var(--c-success-strong)",T,"Nothing in progress","Handed-off intakes stay here until the job is done.","rail")
+        +'</div>');
+  box.innerHTML=kpis+head+form+cuerpo;
 
   Object.keys(keep).forEach(function(id){var e=document.getElementById(id);if(e)e.value=keep[id]});
   _itkBadge();
