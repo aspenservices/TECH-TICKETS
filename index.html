@@ -5631,7 +5631,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.19.0";
+var APP_VERSION="2.20.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -32638,6 +32638,43 @@ body.v8r-open .toast{z-index:1000010}
 @media(prefers-reduced-motion:reduce){
   .itk-row,.itk-btn,.itk-days button,.itk-tc,.itk-thumbs img,.itk-pane{transition:none}
 }
+
+/* ── v2.20.0 · C3: dos columnas + barra con pestañas ──────────────── */
+.itk-cols{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;align-items:start}
+.itk-main{min-width:0}
+.itk-aside{background:var(--bg);border:1px solid var(--ln);border-radius:var(--r-lg);overflow:hidden}
+.itk-atabs{display:flex;border-bottom:1px solid var(--ln);background:var(--cd)}
+.itk-atabs button{flex:1;background:transparent;border:0;border-bottom:2px solid transparent;
+  font:inherit;font-size:var(--fs-xs);font-weight:800;color:var(--i3);padding:11px 4px;
+  cursor:pointer;min-height:44px;transition:.18s}
+.itk-atabs button:hover{color:var(--ink)}
+.itk-atabs button[aria-selected="true"]{color:var(--acd);border-bottom-color:var(--ac);background:var(--acl)}
+.itk-abody{padding:12px 13px}
+.itk-apane{display:none}
+.itk-apane.on{display:block}
+.itk-spahd{font-size:var(--fs-sm);font-weight:800;color:var(--br);line-height:1.25;
+  padding-bottom:9px;margin-bottom:7px;border-bottom:1px solid var(--ln)}
+.itk-spahd span{display:block;font-size:var(--fs-xs);font-weight:600;color:var(--i3);
+  margin-top:3px;font-family:ui-monospace,'SF Mono',Menlo,monospace}
+.itk-sp{display:flex;gap:8px;padding:5px 0;font-size:var(--fs-sm);border-bottom:1px solid var(--ln)}
+.itk-sp:last-child{border-bottom:0}
+.itk-sp span:first-child{flex:0 0 72px;color:var(--i3);font-weight:700;font-size:var(--fs-xs);
+  text-transform:uppercase;letter-spacing:.4px}
+.itk-sp span:last-child{flex:1;min-width:0;font-weight:600;word-break:break-word}
+.itk-raw{font-size:var(--fs-xs);color:var(--i2);line-height:1.6}
+.itk-none{font-size:var(--fs-xs);color:var(--i3);line-height:1.6;padding:4px 0}
+.itk-tl{position:relative;padding-left:20px}
+.itk-tl:before{content:"";position:absolute;left:4px;top:6px;bottom:6px;width:1px;background:var(--ln)}
+.itk-tl .e{position:relative;padding-bottom:13px;font-size:var(--fs-sm)}
+.itk-tl .e:last-child{padding-bottom:0}
+.itk-tl .e:before{content:"";position:absolute;left:-19px;top:4px;width:9px;height:9px;
+  border-radius:50%;background:var(--cd);border:2px solid var(--ln)}
+.itk-tl .e.hi:before{background:var(--ac);border-color:var(--ac)}
+.itk-tl .e b{display:block;font-weight:700}
+.itk-tl .e i{font-style:normal;color:var(--i3);font-size:var(--fs-xs)}
+@media(max-width:900px){
+  .itk-cols{grid-template-columns:1fr;gap:16px}
+}
 </style>
 <script id="aspenIntakeScript">
 /* ── Estado ──────────────────────────────────────────────────────────────── */
@@ -33486,11 +33523,137 @@ function _itkDayLbl(iso){
   return d?(d.today?"today":(d.dow+" "+d.dom)):iso;
 }
 
+
+/* ═══ v2.20.0 · C3 · panel de dos columnas con barra de pestañas ════════
+   POR QUE: con datos REALES el `spaDesc` es un volcado de ~660 caracteres
+   que se comia la pantalla, mientras "Slow leak." (lo unico accionable)
+   quedaba enterrado. Aqui el spa se PARTE en campos y se va a una barra
+   lateral con pestañas — Spa / Historial / Ruta — que no crece aunque el
+   cliente tenga doce visitas. La izquierda queda para lo narrativo y los
+   botones.
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* Parsea el volcado tecnico en pares clave:valor. Puro y probable. */
+/* Parsea el volcado tecnico en pares clave:valor. Puro y probable.
+   Endurecido 4 ago tras probar variantes: insensible a mayusculas, acepta
+   "Model:" ademas de "Spa Model", "Pump1:" sin espacio, y saltos de linea.
+   Un spaDesc CORTO sin claves (p. ej. "Colorado 2019") se trata como
+   ETIQUETA: va de titulo, no como parrafo crudo. */
+function _itkSpaParse(t){
+  t=String(t==null?"":t).replace(/\s+/g," ").trim();
+  if(!t) return {campos:[], resto:"", modelo:"", serial:"", corto:false};
+  /* corta el valor en la siguiente "Palabra:" o al final — asi no depende
+     de una lista cerrada de campos que venga despues */
+  var STOP="(?=\\s+[A-Z][A-Za-z ]{0,14}:|\\s+Acrylic|$)";
+  var R=[
+    ["Serial",     /Serial\s*#\s*([0-9A-Za-z-]+)/i],
+    ["Model",      new RegExp("(?:Spa\\s+Model|Model)\\s*:?\\s+([^:]*?)"+STOP,"i")],
+    ["Delivered",  /Delivered\s*:?\s*([0-9\/]+)/i],
+    ["Pack",       /Spa Pack\s*[-:]?\s*([A-Za-z0-9 .\-]+?)(?=\s+Serial|$)/i],
+    ["Top side",   /Top Side Control\s*[-:]?\s*([A-Za-z0-9 .\-]+?)(?=\s+Serial|$)/i],
+    ["Heater",     /Heater\s*#?\s*:?\s*([0-9A-Za-z]+)/i],
+    ["Ozonator",   /Ozonator\s*:?\s*(?:Mfg\s*:)?\s*([A-Za-z0-9\- ]+?)(?=\s+\d+\s*V|$)/i],
+    ["Color",      new RegExp("Color\\s*:\\s*([^:]*?)"+STOP,"i")],
+    ["Cabinet",    /Cabinet\s*:\s*([^,]+)/i],
+    ["Cover",      /Cover\s*:\s*([A-Za-z*]+)/i],
+    ["Coverlift",  /Coverlift\s*:\s*([A-Za-z0-9 ]+?)(?=\s*\*\*\*|$)/i]
+  ];
+  var campos=[], usado=t;
+  R.forEach(function(r){
+    var m=t.match(r[1]);
+    if(m&&m[1]&&m[1].trim()){campos.push({k:r[0],v:m[1].trim()});usado=usado.replace(m[0],"")}
+  });
+  var b=[], pm=/Pump\s*(\d)\s*:\s*([^:]*?)(?=\s*Pump\s*\d\s*:|\s*CMP|\s*Ozonator|$)/gi, x;
+  while((x=pm.exec(t))!==null){b.push("P"+x[1]+" "+x[2].trim().replace(/,\s*$/,""));usado=usado.replace(x[0],"")}
+  if(b.length) campos.push({k:"Pumps",v:b.join(" \u00b7 ")});
+  var j=t.match(/(CMP\s*\d+\s*jets[^.]*?)(?=\s*Ozonator|\s*Graphite|$)/i);
+  if(j){campos.push({k:"Jets",v:j[1].trim()});usado=usado.replace(j[0],"")}
+  function get(k){for(var i=0;i<campos.length;i++) if(campos[i].k===k) return campos[i].v; return ""}
+
+  var resto=usado.replace(/\s+/g," ").replace(/^[\s,.\-]+|[\s,.\-]+$/g,"").trim();
+  /* Sin claves y corto = es una ETIQUETA, no un volcado. Va de titulo. */
+  if(!campos.length && t.length<=50)
+    return {campos:[], resto:"", modelo:t, serial:"", corto:true};
+  return {campos:campos, resto:resto, modelo:get("Model"), serial:get("Serial"), corto:false};
+}
+
+var _itkAside="spa";
+function _itkSetAside(tab){_itkAside=tab;rndrIntake()}
+
+function _itkSpaOf(it){
+  var all=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  var H=_itkHistory(it.customer, all, Date.now());
+  return _itkSpaParse(H.spa||"");
+}
+
+function _itkRow2(k,v){
+  return '<div class="itk-sp"><span>'+esc(k)+'</span><span>'+esc(v)+'</span></div>';
+}
+
+/* ── la barra lateral con pestañas ─────────────────────────────────── */
+function _itkAsideHTML(it){
+  var all=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  var H=_itkHistory(it.customer, all, Date.now());
+  var S=_itkSpaParse(H.spa||"");
+
+  var spa;
+  if(S.campos.length){
+    spa = S.campos.map(function(c){return _itkRow2(c.k,c.v)}).join("")
+        +(S.resto?'<div class="k" style="margin:11px 0 5px">Factory notes</div>'
+                  +'<div class="itk-raw">'+esc(S.resto)+'</div>':'');
+  }else if(S.corto){
+    /* "Colorado 2019" y parecidos: son una ETIQUETA, no un volcado. Ya van
+       de cabecera arriba, asi que aqui no se repite como parrafo. */
+    spa = '<div class="itk-none">That is everything on file about their spa.</div>';
+  }else if(H.spa){
+    /* formato desconocido: se muestra crudo antes que perderlo */
+    spa = '<div class="itk-raw">'+esc(H.spa)+'</div>';
+  }else{
+    spa = '<div class="itk-none">No spa on file for this customer yet.</div>';
+  }
+
+  var hist = H.isNew
+    ? '<div class="itk-none">First time we hear from them. Worth confirming the '
+      +'spelling of the name before you dispatch.</div>'
+    : '<div class="itk-tl">'+H.rows.map(function(r,i){
+        return '<div class="e'+(i===0?" hi":"")+'"><b>'+esc(r.job)+'</b>'
+          +'<i>'+esc(r.date||"no date")+' \u00b7 '+esc(r.tech)+'</i></div>'}).join("")+'</div>'
+      +'<div class="k" style="margin:12px 0 5px">Summary</div>'
+      +'<div class="itk-raw">'+H.count+(H.count===1?" ticket":" tickets")
+      +(H.since?(" \u00b7 customer since "+esc(H.since)):"")+'</div>';
+
+  var ruta = [["Address",it.address],["City",it.city],["ZIP",it.zip],
+              ["Phone",it.phone],["Email",it.email]]
+    .filter(function(p){return p[1]})
+    .map(function(p){return _itkRow2(p[0],p[1])}).join("");
+  /* El aviso sale SIEMPRE que falte la direccion, aunque haya telefono:
+     sin direccion no se puede rutear a un tecnico, y tener el telefono no
+     lo suple. Antes solo salia cuando no habia absolutamente nada. */
+  if(!String(it.address||"").trim())
+    ruta += '<div class="itk-none">No address on file \u2014 add it before dispatching.</div>';
+
+  function tab(id,lbl){
+    return '<button type="button" role="tab" aria-selected="'+(_itkAside===id)+'"'
+      +' onclick="_itkSetAside(\''+id+'\')">'+lbl+'</button>';
+  }
+  return '<aside class="itk-aside">'
+    +'<div class="itk-atabs" role="tablist">'+tab("spa","Spa")+tab("hist","History")+tab("route","Route")+'</div>'
+    +'<div class="itk-abody">'
+      +'<div class="itk-apane'+(_itkAside==="spa"?" on":"")+'">'
+        +(S.modelo?'<div class="itk-spahd">'+esc(S.modelo)
+                  +(S.serial?'<span>Serial '+esc(S.serial)+'</span>':'')+'</div>':'')
+        +spa+'</div>'
+      +'<div class="itk-apane'+(_itkAside==="hist"?" on":"")+'">'+hist+'</div>'
+      +'<div class="itk-apane'+(_itkAside==="route"?" on":"")+'">'+ruta+'</div>'
+    +'</div></aside>';
+}
+
 function _itkPane(it){
   if(!it) return '<div class="itk-emp"><div class="t">Nothing selected</div>'
     +'<div class="s">Pick someone from the list to see their whole story, their history, and what to do next.</div></div>';
   var t=it.token, r=it.reply||{};
   var h='<button type="button" class="itk-btn itk-gh itk-sm itk-back" onclick="_itkShut()">\u2190 Back to the list</button>'
+    +'<div class="itk-cols"><div class="itk-main">'
     +'<div class="itk-dh"><h3>'+esc(it.customer||"\u2014")+'</h3>'
     +'<div class="ph">'+esc(it.phone||it.email||"no contact on file")+'</div></div>';
 
@@ -33506,7 +33669,6 @@ function _itkPane(it){
       +'</div>'
       +(it.note?'<div class="itk-sec"><div class="k">What you wrote down on the phone</div>'
                 +'<p class="itk-story">'+esc(it.note)+'</p></div>':'')
-      +_itkHistBlock(it)
       +'<div class="itk-acts">'
         +'<button type="button" class="itk-btn itk-gh" onclick="itkCopy(\''+t+'\')">Copy link</button>'
         +(it.phone?'<button type="button" class="itk-btn itk-pri" onclick="itkSms(\''+t+'\')">Text</button>':'')
@@ -33532,7 +33694,6 @@ function _itkPane(it){
       +((r.photos&&r.photos.length)?'<div class="itk-sec"><div class="k">'+_itkPh(r.photos.length)+' they sent</div>'
           +'<div class="itk-thumbs">'+r.photos.slice(0,8).map(function(p){
             return '<img src="'+esc(p.url)+'" alt="" onclick="itkDetail(\''+t+'\')">'}).join("")+'</div></div>':'')
-      +_itkHistBlock(it)
       +_itkSchedBlock(it);
   }
 
@@ -33548,14 +33709,14 @@ function _itkPane(it){
       +'</div>'
       +(r.problem?'<div class="itk-sec"><div class="k">What the customer says</div>'
                   +'<p class="itk-story">'+esc(r.problem)+'</p></div>':'')
-      +_itkHistBlock(it)
       +'<div class="itk-acts">'
         +'<button type="button" class="itk-btn itk-gh" onclick="itkDetail(\''+t+'\')">See what they sent</button>'
         +((it.convertedTo!=="coaching"&&typeof openTktDetail==="function")
             ?'<button type="button" class="itk-btn itk-dark" onclick="openTktDetail(\''+esc(it.convertedTicketId)+'\')">Open ticket</button>':'')
       +'</div>';
   }
-  return h;
+  /* la barra lateral cierra la fila de dos columnas */
+  return h+'</div>'+_itkAsideHTML(it)+'</div>';
 }
 
 function _itkOpen(tok){
