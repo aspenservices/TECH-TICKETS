@@ -3865,6 +3865,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 .co-hidden{font-size:var(--fs-xs);color:var(--i3);padding:10px 2px 0}
 .co-hidden button{background:transparent;border:0;color:var(--ac);font:inherit;
   font-size:var(--fs-xs);font-weight:700;cursor:pointer;padding:6px 4px;min-height:36px}
+
+/* ── v2.19.0 · invitacion de videollamada en la tarjeta ───────────── */
+.co-inv{background:var(--bg);border:1px solid var(--ln);border-radius:var(--r-lg);
+  padding:11px 13px;margin-top:10px}
+.co-inv-ok{background:var(--acl);border-color:var(--ac)}
+.co-inv-h{font-size:var(--fs-xs);font-weight:800;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--i3);margin-bottom:8px}
+.co-inv-ok .co-inv-h{color:var(--acd)}
+.co-inv-r{font-size:var(--fs-sm);color:var(--ink);line-height:1.6;margin-bottom:3px}
+.co-inv-r b{font-weight:800;color:var(--i2)}
+.co-inv-acts{display:flex;gap:7px;flex-wrap:wrap}
+.co-inv-note{display:block;font-size:var(--fs-xs);color:var(--i3);margin-top:9px}
 </style>
 <!-- ════════════════════════════════════════════════════════════════════
      ASPEN VISUAL OVERRIDES  ·  generated from the 29 Jun 2026 visual audit
@@ -5619,7 +5631,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.18.0";
+var APP_VERSION="2.19.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -18541,6 +18553,148 @@ function _coachSplitDone(lista, doneList){
   return {visibles:vis, ocultas:oc};
 }
 
+
+/* ═══ v2.19.0 · INVITACION DE VIDEOLLAMADA ══════════════════════════════
+   Reusa la tuberia de Intake que ya existe (coleccion `intakes` + las Cloud
+   Functions intakeGet/intakeSubmit + intake.html). El documento lleva
+   kind:"coaching" y una referencia de vuelta a la coaching call.
+
+   ⚠️ DEPENDE DE UNA LINEA EN EL BACKEND: intakeGet devuelve hoy solo
+   {ok,status,expired,customer,phone,address}. Hay que anadir `kind` a esa
+   respuesta o intake.html no puede saber que es una invitacion y pintara el
+   formulario de servicio de siempre. Todo lo demas es del lado del cliente.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function _coachInviteOf(c){
+  /* la invitacion vive en `intakes`; el listener de Intake ya las trae todas */
+  if(!c || !c.inviteToken) return null;
+  try{
+    var L=(typeof _itkAll!=="undefined"&&_itkAll&&_itkAll.length)?_itkAll
+           :((typeof _itkList!=="undefined"&&_itkList)?_itkList:[]);
+    for(var i=0;i<L.length;i++) if(L[i].token===c.inviteToken) return L[i];
+  }catch(_e){}
+  return null;
+}
+
+function _coachInviteState(c){
+  var inv=_coachInviteOf(c);
+  if(!c.inviteToken) return {code:"none"};
+  if(!inv)            return {code:"gone"};            /* borrada o aun no llega */
+  if(inv.status==="received"||inv.reply) return {code:"answered", inv:inv};
+  if(inv.openedAtMs)  return {code:"opened", inv:inv};
+  if(inv.sentAtMs)    return {code:"sent", inv:inv};
+  return {code:"ready", inv:inv};
+}
+
+function _coachInviteSms(c){
+  var inv=_coachInviteOf(c);
+  var first=String(c.customer||"").split(/[,\s]+/)[0]||"there";
+  return "Hi "+first+", this is Aspen Spas Service. We would like to do a quick "
+    +"video call to look at your spa together. Tap here to tell us when you are "
+    +"free and whether FaceTime works for you:\n\n"
+    +(inv?_itkLink(inv.token):"")
+    +"\n\nIt takes about a minute. Thank you!";
+}
+
+async function coachInvite(id){
+  var c=coachingCalls.find(function(x){return x.id===id});if(!c)return;
+  if(c.inviteToken){toast("This call already has an invite link","warn");return;}
+  if(!c.phone&&!c.email){
+    toast("Add a phone or an email first \u2014 there is no way to send the link","warn");return;
+  }
+  var tok=_itkToken();
+  try{
+    /* mismo esquema que itkCreate, mas los dos campos que lo hacen una
+       invitacion de video en vez de un intake de servicio */
+    await db.collection("intakes").doc(tok).set({
+      status:"waiting", kind:"coaching", coachId:id,
+      customer:c.customer||"", phone:c.phone||"", email:c.email||"",
+      address:c.address||"", city:c.city||"", zip:c.zip||"",
+      note:c.problem||"",
+      sentVia:null, sentAtMs:null, sentBy:(currentUser&&currentUser.name)||"",
+      openedAtMs:null, submittedAtMs:null,
+      reply:null, convertedTicketId:null, convertedTo:null,
+      createdAtMs:Date.now(),
+      expiresAtMs:Date.now()+ITK_EXPIRE_DAYS*86400000,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection("tickets").doc(id).update({inviteToken:tok});
+    toast("Invite link ready \u2014 send it to "+(c.customer||"the customer"));
+    rndrCoaching();
+  }catch(e){
+    console.error("[coach invite]",e);
+    toast("Could not create the link: "+(e.message||e),"err");
+  }
+}
+
+function coachInviteCopy(id){
+  var c=coachingCalls.find(function(x){return x.id===id});if(!c)return;
+  var inv=_coachInviteOf(c);if(!inv){toast("No link yet","warn");return}
+  var url=_itkLink(inv.token);
+  var done=function(){toast("Link copied");_itkMarkAttempt(inv.token,"copy")};
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(url).then(done,function(){_itkFallbackCopy(url);done()});
+    else {_itkFallbackCopy(url);done()}
+  }catch(_e){_itkFallbackCopy(url);done()}
+}
+
+function coachInviteSms(id){
+  var c=coachingCalls.find(function(x){return x.id===id});if(!c)return;
+  var inv=_coachInviteOf(c);if(!inv){toast("No link yet","warn");return}
+  if(!c.phone){toast("No phone on file for this customer","warn");return}
+  var body=_coachInviteSms(c);
+  var href=(typeof _smsHref==="function")
+    ? _smsHref(c.phone,body)
+    : ("sms:"+String(c.phone).replace(/[^\d]/g,"")+"?body="+encodeURIComponent(body));
+  _itkMarkAttempt(inv.token,"sms");
+  try{window.location.href=href}catch(_e){toast("Could not open Messages","err")}
+}
+
+/* Lo que contesto el cliente, para pintarlo en la tarjeta. */
+function _coachInviteReply(c){
+  var st=_coachInviteState(c);
+  if(st.code!=="answered") return null;
+  var r=(st.inv&&st.inv.reply)||{};
+  return {
+    when: r.availability||"",
+    facetime: r.facetime===true?"yes":r.facetime===false?"no":"",
+    google: r.googleAccount||"",
+    note: r.problem||""
+  };
+}
+
+function _coachInviteHTML(c){
+  var st=_coachInviteState(c);
+  if(st.code==="none"){
+    return '<button type="button" class="co-btn co-btn-ghost" onclick="coachInvite(\''+c.id+'\')">'
+      +'Send a video call link</button>';
+  }
+  if(st.code==="gone"){
+    return '<span class="co-inv-note">Invite link not found \u2014 it may have been deleted.</span>';
+  }
+  if(st.code==="answered"){
+    var a=_coachInviteReply(c)||{};
+    return '<div class="co-inv co-inv-ok">'
+      +'<div class="co-inv-h">They answered</div>'
+      +(a.when?'<div class="co-inv-r"><b>When they can:</b> '+esc(a.when)+'</div>':'')
+      +'<div class="co-inv-r"><b>FaceTime:</b> '
+        +(a.facetime==="yes"?"yes":a.facetime==="no"?"no":"\u2014")+'</div>'
+      +(a.google?'<div class="co-inv-r"><b>Google account:</b> '+esc(a.google)+'</div>':'')
+      +(a.note?'<div class="co-inv-r">'+esc(a.note)+'</div>':'')
+      +'</div>';
+  }
+  var etiqueta = st.code==="opened" ? "Opened, no answer yet"
+               : st.code==="sent"   ? "Link sent, waiting"
+               : "Link ready to send";
+  return '<div class="co-inv">'
+    +'<div class="co-inv-h">'+etiqueta+'</div>'
+    +'<div class="co-inv-acts">'
+      +(c.phone?'<button type="button" class="co-btn co-btn-primary" onclick="coachInviteSms(\''+c.id+'\')">Text the link</button>':'')
+      +'<button type="button" class="co-btn co-btn-ghost" onclick="coachInviteCopy(\''+c.id+'\')">Copy link</button>'
+    +'</div></div>';
+}
+
 // ── CREATE ──────────────────────────────────────────────────────────────────
 function coachToggleNew(){_coachNewOpen=!_coachNewOpen;rndrCoaching();if(_coachNewOpen)setTimeout(function(){var el=document.getElementById("coNewName");if(el)el.focus();},60);}
 function coachSetType(t){_coachNewType=t;var p=document.getElementById("coTypePhone"),v=document.getElementById("coTypeVideo");if(p)p.classList.toggle("on",t==="phone");if(v)v.classList.toggle("on",t==="video");}
@@ -18558,7 +18712,16 @@ async function coachCreate(){
   var problem=((document.getElementById("coNewProblem")||{}).value||"").trim();
   var btn=document.getElementById("coCreateBtn");if(btn){btn.disabled=true;btn.textContent="Saving…";}
   try{
-    await db.collection("tickets").add({
+    /* v2.18.1 — POR QUE ESTO NO ES UN `await` PELADO:
+       la app llama db.enablePersistence({synchronizeTabs:true}), y con la
+       persistencia activa `add()` NO resuelve cuando el documento se guarda,
+       sino cuando el SERVIDOR lo confirma. La escritura local ya ocurrio y el
+       listener la va a mostrar igual, pero si la conexion esta floja la promesa
+       se queda colgada para siempre: sin error, sin tope, y el boton se queda
+       en "Saving..." (le paso a Alberto el 4 ago). Se le pone un tope: pasados
+       6 s se sigue adelante y se avisa que sincronizara sola. El rechazo real
+       del servidor se sigue reportando, llegue cuando llegue. */
+    var addP=db.collection("tickets").add({
       source:"coaching",status:"pending",
       customer:name,phone:phone,phone2:"",email:email,address:addr,city:city,zip:zip,
       problem:problem,callType:_coachNewType,date:"",time:"",
@@ -18567,7 +18730,28 @@ async function coachCreate(){
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),
       submitted:new Date().toLocaleString()
     });
-    toast("Coaching call added ✓");_coachNewOpen=false;_coachNewType="phone";setTimeout(refreshAll,400);
+    var estado="wait", errServidor=null;
+    addP.then(function(){estado="ok"},function(e){estado="err";errServidor=e;});
+    await Promise.race([
+      addP.catch(function(){}),
+      new Promise(function(r){setTimeout(r,6000)})
+    ]);
+    if(estado==="err"){
+      console.error(errServidor);
+      toast("Could not save: "+((errServidor&&errServidor.message)||errServidor),"err");
+      if(btn){btn.disabled=false;btn.textContent="Add call";}
+      return;
+    }
+    toast(estado==="ok"
+      ? "Coaching call added \u2713"
+      : "Saved on this device \u2014 it will sync when you are back online");
+    _coachNewOpen=false;_coachNewType="phone";setTimeout(refreshAll,400);
+    /* si el servidor la rechaza MAS TARDE, hay que decirlo: el documento
+       desapareceria de la lista y sin aviso pareceria cosa de brujas. */
+    addP.catch(function(e){
+      console.error("[coaching] el servidor rechazo la escritura",e);
+      try{toast("That coaching call was rejected by the server: "+(e.message||e),"err")}catch(_e){}
+    });
   }catch(e){console.error(e);toast("Could not save: "+(e.message||e),"err");if(btn){btn.disabled=false;btn.textContent="Add call";}}
 }
 
@@ -18693,7 +18877,7 @@ function _coachCard(c){
   return '<div class="coach-card cs-green"><div class="crail"></div><div class="cbody">'+head+rptHtml
     +'<div class="co-actions"><button class="co-btn co-btn-primary" onclick="coachOpenReport(\''+c.id+'\')">Edit report</button>'
     +(c.escalatedTicketId?'':'<button class="co-btn co-btn-warn" onclick="coachEscalate(\''+c.id+'\')">🚐 Send a tech</button>')
-    +'<button class="co-btn co-btn-ghost" onclick="coachReopen(\''+c.id+'\')">Reopen</button></div></div></div>';
+    +'<button class="co-btn co-btn-ghost" onclick="coachReopen(\''+c.id+'\')">Reopen</button></div>'+_coachInviteHTML(c)+'</div></div>';
 }
 
 /* ── v2.18.0 · interfaz del autocompletado ────────────────────────────
@@ -32476,8 +32660,14 @@ function _itkStart(){
   try{
     _itkUnsub=db.collection("intakes").orderBy("createdAtMs","desc").limit(200)
       .onSnapshot(function(snap){
-        _itkList=[];
+        _itkList=[]; var _itkAll=[];
         snap.forEach(function(d){_itkList.push(Object.assign({token:d.id},d.data()))});
+        /* v2.19.0: las invitaciones de videollamada viven en la misma coleccion
+           pero NO son intakes de servicio: se quedan fuera de la Bandeja para no
+           ensuciar la lista ni el embudo. La pestana de Coaching las lee de
+           _itkAll por su token. */
+        _itkAll=_itkList.slice();
+        _itkList=_itkList.filter(function(x){return x.kind!=="coaching"});
         _itkBadge();
         var pg=document.getElementById("pg14");
         if(pg&&pg.classList.contains("show"))rndrIntake();
