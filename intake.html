@@ -136,7 +136,7 @@ var TOKEN="", info=null, sending=false, err="";
 var d={problem:"",since:"",brand:"",model:"",serial:"",errorCode:"",powerOn:null,
        extra:"",contactPref:"",bestTime:"",name:"",phone:"",addr:"",photos:[],
        /* v2.19.0 — invitacion de videollamada */
-       availability:"", facetime:null, googleAccount:""};
+       availability:"", facetime:null, googleAccount:"", callPref:"video"};
 /* Si el link es una invitacion de videollamada, intakeGet devuelve kind:"coaching".
    OJO: eso exige que la Cloud Function incluya `kind` en su respuesta; hoy solo
    manda {ok,status,expired,customer,phone,address}. Sin esa linea este archivo
@@ -253,44 +253,72 @@ function rmPhoto(i){d.photos.splice(i,1);render()}
    desde una pagina. Aqui solo se recoge COMO y CUANDO; el enlace del encuentro
    lo crea Aspen a mano al momento de llamar. */
 function renderCoachingInvite(){
-  var listo = d.availability.trim().length>2 && d.facetime!==null
-            && (d.facetime===true || d.googleAccount.trim().length>3);
+  /* Mismo esqueleto de pasos que el formulario de servicio, y REUSA su
+     maquinaria de fotos (addPhotos/rmPhoto/MAX_PHOTOS): se comprimen en el
+     telefono igual que alli, asi que llegan aunque la senal sea mala. */
+  var listo = d.problem.trim().length>9 && d.availability.trim().length>2
+            && d.facetime!==null
+            && (d.callPref==="phone" || d.facetime===true || d.googleAccount.trim().length>3);
+  var photos=d.photos.length
+    ? '<div class="pgrid">'+d.photos.map(function(p,i){
+        return '<div class="pitem'+(p.up?" up":"")+'"><img src="'+p.url+'" alt="">'
+          +'<button class="x" type="button" onclick="rmPhoto('+i+')" aria-label="Remove photo">\u00d7</button>'
+          +'<div class="sz">'+p.origKB+' KB \u2192 '+p.sizeKB+' KB</div></div>'
+      }).join("")+'</div>'
+      +'<p class="h" style="margin-top:10px">'+d.photos.length+' of '+MAX_PHOTOS+'. '
+      +'We shrink them right here on your phone so they send fast even on a weak signal.</p>'
+    : "";
+
   $("root").innerHTML=
    '<div class="body">'
-  +'<h1>A quick video call, '+esc(firstName(info.customer))+'</h1>'
-  +'<p class="intro">We would like to look at your spa together on a video call. '
-  +'Two questions and you are done \u2014 it takes about a minute.</p>'
+  +'<h1>Let us look at it together, '+esc(firstName(info.customer))+'</h1>'
+  +'<p class="intro">We would like to set up a call about your spa. Tell us what it is doing, '
+  +'send a few photos, and pick a time \u2014 about two minutes.</p>'
+
+  +'<div class="step"><div class="num">The problem</div><h2>What is it doing?</h2>'
+  +'<p class="h">Write it however you\u2019d say it out loud. There\u2019s no wrong way.</p>'
+  +'<textarea class="inp" rows="4" placeholder="e.g. the jets barely run and the panel shows FLO" '
+  +'oninput="setNote(this.value)">'+esc(d.problem)+'</textarea></div>'
+
+  +'<div class="step"><div class="num">Photos</div><h2>Show us what you see</h2>'
+  +'<p class="h">The control panel, the equipment bay, anything leaking or burnt. '
+  +'On the call we will know exactly where to point you.</p>'
+  +'<label class="drop" for="pk"><div class="big">\uD83D\uDCF7</div>'
+  +'<div class="t">Add photos</div><div class="s">Take a picture or choose from your phone</div></label>'
+  +'<input type="file" id="pk" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files)">'
+  +photos+'</div>'
 
   +'<div class="step"><div class="num">When</div><h2>When are you free?</h2>'
   +'<p class="h">Give us a couple of options \u2014 a day and a rough time is plenty.</p>'
   +'<textarea class="inp" rows="3" placeholder="e.g. Thursday morning, or Friday after 4pm" '
   +'oninput="setAvail(this.value)">'+esc(d.availability)+'</textarea></div>'
 
-  +'<div class="step"><div class="num">How</div><h2>Do you have FaceTime?</h2>'
-  +'<p class="h">It comes built in on iPhone and iPad. If you are not sure, pick the second one.</p>'
+  +'<div class="step"><div class="num">How</div><h2>Video or just a phone call?</h2>'
+  +'<p class="h">On video we can see the spa with you, which usually solves it faster.</p>'
   +'<div class="opts">'
-  +'<button type="button" class="opt'+(d.facetime===true?" on":"")+'" onclick="setFT(true)">Yes, I have FaceTime</button>'
-  +'<button type="button" class="opt'+(d.facetime===false?" on":"")+'" onclick="setFT(false)">No / not sure</button>'
+  +'<button type="button" class="opt'+(d.callPref==="video"?" on":"")+'" onclick="setPref(\'video\')">Video call</button>'
+  +'<button type="button" class="opt'+(d.callPref==="phone"?" on":"")+'" onclick="setPref(\'phone\')">Just a phone call</button>'
   +'</div>'
-  +(d.facetime===false
-    ? '<label class="f">Your Google account</label>'
-     +'<p class="h">We will send you a Google Meet link instead.</p>'
-     +'<input class="inp" type="email" inputmode="email" autocomplete="email" '
-     +'placeholder="you@gmail.com" value="'+esc(d.googleAccount)+'" oninput="setG(this.value)">'
+  +(d.callPref==="video"
+    ? '<label class="f">Do you have FaceTime?</label>'
+     +'<p class="h">It comes built in on iPhone and iPad. If you are not sure, pick the second one.</p>'
+     +'<div class="opts">'
+     +'<button type="button" class="opt'+(d.facetime===true?" on":"")+'" onclick="setFT(true)">Yes, I have FaceTime</button>'
+     +'<button type="button" class="opt'+(d.facetime===false?" on":"")+'" onclick="setFT(false)">No / not sure</button>'
+     +'</div>'
+     +(d.facetime===false
+       ? '<label class="f">Your Google account</label>'
+        +'<p class="h">We will send you a Google Meet link instead.</p>'
+        +'<input class="inp" type="email" inputmode="email" autocomplete="email" '
+        +'placeholder="you@gmail.com" value="'+esc(d.googleAccount)+'" oninput="setG(this.value)">'
+       : "")
     : "")
   +'</div>'
 
-  +'<div class="step"><div class="num">Optional</div><h2>Anything else?</h2>'
-  +'<p class="h">Anything we should know before the call.</p>'
-  +'<textarea class="inp" rows="2" oninput="setNote(this.value)">'+esc(d.problem)+'</textarea></div>'
-
   +(err?'<div class="err">'+esc(err)+'</div>':"")
-  +'<p class="h" style="text-align:center">We will confirm the day and time '
-  +'and send you the link for the call.</p>'
   +'</div>'
-  /* .bar y .btn son las clases reales del pie de este archivo — mismas que
-     usa el formulario de servicio, para que el boton se vea igual */
   +'<div class="bar">'
+  +(sending?'<div class="prog"><i id="pbar"></i></div><p class="pmsg" id="pmsg">Sending\u2026</p>':'')
   +'<button class="btn" id="go" onclick="submitInvite()"'+((listo&&!sending)?"":" disabled")+'>'
   +(sending?"Sending\u2026":"Send to Aspen Spas")+'</button>'
   +'</div>';
@@ -300,24 +328,39 @@ function setAvail(v){d.availability=v;saveDraft()}
 function setG(v){d.googleAccount=v;saveDraft()}
 function setNote(v){d.problem=v;saveDraft()}
 function setFT(v){d.facetime=v;saveDraft();renderCoachingInvite()}
+function setPref(v){d.callPref=v;if(v==="phone")d.facetime=null;saveDraft();renderCoachingInvite()}
 
 async function submitInvite(){
   if(sending)return;
+  if(d.problem.trim().length<10){err="Tell us what the spa is doing \u2014 a sentence or two is enough.";return renderCoachingInvite()}
   if(d.availability.trim().length<3){err="Tell us when you are free.";return renderCoachingInvite()}
-  if(d.facetime===null){err="Let us know about FaceTime.";return renderCoachingInvite()}
-  if(d.facetime===false && d.googleAccount.trim().length<4){
+  if(d.callPref==="video"&&d.facetime===null){err="Let us know about FaceTime.";return renderCoachingInvite()}
+  if(d.callPref==="video"&&d.facetime===false&&d.googleAccount.trim().length<4){
     err="We need your Google account to send a Meet link.";return renderCoachingInvite()}
   err="";sending=true;renderCoachingInvite();
+  var steps=d.photos.length+1, at=0;
+  function tick(msg){at++;var b=$("pbar"),m=$("pmsg");
+    if(b)b.style.width=Math.round(at/steps*100)+"%";if(m)m.textContent=msg}
+  var uploaded=[];
   try{
-    await post("intakeSubmit",{t:TOKEN,kind:"final",photos:[],reply:{
+    /* una foto por peticion, igual que el formulario de servicio: en una
+       senal floja un solo envio gigante se cae entero */
+    for(var i=0;i<d.photos.length;i++){
+      var p=d.photos[i];
+      var res=await post("intakeSubmit",{t:TOKEN,kind:"photo",name:p.name,dataUrl:p.url});
+      uploaded.push({url:res.url,path:res.path,name:p.name,sizeKB:p.sizeKB});
+      tick("Sending photo "+(i+1)+" of "+d.photos.length+"\u2026");
+    }
+    await post("intakeSubmit",{t:TOKEN,kind:"final",photos:uploaded,reply:{
+      problem:d.problem.trim(),
       availability:d.availability.trim(),
-      facetime:d.facetime,
-      googleAccount:d.facetime===false?d.googleAccount.trim():"",
-      problem:d.problem.trim()
+      callPref:d.callPref,
+      facetime:d.callPref==="video"?d.facetime:null,
+      googleAccount:(d.callPref==="video"&&d.facetime===false)?d.googleAccount.trim():""
     }});
     clearDraft();
     done("Thank you \u2014 we have it",
-         "We will confirm the day and time and send you the link for the call.");
+         "We will confirm the day and time and get back to you with the details for the call.");
   }catch(e){
     console.warn("[invite]",e);
     sending=false;err="That did not go through. Please try again.";renderCoachingInvite();

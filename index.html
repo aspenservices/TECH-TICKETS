@@ -3877,6 +3877,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 .co-inv-r b{font-weight:800;color:var(--i2)}
 .co-inv-acts{display:flex;gap:7px;flex-wrap:wrap}
 .co-inv-note{display:block;font-size:var(--fs-xs);color:var(--i3);margin-top:9px}
+
+.co-inv-p{font-size:var(--fs-sm);line-height:1.6;color:var(--ink);background:var(--cd);
+  border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px}
+.co-inv-ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px;margin-top:9px}
+.co-inv-ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--r-sm);
+  border:1px solid var(--ln);cursor:pointer;transition:.2s cubic-bezier(.16,1,.3,1)}
+.co-inv-ph img:hover{transform:translateY(-2px)}
 </style>
 <!-- ════════════════════════════════════════════════════════════════════
      ASPEN VISUAL OVERRIDES  ·  generated from the 29 Jun 2026 visual audit
@@ -5631,7 +5638,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.20.0";
+var APP_VERSION="2.21.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -18674,14 +18681,27 @@ function _coachInviteHTML(c){
     return '<span class="co-inv-note">Invite link not found \u2014 it may have been deleted.</span>';
   }
   if(st.code==="answered"){
-    var a=_coachInviteReply(c)||{};
+    var inv=st.inv||{}, r=inv.reply||{}, fotos=inv.photos||[];
+    var pref=r.callPref==="phone"?"Phone call":r.callPref==="video"?"Video call":"";
+    var como = r.callPref==="phone" ? "Phone call \u2014 no video"
+             : r.facetime===true    ? "Video \u00b7 FaceTime"
+             : r.facetime===false   ? ("Video \u00b7 Google Meet"+(r.googleAccount?(" \u2014 "+r.googleAccount):""))
+             : pref || "\u2014";
     return '<div class="co-inv co-inv-ok">'
-      +'<div class="co-inv-h">They answered</div>'
-      +(a.when?'<div class="co-inv-r"><b>When they can:</b> '+esc(a.when)+'</div>':'')
-      +'<div class="co-inv-r"><b>FaceTime:</b> '
-        +(a.facetime==="yes"?"yes":a.facetime==="no"?"no":"\u2014")+'</div>'
-      +(a.google?'<div class="co-inv-r"><b>Google account:</b> '+esc(a.google)+'</div>':'')
-      +(a.note?'<div class="co-inv-r">'+esc(a.note)+'</div>':'')
+      +'<div class="co-inv-h">They answered '
+        /* _itkAgo vive en el bloque de Intake. En el navegador comparten scope
+           global, pero no se da por hecho: si no esta, se omite la antiguedad
+           en vez de reventar la tarjeta entera. */
+        +((inv.submittedAtMs&&typeof _itkAgo==="function")?esc(_itkAgo(inv.submittedAtMs)):"")+'</div>'
+      +(r.problem?'<div class="co-inv-p">'+esc(r.problem)+'</div>':'')
+      +(r.availability?'<div class="co-inv-r"><b>When they can:</b> '+esc(r.availability)+'</div>':'')
+      +'<div class="co-inv-r"><b>How:</b> '+esc(como)+'</div>'
+      +(fotos.length
+         ? '<div class="co-inv-ph">'+fotos.slice(0,8).map(function(p){
+             return '<img src="'+esc(p.url)+'" alt="" onclick="itkDetail(\''+esc(inv.token)+'\')">'}).join("")+'</div>'
+           +'<div class="co-inv-r" style="margin-top:5px">'+fotos.length
+           +(fotos.length===1?" photo":" photos")+' they sent</div>'
+         : '<div class="co-inv-r" style="color:var(--i3)">No photos</div>')
       +'</div>';
   }
   var etiqueta = st.code==="opened" ? "Opened, no answer yet"
@@ -18745,7 +18765,11 @@ async function coachCreate(){
     toast(estado==="ok"
       ? "Coaching call added \u2713"
       : "Saved on this device \u2014 it will sync when you are back online");
-    _coachNewOpen=false;_coachNewType="phone";setTimeout(refreshAll,400);
+    _coachNewOpen=false;_coachNewType="phone";
+    /* repintar YA: refreshAll coalesce 250 ms + 400 ms de espera, y hasta
+       entonces el formulario seguiria en pantalla con el boton congelado */
+    try{rndrCoaching()}catch(_e){}
+    setTimeout(refreshAll,400);
     /* si el servidor la rechaza MAS TARDE, hay que decirlo: el documento
        desapareceria de la lista y sin aviso pareceria cosa de brujas. */
     addP.catch(function(e){
@@ -25363,6 +25387,14 @@ function _refreshAllNow(){
   _safeR("pg4",rndrCal,"calendar");
   _safeR("pg5",rndrSlog,"slog");
   _safeR("pg6",rndrCust,"customers");
+  /* v2.21.0 — FALTABAN. Sin estas dos, cualquier accion en Coaching o Intake
+     cambiaba el estado pero NO repintaba: el formulario se quedaba con su
+     boton en "Saving..." hasta que el listener de Firestore repintaba solo al
+     recuperar el foco de la ventana. Ese era el bug de "se queda guardando
+     pero cambio de ventana y aparece". Van guardadas igual que las demas:
+     solo si la pestaña esta visible, y con try/catch. */
+  _safeR("pg12",rndrCoaching,"coaching");
+  _safeR("pg14",rndrIntake,"intake");
 }
 
 // ═══ KEYBOARD SHORTCUTS (desktop power-user nav) ═══
