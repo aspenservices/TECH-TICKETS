@@ -5638,7 +5638,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.21.0";
+var APP_VERSION="2.21.1";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -18576,8 +18576,7 @@ function _coachInviteOf(c){
   /* la invitacion vive en `intakes`; el listener de Intake ya las trae todas */
   if(!c || !c.inviteToken) return null;
   try{
-    var L=(typeof _itkAll!=="undefined"&&_itkAll&&_itkAll.length)?_itkAll
-           :((typeof _itkList!=="undefined"&&_itkList)?_itkList:[]);
+    var L=(typeof _itkAll!=="undefined"&&_itkAll)?_itkAll:[];
     for(var i=0;i<L.length;i++) if(L[i].token===c.inviteToken) return L[i];
   }catch(_e){}
   return null;
@@ -18586,7 +18585,9 @@ function _coachInviteOf(c){
 function _coachInviteState(c){
   var inv=_coachInviteOf(c);
   if(!c.inviteToken) return {code:"none"};
-  if(!inv)            return {code:"gone"};            /* borrada o aun no llega */
+  /* Sin el primer snapshot todavia no se puede afirmar nada: decir "borrada"
+     seria mentir. Se muestra "cargando" hasta que el listener conteste. */
+  if(!inv) return {code:(typeof _itkAllReady!=="undefined"&&_itkAllReady)?"gone":"loading"};
   if(inv.status==="received"||inv.reply) return {code:"answered", inv:inv};
   if(inv.openedAtMs)  return {code:"opened", inv:inv};
   if(inv.sentAtMs)    return {code:"sent", inv:inv};
@@ -18601,6 +18602,16 @@ function _coachInviteSms(c){
     +"free and whether FaceTime works for you:\n\n"
     +(inv?_itkLink(inv.token):"")
     +"\n\nIt takes about a minute. Thank you!";
+}
+
+/* Si el documento de la invitacion desaparecio, la llamada se queda con un
+   inviteToken huerfano y sin salida. Esto lo limpia para poder crear otra. */
+async function coachInviteReset(id){
+  try{
+    await db.collection("tickets").doc(id).update({inviteToken:null});
+    toast("Cleared \u2014 you can send a new link now");
+    rndrCoaching();
+  }catch(e){toast("Could not clear it: "+(e.message||e),"err")}
 }
 
 async function coachInvite(id){
@@ -18677,8 +18688,12 @@ function _coachInviteHTML(c){
     return '<button type="button" class="co-btn co-btn-ghost" onclick="coachInvite(\''+c.id+'\')">'
       +'Send a video call link</button>';
   }
+  if(st.code==="loading"){
+    return '<span class="co-inv-note">Loading the invite link\u2026</span>';
+  }
   if(st.code==="gone"){
-    return '<span class="co-inv-note">Invite link not found \u2014 it may have been deleted.</span>';
+    return '<span class="co-inv-note">Invite link not found \u2014 it may have been deleted. '
+      +'<button type="button" class="co-btn co-btn-ghost" onclick="coachInviteReset(\''+c.id+'\')">Make a new one</button></span>';
   }
   if(st.code==="answered"){
     var inv=st.inv||{}, r=inv.reply||{}, fotos=inv.photos||[];
@@ -32711,6 +32726,12 @@ body.v8r-open .toast{z-index:1000010}
 <script id="aspenIntakeScript">
 /* ── Estado ──────────────────────────────────────────────────────────────── */
 var _itkList=[], _itkNewOpen=false, _itkLastToken=null, _itkUnsub=null, _itkBusy={};
+/* _itkAll guarda TODOS los documentos de `intakes`, incluidas las invitaciones
+   de coaching que _itkList aparta. Va aqui, a nivel de modulo: declararla
+   dentro del callback del listener la hacia local y se perdia en cada vuelta,
+   asi que Coaching nunca encontraba su invitacion. _itkAllReady distingue
+   "todavia no ha llegado el primer snapshot" de "de verdad no existe". */
+var _itkAll=[], _itkAllReady=false;
 var ITAKE_LINK_BASE="https://aspenservices.github.io/TECH-TICKETS/intake.html";
 var ITK_EXPIRE_DAYS=14;
 
@@ -32729,13 +32750,13 @@ function _itkStart(){
   try{
     _itkUnsub=db.collection("intakes").orderBy("createdAtMs","desc").limit(200)
       .onSnapshot(function(snap){
-        _itkList=[]; var _itkAll=[];
+        _itkList=[];
         snap.forEach(function(d){_itkList.push(Object.assign({token:d.id},d.data()))});
         /* v2.19.0: las invitaciones de videollamada viven en la misma coleccion
            pero NO son intakes de servicio: se quedan fuera de la Bandeja para no
            ensuciar la lista ni el embudo. La pestana de Coaching las lee de
            _itkAll por su token. */
-        _itkAll=_itkList.slice();
+        _itkAll=_itkList.slice(); _itkAllReady=true;
         _itkList=_itkList.filter(function(x){return x.kind!=="coaching"});
         _itkBadge();
         var pg=document.getElementById("pg14");
