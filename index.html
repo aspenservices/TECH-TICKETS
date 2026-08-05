@@ -4249,6 +4249,14 @@ try{
   if(!FIREBASE_CONFIG||FIREBASE_CONFIG.apiKey==="YOUR_API_KEY_HERE")throw new Error("config");
   firebase.initializeApp(FIREBASE_CONFIG);
   db=firebase.firestore();
+  /* v2.23.0 — techo a la cache EN DISCO (IndexedDB). Por defecto son 40 MB y
+     crece sola con cada documento que se toca. OJO: esto NO es lo que fallo
+     el 5 ago — aquello era el localStorage, que es otra cosa y lo cubre el
+     vigilante. Esto es higiene: evita que la cache se coma el disco del
+     telefono con el tiempo. settings() DEBE ir antes de cualquier otra
+     llamada a Firestore, incluida enablePersistence. */
+  try{ db.settings({cacheSizeBytes:20*1024*1024}) }
+  catch(_cs){ console.warn("cacheSizeBytes no aplicado:",_cs) }
   // Initialize Firebase Storage for photo uploads (much more efficient than base64)
   try{storage=firebase.storage()}catch(_se){console.warn("Storage init failed:",_se)}
   // ═══ ANONYMOUS AUTH ═══
@@ -5638,7 +5646,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.21.1";
+var APP_VERSION="2.23.0";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -34505,6 +34513,225 @@ body.vc-solo .v7-visit{display:block;margin-bottom:var(--sp-3)!important}
     var t=0, iv=setInterval(function(){ if(hook()||++t>60) clearInterval(iv); },250);
   }
   setTimeout(inject,1000);
+})();
+</script>
+<script id="aspenStorageWatch">
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.22.0 · VIGILANTE DE ALMACENAMIENTO                build 2026-08-05-ls
+   ─────────────────────────────────────────────────────────────────────
+   POR QUE EXISTE: el 5 ago Firestore 10.12.0 entro en
+   "INTERNAL ASSERTION FAILED: Unexpected state" y NINGUNA escritura volvio
+   a funcionar hasta borrar los datos del sitio. La causa de raiz no fue
+   Firestore: fue el localStorage LLENO. Firestore guarda ahi un contador
+   diminuto (firestore_sequence_number_...) y al no caber, su cola async
+   muere y se lleva por delante todas las escrituras de la app.
+
+   Quien lo llenaba: `aspAIPartsCache_<ticketId>` crea UNA CLAVE POR TICKET
+   sin caducidad ni tope, y los caches de mapas/geocodificacion guardan
+   geometrias de ruta, que son cadenas largas.
+
+   La app ya tenia una valvula asi, pero solo saltaba dentro del buzon de
+   estimados. Aqui vigila SIEMPRE.
+
+   REGLA QUE NO SE NEGOCIA: solo se tiran CACHES, cosas que se pueden volver
+   a calcular. Nunca la sesion, ni borradores, ni buzones de salida: eso es
+   trabajo del usuario que no esta en ningun otro sitio.
+   ═══════════════════════════════════════════════════════════════════════ */
+var LS_WARN_KB = 3200;   /* avisar   */
+var LS_SWEEP_KB= 3800;   /* barrer   */
+var LS_AI_KEEP = 40;     /* cuantos aspAIPartsCache_ se conservan */
+var LS_AI_DAYS = 21;     /* y cuanto duran */
+
+/* Solo estos prefijos son sacrificables. Todo lo demas se respeta. */
+var LS_CACHES = ["aspAIPartsCache_","aspen_maps_geom_cache","aspen_maps_dist_cache",
+                 "aspen_geo_cache","aspRevGeocode","aspen_revgeo"];
+
+function _lsKB(){
+  var t=0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i), v=localStorage.getItem(k)||"";
+      t+=(k.length+v.length)*2;      /* UTF-16: 2 bytes por caracter */
+    }
+  }catch(_e){}
+  return Math.round(t/1024);
+}
+
+function _lsTop(n){
+  var f=[];
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i), v=localStorage.getItem(k)||"";
+      f.push({k:k, kb:Math.round((k.length+v.length)*2/1024)});
+    }
+  }catch(_e){}
+  f.sort(function(a,b){return b.kb-a.kb});
+  return f.slice(0,n||10);
+}
+
+function _lsEsCache(k){
+  for(var i=0;i<LS_CACHES.length;i++) if(k.indexOf(LS_CACHES[i])===0) return true;
+  return false;
+}
+
+/* Poda las cachés de IA: por edad primero, y si aun sobran, las mas viejas. */
+function _lsPodaAI(){
+  var items=[], n=0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k.indexOf("aspAIPartsCache_")!==0) continue;
+      var ts=0;
+      try{ ts=(JSON.parse(localStorage.getItem(k)||"{}")||{}).ts||0 }catch(_p){}
+      items.push({k:k, ts:ts});
+    }
+  }catch(_e){ return 0 }
+  var corte=Date.now()-LS_AI_DAYS*86400000;
+  items.sort(function(a,b){return b.ts-a.ts});     /* mas nuevas primero */
+  items.forEach(function(it,idx){
+    if(idx>=LS_AI_KEEP || it.ts<corte){
+      try{ localStorage.removeItem(it.k); n++ }catch(_r){}
+    }
+  });
+  return n;
+}
+
+/* Barrido. force=true barre aunque no se haya pasado del umbral. */
+function _lsSweep(force){
+  var antes=_lsKB();
+  if(!force && antes<LS_SWEEP_KB) return {antes:antes, despues:antes, borradas:0};
+  var n=_lsPodaAI();
+  if(_lsKB()>=LS_SWEEP_KB || force){
+    /* segunda pasada: los caches grandes de mapas y geo */
+    try{
+      var fuera=[];
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(_lsEsCache(k) && k.indexOf("aspAIPartsCache_")!==0) fuera.push(k);
+      }
+      fuera.forEach(function(k){try{localStorage.removeItem(k);n++}catch(_r){}});
+    }catch(_e){}
+  }
+  var despues=_lsKB();
+  if(n) try{console.log("%c[almacenamiento] barridas "+n+" claves de cache · "
+      +antes+" KB \u2192 "+despues+" KB","color:#D4772C;font-weight:700")}catch(_l){}
+  return {antes:antes, despues:despues, borradas:n};
+}
+
+/* Revision periodica. Barre solo si hace falta; avisa si sigue apretado. */
+function _lsCheck(){
+  var kb=_lsKB();
+  if(kb>=LS_SWEEP_KB){
+    var r=_lsSweep(false);
+    if(r.despues>=LS_WARN_KB){
+      /* Barrimos y AUN asi esta lleno: eso ya no lo arregla el vigilante.
+         Se avisa, porque el siguiente sintoma seria Firestore cayendose. */
+      try{console.warn("[almacenamiento] sigue alto tras barrer: "+r.despues
+        +" KB. Las 8 claves mayores:", _lsTop(8))}catch(_l){}
+      try{ if(typeof toast==="function")
+        toast("Storage is nearly full \u2014 some things may stop saving. Tell Alberto.","warn") }catch(_t){}
+    }
+  }else if(kb>=LS_WARN_KB){
+    try{console.warn("[almacenamiento] "+kb+" KB usados, vigilando")}catch(_l){}
+  }
+}
+
+/* Al arrancar (antes de que Firestore se tope con la pared) y cada 10 min. */
+try{ _lsCheck(); }catch(_e){}
+try{ setInterval(function(){try{_lsCheck()}catch(_e){}}, 600000); }catch(_e){}
+
+/* Para mirarlo a mano desde la consola cuando algo huela raro. */
+window.lsInfo=function(){
+  var kb=_lsKB();
+  console.log("localStorage: "+kb+" KB  (aviso "+LS_WARN_KB+" · barrido "+LS_SWEEP_KB+")");
+  console.table(_lsTop(15));
+  return kb;
+};
+window.lsSweep=function(){return _lsSweep(true)};
+</script>
+<script id="aspenFsGuard">
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.23.0 · DETECTOR DE FIRESTORE ATASCADO        build 2026-08-05-fsguard
+   ─────────────────────────────────────────────────────────────────────
+   POR QUE: el 5 ago Firestore entro en "INTERNAL ASSERTION FAILED:
+   Unexpected state" y a partir de ahi NINGUNA escritura funciono. Lo unico
+   que se veia era un "Could not save report" sin explicacion. Alberto tuvo
+   que averiguarlo con la consola abierta.
+
+   Cuando pasa, el cliente NO se recupera solo. El vigilante de
+   almacenamiento (v2.22.0) evita la causa mas comun, pero si aun asi
+   ocurre, esto lo dice CLARO y ofrece la salida en un boton, en vez de
+   dejar al usuario creyendo que guardo cuando no guardo.
+
+   NO intenta arreglar Firestore: es un fallo interno del SDK y no hay API
+   para revivirlo. Lo unico honesto es avisar y recargar limpiando cache.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+  var MARCA=/INTERNAL ASSERTION FAILED|Unexpected state/i;
+  var atascado=false;
+
+  function esFirestoreMuerto(msg){ return MARCA.test(String(msg||"")) }
+
+  function avisar(){
+    if(atascado) return;
+    atascado=true;
+    try{console.error("%c[Firestore] el cliente se atasco — ninguna escritura va a funcionar",
+      "color:#dc2626;font-weight:700")}catch(_e){}
+    var d=document.createElement("div");
+    d.id="fsDeadBar";
+    d.setAttribute("role","alert");
+    d.style.cssText="position:fixed;left:0;right:0;bottom:0;z-index:99999;"
+      +"background:#7f1d1d;color:#fff;padding:14px 16px;font:600 14px/1.5 inherit;"
+      +"display:flex;gap:12px;align-items:center;flex-wrap:wrap;"
+      +"box-shadow:0 -6px 24px rgba(0,0,0,.3)";
+    d.innerHTML='<span style="flex:1;min-width:220px">'
+      +'Firestore stopped saving. Nothing you type right now is being stored. '
+      +'Copy anything unsaved, then reload with a clean cache.</span>'
+      +'<button type="button" id="fsDeadFix" style="background:#fff;color:#7f1d1d;'
+      +'border:0;border-radius:9px;padding:11px 18px;font:800 14px inherit;'
+      +'cursor:pointer;min-height:44px">Reload clean</button>'
+      +'<button type="button" id="fsDeadHide" style="background:transparent;color:#fff;'
+      +'border:1px solid rgba(255,255,255,.5);border-radius:9px;padding:11px 16px;'
+      +'font:700 14px inherit;cursor:pointer;min-height:44px">Not now</button>';
+    try{document.body.appendChild(d)}catch(_a){return}
+    var fix=document.getElementById("fsDeadFix");
+    if(fix) fix.addEventListener("click",function(){
+      /* Solo caches recalculables, igual que el vigilante: la sesion y los
+         buzones de salida NO se tocan ni aqui. */
+      try{ if(typeof _lsSweep==="function") _lsSweep(true) }catch(_s){}
+      try{ location.reload() }catch(_r){}
+    });
+    var hide=document.getElementById("fsDeadHide");
+    if(hide) hide.addEventListener("click",function(){
+      try{d.parentNode.removeChild(d)}catch(_h){}
+    });
+  }
+  window.fsDeadCheck=function(){return atascado};
+
+  /* Firestore lanza esto como error no capturado y tambien lo registra. */
+  try{
+    window.addEventListener("error",function(e){
+      if(esFirestoreMuerto(e&&(e.message||(e.error&&e.error.message)))) avisar();
+    });
+    window.addEventListener("unhandledrejection",function(e){
+      var r=e&&e.reason;
+      if(esFirestoreMuerto(r&&(r.message||r))) avisar();
+    });
+  }catch(_e){}
+
+  /* El SDK escribe la asercion por console.error sin lanzarla hacia arriba,
+     asi que se envuelve — pasando SIEMPRE la llamada original. */
+  try{
+    var orig=console.error;
+    console.error=function(){
+      try{
+        for(var i=0;i<arguments.length;i++)
+          if(esFirestoreMuerto(arguments[i]&&(arguments[i].message||arguments[i]))){avisar();break}
+      }catch(_c){}
+      return orig.apply(console, arguments);
+    };
+  }catch(_e){}
 })();
 </script>
 </body>
