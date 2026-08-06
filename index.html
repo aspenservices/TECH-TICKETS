@@ -5646,7 +5646,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.23.0";
+var APP_VERSION="2.23.1";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -29147,7 +29147,12 @@ function showTicketDetail(p,i){
    Nela, Jul 2026): it lists old tickets never flagged PAID — mostly already
    paid in QB — and buries the real pending list below. The reschedule block
    (ca-warn) stays. Remove this rule to bring it back. */
-#collAlertTop .ca-block.ca-danger{display:none!important}
+/* v2.23.1: the rule used to be scoped to #collAlertTop, but the Collections
+   board copies that node's innerHTML into #cabCollTop (inline board) and
+   #cabCollTop2 (full-screen board) — see cabHeaderHTML() — so the mirrored
+   copies fell outside the selector and the red block kept showing on the
+   board. Unscoped now: .ca-danger is produced by that block only. */
+.ca-block.ca-danger{display:none!important}
 /* C-lite (Nela, Jul 2026): Alerts tab in quiet Apple-Mail style. Scoped to
    body.aspSkin (the 🎨 toggle turns it off). Targets the inline-style
    signatures of rndrAlerts output — no app code modified. */
