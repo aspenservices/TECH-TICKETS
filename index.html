@@ -6732,7 +6732,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.25.1";
+var APP_VERSION="2.25.2";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -30957,7 +30957,25 @@ window.nvClose=function(){var ov=document.getElementById("nvOv");if(ov)ov.style.
 window.nvOpenTicket=function(id){nvShowPanel(id);};
 window.nvMore=function(k){(window._nvExp=window._nvExp||{})[k]=1;nvRender();};
 window.nvLess=function(k){if(window._nvExp)delete window._nvExp[k];nvRender();};
-function _nvFind(id){var t=null;((typeof active!=="undefined"&&active)||[]).some(function(x){if(x&&String(x.id)===String(id)){t=x;return true;}return false;});return t;}
+function _nvFind(id){
+  /* v2.25.2 — antes esto SOLO miraba `active`. El board de Vista Nela pinta
+     tarjetas desde `pool()` (que a su vez sale de _visitReports() y viene YA
+     filtrado por el buscador y por el filtro del dia) y tambien desde `active`.
+     Resultado: al pulsar "Bill in Sprint" sobre una tarjeta cuyo ticket no
+     estaba en `active` — tipicamente ya completado, o fuera del filtro vigente —
+     bsOpen() no lo encontraba por ningun lado y moria con "Ticket not found",
+     cerrando el panel sin abrir el Sprint. Ahora busca en las tres fuentes,
+     en orden, y sin filtros. */
+  var id_=String(id), t=null;
+  function scan(arr){
+    if(t||!arr) return;
+    for(var i=0;i<arr.length;i++){ if(arr[i]&&String(arr[i].id)===id_){ t=arr[i]; return; } }
+  }
+  try{ scan((typeof active!=="undefined"&&active)||[]); }catch(_e){}
+  try{ scan((typeof done!=="undefined"&&done)||[]); }catch(_e){}
+  try{ if(!t&&typeof _visitReports==="function") scan(_visitReports()||[]); }catch(_e){}
+  return t;
+}
 window.nvHidePanel=function(){var pn=document.getElementById("nvPanel");if(pn)pn.style.display="none";window._nvSel=null;};
 window.nvShowPanel=function(id){
   var t=_nvFind(id);if(!t)return;
@@ -32201,7 +32219,20 @@ window.bsOpen=function(focusId){
     for(var _i=0;_i<Q.length;_i++)if(String(Q[_i].id)===String(focusId)){_k=_i;break;}
     if(_k<0&&_ft){Q.unshift(_ft);_k=0;}
     if(_k>=0)idx=_k;
-    else{try{toast(TT("No encontré ese ticket","Ticket not found"),"warn");}catch(e){}return;}
+    else{
+      /* v2.25.2 — si aun asi no aparece, dejar rastro en consola en vez de solo
+         un aviso mudo: sin esto no hay forma de saber DONDE se busco. */
+      try{
+        var _dbg={id:String(focusId),
+          enPool:Q.length,
+          enActive:((typeof active!=="undefined"&&active)||[]).length,
+          enDone:((typeof done!=="undefined"&&done)||[]).length,
+          buscador:(($("searchActive")||{}).value||"(vacio)")};
+        console.warn("[BillingSprint] no encontre el ticket",_dbg);
+      }catch(_e){}
+      try{toast(TT("No encontré ese ticket — mándale la consola a Claude","Ticket not found — send Claude the console"),"warn");}catch(e){}
+      return;
+    }
   }
   if(!Q.length){try{toast("No pending invoices ✓");}catch(e){}return;}
   var ov=document.getElementById("bsOv");
