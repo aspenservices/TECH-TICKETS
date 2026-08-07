@@ -6732,7 +6732,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.25.3";
+var APP_VERSION="2.25.4";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -31411,9 +31411,17 @@ function _alertsTools(){
   var apAll=cbPool();                                  // full pool (drives Sprint + summary)
   var ap=(typeof _filterAlertsByAge==="function")?_filterAlertsByAge(apAll):apAll; // aging-filtered (drives columns)
   var at=0;apAll.forEach(function(x){try{at+=_alertAmount(x);}catch(e){}});
-  var bon=true;try{bon=localStorage.getItem("aspCabInline")!=="0";}catch(e){}
+  /* v2.25.4 — el Board es la UNICA vista de Alertas. Antes se alternaba con la
+     lista vertical guardando "aspCabInline" en localStorage; Nela pidio quedarse
+     solo con el board porque agrupa por categoria y se busca mas facil. Segun el
+     comentario de abajo, el board ya trae TODO lo que tenia la lista (resumen,
+     filtro por antiguedad, correo semanal, banner de reagendar, y Resolve/Remind/
+     Note/PDF en cada tarjeta), asi que no se pierde nada. Efecto lateral bueno: ya
+     no depende de localStorage, que en agosto se llenaba y dejaba el toggle muerto.
+     Para revertir: devolver la lectura de localStorage y el boton de abajo. */
+  var bon=true;
   bar.innerHTML='<button onclick="cbOpen()" style="flex:2;min-width:200px;padding:12px 14px;border:1.5px solid var(--c-money-fg,#065f46);border-radius:12px;background:var(--c-money-bg,#ecfdf5);color:var(--c-money-fg,#065f46);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("credit-card",14)+' '+TT("Cobro Sprint","Collections Sprint")+' — '+apAll.length+' · $'+Math.round(at).toLocaleString("en-US")+'</button>'
-    +'<button onclick="cabToggle()" style="flex:1;min-width:130px;padding:12px 14px;border:1.5px solid '+(bon?'var(--c-money-fg,#065f46)':'var(--ln,#d5d0c8)')+';border-radius:12px;background:var(--card,#fff);color:'+(bon?'var(--c-money-fg,#065f46)':'var(--i2,#5a5248)')+';font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">'+bico("layout-kanban",13)+' '+TT("Board","Board")+(bon?" ✓":"")+'</button>'
+    /* v2.25.4 — el boton "Board" se quito: ya no hay nada que alternar. */
     +'<button onclick="qaOpen()" style="flex:1;min-width:150px;padding:12px 14px;border:1.5px solid var(--ln,#d5d0c8);border-radius:12px;background:var(--card,#fff);color:var(--i2,#5a5248);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">+ '+TT("Factura abierta","Open invoice")+'</button>';
   // Board ON = board is the ONLY view; ALL linear-list functions now live in the
   // board header (summary + aging filter + weekly email + reschedule banner) and
@@ -32003,7 +32011,9 @@ window.cabStage=function(sid,on){
   try{var ov=document.getElementById("cabOv");if(ov&&ov.style.display==="block")cabOpen();}catch(e){}
 };
 window.cabToggle=function(){
-  try{localStorage.setItem("aspCabInline",localStorage.getItem("aspCabInline")==="0"?"1":"0");}catch(e){}
+  /* v2.25.4 — el Board es la unica vista; esto queda como no-op por si algun
+     boton viejo o un atajo guardado todavia lo llama. */
+  try{localStorage.removeItem("aspCabInline");}catch(e){}
   try{_alertsTools();}catch(e){}
 };
 window.cabOpen=function(){
