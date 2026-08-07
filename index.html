@@ -6732,7 +6732,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.25.2";
+var APP_VERSION="2.25.3";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -32183,7 +32183,7 @@ function renderBtn(){
     try{renderDigest(p);}catch(e){}
   }
   var btn=document.getElementById("bsLaunch");
-  if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=bsOpen;pg.insertBefore(btn,pg.firstChild);}
+  if(!btn){btn=document.createElement("button");btn.id="bsLaunch";btn.type="button";btn.onclick=function(){bsOpen();};pg.insertBefore(btn,pg.firstChild);  /* v2.25.3: envuelto — asignar bsOpen directo hacia que el navegador pasara el evento del clic como focusId */}
   btn.style.display=n?"inline-flex":"none";
   btn.innerHTML=bico("zap",15)+" Billing Sprint — <span class='bs-cnt'>"+n+"</span> pendientes · $"+Math.round(_btnCache.total).toLocaleString("en-US");
   var nb=document.getElementById("nvLaunch");
@@ -32198,7 +32198,7 @@ function renderBtn(){
   rb.innerHTML=bico("clipboard-list",14)+" "+TT("Rollo del día","Day roll")+" — "+rtN+" / "+rp.length+" "+TT("digitadas","typed");
   var pb=document.getElementById("payLaunch");
   var ap=cbPool();
-  if(!pb){pb=document.createElement("button");pb.id="payLaunch";pb.type="button";pb.onclick=cbOpen;if(rb.nextSibling)pg.insertBefore(pb,rb.nextSibling);else pg.appendChild(pb);}
+  if(!pb){pb=document.createElement("button");pb.id="payLaunch";pb.type="button";pb.onclick=function(){cbOpen();};  /* v2.25.3: mismo caso que bsOpen */if(rb.nextSibling)pg.insertBefore(pb,rb.nextSibling);else pg.appendChild(pb);}
   var at=0;ap.forEach(function(x){try{at+=_alertAmount(x);}catch(e){}});
   pb.style.display=ap.length?"inline-flex":"none";
   pb.innerHTML=bico("credit-card",14)+" "+TT("Cobro Sprint","Collections Sprint")+" — "+ap.length+" "+TT("alertas","alerts")+" · $"+Math.round(at).toLocaleString("en-US");
@@ -32213,6 +32213,13 @@ function cur(){return Q[idx]||null;}
 function _counts(){var d=0,k=0;Q.forEach(function(t){if(t.qbCopied||t.bsNoBill)d++;else if(sk[t.id])k++;});return{d:d,s:k};}
 
 window.bsOpen=function(focusId){
+  /* v2.25.3 — CAUSA RAIZ del "Ticket not found": el boton lanzador hacia
+     btn.onclick=bsOpen, asi que el navegador pasaba el PointerEvent del clic
+     como focusId. La funcion buscaba entonces un ticket con id
+     "[object PointerEvent]", no lo hallaba en ninguna lista, y salia por el
+     aviso sin abrir el Sprint NUNCA desde ese boton. Arreglado el enganche;
+     esta guarda ignora ademas cualquier focusId que no sea texto o numero. */
+  if(focusId!=null&&typeof focusId!=="string"&&typeof focusId!=="number")focusId=null;
   fTech="";Q=pool();idx=0;sk={};bl=[];wKept={};ck={};window._bsParty=false;
   if(focusId!=null){
     var _ft=_nvFind(focusId),_k=-1;
@@ -32227,7 +32234,8 @@ window.bsOpen=function(focusId){
           enPool:Q.length,
           enActive:((typeof active!=="undefined"&&active)||[]).length,
           enDone:((typeof done!=="undefined"&&done)||[]).length,
-          buscador:(($("searchActive")||{}).value||"(vacio)")};
+          buscador:((document.getElementById("searchActive")||{}).value||"(vacio)"),
+          tipo:(typeof focusId)};
         console.warn("[BillingSprint] no encontre el ticket",_dbg);
       }catch(_e){}
       try{toast(TT("No encontré ese ticket — mándale la consola a Claude","Ticket not found — send Claude the console"),"warn");}catch(e){}
