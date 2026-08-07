@@ -6732,7 +6732,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.25.0";
+var APP_VERSION="2.25.1";
 var BUILD_DATE="2026-07-22";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -35827,6 +35827,63 @@ window.lsSweep=function(){return _lsSweep(true)};
   }catch(_e){}
 })();
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     ANTIFILTRACIONES  (v2.25.1)
+
+     La v2.24.1 encapsulo el CSS del Invoice Tracker para que no saliera de
+     la pestana. Faltaba la mitad opuesta: las reglas GLOBALES de
+     TECH-TICKETS tambien entran, porque 26 nombres de clase existen en las
+     dos apps (.toast .tabs .app .modal .btn .active ...). Son 279
+     propiedades filtrandose hacia dentro de #pg15.
+
+     Ejemplo real: el elemento de avisos del Invoice Tracker recibia top y
+     left:50% de TECH-TICKETS y bottom y right de los suyos -> quedaba
+     estirado de arriba a abajo de la pantalla. Esa era la franja verde.
+
+     Este bloque devuelve al valor por defecto del navegador SOLO las
+     propiedades que TECH-TICKETS declara para esas 26 clases, y solo
+     dentro de #pg15. Va ANTES del CSS del Invoice Tracker para que el suyo
+     siga mandando. Fuera de la pestana no cambia absolutamente nada.
+     ══════════════════════════════════════════════════════════════════════ -->
+<style id="itkNoLeak">
+#pg15 .active{background:revert;border-color:revert;border-left:revert;color:revert;font-weight:revert;margin:revert;opacity:revert;padding-left:revert}
+#pg15 .app{align-items:revert;animation:revert;background:revert;border:revert;border-color:revert;border-radius:revert;bottom:revert;box-shadow:revert;color:revert;display:revert;flex-shrink:revert;font-size:revert;font-variant-numeric:revert;font-weight:revert;height:revert;justify-content:revert;letter-spacing:revert;margin-right:revert;min-height:revert;min-width:revert;position:revert;right:revert;vertical-align:revert;width:revert}
+#pg15 .brand{background:revert;border-color:revert;color:revert}
+#pg15 .btn{border:revert;border-radius:revert;color:revert;flex:revert;font-size:revert;font-weight:revert;letter-spacing:revert;min-height:revert;padding:revert;pointer-events:revert;position:revert}
+#pg15 .btn::before,#pg15 .btn::after{animation:revert;border:revert;border-radius:revert;border-top-color:revert;color:revert;content:revert;height:revert;left:revert;margin:revert;opacity:revert;position:revert;top:revert;width:revert}
+#pg15 .collapsed{align-items:revert;background:revert;color:revert;cursor:revert;display:revert;flex-shrink:revert;font-size:revert;font-weight:revert;gap:revert;line-height:revert;padding:revert}
+#pg15 .critical{background:revert;color:revert}
+#pg15 .danger{background:revert;border-color:revert;color:revert}
+#pg15 .done{background:revert;border-color:revert;color:revert;opacity:revert;text-decoration:revert}
+#pg15 .done::before,#pg15 .done::after{background:revert;box-shadow:revert}
+#pg15 .empty{align-items:revert;animation:revert;background:revert;border:revert;border-color:revert;border-radius:revert;box-shadow:revert;color:revert;display:revert;font-family:revert;font-size:revert;font-weight:revert;height:revert;justify-content:revert;letter-spacing:revert;line-height:revert;margin:revert;margin-bottom:revert;margin-top:revert;max-width:revert;opacity:revert;padding:revert;text-align:revert;width:revert}
+#pg15 .field{-webkit-appearance:revert;background:revert;border:revert;border-bottom:revert;border-radius:revert;box-shadow:revert;font-family:revert;font-size:revert;outline:revert;padding:revert;width:revert}
+#pg15 .fresh{background:revert;color:revert}
+#pg15 .full{background:revert;border:revert;color:revert}
+#pg15 .late{background:revert;border-color:revert;color:revert}
+#pg15 .modal{animation:revert;background:revert;border-radius:revert;box-shadow:revert;display:revert;flex-direction:revert;height:revert;max-width:revert;overflow:revert;padding-bottom:revert;width:revert;will-change:revert}
+#pg15 .open{animation:revert;box-shadow:revert;display:revert;flex-direction:revert;transform:revert}
+#pg15 .pending{background:revert;border:revert;color:revert;display:revert}
+#pg15 .req{color:revert;font-weight:revert;margin-left:revert}
+#pg15 .resched{background:revert;border-color:revert;color:revert}
+#pg15 .show{animation:revert;display:revert;opacity:revert;pointer-events:revert;transform:revert}
+#pg15 .tab{align-items:revert;background:revert;border-bottom:revert;border-radius:revert;box-shadow:revert;color:revert;cursor:revert;display:revert;flex:revert;font-size:revert;font-weight:revert;gap:revert;height:revert;justify-content:revert;letter-spacing:revert;line-height:revert;margin-left:revert;min-height:revert;min-width:revert;outline:revert;outline-offset:revert;padding:revert;position:revert;right:revert;text-align:revert;top:revert;transition:revert;user-select:revert;white-space:revert;width:revert}
+#pg15 .tab::before,#pg15 .tab::after{content:revert;flex:revert;font-size:revert;line-height:revert}
+#pg15 .tabs{-webkit-overflow-scrolling:revert;align-items:revert;background:revert;border-bottom:revert;border-radius:revert;border-right:revert;bottom:revert;box-shadow:revert;color:revert;display:revert;flex:revert;flex-direction:revert;font-size:revert;font-weight:revert;gap:revert;height:revert;justify-content:revert;left:revert;letter-spacing:revert;line-height:revert;margin:revert;margin-left:revert;min-width:revert;order:revert;overflow:revert;overflow-x:revert;overflow-y:revert;padding:revert;pointer-events:revert;position:revert;right:revert;scrollbar-width:revert;text-transform:revert;top:revert;transition:revert;white-space:revert;width:revert;z-index:revert}
+#pg15 .tabs::before,#pg15 .tabs::after{align-items:revert;color:revert;content:revert;display:revert;flex:revert;font-size:revert;font-weight:revert;height:revert;justify-content:revert;letter-spacing:revert;line-height:revert;margin-bottom:revert;order:revert;padding:revert}
+#pg15 .toast{align-items:revert;animation:revert;background:revert;border-radius:revert;bottom:revert;box-shadow:revert;color:revert;display:revert;font-size:revert;font-weight:revert;gap:revert;left:revert;max-width:revert;padding:revert;position:revert;text-align:revert;top:revert;transform:revert;z-index:revert}
+#pg15 .toast::before,#pg15 .toast::after{align-items:revert;background:revert;border-radius:revert;content:revert;display:revert;flex-shrink:revert;font-size:revert;font-weight:revert;height:revert;justify-content:revert;line-height:revert;width:revert}
+#pg15 .warn{background:revert;border:revert;color:revert;display:revert}
+#pg15 .warn::before,#pg15 .warn::after{content:revert}
+
+/* Conciliacion con QuickBooks: Nela no la usa (la app misma marcaba 59 dias
+   sin correrla). Se ocultan el boton, el recordatorio y el modal. Los datos
+   y el codigo siguen intactos: borrar estas 3 lineas la trae de vuelta. */
+#pg15 #qbReconcileBtn{display:none!important}
+#pg15 #reconcileNudge{display:none!important}
+#pg15 #qbReconcileModal{display:none!important}
+</style>
 
 <!-- ══════════════════════════════════════════════════════════════════════
      CSS DEL INVOICE TRACKER — ENCAPSULADO  (v2.24.1, Tarea 3 del plan)
