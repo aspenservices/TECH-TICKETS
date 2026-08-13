@@ -6732,7 +6732,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.0";
+var APP_VERSION="2.26.2";
 var BUILD_DATE="2026-08-12";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -45096,6 +45096,11 @@ let _crossAppPollLastSuccess = 0;
 let _crossAppPollLastError = null;
 let _crossAppPollLastCount = 0;
 let _crossAppPollAttempts = 0;
+/* v2.26.2 — marca de agua: el resolvedAt mas reciente que ya procesamos.
+   0 = todavia no hubo carga inicial. Vive solo en memoria a proposito: un
+   refresco de pagina hace UNA consulta completa y sigue incremental desde ahi,
+   y asi no gastamos ni un byte del localStorage, que anda apretado. */
+let _crossAppSinceMs = 0;
 
 async function pollCrossAppResolves() {
   if (document.hidden) return;
@@ -45105,10 +45110,39 @@ async function pollCrossAppResolves() {
   try {
     const token = await getTicketsAuthToken();
     const cfg = getTicketsDbConfig();
-    // Query resolved events. NO orderBy — that requires a composite index in Firestore
-    // (where:status + orderBy:resolvedAt = needs index). We sort client-side instead.
+    /* v2.26.2 — DEJAMOS DE RELEER LOS MISMOS 100 EVENTOS CADA VUELTA.
+       Antes: where status=='resolved' limit 100, cada 30 s. Eso eran ~12.000
+       lecturas de Firestore por hora y por pestana abierta, trayendo siempre
+       los mismos documentos ya vistos. Y peor: sin orderBy, en cuanto hubiera
+       mas de 100 eventos resueltos, Firestore devuelve un subconjunto
+       arbitrario -- una resolucion nueva podia caer fuera de la ventana y no
+       verse NUNCA, con la insignia "Tech ack" quedandose muda.
+       Ahora: la primera vuelta hace la carga completa (para poblar el inbox) y
+       las siguientes piden solo resolvedAt > marca de agua, ordenado ascendente.
+       El filtro de rango y el orderBy son del MISMO campo, asi que basta el
+       indice de un solo campo que Firestore crea solo -- no hace falta indice
+       compuesto, que era justo lo que se queria evitar. El filtro de status se
+       aplica del lado del cliente.
+       Si hay atraso, cada vuelta avanza 50 y va alcanzando; ya no se pierde
+       ninguno. En regimen normal cada consulta trae CERO documentos. */
+    const incremental = _crossAppSinceMs > 0;
     const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents:runQuery?key=${cfg.apiKey}`;
-    const body = {
+    const body = incremental ? {
+      structuredQuery: {
+        from: [{ collectionId: 'cross_app_events' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'resolvedAt' },
+            op: 'GREATER_THAN',
+            // 1 s de holgura: si dos eventos comparten el mismo instante, ninguno
+            // se salta. Los repetidos los absorbe la fusion por eventId.
+            value: { timestampValue: new Date(_crossAppSinceMs - 1000).toISOString() }
+          }
+        },
+        orderBy: [{ field: { fieldPath: 'resolvedAt' }, direction: 'ASCENDING' }],
+        limit: 50
+      }
+    } : {
       structuredQuery: {
         from: [{ collectionId: 'cross_app_events' }],
         where: {
@@ -45142,13 +45176,14 @@ async function pollCrossAppResolves() {
     _crossAppPollLastSuccess = Date.now();
     const docs = arr.filter(item => item.document);
     _crossAppPollLastCount = docs.length;
-    console.info('[CrossAppPoll] Received', docs.length, 'resolved event(s) from Firestore');
+    console.info('[CrossAppPoll]', incremental ? 'incremental ·' : 'carga inicial ·', docs.length, 'evento(s)');
 
     // Build the new "_allResolvedEvents" cache. We include EVERY resolved event,
     // not just ones that match an Invoice Tracker invoice. We also try to match
     // each event to an invoice (by eventId OR by customer+invoice#) for enrichment
     // and to stamp the invoice history so the "✓ Tech ack" badge keeps working.
     const previouslyKnownIds = new Set(_allResolvedEvents.map(e => e.eventId));
+    let _maxSeenTs = _crossAppSinceMs, _minSeenTs = 0;
     const nextEvents = [];
     const newlyStamped = [];
     let markedPaidThisPoll = false; // force a re-render even for already-known events
@@ -45159,12 +45194,30 @@ async function pollCrossAppResolves() {
       const flds = _firestoreUnwrap(item.document.fields);
       const payload = (flds.payload && typeof flds.payload === 'object') ? flds.payload : {};
 
+      // v2.26.2 — la vuelta incremental filtra por fecha, no por estado, asi que
+      // el estado se comprueba aqui.
+      if (incremental && flds.status !== 'resolved') continue;
+
       // Extract the "when resolved" timestamp — prefer Firestore server time
       let resolvedTs = 0;
       if (flds.resolvedAt) {
         if (flds.resolvedAt.toMillis) resolvedTs = flds.resolvedAt.toMillis();
         else if (typeof flds.resolvedAt === 'number') resolvedTs = flds.resolvedAt;
         else if (typeof flds.resolvedAt === 'string') resolvedTs = new Date(flds.resolvedAt).getTime() || 0;
+      }
+      /* La marca de agua SOLO se mueve con fechas reales del servidor: un
+         Date.now() inventado para un documento sin resolvedAt la empujaria de
+         mas y se saltaria eventos buenos.
+         Y ojo con la direccion, que aqui casi me como 89 eventos en la
+         simulacion: en la carga INICIAL la pagina viene sin orderBy, o sea
+         desordenada, asi que sembrar con el mas RECIENTE de esa pagina hace
+         saltar la marca por encima de todo lo que quedaba en medio. Se siembra
+         con el mas ANTIGUO y desde ahi la vuelta incremental camina hacia
+         adelante de 50 en 50 sin saltarse nada; los repetidos los absorbe la
+         fusion por eventId. */
+      if (resolvedTs) {
+        if (incremental) { if (resolvedTs > _maxSeenTs) _maxSeenTs = resolvedTs; }
+        else if (!_minSeenTs || resolvedTs < _minSeenTs) _minSeenTs = resolvedTs;
       }
       if (!resolvedTs) resolvedTs = Date.now();
 
@@ -45262,7 +45315,25 @@ async function pollCrossAppResolves() {
         newlyStamped.push({ ev: evRecord });
       }
     }
-    _allResolvedEvents = nextEvents;
+    /* v2.26.2 — FUSIONAR, no reconstruir. Con la consulta incremental cada
+       vuelta trae solo lo nuevo; si siguieramos asignando el resultado tal cual,
+       el inbox se vaciaria en la segunda vuelta. Se reemplaza por eventId lo que
+       llego, se conserva lo demas, y se recorta a los 300 mas recientes para que
+       el arreglo no crezca sin fin en memoria. */
+    if (incremental) {
+      const _byId = new Map(_allResolvedEvents.map(e => [e.eventId, e]));
+      nextEvents.forEach(e => _byId.set(e.eventId, e));
+      _allResolvedEvents = Array.from(_byId.values()).sort((a, b) => b.ts - a.ts).slice(0, 300);
+    } else {
+      _allResolvedEvents = nextEvents;
+    }
+    if (incremental) {
+      if (_maxSeenTs > _crossAppSinceMs) _crossAppSinceMs = _maxSeenTs;
+    } else {
+      // Sin eventos resueltos todavia: arrancamos incremental desde 45 dias
+      // atras para no repetir la consulta completa en cada vuelta.
+      _crossAppSinceMs = _minSeenTs || (Date.now() - 45 * 86400000);
+    }
 
     if (newlyStamped.length > 0) {
       console.info('[CrossAppPoll]', newlyStamped.length, 'NEW resolution(s)');
@@ -45307,8 +45378,11 @@ function startCrossAppResolvePolling() {
   if (_crossAppPollTimer) return;
   // First poll immediately on startup
   setTimeout(pollCrossAppResolves, 3000);
-  // Then every 30 seconds
-  _crossAppPollTimer = setInterval(pollCrossAppResolves, 30000);
+  /* v2.26.2 — de 30 s a 3 min. Con la consulta incremental cada vuelta ya no
+     cuesta casi nada, pero no hay razon para preguntar 120 veces por hora si
+     Nela marco una factura: el poll al volver a la pestana (abajo) cubre el
+     caso impaciente. */
+  _crossAppPollTimer = setInterval(pollCrossAppResolves, 180000);
   // Also poll on tab focus (catches the case where Nela was away)
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) pollCrossAppResolves();
@@ -47429,8 +47503,19 @@ console.log('[Invoices] Invoice Tracker portado ✓');
    Solo admin/organizer; los tecnicos conservan su vista.
    ═══════════════════════════════════════════════════════════════════════ */
 #aspLensBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding-bottom:11px;border-bottom:1px solid var(--ln)}
-#aspLensBar .apl-lenses{display:flex;gap:1px;background:var(--ln);border:1px solid var(--ln);border-radius:9px;overflow:hidden}
-#aspLensBar .apl-lenses button{border:none;background:var(--cd);font:inherit;font-size:var(--fs-sm);font-weight:600;color:var(--i2);padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+#aspLensBar .apl-lenses{display:flex;gap:1px;background:var(--ln);border:1px solid var(--ln);border-radius:9px;overflow:hidden;
+  /* v2.26.1 — geometria FIJA. El 12 ago la barra aparecio estirada unos segundos
+     tras cambiar de lente y luego se acomodo sola; midiendo despues, todo estaba
+     correcto (bar 1158x43, lenses 384x32, botones 74x30), asi que no habia pelea
+     de CSS. La unica forma conocida de llegar a esa geometria es que el navegador
+     no aplique los atributos width/height del icono y lo trate como reemplazado
+     sin tamano intrinseco: el default de CSS son 300x150 px, que es justo la
+     altura que se veia. Aqui se le quita la posibilidad: alto fijo, sin crecer ni
+     encoger, y el icono clavado por CSS y no solo por atributo. */
+  flex:0 0 auto;align-self:center;height:34px}
+#aspLensBar .apl-lenses button{border:none;background:var(--cd);font:inherit;font-size:var(--fs-sm);font-weight:600;color:var(--i2);padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;
+  flex:0 0 auto;height:34px;line-height:1;white-space:nowrap}
+#aspLensBar .apl-lenses button svg{width:13px;height:13px;flex:0 0 13px}
 #aspLensBar .apl-lenses button:hover{background:var(--acl)}
 #aspLensBar .apl-lenses button[aria-selected="true"]{background:var(--br);color:#F6EFE6}
 #aspLensBar .apl-grp{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:var(--i3)}
@@ -47732,8 +47817,15 @@ var LENSES=[
   {k:"sched", l:"Schedule",           i:ico('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>')}
 ];
 function buildBar(){
+  /* v2.26.1 — ANCLA CORRECTA. #aList no cuelga de #pg1: vive dentro de
+     <div id="ticketsSplit">. Al insertar la barra ahi dentro quedaba sujeta a
+     aspenEntScript, que hace split.style.display="none" al pasar a Enterprise
+     -- o sea la barra de lentes DESAPARECIA con la vista Enterprise. Ahora se
+     inserta como HERMANA de #ticketsSplit, dentro de #pg1. */
+  var split=document.getElementById("ticketsSplit");
   var list=document.getElementById("aList");
-  if(!list||!list.parentNode)return null;
+  var anchor=split||list;
+  if(!anchor||!anchor.parentNode)return null;
   var bar=document.getElementById("aspLensBar");
   if(bar)return bar;
   bar=document.createElement("div"); bar.id="aspLensBar";
@@ -47749,8 +47841,8 @@ function buildBar(){
     +'</select></label>'
     +'<div class="apl-tally" id="aplTally"></div>';
   var bodyEl=document.createElement("div"); bodyEl.id="aspLensBody"; bodyEl.style.display="none";
-  list.parentNode.insertBefore(bar,list);
-  list.parentNode.insertBefore(bodyEl,list);
+  anchor.parentNode.insertBefore(bar,anchor);
+  anchor.parentNode.insertBefore(bodyEl,anchor);
   Array.prototype.forEach.call(bar.querySelectorAll("[data-lens]"),function(b){
     b.onclick=function(){
       lens=b.getAttribute("data-lens");
@@ -47771,9 +47863,21 @@ function syncGrpVisibility(){
 }
 
 /* ── ENGANCHE: envolver rndrA, sin tocarla ─────────────────────────────── */
+function hideAll(){
+  var b=document.getElementById("aspLensBar"), d=document.getElementById("aspLensBody");
+  if(b)b.style.display="none"; if(d)d.style.display="none";
+  var l=document.getElementById("aList"); if(l)l.style.display="";
+}
 function mount(){
   var pg=document.getElementById("pg1");
   if(!pg)return;
+  /* v2.26.1 — la vista Enterprise es SU propia pantalla: mientras esta activa,
+     las lentes se apartan enteras en vez de quedar flotando encima. */
+  var ent=false;
+  try{ ent=document.body.classList.contains("aspen-ent-on") }catch(_e){}
+  if(ent){ hideAll(); return; }
+  var bar0=document.getElementById("aspLensBar");
+  if(bar0)bar0.style.display="";
   var admin=false;
   try{ admin=!!(typeof isAdmin!=="undefined"&&isAdmin) }catch(_e){}
   if(!admin){                                   // tecnicos y viewers: vista intacta
@@ -47795,6 +47899,16 @@ if(typeof window.rndrA==="function"){
 }
 document.addEventListener("DOMContentLoaded",function(){ try{ mount() }catch(_e){} });
 setTimeout(function(){ try{ mount() }catch(_e){} },1200);
+/* Al alternar Board/Enterprise hay que re-evaluar: envolvemos el toggle que ya
+   existe en vez de vigilar el DOM con un observer. */
+if(typeof window.aspenEntToggle==="function"){
+  var _origEntToggle=window.aspenEntToggle;
+  window.aspenEntToggle=function(on){
+    var r=_origEntToggle.apply(this,arguments);
+    try{ mount() }catch(_e){}
+    return r;
+  };
+}
 })();
 </script>
 
