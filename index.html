@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.4";
+var APP_VERSION="2.26.5";
 var BUILD_DATE="2026-08-13";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -10209,6 +10209,56 @@ function _countUp(el,to,suffix){
 // (max 5/session, 1 per unique message, stack trimmed) so admin sees field
 // failures in the Admin tab without asking. Never throws; never blocks UI.
 var _errSentCount=0,_errSentMsgs={};
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.26.5 — EL REPORTE DE CAMPO CUENTA POR QUE FALLO
+   14 ago 2026. Los tecnicos llamaron diciendo "no me deja enviar el reporte".
+   El formulario abria, el envio fallaba, y lo unico que quedaba era un toast
+   en SU telefono: nada en Firestore, nada que Alberto pudiera leer desde la
+   oficina. La unica via era pedirles una foto de la pantalla, con ellos en la
+   calle. Eso no es diagnostico, es arqueologia.
+   Este registrador escribe TODO fallo o bloqueo del envio en client_errors,
+   con el paso exacto, el ticket, el rol y si llevaba fotos. No comparte el
+   tope de 5 por sesion del registrador general: un tecnico que no puede
+   trabajar vale mas que cualquier otro error de la sesion, y si reintenta
+   cinco veces quiero las cinco. Tope propio de 12 y sin dedupe por mensaje,
+   porque el MISMO mensaje en dos tickets distintos son dos casos distintos. */
+var _frErrCount=0;
+function _frLogFailure(step,err,extra){
+  try{
+    if(!db)return;
+    if(_frErrCount>=12)return;
+    _frErrCount++;
+    var msg="";
+    try{ msg=_errText(err) }catch(_x){ msg=String(err) }
+    var payload={
+      kind:"field_report",step:String(step||""),
+      message:String(msg).slice(0,300),
+      code:String((err&&(err.code||err.name))||"").slice(0,80),
+      stack:String((err&&err.stack)||"").slice(0,800),
+      user:(currentUser&&currentUser.name)||"(not logged in)",
+      role:(currentUser&&currentUser.role)||"",
+      ua:String((navigator&&navigator.userAgent)||"").slice(0,160),
+      online:!!(navigator&&navigator.onLine),
+      at:new Date().toISOString(),atMs:Date.now()
+    };
+    try{ Object.keys(extra||{}).forEach(function(k){ payload[k]=extra[k] }) }catch(_x){}
+    db.collection("client_errors").add(payload).catch(function(){});
+  }catch(_e){}
+}
+/* Un mensaje legible salga lo que salga. Antes el catch del envio hacia
+   toast("Error: "+e.message): si lo que llegaba no era un Error -- y los
+   rechazos de Firestore a menudo no lo son -- el tecnico veia "Error:
+   undefined", que no le sirve a el ni a quien lo tiene que arreglar. */
+function _errText(e){
+  if(e==null)return "error desconocido";
+  if(typeof e==="string")return e;
+  var partes=[];
+  if(e.code)partes.push(String(e.code));
+  if(e.message)partes.push(String(e.message));
+  if(!partes.length&&e.name)partes.push(String(e.name));
+  if(!partes.length){ try{ partes.push(JSON.stringify(e).slice(0,200)) }catch(_x){ partes.push(String(e)) } }
+  return partes.join(" · ");
+}
 function _reportClientError(kind,msg,src,line,stack){
   try{
     if(!db)return;
@@ -15027,7 +15077,7 @@ async function submitTkt(st){
       delete cleanData.phone;delete cleanData.address;delete cleanData.city;delete cleanData.zip;delete cleanData.zone;
       var _gRef=db.collection("tickets").doc(editingDocId);
       var _gRes=await _reportWriteGuard(_gRef,cu);
-      if(!_gRes.ok){window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";return}
+      if(!_gRes.ok){try{_frLogFailure("guard_edit",new Error("el guardia de escritura bloqueo el envio"),{ticketId:editingDocId||"(nuevo)",customer:cu||"",status:st||""})}catch(_x){}window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";return}
       await _gRef.update(cleanData);
       try{await _frStashOverflow(editingDocId)}catch(_e){}
       // If editing a field report and marking it complete, also clear any matching dispatch tickets.
@@ -15121,7 +15171,7 @@ async function submitTkt(st){
         if(_mediaArr.length)cleanData.media=firebase.firestore.FieldValue.arrayUnion.apply(null,_mediaArr);
         else delete cleanData.media;
         var _gRes2=await _reportWriteGuard(newRef,cu);
-        if(!_gRes2.ok){window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";return}
+        if(!_gRes2.ok){try{_frLogFailure("guard_new",new Error("el guardia de escritura bloqueo el envio"),{ticketId:editingDocId||"(nuevo)",customer:cu||"",status:st||""})}catch(_x){}window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";return}
         await newRef.set(cleanData,{merge:true});
       }else{
         // v2.5.0: identidad determinista tambien para el reporte suelto.
@@ -15129,7 +15179,7 @@ async function submitTkt(st){
         if(_lid){
           newRef=db.collection("tickets").doc(_lid);
           var _gRes3=await _reportWriteGuard(newRef,cu);
-          if(!_gRes3.ok){window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update \u2713":"Send \u2713";return}
+          if(!_gRes3.ok){try{_frLogFailure("guard_resched",new Error("el guardia de escritura bloqueo el envio"),{ticketId:editingDocId||"(nuevo)",customer:cu||"",status:st||""})}catch(_x){}window.__frSubmitting=false;btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update \u2713":"Send \u2713";return}
           await newRef.set(cleanData,{merge:true});
         }else{
           newRef=await db.collection("tickets").add(cleanData);
@@ -15229,7 +15279,15 @@ async function submitTkt(st){
     if(st==="reschedule"&&typeof showTab==="function"&&(isAdmin||(currentUser&&currentUser.role==="organizer"))){
       setTimeout(function(){try{showTab(5)}catch(_e){}},250);
     }
-  }catch(e){console.error(e);toast("Error: "+e.message,"err")}
+  }catch(e){
+    console.error(e);
+    /* v2.26.5 — antes esto solo pintaba un toast en el telefono del tecnico y
+       se perdia. Ahora queda en client_errors con el paso y el ticket. */
+    var _m=_errText(e);
+    try{_frLogFailure("submit",e,{ticketId:editingDocId||"(nuevo)",customer:cu||"",
+      status:st||"",fotos:(typeof mediaFiles!=="undefined"&&mediaFiles)?mediaFiles.length:0})}catch(_x){}
+    toast("Error al enviar: "+_m,"err");
+  }
   window.__frSubmitting=false;
   btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";
 }
