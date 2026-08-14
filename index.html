@@ -5945,8 +5945,37 @@ function _billingFor(t){
   // ── Out-of-warranty tub ──
   if(w.has===false){
     if(t.partWarranty90&&t.partWarranty90Start){
+      /* FIX v2.26.3 — LA VENTANA SE JUZGA EN LA FECHA DE LA VISITA, NO HOY.
+         Caso Skinner (12 ago 2026): el Sprint decia "NO facturar — cubierto por
+         garantia" con QB en $0 mientras el panel del mismo ticket mostraba
+         $834.40 ($434.40 del part gecko-control + $400 de labor).
+         RAIZ: esto medía desde partWarranty90Start hasta HOY (Date.now()), y el
+         Field Report sella partWarranty90Start con la fecha de LA MISMA VISITA
+         cuando el tecnico marca "🛠️ Part replaced" (el formulario no tiene input
+         de fecha para el part, solo checkbox + nombre). Resultado: la visita que
+         INSTALA el repuesto caia "dentro de los 90 dias" de si misma → parts y
+         labor gratis → "NO facturar". Se regalaba el trabajo que crea la
+         garantia, que es justo el que SI se cobra.
+         La semantica correcta ya vivia en este archivo: el Service Log usa
+         slPart90Date (una fecha PASADA, para callbacks) y el texto del reporte
+         dice "After this paid visit, our 90-day warranty starts".
+         Tres defectos mas de la misma rama, arreglados aqui:
+           · days<=0 (part instalado en esta visita, o start posterior) → se
+             cobra, con el motivo escrito;
+           · una fecha ilegible se declaraba "warranty expired" → SOBRE-cobraba
+             un part cubierto; ahora cae en la rama de verificar;
+           · un callback legitimo facturado dias despues podia "voltearse" a
+             cobro al cruzar la ventana con el paso de los dias; anclado a
+             t.date ya no se mueve.
+         Fallback a hoy si el ticket no tiene fecha: preserva el preview del
+         Service Log, que evalua antes de existir la visita. */
       var start=new Date(t.partWarranty90Start+"T12:00:00");
-      var days=isNaN(start.getTime())?99999:Math.max(0,Math.floor((Date.now()-start.getTime())/86400000));
+      var ref=t.date?new Date(t.date+"T12:00:00"):new Date();
+      if(isNaN(ref.getTime()))ref=new Date();
+      if(isNaN(start.getTime()))
+        return{parts:"Verify — replacement date unreadable",partsFree:false,labor:"Verify",laborFree:false,bottom:"Can't read the part replacement date — confirm it before charging",cls:"half",verify:true};
+      var days=Math.floor((ref.getTime()-start.getTime())/86400000);
+      if(days<=0)return{parts:"RDA (retail)",partsFree:false,labor:"CHARGE: TC $150 + $100/hr",laborFree:false,bottom:"Bill this visit — the part was installed on it; the warranty starts after it",cls:"rda"};
       if(days<=90)return{parts:"$0 — covered",partsFree:true,labor:"FREE (within 90 days)",laborFree:true,bottom:"No charge — replaced part + labor under warranty",cls:"full"};
       if(days<=365)return{parts:"$0 — part under 1-yr warranty",partsFree:true,labor:"CHARGE: TC $150 + $100/hr",laborFree:false,bottom:"Charge LABOR only — part still covered",cls:"half"};
       return{parts:"RDA (retail)",partsFree:false,labor:"CHARGE: TC $150 + $100/hr",laborFree:false,bottom:"Charge parts (RDA) + labor — warranty expired",cls:"rda"};
@@ -6732,8 +6761,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.2";
-var BUILD_DATE="2026-08-12";
+var APP_VERSION="2.26.4";
+var BUILD_DATE="2026-08-13";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -12748,7 +12777,21 @@ async function deleteTodo(id){
 function showTab(i){
   try{if((i===3||i===6||i===12)&&!(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"))_loadTicketArchive()}catch(_e){}
   var _reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if(document.startViewTransition&&!_reduce){try{document.startViewTransition(function(){_showTabImpl(i)});return}catch(_e){}}
+  if(document.startViewTransition&&!_reduce){try{
+    /* FIX v2.26.4 — el try/catch solo atrapa lo SINCRONO. startViewTransition
+       devuelve promesas (ready/finished/updateCallbackDone) que se rechazan
+       solas cuando el navegador aborta la transicion — por ejemplo si llega otra
+       mientras esta corriendo, que es lo que pasa al entrar (updAdmin llama a
+       showTab justo cuando la app esta pintando). Nadie las escuchaba, asi que
+       salia "Uncaught (in promise) InvalidStateError: Transition was aborted"
+       y de ahi se iba derecho a client_errors por el hook de unhandledrejection,
+       quemando una de las 5 ranuras por sesion. La pestana cambia igual: lo unico
+       que se pierde es la animacion. */
+    var _vt=document.startViewTransition(function(){_showTabImpl(i)});
+    if(_vt){["ready","finished","updateCallbackDone"].forEach(function(k){
+      try{ if(_vt[k]&&_vt[k].catch)_vt[k].catch(function(){}); }catch(_p){}
+    });}
+    return}catch(_e){}}
   _showTabImpl(i);
 }
 function _showTabImpl(i){try{closeMoreSheet()}catch(_e){}[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].forEach(n=>{var _t=document.getElementById("tab"+n),_p=document.getElementById("pg"+n);if(_t)_t.classList.toggle("on",n===i);if(_p)_p.classList.toggle("show",n===i)});var activeTab=document.getElementById("tab"+i);if(activeTab&&activeTab.scrollIntoView)try{activeTab.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})}catch(e){console.warn("[showTab scroll]",e)}
@@ -31683,7 +31726,12 @@ function _aspTimelineRow(when,by,text){
 function _aspLogEntryHTML(e){return _aspTimelineRow(e.when,e.by,e.text);}
 function _aspWarChip(t){
   try{
-    if(t.partWarranty90&&t.partWarranty90Start)return '<span class="asp-chip asp-chip-ok">🛡 '+TT("Cubierto","Covered")+'</span>';
+    /* FIX v2.26.3 — mismo criterio que _billingFor: el chip solo dice "Cubierto"
+       si el part se reemplazo ANTES de esta visita. En la visita que lo instala
+       decia "Cubierto" y contradecia al Sprint. Comparacion de cadenas ISO
+       (AAAA-MM-DD ordena bien como texto), sin zonas horarias de por medio. */
+    if(t.partWarranty90&&t.partWarranty90Start&&(!t.date||String(t.partWarranty90Start)<String(t.date)))
+      return '<span class="asp-chip asp-chip-ok">🛡 '+TT("Cubierto","Covered")+'</span>';
     var lbl=String((t.warranty&&t.warranty.label)||"").trim();
     if(lbl&&!/^n\/?w$/i.test(lbl)&&!/no ?warranty/i.test(lbl))return '<span class="asp-chip asp-chip-ok">🛡 '+esc3(lbl)+'</span>';
     return '<span class="asp-chip asp-chip-mut">'+TT("Sin garantía","No warranty")+'</span>';
@@ -35715,8 +35763,17 @@ body.vc-solo .v7-visit{display:block;margin-bottom:var(--sp-3)!important}
    a calcular. Nunca la sesion, ni borradores, ni buzones de salida: eso es
    trabajo del usuario que no esta en ningun otro sitio.
    ═══════════════════════════════════════════════════════════════════════ */
-var LS_WARN_KB = 3200;   /* avisar   */
-var LS_SWEEP_KB= 3800;   /* barrer   */
+/* v2.26.4 — RECALIBRADO. Estaban en 3200/3800, fijados creyendo que el techo de
+   localStorage eran ~5 MB. El techo real es ~10 MiB POR ORIGEN: medido el 12 ago,
+   se llego a 9.995 KB sin que fallara una sola escritura. Con los tres arreglos de
+   las apps vecinas (Fleet, Chemical, Delivery) el total quedo en 3.631 KB, pero
+   aspen_cm_v1 y aspen_warehouse_state crecen juntos ~70 KB/dia de datos de negocio
+   legitimos: con los umbrales viejos el toast "Storage is nearly full" volvia en dos
+   dias sin que nada estuviera mal. Una alarma que suena cuando no pasa nada se acaba
+   ignorando cuando SI pasa. 6000/7500 deja ~2,4 MB de aire real y sigue avisando con
+   meses de antelacion. */
+var LS_WARN_KB = 6000;   /* avisar   */
+var LS_SWEEP_KB= 7500;   /* barrer   */
 var LS_AI_KEEP = 40;     /* cuantos aspAIPartsCache_ se conservan */
 var LS_AI_DAYS = 21;     /* y cuanto duran */
 
