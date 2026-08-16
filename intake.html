@@ -113,6 +113,51 @@ textarea.inp{resize:vertical;min-height:96px;line-height:1.55}
   margin:0 auto 14px;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.spin{animation-duration:2s}.prog i{transition:none}}
+
+/* ═══ v3.0 · direccion B "ficha de servicio" ═══════════════════════════ */
+.hero{background:var(--hdr-bg);color:#F7F1E9;margin:-18px -16px 18px;padding:20px 20px 17px;
+      position:sticky;top:0;z-index:20}
+.hero .hbr{font-size:11px;letter-spacing:1.3px;font-weight:800;color:var(--ac)}
+.hero h1{margin:10px 0 3px;font-size:21px;line-height:1.22;color:#F7F1E9;letter-spacing:-.2px}
+.hero .hsub{font-size:12.5px;color:#C6B5A4}
+.hero .hpg{display:flex;gap:5px;margin-top:13px}
+.hero .hpg i{height:3px;flex:1;background:rgba(255,255,255,.17);border-radius:99px;transition:background .3s}
+.hero .hpg i.on{background:var(--ac)}
+.syms{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+.syms .sym{border:1.5px solid var(--ln);background:var(--cd);border-radius:999px;padding:9px 14px;
+      font:inherit;font-size:13.5px;font-weight:600;color:var(--i2);cursor:pointer;
+      display:inline-flex;align-items:center;gap:6px;min-height:40px}
+.syms .sym:hover{border-color:var(--ac)}
+.syms .sym.on{background:var(--hdr-bg);border-color:var(--hdr-bg);color:#F7F1E9}
+.cnt{font-size:11.5px;color:var(--i3);margin-top:6px;text-align:right}
+.cnt .ok{color:var(--ok);font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.big{border:1.5px solid var(--ln);background:var(--cd);border-radius:16px;padding:17px 11px;
+     cursor:pointer;text-align:center;font:inherit;position:relative;color:var(--ink)}
+.big:hover{border-color:var(--ac)}
+.big.on{border-color:var(--ac);background:var(--acl);box-shadow:inset 0 0 0 1.5px var(--ac)}
+.big .ic{font-size:23px}
+.big .t{font-weight:800;font-size:15.5px;margin-top:6px}
+.big .s{font-size:11.5px;color:var(--i3);margin-top:2px;line-height:1.35}
+.big.on .s{color:var(--acd)}
+.big .tk{position:absolute;top:9px;right:10px;width:19px;height:19px;border-radius:50%;
+     background:var(--ac);color:#fff;font-size:11px;display:none;place-items:center;font-weight:800}
+.big.on .tk{display:grid}
+.serie{font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--i3);
+     font-weight:800;margin:14px 0 7px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mod{border:1.5px solid var(--ln);background:var(--cd);border-radius:12px;padding:11px 12px;
+     cursor:pointer;font:inherit;text-align:left;color:var(--ink);min-height:48px}
+.mod:hover{border-color:var(--ac)}
+.mod.on{background:var(--acl);border-color:var(--ac);box-shadow:inset 0 0 0 1.5px var(--ac)}
+.mod b{display:block;font-size:14.5px;font-weight:800}
+.mod span{font-size:11px;color:var(--i3)}
+.mod.on span{color:var(--acd)}
+.idk{width:100%;margin-top:9px;border:1.5px dashed #D6CCC0;background:transparent;border-radius:12px;
+     padding:13px;font:inherit;font-size:14px;font-weight:600;color:var(--i2);cursor:pointer}
+.idk:hover{border-color:var(--ac);color:var(--acd)}
+.idk.on{background:var(--acl);border-style:solid;border-color:var(--ac);color:var(--acd)}
+@media(max-width:360px){.mgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -133,7 +178,13 @@ var MAX_PHOTOS=12, MAX_EDGE=1600, JPEG_Q=0.72;
 
 /* ── Estado ──────────────────────────────────────────────────────────────── */
 var TOKEN="", info=null, sending=false, err="";
+/* v3.0 (16 ago 2026) — DIRECCION B "ficha de servicio", con las notas del dueno.
+   symptoms  = sintomas de un toque; escriben en el campo y ADEMAS viajan sueltos,
+               para que Service Log reciba dato estructurado y no un parrafo.
+   brandKind = "aspen" | "other"  (su nota: "let them click a button")
+   notes     = sus cuatro ejemplos del "what else" como chips. */
 var d={problem:"",since:"",brand:"",model:"",serial:"",errorCode:"",powerOn:null,
+       symptoms:[],brandKind:"",notes:[],
        extra:"",contactPref:"",bestTime:"",name:"",phone:"",addr:"",photos:[],
        /* v2.19.0 — invitacion de videollamada */
        availability:"", facetime:null, googleAccount:"", callPref:"video"};
@@ -142,6 +193,43 @@ var d={problem:"",since:"",brand:"",model:"",serial:"",errorCode:"",powerOn:null
    manda {ok,status,expired,customer,phone,address}. Sin esa linea este archivo
    pinta el formulario de servicio de siempre, que es un degradado seguro. */
 function isCoachingInvite(){ return !!(info && info.kind==="coaching"); }
+
+/* v3.0 — MODELOS REALES, tomados de aspenspas.com/spas-overview y /swim-spas-overview
+   el 16 ago 2026. Antes esto era un campo de texto libre y los modelos que se
+   barajaron (Ellis, NorthStar suelto) salian de codigos de cover, no del catalogo.
+   El acabado (ES/AS/GS) NO se le pregunta al cliente: la ficha del spa ya lo trae. */
+var SERIES=[
+ {s:"8' spas",  m:[["Pinnacle","6 adults · lounger"],["Arcadia","7 adults"],["Alpine","7 adults · lounger"]]},
+ {s:"7' spas",  m:[["Eldorado","5 adults · lounger"],["Monarch","5 adults"]]},
+ {s:"Small spas",m:[["Quattro","4 adults · lounger"],["Colorado","4 adults"],["Pioneer","5 adults"],["Northstar","5 adults"]]},
+ {s:"Swim spas",m:[["S.W.I.M. 16'","Swim lane"],["S.W.I.M. 13'","Swim lane"],["PARTY 16'","Up to 9"],["PARTY 13'","Seating + swim"]]}
+];
+/* Sintomas: el texto que se inserta es el que leera el tecnico. */
+var SYMPTOMS=[
+ ["\uD83C\uDF21\uFE0F","Not heating","The water is not heating up. "],
+ ["\uD83D\uDCA7","Leaking","There is a leak. "],
+ ["\uD83D\uDD24","Error code","The display is showing an error code. "],
+ ["\uD83C\uDF00","Weak jets","The jets are weak or not working. "],
+ ["\uD83D\uDD0A","Strange noise","It is making a noise it did not make before. "],
+ ["\uD83E\uDEE7","Cloudy water","The water looks cloudy or off. "],
+ ["\u26A1","No power","It has no power at all. "]
+];
+var NOTE_CHIPS=["Recent repair","Electrical surge","Recent water change","Power outage","Someone else worked on it"];
+
+function toggleSym(i){
+  var s=SYMPTOMS[i],k=s[1],at=d.symptoms.indexOf(k);
+  if(at>=0){ d.symptoms.splice(at,1); d.problem=d.problem.replace(s[2],""); }
+  else{ d.symptoms.push(k); d.problem=(d.problem?d.problem.replace(/\s*$/,"")+" ":"")+s[2]; }
+  render();
+  try{var el=$("problem");if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}catch(e){}
+}
+function toggleNote(n){ var at=d.notes.indexOf(n); if(at>=0)d.notes.splice(at,1); else d.notes.push(n); render(); }
+function pickBrand(k){
+  d.brandKind=k;
+  if(k==="aspen"){ d.brand="Aspen" } else { if(d.brand==="Aspen")d.brand=""; d.model="" }
+  render();
+}
+function pickModel(m){ d.model=(d.model===m?"":m); render(); }
 
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
@@ -367,6 +455,16 @@ async function submitInvite(){
   }
 }
 
+/* v3.0 — cuantos de los cinco bloques ya tienen algo. Alimenta la barra del hero. */
+function _progress(){
+  var n=0;
+  if((d.name||"").trim()&&(d.phone||"").trim())n++;
+  if((d.problem||"").trim().length>=10)n++;
+  if(d.photos.length)n++;
+  if(d.brandKind)n++;
+  if(d.notes.length||(d.extra||"").trim())n++;
+  return n;
+}
 function render(){
   if(!info)return;
   if(isCoachingInvite()) return renderCoachingInvite();
@@ -388,9 +486,16 @@ function render(){
 
   $("root").innerHTML=
    '<div class="body">'
-  +'<h1>Tell us about your spa, '+esc(firstName(info.customer))+'</h1>'
-  +'<p class="intro">This takes about two minutes. The more you tell us \u2014 especially photos \u2014 '
-  +'the better we can prepare before we call you back.</p>'
+  /* v3.0 — cabecera de ficha: dice quien eres, cuanto falta y como vas. La barra
+     de progreso es lo que sostiene al cliente hasta el final; el embudo decia que
+     12 puntos se fugaban ENTRE abrir el link y terminar. */
+  +'<div class="hero">'
+    +'<div class="hbr">ASPEN SPAS</div>'
+    +'<h1>Let\u2019s get your spa fixed, '+esc(firstName(info.customer))+'</h1>'
+    +'<div class="hsub">About two minutes \u00b7 saved as you type</div>'
+    +'<div class="hpg">'+[0,1,2,3,4].map(function(i){
+        return '<i class="'+(i<_progress()?"on":"")+'"></i>' }).join("")+'</div>'
+  +'</div>'
 
   +'<div class="step"><div class="num">Your info</div><h2>Is this right?</h2>'
   +'<p class="h">We filled this in from your call. Fix anything that\u2019s wrong.</p>'
@@ -400,16 +505,30 @@ function render(){
   +'</div>'
 
   +'<div class="step"><div class="num">The problem</div><h2>What is it doing?</h2>'
-  +'<p class="h">Write it however you\u2019d say it out loud. There\u2019s no wrong way.</p>'
-  +'<textarea id="problem" class="inp" placeholder="It runs fine in the morning but shuts off in the afternoon\u2026" '
+  /* Nota del dueno, literal. */
+  +'<p class="h">Briefly describe the issue with your spa.</p>'
+  /* v3.0 — sintomas de un toque. Hoy la respuesta tipica es "Slow leak." y ya:
+     cuatro palabras con las que el tecnico no sabe si llevar la pieza. Tocar un
+     chip ESCRIBE la frase en el campo y el cliente sigue desde ahi; ademas el
+     sintoma viaja suelto, asi que Service Log lo recibe etiquetado. */
+  +'<div class="syms">'+SYMPTOMS.map(function(s,i){
+      return '<button type="button" class="sym'+(d.symptoms.indexOf(s[1])>=0?" on":"")+'" '
+        +'onclick="toggleSym('+i+')"><span>'+s[0]+'</span>'+esc(s[1])+'</button>' }).join("")+'</div>'
+  +'<textarea id="problem" class="inp" placeholder="Tap what fits above, then add what you noticed \u2014 when it started, and anything that changed right before." '
   +'oninput="set(\'problem\',this.value)">'+esc(d.problem)+'</textarea>'
+  +'<div class="cnt">'+(d.problem.trim().length>=45
+      ?'<b class="ok">\u2713 that\u2019s plenty for our tech</b>'
+      :d.problem.trim().length+' characters')+'</div>'
   +'<label class="f">How long has this been going on?</label>'
   +opts("since",["Today","This week","More than a week","On and off for months"])
   +'</div>'
 
   +'<div class="step"><div class="num">Photos</div><h2>Show us what you see</h2>'
-  +'<p class="h">The control panel, the equipment bay, anything leaking or burnt. This is what lets us '
-  +'bring the right part the first time.</p>'
+  /* Nota del dueno, literal, mas la razon concreta. Pedir "una foto" da fotos de
+     la tapa; pedir LA PANTALLA da el codigo de error, que es lo que decide si el
+     tecnico sale con la pieza en la camioneta. */
+  +'<p class="h">If possible, take pictures of the issue to better help us understand what\u2019s going on \u2014 '
+  +'especially the display if there\u2019s a code on it. That\u2019s what lets us bring the right part the first time.</p>'
   +'<label class="drop" for="pk"><div class="big">\uD83D\uDCF7</div>'
   +'<div class="t">Add photos</div><div class="s">Take a picture or choose from your phone</div></label>'
   +'<input type="file" id="pk" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files)">'
@@ -418,8 +537,36 @@ function render(){
 
   +'<div class="step"><div class="num">Your spa</div><h2>A few details</h2>'
   +'<p class="h">Skip anything you don\u2019t know.</p>'
-  +'<label class="f">Brand</label><input class="inp" placeholder="Aspen, Marquis, Sundance\u2026" value="'+esc(d.brand)+'" oninput="set(\'brand\',this.value)">'
-  +'<label class="f">Model</label><input class="inp" placeholder="Ellis 7-person" value="'+esc(d.model)+'" oninput="set(\'model\',this.value)">'
+  /* v3.0 — "BRAND: Aspen or other. Let them click a button" (nota del dueno).
+     Dos botones del tamano de un pulgar en vez de teclear en un telefono. */
+  +'<label class="f">Whose spa is it?</label>'
+  +'<div class="two">'
+    +'<button type="button" class="big'+(d.brandKind==="aspen"?" on":"")+'" onclick="pickBrand(\'aspen\')">'
+      +'<span class="tk">\u2713</span><div class="ic">\uD83C\uDF42</div><div class="t">Aspen</div><div class="s">Built here in St. Louis</div></button>'
+    +'<button type="button" class="big'+(d.brandKind==="other"?" on":"")+'" onclick="pickBrand(\'other\')">'
+      +'<span class="tk">\u2713</span><div class="ic">\uD83D\uDEC1</div><div class="t">Another brand</div><div class="s">We service those too</div></button>'
+  +'</div>'
+  +(d.brandKind==="other"
+     ?'<input class="inp" style="margin-top:10px" placeholder="Which brand? e.g. Jacuzzi, Sundance, Cal Spas" value="'+esc(d.brand)+'" oninput="set(\'brand\',this.value)">'
+     :'')
+  /* Modelos reales del catalogo, con la capacidad al lado: quien no recuerda el
+     nombre si recuerda que caben cuatro. "I don't know" es un boton de verdad
+     porque sin esa salida se abandona el formulario justo aqui, y la oficina
+     casi siempre lo tiene en el historial de todos modos. */
+  +(d.brandKind==="aspen"
+     ? '<label class="f">Model</label>'
+       +'<p class="h" style="margin:-2px 0 8px">Usually on a plate inside the cabinet door.</p>'
+       +SERIES.map(function(g){
+          return '<div class="serie">'+esc(g.s)+'</div><div class="mgrid">'
+            +g.m.map(function(m){
+               return '<button type="button" class="mod'+(d.model===m[0]?" on":"")+'" '
+                 +'onclick="pickModel(\''+m[0].replace(/'/g,"\\'")+'\')"><b>'+esc(m[0])+'</b><span>'+esc(m[1])+'</span></button>'
+             }).join("")+'</div>' }).join("")
+       +'<button type="button" class="idk'+(d.model==="I don\u2019t know"?" on":"")+'" '
+       +'onclick="pickModel(\'I don\\u2019t know\')">I don\u2019t know \u2014 it\u2019s not on the cabinet</button>'
+     : (d.brandKind==="other"
+        ? '<label class="f">Model</label><input class="inp" placeholder="Model name or number, if you know it" value="'+esc(d.model)+'" oninput="set(\'model\',this.value)">'
+        : ''))
   +'<label class="f">Serial number</label><input class="inp" placeholder="Usually inside the cabinet door" value="'+esc(d.serial)+'" oninput="set(\'serial\',this.value)">'
   +'<label class="f">Any code on the panel?</label><input class="inp" placeholder="FLO, OH, dr, HL\u2026" value="'+esc(d.errorCode)+'" oninput="set(\'errorCode\',this.value)">'
   +'<label class="f">Does it have power?</label>'
@@ -429,8 +576,13 @@ function render(){
   +'</div></div>'
 
   +'<div class="step"><div class="num">Anything else</div><h2>What else should we know?</h2>'
-  +'<p class="h">Recent repairs, a new cover, water you just changed \u2014 anything.</p>'
-  +'<textarea class="inp" style="min-height:74px" placeholder="Optional" oninput="set(\'extra\',this.value)">'+esc(d.extra)+'</textarea>'
+  /* Los cuatro ejemplos del dueno, como chips. Un chip llega estructurado al
+     Service Log; la misma frase dentro de un parrafo se pierde. */
+  +'<p class="h">Anything recent that could be related. Tap what applies.</p>'
+  +'<div class="syms">'+NOTE_CHIPS.map(function(n){
+      return '<button type="button" class="sym'+(d.notes.indexOf(n)>=0?" on":"")+'" '
+        +'onclick="toggleNote(\''+n.replace(/'/g,"\\'")+'\')">'+esc(n)+'</button>' }).join("")+'</div>'
+  +'<textarea class="inp" style="min-height:74px" placeholder="Optional \u2014 anything else." oninput="set(\'extra\',this.value)">'+esc(d.extra)+'</textarea>'
   +'<label class="f">Best way to reach you</label>'+opts("contactPref",["Call","Text","Email"])
   +'<label class="f">Best time</label><input class="inp" placeholder="After 4pm, mornings\u2026" value="'+esc(d.bestTime)+'" oninput="set(\'bestTime\',this.value)">'
   +'</div>'
@@ -507,6 +659,8 @@ async function submitForm(){
     }
     await post("intakeSubmit",{t:TOKEN,kind:"final",photos:uploaded,reply:{
       problem:d.problem,since:d.since,brand:d.brand,model:d.model,serial:d.serial,
+      /* v3.0 — sueltos y estructurados, ademas de dentro del texto. */
+      symptoms:d.symptoms,notes:d.notes,brandKind:d.brandKind,
       errorCode:d.errorCode,powerOn:d.powerOn,extra:d.extra,
       contactPref:d.contactPref,bestTime:d.bestTime,
       name:d.name,phone:d.phone,address:d.addr

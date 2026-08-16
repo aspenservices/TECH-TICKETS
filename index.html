@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.5";
+var APP_VERSION="2.26.7";
 var BUILD_DATE="2026-08-13";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -15011,7 +15011,25 @@ async function submitTkt(st){
   btnS.disabled=true;btnR.disabled=true;btnS.textContent="Saving...";
 
   try{
-    const compressedMedia=await compressAllMedia();
+    /* FIX v2.26.6 (16 ago 2026) — LAS FOTOS NUNCA SE LLEVAN EL REPORTE POR DELANTE.
+       compressAllMedia() corre ANTES de guardar y era lo unico del camino sin red
+       propia: si tropezaba, el catch de abajo abortaba el envio ENTERO y el tecnico
+       perdia notas, horas, partes y garantia — veinte minutos de trabajo — por una
+       foto. Y solo corre cuando HAY fotos, por eso probando sin ellas nunca se veia.
+       Ahora si el procesamiento revienta se guarda el reporte SIN fotos y se le dice
+       al tecnico que las mande aparte. Las notas y la mano de obra son lo que factura;
+       una foto se vuelve a mandar por texto. Queda registrado en client_errors con
+       cuantas fotos habia, para saber si esto era el fallo que reportaron el 14 ago. */
+    var _frMediaFailed=false;
+    var compressedMedia=[];
+    try{
+      compressedMedia=await compressAllMedia();
+    }catch(_mErr){
+      compressedMedia=[];_frMediaFailed=true;
+      console.error("[fr media]",_mErr);
+      try{_frLogFailure("compress_media",_mErr,{ticketId:editingDocId||"(nuevo)",
+        customer:cu||"",fotos:(typeof mediaFiles!=="undefined"&&mediaFiles)?mediaFiles.length:0})}catch(_x){}
+    }
     // Filter out any bad items in sel (must be objects with .n property)
     const validParts=sel.filter(p=>p&&typeof p==="object"&&p.n);
     const ptot=validParts.reduce((s,p)=>s+(gPr(p)||0)*(p.qty||1),0);
@@ -15288,6 +15306,14 @@ async function submitTkt(st){
       status:st||"",fotos:(typeof mediaFiles!=="undefined"&&mediaFiles)?mediaFiles.length:0})}catch(_x){}
     toast("Error al enviar: "+_m,"err");
   }
+  /* v2.26.6 — si las fotos se cayeron pero el reporte SI se guardo, hay que
+     decirlo claro: el tecnico tiene que saber que le faltan las fotos, no
+     quedarse pensando que fallo todo ni volver a enviar y duplicar. */
+  try{
+    if(typeof _frMediaFailed!=="undefined"&&_frMediaFailed)
+      toast(L2("El reporte se guardó ✓ pero las fotos no se pudieron adjuntar — mándalas por texto y las subimos.",
+               "Report saved ✓ but the photos couldn't be attached — text them over and we'll add them."),"warn");
+  }catch(_e){}
   window.__frSubmitting=false;
   btnS.disabled=false;btnR.disabled=false;btnS.textContent=editingDocId?"Update ✓":"Send ✓";
 }
@@ -34334,6 +34360,36 @@ function _itkErr(e,what){
     return "This one is already gone. Refresh the page.";
   return what+" failed: "+(code||msg||"unknown error");
 }
+/* v2.26.7 (16 ago 2026) — LOS CHIPS DEL INTAKE v3.0.
+   El formulario del cliente ahora manda, ADEMAS del texto libre, tres campos
+   estructurados: symptoms[] (los sintomas de un toque), notes[] (los ejemplos
+   del dueno: reparacion reciente, subida de tension, cambio de agua...) y
+   brandKind ("aspen"|"other"). Hasta ahora llegaban al servidor y nadie los
+   leia, asi que se perdian dentro del parrafo. Aqui se pintan.
+   Degradado seguro: un intake viejo no trae estos campos y no pinta nada. */
+function _itkSym(r){
+  var s=(r&&Array.isArray(r.symptoms))?r.symptoms:[];
+  if(!s.length)return "";
+  return '<div class="itk-sec"><div class="k">What they picked</div><div class="itk-chips">'
+    +s.map(function(x){return '<span class="itk-chip am">'+esc(x)+'</span>'}).join("")
+    +'</div></div>';
+}
+function _itkNotes(r){
+  var n=(r&&Array.isArray(r.notes))?r.notes:[];
+  if(!n.length)return "";
+  return '<div class="itk-sec"><div class="k">Recent changes they flagged</div><div class="itk-chips">'
+    +n.map(function(x){return '<span class="itk-chip in">'+esc(x)+'</span>'}).join("")
+    +'</div></div>';
+}
+/* Marca + modelo en una linea, con el aviso cuando NO es Aspen: eso cambia
+   que piezas hay en el almacen y si aplica garantia. */
+function _itkSpa(r){
+  if(!r)return "";
+  var otra=r.brandKind==="other", marca=(r.brand||"").trim(), mod=(r.model||"").trim();
+  if(!marca&&!mod)return "";
+  return '<span class="itk-chip '+(otra?"am":"gr")+'">'
+    +(otra?"\u26A0 ":"")+esc(marca||"?")+(mod?" \u00b7 "+esc(mod):"")+'</span>';
+}
 function _itkPh(n){return n+(n===1?" photo":" photos")}
 
 /* ── Los textos que se le mandan al cliente ──────────────────────────────── */
@@ -35030,10 +35086,16 @@ function _itkPane(it){
       +(r.errorCode?'<span class="itk-chip am">Code '+esc(r.errorCode)+'</span>':'')
       +(r.since?'<span class="itk-chip ne">'+esc(r.since)+'</span>':'')
       +(r.powerOn===false?'<span class="itk-chip am">No power</span>':'')
+      +_itkSpa(r)   /* v2.26.7 — marca y modelo, con aviso si no es Aspen */
       +(r.contactPref?'<span class="itk-chip in">Prefers '+esc(String(r.contactPref).toLowerCase())+'</span>':'')
       +'</div>'
+      /* v2.26.7 — lo estructurado ARRIBA del parrafo: se lee de un vistazo y es
+         lo que decide si el tecnico sale con la pieza. El texto libre sigue
+         debajo, entero, porque el contexto es lo que el chip no puede dar. */
+      +_itkSym(r)
       +(r.problem?'<div class="itk-sec"><div class="k">What the customer says</div>'
                   +'<p class="itk-story">'+esc(r.problem)+'</p></div>':'')
+      +_itkNotes(r)
       +(it.note?'<div class="itk-sec"><div class="k">What you wrote down on the phone</div>'
                 +'<p class="itk-story">'+esc(it.note)+'</p></div>':'')
       +((r.photos&&r.photos.length)?'<div class="itk-sec"><div class="k">'+_itkPh(r.photos.length)+' they sent</div>'
