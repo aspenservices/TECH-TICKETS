@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.8";
+var APP_VERSION="2.26.9";
 var BUILD_DATE="2026-08-13";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -35167,8 +35167,15 @@ function _itkPane(it){
       +'<span class="itk-chip ne">Handed off '+esc(_itkAgo(it.convertedAtMs||it.submittedAtMs))
       +(it.convertedBy?(" by "+esc(it.convertedBy)):"")+'</span>'
       +'</div>'
+      /* FIX v2.26.9 — la v2.26.8 solo toco la rama "received" (Answered). Pero la
+         bandeja vive casi siempre en "In motion": ahi es donde se mira un caso ya
+         entregado al Service Log, y ahi seguia el texto chico, sin sintomas y sin
+         contexto. Misma presentacion en las dos ramas. */
+      +_itkKnown(it)
+      +_itkSym(r)
       +(r.problem?'<div class="itk-sec"><div class="k">What the customer says</div>'
-                  +'<p class="itk-story">'+esc(r.problem)+'</p></div>':'')
+                  +'<p class="itk-story itk-big">'+esc(r.problem)+'</p></div>':'')
+      +_itkNotes(r)
       +'<div class="itk-acts">'
         +'<button type="button" class="itk-btn itk-gh" onclick="itkDetail(\''+t+'\')">See what they sent</button>'
         +((it.convertedTo!=="coaching"&&typeof openTktDetail==="function")
@@ -47823,6 +47830,17 @@ console.log('[Invoices] Invoice Tracker portado ✓');
 .itk-warn b{color:#5d3f0c}
 @media(max-width:640px){.itk-thumbs img{width:118px !important;height:90px !important}
   .itk-story.itk-big{font-size:15.5px}}
+
+/* v2.26.9 — el texto a 17px en una columna de ~330px sale a una palabra por
+   renglon y se lee peor que antes. La columna del contenido pasa a mandar y el
+   panel lateral cede cuando la ventana aprieta; ademas se le pone medida de
+   lectura al parrafo para que no se estire en pantallas anchas. */
+.itk-cols{grid-template-columns:minmax(420px,1fr) minmax(210px,268px) !important}
+.itk-story.itk-big{max-width:66ch}
+@media(max-width:1180px){
+  .itk-cols{grid-template-columns:minmax(0,1fr) !important}
+  .itk-aside{margin-top:14px}
+}
 </style>
 <script id="plannerLensScript">
 /* Ver el comentario del bloque de estilos de arriba. Borrar ambos = revertir. */
