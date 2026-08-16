@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.7";
+var APP_VERSION="2.26.8";
 var BUILD_DATE="2026-08-13";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -34992,6 +34992,58 @@ function _itkRow2(k,v){
 }
 
 /* ── la barra lateral con pestañas ─────────────────────────────────── */
+/* v2.26.8 (16 ago 2026) — DIRECCION A + C, decidido por Alberto.
+   A ("lectura"): lo que escribio el cliente pasa a ser el protagonista, con
+   tipografia de leer y las fotos en tamano de verdad — antes eran miniaturas
+   mas chicas que los botones, y la foto es lo mas valioso que manda.
+   C ("contraste"): al lado de su respuesta, lo que YA sabemos de esa casa.
+   El dato existia — vivia escondido tras las pestanas Spa/History/Route del
+   panel derecho, o sea a dos clics de la decision. Aqui se sube arriba.
+   NO se inventa nada: todo sale de _itkHistory(), el mismo que ya alimenta
+   esas pestanas. Lo que no se puede calcular con certeza no se pinta. */
+function _itkKnown(it){
+  try{
+    var all=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+    var H=_itkHistory(it.customer, all, Date.now());
+    if(H.isNew){
+      return '<div class="itk-known"><span class="itk-chip in">\uD83C\uDD95 First time we hear from them</span>'
+        +'<span class="itk-kmini">Worth confirming the spelling before dispatching.</span></div>';
+    }
+    var out=[], S=null;
+    try{ S=_itkSpaParse(H.spa||"") }catch(_e){}
+    var modelo=(S&&S.corto)||"";
+    if(!modelo&&S&&S.campos&&S.campos.length){
+      for(var i=0;i<S.campos.length;i++){
+        if(/^model$/i.test(S.campos[i].k)){modelo=S.campos[i].v;break}
+      }
+    }
+    if(modelo)out.push('<span class="itk-chip gr">\uD83D\uDEC1 '+esc(modelo)+'</span>');
+    var n=(H.rows&&H.rows.length)||0;
+    if(n)out.push('<span class="itk-chip ne">'+n+' visit'+(n===1?"":"s")+' before</span>');
+    /* EL AVISO QUE VALE: una visita nuestra hace poco puede volver esto un
+       repetido, y en un repetido la mano de obra va cubierta. Se calcula solo
+       con fechas reales; si la ultima visita no trae fecha legible, no se
+       afirma nada — mejor callar que mandar a alguien a cobrar de mas. */
+    var ult=(H.rows&&H.rows[0])||null, dias=null;
+    if(ult&&ult.date){
+      var ms=Date.parse(String(ult.date)+"T12:00:00");
+      if(!isNaN(ms))dias=Math.floor((Date.now()-ms)/86400000);
+    }
+    if(ult){
+      out.push('<span class="itk-chip ne">Last: '+esc(ult.date||"no date")
+        +(ult.job?' \u00b7 '+esc(ult.job):'')+(ult.tech?' \u00b7 '+esc(ult.tech):'')+'</span>');
+    }
+    var aviso="";
+    if(dias!==null&&dias<=90){
+      aviso='<div class="itk-warn">\u26A0 We were there '+dias+' day'+(dias===1?"":"s")
+        +' ago'+(ult.job?' ('+esc(ult.job)+')':'')+'. If this is the same problem it is a '
+        +'<b>repeat</b> — labor is covered. Check before you price it.</div>';
+    }
+    if(!out.length&&!aviso)return "";
+    return '<div class="itk-known">'+out.join("")+'</div>'+aviso;
+  }catch(_e){ return "" }
+}
+
 function _itkAsideHTML(it){
   var all=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
   var H=_itkHistory(it.customer, all, Date.now());
@@ -35092,9 +35144,10 @@ function _itkPane(it){
       /* v2.26.7 — lo estructurado ARRIBA del parrafo: se lee de un vistazo y es
          lo que decide si el tecnico sale con la pieza. El texto libre sigue
          debajo, entero, porque el contexto es lo que el chip no puede dar. */
+      +_itkKnown(it)   /* v2.26.8 — lo que ya sabemos de esa casa, sin ir a otra pestana */
       +_itkSym(r)
       +(r.problem?'<div class="itk-sec"><div class="k">What the customer says</div>'
-                  +'<p class="itk-story">'+esc(r.problem)+'</p></div>':'')
+                  +'<p class="itk-story itk-big">'+esc(r.problem)+'</p></div>':'')
       +_itkNotes(r)
       +(it.note?'<div class="itk-sec"><div class="k">What you wrote down on the phone</div>'
                 +'<p class="itk-story">'+esc(it.note)+'</p></div>':'')
@@ -47755,6 +47808,21 @@ console.log('[Invoices] Invoice Tracker portado ✓');
   #aspLensBody .apl-charts{grid-template-columns:1fr}
   #aspLensBar .apl-tally{width:100%;margin-left:0}
 }
+
+/* ═══ v2.26.8 · direccion A+C en la Central de Intake ═════════════════════
+   A: el texto del cliente y sus fotos dejan de ser letra chica y miniaturas.
+   C: la tira de contexto y el aviso de repetido, arriba de la decision. */
+.itk-story.itk-big{font-size:17px;line-height:1.55;font-weight:500;color:var(--ink);
+  border-left:3px solid var(--ac);padding-left:15px;margin:2px 0 4px}
+.itk-thumbs img{width:150px !important;height:114px !important;object-fit:cover;
+  border-radius:11px;border:1px solid var(--ln);cursor:zoom-in}
+.itk-known{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 12px}
+.itk-kmini{font-size:12px;color:var(--i3)}
+.itk-warn{background:var(--c-warning-bg,#FDF4E1);border:1px solid #EFD9A8;border-radius:10px;
+  padding:10px 13px;font-size:13px;line-height:1.5;color:#7a5310;margin:0 0 13px}
+.itk-warn b{color:#5d3f0c}
+@media(max-width:640px){.itk-thumbs img{width:118px !important;height:90px !important}
+  .itk-story.itk-big{font-size:15.5px}}
 </style>
 <script id="plannerLensScript">
 /* Ver el comentario del bloque de estilos de arriba. Borrar ambos = revertir. */
