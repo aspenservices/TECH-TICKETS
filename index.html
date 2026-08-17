@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.37.0";
+var APP_VERSION="2.38.1";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -49036,6 +49036,7 @@ if(typeof window.setMode==="function"){
 #pg16 .tdy-kpi .kv.money{color:#C9A227}
 #pg16 .tdy-kpi .kv.ac{color:var(--ac)}
 #pg16 .tdy-kpi .kd{font-size:12px;color:var(--i3);margin-top:5px}
+#pg16 .tdy-kpi .kd.alerta{color:var(--c-warning-fg);font-weight:700}
 
 /* ── columnas por tecnico ── */
 #pg16 .tdy-rh{display:flex;align-items:baseline;gap:12px;margin:0 0 11px}
@@ -49104,17 +49105,25 @@ function yo(){
 function paradas(){
   try{
     var d=hoy(), mi=yo(), out=[];
-    function mete(arr,cerrada){
+    /* v2.38.1 — una parada de hoy es la que esta AGENDADA para hoy: manda
+       `t.date` y solo `t.date`.
+       Antes, para los cerrados se miraba primero `completedAt`, asi que un
+       ticket de otro dia que se cerrara HOY (por ejemplo al cobrarlo) entraba
+       en la ruta del dia como si fuera una visita de hoy — y de paso inflaba
+       las paradas, el dinero por cobrar y las horas. Ese trabajo se ve en
+       Daily, que es su sitio; aqui son paradas, no cierres.
+       `completedAt` sigue usandose para SABER si una parada de hoy ya se
+       cerro (funcion `cerrada`), que es otra cosa. */
+    function mete(arr){
       (arr||[]).forEach(function(t){
         if(!t||t.status==="canceled"||t.status==="cancelled")return;
-        var k=(cerrada&&t.completedAt&&typeof _dateOnly==="function"&&_dateOnly(t.completedAt))||t.date||"";
-        if(k!==d)return;
+        if(String(t.date||"")!==d)return;
         if(mi && !((t.techs||[]).indexOf(mi)>=0))return;
         out.push(t);
       });
     }
-    mete(typeof active!=="undefined"?active:[],false);
-    mete(typeof done!=="undefined"?done:[],true);
+    mete(typeof active!=="undefined"?active:[]);
+    mete(typeof done!=="undefined"?done:[]);
     return out.sort(function(a,b){
       return String(a.arrival||"99:99").localeCompare(String(b.arrival||"99:99"));
     });
@@ -49149,17 +49158,33 @@ function dir(t){
 function tina(t){
   var crudo=String(t.spaDesc||t.spaModel||"").replace(/\s+/g," ").trim();
   if(!crudo)return "";
+  /* (1) lo que diga el parser, si es un modelo de verdad y no un año suelto */
   try{
     if(typeof _itkSpaParse==="function"){
       var p=_itkSpaParse(crudo);
-      if(p&&p.modelo)return String(p.modelo).trim().slice(0,42);
       if(p&&p.corto)return crudo.slice(0,42);
+      if(p&&p.modelo&&!/^\d{2,4}$/.test(String(p.modelo).trim()))
+        return String(p.modelo).trim().slice(0,42);
     }
   }catch(_e){}
-  /* sin parser: la cabeza del volcado suele ser "2024 13' Swim Party Spa - ES
-     SERIAL #..." — se toma lo de antes del primer guion o de "SERIAL". */
-  var corte=crudo.split(/\s+-\s+|\bES SERIAL\b|\bSERIAL\b/i)[0];
-  return corte.trim().slice(0,42);
+  /* (2) la cabeza del volcado, que en el formato mas comun ES el modelo:
+     "2024 13' Swim Party Spa - ES SERIAL #...". SOLO si no trae dos puntos:
+     un ":" delata que eso es una ETIQUETA con su valor, no un modelo — es lo
+     que sacaba "Delivered: 9/20/2017 9/1/2017: Aspen Color" en una ficha que
+     empieza por la fecha de entrega en vez de por la tina. */
+  var corte=crudo.split(/\s+-\s+|\bES SERIAL\b|\bSERIAL\b/i)[0].trim();
+  if(corte&&corte.indexOf(":")<0&&/[A-Za-z]{3}/.test(corte))return corte.slice(0,42);
+  /* (3) ultimo recurso: buscar un modelo real de Aspen dentro del volcado.
+     Son los del catalogo de la marca; si aparece uno, vale mas que nada. */
+  var M=["Swim Party","S.W.I.M.","Pinnacle","Arcadia","Alpine","Eldorado",
+         "Monarch","Quattro","Colorado","Pioneer","Northstar","North Star"];
+  for(var i=0;i<M.length;i++){
+    var k=crudo.toLowerCase().indexOf(M[i].toLowerCase());
+    if(k<0)continue;
+    var anio=(crudo.slice(Math.max(0,k-6),k).match(/(20\d{2})\s*$/)||[])[1];
+    return ((anio?anio+" ":"")+M[i]).slice(0,42);
+  }
+  return "";   /* mejor nada que una etiqueta suelta */
 }
 /* Direccion en una linea corta: calle y ciudad, sin el codigo postal. */
 function dirCorta(t){
@@ -49199,11 +49224,14 @@ function pinta(){
   var lista=paradas(), abiertas=lista.filter(function(t){ return !cerrada(t) });
   var sig=abiertas[0]||null;
 
-  /* completadas: el motor unico de la v1.9.0, para que este numero no
-     contradiga al de Daily ni al del panel de Admin (ya paso una vez). */
-  var hechas=0;
-  try{ hechas=(typeof _statCompletedOn==="function")?_statCompletedOn(hoy()):0 }catch(_e){}
-  if(yo())hechas=lista.filter(cerrada).length;   /* un tecnico cuenta las SUYAS */
+  /* v2.38.0 — "hechas" se cuenta SOBRE ESTA LISTA, con la misma regla que
+     pinta la pastilla "Hecha" en las tarjetas de abajo. Antes venia de
+     `_statCompletedOn`, que cuenta las cerradas del dia en TODA la app: el
+     numero salia "2 hechas" mientras las tarjetas y el resto de la pantalla
+     contaban otra cosa. Un numero que no cuadra con lo que esta tres
+     centimetros mas abajo es peor que uno que no cuadra con otra pantalla. */
+  var cerradas=lista.filter(cerrada);
+  var hechas=cerradas.length;
 
   var porCobrar=0, clientes={};
   lista.forEach(function(t){
@@ -49212,6 +49240,9 @@ function pinta(){
   });
   var nClientes=Object.keys(clientes).length;
   var conReporte=lista.filter(function(t){ return !!t.fieldReportSubmitted }).length;
+  /* visitas que ya se cerraron pero siguen sin reporte de campo: eso es un
+     aviso de verdad (hay que reclamarlos), no un numero que contradice. */
+  var sinReporte=cerradas.filter(function(t){ return !t.fieldReportSubmitted }).length;
   var hs=horas(lista);
 
   var H='';
@@ -49258,7 +49289,12 @@ function pinta(){
       +'<div class="kd">'+nClientes+' '+L2(nClientes===1?"cliente":"clientes",nClientes===1?"customer":"customers")+'</div></div>'
     +'<div class="tdy-kpi"><div class="kl">'+L2("Reportes","Reports")+'</div>'
       +'<div class="kv ac">'+conReporte+'/'+lista.length+'</div>'
-      +'<div class="kd">'+(lista.length-conReporte)+' '+L2("pendientes","pending")+'</div></div>'
+      +'<div class="kd'+(sinReporte?' alerta':'')+'">'
+        +(sinReporte
+          ? sinReporte+' '+L2(sinReporte===1?"cerrada sin reporte":"cerradas sin reporte",
+                              sinReporte===1?"closed, no report":"closed, no report")
+          : (lista.length-conReporte)+' '+L2("por enviar","to file"))
+      +'</div></div>'
     +'<div class="tdy-kpi"><div class="kl">'+L2("Horas","Hours")+'</div>'
       +'<div class="kv">'+(hs?hs.toFixed(1):"—")+'</div>'
       +'<div class="kd">'+L2("llegada a salida","arrival to departure")+'</div></div>'
