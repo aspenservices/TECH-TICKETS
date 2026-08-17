@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.26.9";
+var APP_VERSION="2.33.0";
 var BUILD_DATE="2026-08-13";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -29203,6 +29203,14 @@ var TECH_TOOLS=[
   {key:"yseries",emoji:"🔧",label:"Y Series — Gecko Troubleshooting Guide",
    desc:"Keypad error codes, board diagnostic LEDs with a board map, fuses, probe-placement diagrams and connector pin-outs for in.yj, in.ye-V3 and in.xe packs. Rebuilt from the Gecko troubleshooting guide. Bilingüe ES/EN.",
    native:true},
+  /* v2.27.0 (16 ago 2026) — CATALOGO DE PARTES, del rediseno "Aspen Service 2.0".
+     No hace falta traer datos: `const P=[...]` YA es el catalogo completo de
+     QuickBooks — 1.522 items en 29 categorias, con codigo, nombre, costo dealer,
+     retail y descripcion. Lo que faltaba era poder CONSULTARLO sin abrir un
+     ticket: hoy solo se llega desde el selector de partes del Field Report. */
+  {key:"parts",emoji:"📦",label:"Parts Catalog — códigos y precios",
+   desc:"Los 1.522 artículos del catálogo de QuickBooks, buscables por nombre, código o descripción. Precio al cliente y, para admin, el costo y el margen. Funciona sin señal.",
+   native:true},
   {key:"ye3pack",emoji:"🔌",label:"YE-3 Pack Wiring — Gecko Field Guide",
    desc:"Terminal-by-terminal wiring reference for Gecko in.YE-3 spa packs. Official board diagram, 12 device configurations, field-check checklist & device-code glossary.",
    native:true}
@@ -29211,6 +29219,7 @@ var TECH_TOOLS=[
 // fully namespaced CSS (#xxApp), strict-mode IIFE, xx-prefixed ids → safe to
 // inject straight into the page (no iframe). Drives the generic _ttMountNative.
 var _TT_NATIVE_BUNDLES={
+  parts:{bundle:function(){return PARTS_NATIVE},app:"ptApp",nav:"ptNav",screen:"ptScreen",top:".pt-top",title:".pt-screentitle",lang:"ptLang"},
   blufusion:{bundle:function(){return BF_NATIVE},app:"bfApp",nav:"bfNav",screen:"bfScreen",top:".bf-top",title:".bf-screentitle",lang:"bfLang"},
   waterbalance:{bundle:function(){return CB_NATIVE},app:"cbApp",nav:"cbNav",screen:"cbScreen",top:".cb-top",title:".cb-screentitle",lang:"cbLang"},
   smartouch:{bundle:function(){return ST_NATIVE},lazy:function(){return _stLoadBundle()},app:"stApp",nav:"stNav",screen:"stScreen",top:".st-top",title:".st-screentitle",lang:"stLang"},
@@ -48171,6 +48180,799 @@ if(typeof window.aspenEntToggle==="function"){
     try{ mount() }catch(_e){}
     return r;
   };
+}
+})();
+</script>
+
+<script id="partsCatalogNative">
+/* ═══════════════════════════════════════════════════════════════════════
+   PARTS CATALOG — herramienta nativa del hub (v2.27.0, 16 ago 2026)
+   Primera pieza del rediseno "Aspen Service 2.0". ADITIVO Y REVERSIBLE:
+   borrar este bloque + la entrada "parts" de TECH_TOOLS y de
+   _TT_NATIVE_BUNDLES revierte la funcion entera.
+
+   Lee `P` directamente: las herramientas nativas se inyectan en la pagina,
+   sin iframe, asi que el catalogo ya esta a mano. Cero datos nuevos, cero
+   red — por eso funciona sin senal igual que el resto del hub.
+
+   SEGURIDAD, lo mismo que se marco con el intake: `P` trae el COSTO dealer
+   (`p`) y notas internas ademas del retail (`r`). El costo y el margen SOLO
+   se pintan para admin/organizer; a un tecnico se le muestra el precio al
+   cliente y nada mas. Esta pantalla es interna: nunca va hacia el cliente.
+   ═══════════════════════════════════════════════════════════════════════ */
+var PARTS_NATIVE=(function(){
+  var CSS=''
+  +'#ptApp .pt-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}'
+  +'#ptApp .pt-search{flex:1;min-width:220px;border:1.5px solid var(--ln);border-radius:11px;padding:11px 13px;font:inherit;font-size:15px;background:var(--cd);color:var(--ink)}'
+  +'#ptApp .pt-search:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--acl)}'
+  +'#ptApp .pt-count{font-size:12.5px;color:var(--i3);white-space:nowrap}'
+  +'#ptApp .pt-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px}'
+  +'#ptApp .pt-cat{border:1px solid var(--ln);background:var(--cd);border-radius:999px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:600;color:var(--i2);cursor:pointer}'
+  +'#ptApp .pt-cat:hover{border-color:var(--ac)}'
+  +'#ptApp .pt-cat[aria-pressed="true"]{background:var(--br);border-color:var(--br);color:#F6EFE6;font-weight:800}'
+  +'#ptApp .pt-row{background:var(--cd);border:1px solid var(--ln);border-radius:11px;padding:11px 13px;margin-bottom:7px;display:flex;gap:12px;align-items:flex-start}'
+  +'#ptApp .pt-th{width:56px;height:56px;border-radius:9px;flex:none;background:var(--c-ash-2,#F2ECE3);'
+  +'background-size:cover;background-position:center;position:relative;display:grid;place-items:center;font-size:20px;border:1px solid var(--ln)}'
+  +'#ptApp .pt-th.vacio span{opacity:.35}'
+  +'#ptApp .pt-up{position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;border-radius:50%;'
+  +'border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:800;cursor:pointer;line-height:1;padding:0}'
+  +'#ptApp .pt-up:hover{background:var(--acd)}'
+  +'#ptApp .pt-up:disabled{opacity:.6;cursor:default}'
+  +'#ptApp .pt-i{flex:1;min-width:0}'
+  +'#ptApp .pt-nm{font-size:14.5px;font-weight:700;line-height:1.3;word-break:break-word}'
+  +'#ptApp .pt-d{font-size:12px;color:var(--i3);margin-top:3px;line-height:1.4}'
+  +'#ptApp .pt-c{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;background:var(--c-ash,#F4F1EC);border-radius:5px;padding:1px 6px;color:var(--i2);margin-top:5px}'
+  +'#ptApp .pt-p{text-align:right;white-space:nowrap}'
+  +'#ptApp .pt-p b{font-size:15.5px;font-weight:800;color:var(--acd)}'
+  +'#ptApp .pt-p small{display:block;font-size:11px;color:var(--i3);margin-top:2px}'
+  +'#ptApp .pt-mg{color:var(--c-success-fg,#1c6b41);font-weight:700}'
+  +'#ptApp .pt-cp{border:none;background:none;color:var(--i3);font:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline;margin-top:4px;padding:0}'
+  +'#ptApp .pt-cp:hover{color:var(--acd)}'
+  +'#ptApp .pt-none{padding:30px 10px;text-align:center;color:var(--i3);font-size:13.5px}'
+  +'#ptApp .pt-more{width:100%;border:1.5px dashed var(--ln);background:none;border-radius:11px;padding:11px;font:inherit;font-size:13.5px;font-weight:700;color:var(--i2);cursor:pointer;margin-top:4px}'
+  +'#ptApp .pt-more:hover{border-color:var(--ac);color:var(--acd)}';
+
+  var HTML=''
+  +'<div id="ptApp">'
+  +'<div class="pt-top">'
+    +'<input id="ptQ" class="pt-search" type="search" placeholder="Buscar por nombre, codigo o descripcion..." autocomplete="off">'
+    +'<span class="pt-count" id="ptCount"></span>'
+  +'</div>'
+  +'<div class="pt-cats" id="ptCats"></div>'
+  +'<div id="ptList"></div>'
+  +'</div>';
+
+  /* ═══ v2.33.0 — FOTOS DE PARTES ═══════════════════════════════════════
+     LA DECISION QUE HABIA QUE TOMAR: `P` no tiene identificador. Cada articulo
+     es {c,n,p,r,d} — ni id, ni SKU aparte; el numero de parte vive dentro del
+     nombre. La foto tiene que colgarse de algo estable, asi que se usa un SLUG
+     NORMALIZADO DEL NOMBRE: minusculas, sin acentos ni puntuacion.
+     Por que el nombre: es lo que TODA la app ya usa para referirse a una parte
+     (el Field Report guarda nombres, no ids), y normalizarlo aguanta los
+     cambios cosmeticos — mayusculas, dobles espacios, un guion de mas.
+     Si alguien RENOMBRA una parte en QuickBooks: la foto queda huerfana y esa
+     parte vuelve a salir sin foto. No se rompe nada y no se pierde el archivo
+     — el documento guarda tambien el nombre original y la categoria, para
+     poder rastrearla y re-vincularla.
+     DONDE VIVEN: el archivo va a Storage bajo `tickets/_parts/<slug>/`; se
+     reusa uploadPhotoToStorage() A PROPOSITO, para caer DENTRO de las reglas
+     de Storage que ya funcionan y no abrir una ruta nueva. Los datos van a la
+     coleccion `part_photos`, un documento por slug. */
+  function slug(n){
+    return String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g,"-").slice(0,120);
+  }
+  var FOTOS={}, FOTOS_OK=false;
+  function cargaFotos(cb){
+    try{
+      if(typeof db==="undefined"||!db){cb&&cb();return}
+      db.collection("part_photos").get().then(function(s){
+        s.forEach(function(d){ var v=d.data()||{}; if(v.url)FOTOS[d.id]=v.url });
+        FOTOS_OK=true; cb&&cb();
+      }).catch(function(e){
+        /* Si las reglas no dejan leer, se DICE. No fallar en silencio es la
+           leccion que nos costo tres horas el jueves. */
+        console.warn("[partes] no se pudieron leer las fotos:",(e&&e.code)||e);
+        cb&&cb();
+      });
+    }catch(_e){ cb&&cb() }
+  }
+
+  function boot(){
+    var cat="",q="",shown=60,CAT_TOP=14;
+    function esc2(s){try{return esc(String(s==null?"":s))}catch(_e){return""}}
+    function money(n){n=Number(n)||0;return "$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}
+    function esAdmin(){try{return !!(typeof isAdmin!=="undefined"&&isAdmin)}catch(_e){return false}}
+    function cat_(x){return String((x&&x.c)||"Other")}
+    var ALL=[];try{ALL=Array.isArray(P)?P:[]}catch(_e){ALL=[]}
+    var cnt={};ALL.forEach(function(x){var k=cat_(x);cnt[k]=(cnt[k]||0)+1});
+    var cats=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]}).slice(0,CAT_TOP);
+
+    function match(x){
+      if(cat&&cat_(x)!==cat)return false;
+      if(!q)return true;
+      var s=(String(x.n||"")+" "+String(x.d||"")+" "+cat_(x)).toLowerCase();
+      return q.split(/\s+/).every(function(w){return !w||s.indexOf(w)>=0});
+    }
+    function rowHTML(x){
+      var admin=esAdmin(),costo=Number(x.p)||0,retail=Number(x.r)||0;
+      var mg=(admin&&retail>0&&costo>0&&retail!==costo)?Math.round((retail-costo)/retail*100):null;
+      var sl=slug(x.n), foto=FOTOS[sl];
+      return '<div class="pt-row" data-slug="'+esc2(sl)+'">'
+        +'<div class="pt-th'+(foto?"":" vacio")+'"'+(foto?' style="background-image:url(\''+esc2(foto)+'\')"':'')+'>'
+          +(foto?'':'<span>\uD83D\uDCE6</span>')
+          +(admin?'<button type="button" class="pt-up" data-up="'+esc2(sl)+'">'+(foto?"\u21bb":"+")+'</button>':'')
+        +'</div>'
+        +'<div class="pt-i">'
+        +'<div class="pt-nm">'+esc2(x.n)+'</div>'
+        +(x.d?'<div class="pt-d">'+esc2(x.d)+'</div>':'')
+        +'<span class="pt-c">'+esc2(cat_(x))+'</span>'
+        +'</div><div class="pt-p"><b>'+money(retail||costo)+'</b>'
+        +(admin?'<small>costo '+money(costo)+(mg!==null?' &middot; <span class="pt-mg">'+mg+'%</span>':'')+'</small>':'')
+        +'<button type="button" class="pt-cp" data-cp="'+esc2(x.n)+'">copiar nombre</button>'
+        +'</div></div>';
+    }
+    function render(){
+      var res=ALL.filter(match),box=document.getElementById("ptList"),cn=document.getElementById("ptCount");
+      if(cn)cn.textContent=res.length+" de "+ALL.length;
+      if(!box)return;
+      if(!res.length){box.innerHTML='<div class="pt-none">Nada con esa busqueda. Prueba con menos palabras o con el codigo.</div>';return}
+      var trozo=res.slice(0,shown);
+      box.innerHTML=trozo.map(rowHTML).join("")
+        +(res.length>shown?'<button type="button" class="pt-more" id="ptMore">Ver '+Math.min(60,res.length-shown)+' mas &middot; quedan '+(res.length-shown)+'</button>':"");
+      var mb=document.getElementById("ptMore");
+      if(mb)mb.onclick=function(){shown+=60;render()};
+      /* Subir: comprimir -> Storage -> documento. Cada paso avisa si falla,
+         con el mensaje real y no un "error" pelado. */
+      Array.prototype.forEach.call(box.querySelectorAll("[data-up]"),function(b){
+        b.onclick=function(ev){
+          ev.stopPropagation();
+          var sl=b.getAttribute("data-up");
+          var fila=b.closest?b.closest(".pt-row"):null;
+          var nombre=fila?((fila.querySelector(".pt-nm")||{}).textContent||""):"";
+          var categoria=fila?((fila.querySelector(".pt-c")||{}).textContent||""):"";
+          var inp=document.createElement("input");
+          inp.type="file"; inp.accept="image/*"; inp.style.display="none";
+          document.body.appendChild(inp);
+          inp.onchange=async function(){
+            var f=inp.files&&inp.files[0];
+            try{document.body.removeChild(inp)}catch(_r){}
+            if(!f)return;
+            var txt0=b.textContent; b.textContent="\u2026"; b.disabled=true;
+            try{
+              if(typeof storage==="undefined"||!storage)throw new Error("Storage no est\u00e1 inicializado");
+              if(!navigator.onLine)throw new Error("sin conexi\u00f3n");
+              var blob=await compressPhoto(f,900,0.75);
+              var up=await uploadPhotoToStorage(blob,"_parts/"+sl,0);
+              await db.collection("part_photos").doc(sl).set({
+                name:String(nombre).trim(), cat:String(categoria).trim(),
+                url:up.url, path:up.path,
+                by:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
+                at:new Date().toISOString()
+              },{merge:true});
+              FOTOS[sl]=up.url;
+              try{toast(L2("Foto guardada \u2713","Photo saved \u2713"))}catch(_t){}
+              render();
+            }catch(e){
+              b.textContent=txt0; b.disabled=false;
+              var m=(e&&(e.code||e.message))||String(e);
+              console.error("[partes] subida:",e);
+              try{toast(L2("No se pudo subir: ","Upload failed: ")+m,"err")}catch(_t){}
+            }
+          };
+          inp.click();
+        };
+      });
+      Array.prototype.forEach.call(box.querySelectorAll("[data-cp]"),function(b){
+        b.onclick=function(){
+          var t=b.getAttribute("data-cp")||"";
+          try{
+            if(navigator.clipboard&&navigator.clipboard.writeText){
+              navigator.clipboard.writeText(t).then(function(){b.textContent="copiado"},function(){window.prompt("Copia el nombre:",t)});
+            }else{window.prompt("Copia el nombre:",t)}
+          }catch(_e){window.prompt("Copia el nombre:",t)}
+        };
+      });
+    }
+    function pintaCats(){
+      var box=document.getElementById("ptCats");if(!box)return;
+      box.innerHTML='<button type="button" class="pt-cat" data-c="" aria-pressed="true">Todas <span style="opacity:.6">'+ALL.length+'</span></button>'
+        +cats.map(function(k){return '<button type="button" class="pt-cat" data-c="'+esc2(k)+'" aria-pressed="false">'+esc2(k)+' <span style="opacity:.6">'+cnt[k]+'</span></button>'}).join("");
+      Array.prototype.forEach.call(box.querySelectorAll("[data-c]"),function(b){
+        b.onclick=function(){
+          cat=b.getAttribute("data-c")||"";shown=60;
+          Array.prototype.forEach.call(box.querySelectorAll("[data-c]"),function(x){x.setAttribute("aria-pressed",x===b)});
+          render();
+        };
+      });
+    }
+    var qi=document.getElementById("ptQ");
+    if(qi){var t=null;qi.oninput=function(){clearTimeout(t);t=setTimeout(function(){q=qi.value.trim().toLowerCase();shown=60;render()},120)}}
+    pintaCats();render();
+    if(!FOTOS_OK)cargaFotos(function(){ render() });
+  }
+  return {css:CSS,html:HTML,boot:boot};
+})();
+</script>
+
+<style id="aspenShellSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   ASPEN SERVICE 2.0 — FASE 1: EL CAPARAZON  (v2.28.0, 16 ago 2026)
+   Del rediseno que hizo Alberto. ADITIVO Y REVERSIBLE: borrar este bloque y
+   el de abajo (aspenShellScript) devuelve la app exactamente a como estaba.
+
+   QUE HACE Y QUE NO. Cambia el marco: barra lateral con contadores en vez de
+   la tira de 16 pestanas que se desborda, barra inferior en el telefono, y
+   una capa de tokens (radios, sombras, bordes) que suaviza las nueve
+   pantallas de una sola vez. NO toca ni un renderizador: el contenido de cada
+   pestana sigue siendo el mismo codigo de siempre.
+
+   LA BARRA SE DERIVA DEL #tabBar QUE YA EXISTE — no hay una sola pestana
+   escrita a mano aqui. Si manana agregas una pestana nueva, aparece sola; si
+   el rol oculta una, desaparece sola; y los contadores se espejean de los
+   badges reales con un observer. Esa es la unica forma de que un reskin no se
+   desincronice de la app a la semana siguiente.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{
+  --sh-1:0 1px 2px rgba(27,22,19,.04);
+  --sh-2:0 2px 10px rgba(27,22,19,.07);
+  --r-sm:10px; --r-md:14px; --r-lg:16px;
+  --shell-w:236px;
+}
+/* ── tokens suaves sobre lo que ya existe ── */
+body.asp-shell .card,body.asp-shell .tkt,body.asp-shell .box,body.asp-shell .panel{
+  border-radius:var(--r-lg)!important;box-shadow:var(--sh-1)!important}
+
+/* ── ESCRITORIO: barra lateral ── */
+body.asp-shell #aspShell{position:fixed;left:0;top:0;bottom:0;width:var(--shell-w);
+  background:var(--hdr-bg);color:#F7F1E9;z-index:2600;display:flex;flex-direction:column;
+  padding:14px 12px;overflow-y:auto;scrollbar-width:none}
+body.asp-shell #aspShell::-webkit-scrollbar{display:none}
+body.asp-shell #aspShell .as-logo{background:#fff;border-radius:var(--r-md);padding:14px 12px;
+  text-align:center;margin-bottom:16px}
+body.asp-shell #aspShell .as-logo img{max-width:100%;height:auto;display:block;margin:0 auto}
+body.asp-shell #aspShell .as-logo .as-word{font-weight:800;letter-spacing:.5px;color:#211712;font-size:15px}
+body.asp-shell #aspShell .as-grp{font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;
+  color:#8E8377;font-weight:800;margin:14px 8px 6px}
+body.asp-shell #aspShell .as-i{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:var(--r-sm);cursor:pointer;font-size:14px;font-weight:600;color:#C6B5A4;
+  margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:inherit;
+  transition:background .12s,color .12s}
+body.asp-shell #aspShell .as-i:hover{background:rgba(255,255,255,.06);color:#F7F1E9}
+body.asp-shell #aspShell .as-i.on{background:rgba(212,119,44,.16);color:#F7F1E9;font-weight:800;
+  box-shadow:inset 0 0 0 1px rgba(212,119,44,.5)}
+body.asp-shell #aspShell .as-i .as-b{margin-left:auto;background:rgba(255,255,255,.12);
+  border-radius:999px;padding:1px 8px;font-size:11px;font-weight:800;color:#F7F1E9}
+body.asp-shell #aspShell .as-i.on .as-b{background:var(--ac);color:#fff}
+body.asp-shell #aspShell .as-i .as-b[hidden]{display:none}
+
+/* el contenido cede el espacio; la tira vieja se va */
+body.asp-shell{padding-left:var(--shell-w)}
+body.asp-shell #tabBar{display:none!important}
+body.asp-shell .hdr,body.asp-shell header{padding-left:0}
+
+/* ── TELEFONO: barra inferior ── */
+@media(max-width:900px){
+  body.asp-shell{padding-left:0;padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  body.asp-shell #aspShell{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;height:auto;
+    flex-direction:row;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+    border-top:1px solid rgba(255,255,255,.1);overflow:visible}
+  body.asp-shell #aspShell .as-logo,body.asp-shell #aspShell .as-grp{display:none}
+  body.asp-shell #aspShell .as-i{flex-direction:column;gap:3px;justify-content:center;
+    padding:7px 2px;font-size:10.5px;font-weight:700;text-align:center;margin:0;min-width:0}
+  body.asp-shell #aspShell .as-i .as-ico{font-size:17px;line-height:1}
+  body.asp-shell #aspShell .as-i .as-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    max-width:100%;display:block}
+  body.asp-shell #aspShell .as-i .as-b{position:absolute;top:2px;right:calc(50% - 20px);margin:0;
+    font-size:9.5px;padding:0 5px}
+  body.asp-shell #aspShell .as-i{position:relative}
+  body.asp-shell #aspShell .as-i:not(.as-primary){display:none}
+}
+/* hoja "Mas" del telefono */
+#aspMore{position:fixed;inset:0;background:rgba(27,22,19,.5);z-index:2700;display:none;
+  align-items:flex-end}
+#aspMore.on{display:flex}
+#aspMore .as-sheet{background:var(--bg);width:100%;border-radius:20px 20px 0 0;padding:16px 16px
+  calc(20px + env(safe-area-inset-bottom,0px));max-height:76vh;overflow-y:auto}
+#aspMore .as-sheet h3{margin:2px 0 12px;font-size:16px;font-weight:800}
+#aspMore .as-grp2{font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--i3);
+  font-weight:800;margin:14px 2px 7px}
+#aspMore .as-m{display:flex;align-items:center;gap:11px;width:100%;background:var(--cd);
+  border:1px solid var(--ln);border-radius:var(--r-md);padding:13px 14px;margin-bottom:7px;
+  font:inherit;font-size:14.5px;font-weight:700;color:var(--ink);text-align:left;cursor:pointer}
+#aspMore .as-m .as-b{margin-left:auto;background:var(--acl);color:var(--acd);border-radius:999px;
+  padding:1px 9px;font-size:11.5px;font-weight:800}
+</style>
+<script id="aspenShellScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspShell)return; window.__aspShell=true;
+
+/* Los cinco que van en la barra inferior del telefono. Se eligen por id de
+   pestana, no por posicion, para que no se desordene si cambia el orden. */
+var MOVIL=["tab0","tab4","tab1","tab5","tab8"];
+var ICONO={tab0:"\uD83D\uDD27",tab4:"\uD83D\uDCC5",tab5:"\uD83D\uDCCB",tab1:"\u2705",tab6:"\uD83D\uDC65",
+  tab13:"\uD83D\uDCAC",tab8:"\uD83D\uDD14",tab10:"\uD83E\uDDF0",tab9:"\uD83D\uDCBC",tab2:"\uD83D\uDCE6",
+  tab12:"\uD83D\uDCDE",tab3:"\u2699\uFE0F",tab7:"\uD83D\uDDFA\uFE0F",tab11:"\uD83D\uDCD3",
+  tab14:"\uD83D\uDCE8",tab15:"\uD83D\uDCB5"};
+
+function limpio(t){
+  /* el label del tab trae emoji y a veces el badge dentro: se saca solo el texto */
+  var s="";
+  Array.prototype.forEach.call(t.childNodes,function(n){ if(n.nodeType===3)s+=n.nodeValue });
+  s=s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu,"").trim();
+  return s||t.id;
+}
+function tabs(){
+  var bar=document.getElementById("tabBar");
+  if(!bar)return [];
+  return Array.prototype.filter.call(bar.querySelectorAll(".tab"),function(t){
+    return !t.classList.contains("hidden") && t.id;
+  });
+}
+/* Los .nav-grp del #tabBar estan TODOS al principio, no intercalados entre las
+   pestanas — mirar hacia atras devolvia siempre el ultimo ("tools") para todas.
+   Lo encontro la prueba. Asi que el grupo va por id, explicito. Una pestana
+   futura que no este aqui cae en "work", que es un degradado sano: sale en la
+   barra igual, solo que en el primer grupo. */
+var GRUPO={tab0:"work",tab4:"work",tab5:"work",tab1:"work",tab2:"work",tab12:"work",
+           tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",
+           tab10:"tools",tab9:"tools",tab7:"tools",tab11:"tools"};
+function grupoDe(t){ return GRUPO[t.id]||"work" }
+var TITULO={work:"Trabajo",manage:"Gesti\u00f3n",tools:"Herramientas"};
+
+function badge(t){
+  var b=t.querySelector(".badge");
+  if(!b)return null;
+  var vis=b.style.display!=="none" && (b.textContent||"").trim() && (b.textContent||"").trim()!=="0";
+  return vis?(b.textContent||"").trim():null;
+}
+
+function pinta(){
+  var host=document.getElementById("aspShell");
+  if(!host)return;
+  var lista=tabs(), html="";
+  html+='<div class="as-logo"><div class="as-word">ASPEN SPAS</div></div>';
+  /* Se pinta POR GRUPO, no en orden del DOM: en el #tabBar las pestanas van y
+     vienen entre Trabajo/Gestion/Herramientas, asi que recorrerlas en orden
+     repetia los encabezados (lo encontro la prueba). Dentro de cada grupo se
+     respeta el orden original, que es el que Alberto ya conoce. */
+  ["work","manage","tools"].forEach(function(g){
+    var del=lista.filter(function(t){ return grupoDe(t)===g });
+    if(!del.length)return;
+    html+='<div class="as-grp">'+(TITULO[g]||g)+'</div>';
+    del.forEach(function(t){
+      var b=badge(t), pri=MOVIL.indexOf(t.id)>=0;
+      html+='<button type="button" class="as-i'+(t.classList.contains("on")?" on":"")
+        +(pri?" as-primary":"")+'" data-tab="'+t.id+'">'
+        +'<span class="as-ico">'+(ICONO[t.id]||"\u2022")+'</span>'
+        +'<span class="as-lbl">'+limpio(t)+'</span>'
+        +'<span class="as-b"'+(b?"":" hidden")+'>'+(b||"")+'</span></button>';
+    });
+  });
+  /* el sexto del telefono: "Mas" */
+  html+='<button type="button" class="as-i as-primary" id="aspMoreBtn">'
+    +'<span class="as-ico">\u2630</span><span class="as-lbl">M\u00e1s</span></button>';
+  host.innerHTML=html;
+  Array.prototype.forEach.call(host.querySelectorAll("[data-tab]"),function(b){
+    b.onclick=function(){ var t=document.getElementById(b.getAttribute("data-tab")); if(t)t.click() };
+  });
+  var mb=document.getElementById("aspMoreBtn");
+  if(mb)mb.onclick=abreMas;
+}
+
+function abreMas(){
+  var m=document.getElementById("aspMore"); if(!m)return;
+  var lista=tabs().filter(function(t){ return MOVIL.indexOf(t.id)<0 }), gA="", h='<div class="as-sheet"><h3>M\u00e1s</h3>';
+  lista.forEach(function(t){
+    var g=grupoDe(t);
+    if(g!==gA){ h+='<div class="as-grp2">'+(TITULO[g]||g)+'</div>'; gA=g }
+    var b=badge(t);
+    h+='<button type="button" class="as-m" data-tab="'+t.id+'">'
+      +'<span>'+(ICONO[t.id]||"\u2022")+'</span><span>'+limpio(t)+'</span>'
+      +(b?'<span class="as-b">'+b+'</span>':'')+'</button>';
+  });
+  m.innerHTML=h+'</div>';
+  m.classList.add("on");
+  m.onclick=function(ev){
+    var b=ev.target&&ev.target.closest?ev.target.closest("[data-tab]"):null;
+    if(b){ var t=document.getElementById(b.getAttribute("data-tab")); if(t)t.click(); }
+    m.classList.remove("on");
+  };
+}
+
+function monta(){
+  if(!document.getElementById("tabBar"))return;
+  if(!document.getElementById("aspShell")){
+    var d=document.createElement("nav"); d.id="aspShell"; document.body.appendChild(d);
+    var m=document.createElement("div"); m.id="aspMore"; document.body.appendChild(m);
+  }
+  document.body.classList.add("asp-shell");
+  pinta();
+  /* Se espejea del #tabBar real: pestana nueva, rol que oculta una, o badge que
+     cambia -> la barra se entera sola. Sin esto el reskin se desincroniza. */
+  try{
+    var bar=document.getElementById("tabBar");
+    var mo=new MutationObserver(function(){ pinta() });
+    mo.observe(bar,{subtree:true,childList:true,characterData:true,
+      attributes:true,attributeFilter:["class","style"]});
+  }catch(_e){}
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta);
+else monta();
+setTimeout(monta,1500);
+})();
+</script>
+
+<style id="aspenNextStopSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   FASE 2 — "SIGUIENTE PARADA"  (v2.29.0, 16 ago 2026)
+   Del rediseno "Aspen Service 2.0". ADITIVO Y REVERSIBLE: borrar este bloque
+   y el de abajo (aspenNextStopScript) revierte la funcion entera.
+
+   Se inserta ARRIBA de la vista Route (pg4) cuando el dia mostrado es HOY.
+   No toca rndrCalTimeline ni ningun renderizador: lee los mismos tickets que
+   ya estan en memoria y pinta una tarjeta encima.
+
+   Para que sirve: hoy el tecnico tiene que LEER su carril del calendario y
+   armar de cabeza cual sigue, buscar el telefono, copiar la direccion. Esto
+   se lo da resuelto con tres botones — Llamar, Ir, Abrir ticket — que es
+   exactamente lo que hace al bajarse de la camioneta.
+   ═══════════════════════════════════════════════════════════════════════ */
+#aspNext{background:var(--hdr-bg);color:#F7F1E9;border-radius:18px;padding:18px 20px;margin:0 0 16px;
+  position:relative;overflow:hidden}
+#aspNext::after{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;
+  border-radius:50%;background:rgba(255,255,255,.03)}
+#aspNext .an-k{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:1.3px;
+  text-transform:uppercase;font-weight:800;color:var(--ac)}
+#aspNext .an-k i{width:7px;height:7px;border-radius:50%;background:var(--ac);font-style:normal;display:inline-block}
+#aspNext h3{margin:10px 0 3px;font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-.4px;position:relative}
+#aspNext .an-addr{font-size:14px;color:#C6B5A4;position:relative}
+#aspNext .an-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;position:relative}
+#aspNext .an-c{background:rgba(255,255,255,.1);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700}
+#aspNext .an-c.money{background:#E8B54B;color:#3a2a10}
+#aspNext .an-c.warn{background:#F0A05A;color:#2a1a08}
+#aspNext .an-btns{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;position:relative}
+#aspNext .an-b{border:none;border-radius:12px;padding:12px 20px;font:inherit;font-size:14.5px;
+  font-weight:800;cursor:pointer;font-family:inherit}
+#aspNext .an-call{background:#fff;color:var(--ink)}
+#aspNext .an-go{background:transparent;color:#F7F1E9;border:1.5px solid rgba(255,255,255,.28)}
+#aspNext .an-open{background:var(--ac);color:#fff}
+#aspNext .an-b:hover{opacity:.92}
+#aspNext .an-rest{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);
+  font-size:12.5px;color:#C6B5A4;position:relative}
+#aspNext .an-rest b{color:#F7F1E9}
+@media(max-width:640px){
+  #aspNext{padding:15px 16px;border-radius:15px}
+  #aspNext h3{font-size:21px}
+  #aspNext .an-btns{gap:7px}
+  #aspNext .an-b{flex:1;min-width:96px;padding:13px 10px;font-size:14px;text-align:center}
+}
+</style>
+<script id="aspenNextStopScript">
+/* Ver el comentario de arriba. Borrar los dos bloques = revertir. */
+(function(){
+"use strict";
+if(window.__aspNext)return; window.__aspNext=true;
+
+function hoy(){ try{ return fmtD(new Date()) }catch(_e){ return "" } }
+
+/* Las paradas de HOY que todavia no estan cerradas, en orden de llegada.
+   Para un tecnico, solo las suyas — es su pantalla, no la del despacho. */
+function paradas(){
+  try{
+    var d=hoy(), yo=(currentUser&&currentUser.role==="tech")?currentUser.name:null;
+    var todos=(typeof active!=="undefined"?active:[]);
+    return todos.filter(function(t){
+      if(!t||t.date!==d)return false;
+      if(t.fieldReportSubmitted)return false;
+      if(t.status==="canceled"||t.status==="cancelled"||t.status==="complete")return false;
+      if(yo && !((t.techs||[]).indexOf(yo)>=0))return false;
+      return true;
+    }).sort(function(a,b){ return String(a.arrival||"99:99").localeCompare(String(b.arrival||"99:99")) });
+  }catch(_e){ return [] }
+}
+
+function tel(t){
+  try{
+    var p=(t.phones&&t.phones.length?t.phones[0]:t.phone)||"";
+    return String(p).replace(/[^0-9+]/g,"");
+  }catch(_e){ return "" }
+}
+function dir(t){
+  var a=[t.address,t.city,t.zip].filter(function(x){return String(x||"").trim()}).join(", ");
+  return a.trim();
+}
+function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
+
+function pinta(){
+  var pg=document.getElementById("pg4");
+  if(!pg||!pg.classList.contains("show")){ quita(); return }
+  /* solo cuando el dia que se esta viendo ES hoy: en otro dia esta tarjeta
+     mentiria — "siguiente parada" de un martes que ya paso no existe. */
+  var verHoy=false;
+  try{ verHoy=(!calSelectedDate||calSelectedDate===hoy()) && calView==="timeline" }catch(_e){}
+  if(!verHoy){ quita(); return }
+
+  var lista=paradas();
+  if(!lista.length){ quita(); return }
+  var t=lista[0], faltan=lista.length-1;
+  var host=document.getElementById("aspNext");
+  if(!host){
+    host=document.createElement("div"); host.id="aspNext";
+    var grid=document.getElementById("calGrid");
+    if(grid&&grid.parentNode)grid.parentNode.insertBefore(host,grid);
+    else pg.insertBefore(host,pg.firstChild);
+  }
+  var ph=tel(t), ad=dir(t), monto=0;
+  try{ monto=(typeof window.moneySub==="function")?(window.moneySub(t)||0):0 }catch(_e){}
+  var garantia=false;
+  try{ garantia=!!(t.warranty&&t.warranty.has) }catch(_e){}
+
+  host.innerHTML=''
+    +'<div class="an-k"><i></i>'+L2("SIGUIENTE PARADA","NEXT STOP")+'</div>'
+    +'<h3>'+esc2(t.customer||"—")+'</h3>'
+    +(ad?'<div class="an-addr">'+esc2(ad)+'</div>':'')
+    +'<div class="an-chips">'
+      +(t.arrival?'<span class="an-c">'+esc2(t.arrival)+'</span>':'')
+      +(t.spaDesc||t.spaModel?'<span class="an-c">'+esc2(t.spaDesc||t.spaModel)+'</span>':'')
+      +(garantia?'<span class="an-c warn">'+L2("Garantía","Warranty")+'</span>':'')
+      +(monto?'<span class="an-c money">'+L2("Cobrar","Collect")+' $'+Math.round(monto).toLocaleString("en-US")+'</span>':'')
+    +'</div>'
+    +'<div class="an-btns">'
+      +(ph?'<button type="button" class="an-b an-call" data-a="call">'+L2("Llamar","Call")+'</button>':'')
+      +(ad?'<button type="button" class="an-b an-go" data-a="go">'+L2("Ir","Go")+'</button>':'')
+      +'<button type="button" class="an-b an-open" data-a="open">'+L2("Abrir ticket","Open ticket")+'</button>'
+    +'</div>'
+    +(faltan>0?'<div class="an-rest">'+L2("Después de esta: ","After this one: ")
+        +'<b>'+faltan+'</b> '+L2(faltan===1?"parada más hoy":"paradas más hoy",faltan===1?"more stop today":"more stops today")+'</div>':'');
+
+  host.onclick=function(ev){
+    var b=ev.target&&ev.target.closest?ev.target.closest("[data-a]"):null;
+    if(!b)return;
+    var a=b.getAttribute("data-a");
+    try{
+      if(a==="call"&&ph){ window.location.href="tel:"+ph; return }
+      if(a==="go"&&ad){ window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(ad),"_blank"); return }
+      if(a==="open"&&typeof openTktDetail==="function"){ openTktDetail(t.id); return }
+    }catch(_e){}
+  };
+}
+function quita(){ var h=document.getElementById("aspNext"); if(h)h.remove() }
+
+/* Se engancha a rndrCal, que es quien repinta la vista Route — asi la tarjeta
+   se actualiza sola al cambiar de dia, al llegar un ticket nuevo o al cerrar
+   una visita, sin observers ni temporizadores propios. */
+if(typeof window.rndrCal==="function"){
+  var _orig=window.rndrCal;
+  window.rndrCal=function(){
+    var r=_orig.apply(this,arguments);
+    try{ pinta() }catch(e){ console.warn("[nextstop]",e) }
+    return r;
+  };
+}
+setTimeout(function(){ try{ pinta() }catch(_e){} },1400);
+})();
+</script>
+
+<style id="aspenCardSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   FASE 3 — FILETE DE ESTADO EN LAS TARJETAS  (v2.30.0, 16 ago 2026)
+   Del rediseno "Aspen Service 2.0". ADITIVO Y REVERSIBLE: borrar este bloque
+   y el de abajo (aspenCardSkinScript) revierte todo.
+
+   POR QUE NO ES SOLO CSS. calTktCard() solo pone una clase de estado cuando
+   el ticket esta cancelado (st-row-canceled); no hay clase para pendiente,
+   reportado, reagendado ni urgente. En vez de meter mano al renderizador
+   —que es lo que no quiero tocar— se ETIQUETAN las tarjetas despues de que
+   se pintan, leyendo el ticket por el data-id que el propio .ctl-slot ya
+   trae. Si manana cambia calTktCard, esto sigue funcionando.
+   ═══════════════════════════════════════════════════════════════════════ */
+.ctl-slot .cal-tkt-mini{border-left-width:3px!important;border-left-style:solid!important;
+  border-radius:12px!important;box-shadow:0 2px 8px rgba(27,22,19,.07)!important;
+  transition:box-shadow .14s,transform .12s}
+.ctl-slot .cal-tkt-mini:hover{box-shadow:0 4px 14px rgba(27,22,19,.13)!important;transform:translateY(-1px)}
+/* el filete, por estado — mismos colores que el resto de la app */
+.cal-tkt-mini.asp-st-pend{border-left-color:var(--ac)!important}
+.cal-tkt-mini.asp-st-rep{border-left-color:var(--c-success-fg,#1c6b41)!important}
+.cal-tkt-mini.asp-st-resch{border-left-color:var(--c-purple-fg,#7e22ce)!important}
+.cal-tkt-mini.asp-st-urg{border-left-color:var(--c-danger-fg,#C0492F)!important}
+.cal-tkt-mini.asp-st-canc{border-left-color:var(--i3)!important;opacity:.6}
+</style>
+<script id="aspenCardSkinScript">
+/* Ver el comentario de arriba. Borrar los dos bloques = revertir. */
+(function(){
+"use strict";
+if(window.__aspCards)return; window.__aspCards=true;
+
+/* El orden importa: lo primero que cuadra manda. Cancelado gana sobre todo
+   (ya no se trabaja), urgente gana sobre pendiente (es lo que hay que ver
+   primero), y reportado se decide por fieldReportSubmitted y no por status,
+   porque en esta app los tickets de Chemical nacen "pending" y se marcan
+   hechos con esa bandera sin cambiar nunca de status. */
+function clase(t){
+  if(!t)return "";
+  var s=String(t.status||"");
+  if(s==="canceled"||s==="cancelled")return "asp-st-canc";
+  if(s==="reschedule")return "asp-st-resch";
+  if(t.fieldReportSubmitted||s==="complete"||s==="done")return "asp-st-rep";
+  if(t.urgent||t.isUrgent)return "asp-st-urg";
+  return "asp-st-pend";
+}
+var TODAS=["asp-st-pend","asp-st-rep","asp-st-resch","asp-st-urg","asp-st-canc"];
+
+function marca(){
+  try{
+    var todos=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+    var porId={}; todos.forEach(function(t){ if(t&&t.id)porId[t.id]=t });
+    var slots=document.querySelectorAll(".ctl-slot[data-id]");
+    Array.prototype.forEach.call(slots,function(sl){
+      var card=sl.querySelector(".cal-tkt-mini");
+      if(!card)return;
+      var c=clase(porId[sl.getAttribute("data-id")]);
+      TODAS.forEach(function(x){ if(x!==c)card.classList.remove(x) });
+      if(c)card.classList.add(c);
+    });
+  }catch(e){ console.warn("[cardskin]",e) }
+}
+
+/* Se cuelga de rndrCal como la Fase 2: se repinta cuando se repinta la ruta,
+   sin observers propios. */
+if(typeof window.rndrCal==="function"){
+  var _o=window.rndrCal;
+  window.rndrCal=function(){ var r=_o.apply(this,arguments); try{ marca() }catch(_e){} return r };
+}
+setTimeout(function(){ try{ marca() }catch(_e){} },1600);
+window.__aspMarcaCards=marca;
+})();
+</script>
+
+<style id="aspenKpiSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   FASE 4 — LOS KPI  (v2.31.0, 16 ago 2026)
+   Del rediseno "Aspen Service 2.0". ADITIVO Y REVERSIBLE: borrar este bloque
+   revierte todo. Es CSS PURO: cero JavaScript, cero renderizadores tocados.
+
+   Un solo pase alcanza las tres pantallas donde ya viven KPI con el mismo
+   marcado (.cal-cmd-stat con .cc-l / .cc-v): la Route, Daily y Alerts.
+   Lo que cambia es la jerarquia — hoy el numero y la etiqueta pesan casi
+   igual y hay que leerlos; en el prototipo el numero manda y la etiqueta se
+   apaga, que es como se lee un tablero de un vistazo.
+
+   El filete superior de color viene del prototipo (Facturas: ambar por
+   cobrar, verde cobrado, rojo vencido). Aqui se aplica por posicion con
+   :nth-child, que es lo unico que se puede hacer sin tocar el renderizador —
+   y es honesto porque el orden de esas tarjetas es fijo en cada pantalla.
+   ═══════════════════════════════════════════════════════════════════════ */
+.cal-cmd-stat{
+  border-radius:14px!important;
+  box-shadow:0 1px 2px rgba(27,22,19,.04),0 2px 10px rgba(27,22,19,.05)!important;
+  padding:13px 15px 12px!important;
+  position:relative!important;overflow:hidden!important;
+  transition:box-shadow .14s,transform .12s}
+.cal-cmd-stat:hover{box-shadow:0 4px 16px rgba(27,22,19,.11)!important;transform:translateY(-1px)}
+/* el filete de arriba */
+.cal-cmd-stat::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:var(--ln);border-radius:14px 14px 0 0}
+.cal-cmd-stat:nth-child(1)::before{background:var(--ac)}
+.cal-cmd-stat:nth-child(2)::before{background:var(--c-success-fg,#2E8B57)}
+.cal-cmd-stat:nth-child(3)::before{background:var(--c-warning-fg,#C98A17)}
+.cal-cmd-stat:nth-child(4)::before{background:var(--c-danger-fg,#C0492F)}
+/* la jerarquia: el numero manda, la etiqueta se aparta */
+.cal-cmd-stat .cc-l{font-size:9.5px!important;letter-spacing:1.1px!important;
+  color:var(--i3)!important;font-weight:800!important;margin-bottom:3px}
+.cal-cmd-stat .cc-v{font-size:29px!important;line-height:1.02!important;
+  letter-spacing:-.9px!important;color:var(--ink)!important;margin-top:0!important}
+/* el dinero en dorado, como en el prototipo: se distingue de un conteo */
+.cal-cmd-stat .cc-v.asp-money,.cal-cmd-stat .cc-v[data-money]{color:#B8860B!important}
+@media(max-width:640px){
+  .cal-cmd-stat{padding:11px 12px 10px!important;min-width:96px!important}
+  .cal-cmd-stat .cc-v{font-size:23px!important}
+}
+/* el mismo aire para las tarjetas del tablero que ya usan .stat-* */
+.stats .stat-value{font-size:29px!important;letter-spacing:-.9px!important;line-height:1.02!important}
+.stats .stat-label{font-size:9.5px!important;letter-spacing:1.1px!important;font-weight:800!important}
+</style>
+
+<style id="aspenFrStepsSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   FASE 5a — INDICADOR DE PASOS DEL FIELD REPORT  (v2.32.0, 16 ago 2026)
+   Del rediseno "Aspen Service 2.0". ADITIVO Y REVERSIBLE: borrar este bloque
+   y el de abajo (aspenFrStepsScript) revierte todo.
+
+   ES SOLO LA MITAD VISUAL, A PROPOSITO. El prototipo parte el Field Report
+   en cuatro pantallas con puertas entre ellas. Eso cambia POR DONDE PASA un
+   tecnico para enviar su reporte, y ahi viven submitTkt, las fotos y los tres
+   guardias de escritura — el unico sitio de la app donde equivocarse
+   significa que alguien en la calle pierde su trabajo. El 14 de agosto un
+   tecnico no pudo reportar y todavia no sabemos por que. Asi que aqui va el
+   indicador y nada mas: NO oculta secciones, NO bloquea el envio, NO valida.
+   Solo LEE los campos y pinta cuanto lleva.
+
+   Cuando el fallo del jueves este cerrado, la otra mitad se hace con arnes.
+   ═══════════════════════════════════════════════════════════════════════ */
+#aspFrSteps{display:flex;gap:0;margin:0 0 16px;padding:0;list-style:none}
+#aspFrSteps li{flex:1;position:relative;padding-top:12px;font-size:11.5px;font-weight:700;
+  color:var(--i3);letter-spacing:.2px}
+#aspFrSteps li::before{content:"";position:absolute;left:0;right:3px;top:0;height:3px;
+  background:var(--ln);border-radius:99px;transition:background .25s}
+#aspFrSteps li.done::before{background:var(--ac)}
+#aspFrSteps li.done{color:var(--acd)}
+#aspFrSteps li.now::before{background:var(--ac);opacity:.45}
+#aspFrSteps li.now{color:var(--i2)}
+#aspFrSteps li b{display:block;font-size:10px;font-weight:800;letter-spacing:1.1px;
+  text-transform:uppercase;opacity:.75;margin-bottom:1px}
+@media(max-width:560px){
+  #aspFrSteps li{font-size:10.5px}
+  #aspFrSteps li b{font-size:9px;letter-spacing:.9px}
+}
+</style>
+<script id="aspenFrStepsScript">
+/* Ver el comentario de arriba: indicador de solo lectura. */
+(function(){
+"use strict";
+if(window.__aspFrSteps)return; window.__aspFrSteps=true;
+
+function val(id){ var e=document.getElementById(id); return e?String(e.value||"").trim():"" }
+
+/* Los cuatro del prototipo, medidos contra los campos que YA existen.
+   Nada de esto bloquea: si un paso esta a medias, el tecnico envia igual y el
+   formulario le dira que falta, como siempre. Esto solo le enseña donde va. */
+function pasos(){
+  var cliente = !!(val("fCust") && val("fDate"));
+  var trabajo = !!(val("fArr") && val("fDep") && val("fNotes").length>=3);
+  var partes  = false;
+  try{
+    var chk=document.getElementById("part90Chk");
+    partes = !!(document.querySelectorAll("#pTL .p-row, #pTL [data-part]").length)
+             || !!(chk&&chk.checked) || !!val("part90Name");
+  }catch(_e){}
+  var fotos = false;
+  try{ fotos = !!(typeof mediaFiles!=="undefined" && mediaFiles && mediaFiles.length) }catch(_e){}
+  return [
+    {k:"1",t:"Cliente", ok:cliente},
+    {k:"2",t:"Trabajo", ok:trabajo},
+    {k:"3",t:"Partes",  ok:partes},
+    {k:"4",t:"Fotos",   ok:fotos}
+  ];
+}
+
+function pinta(){
+  var modo=document.getElementById("ticketMode");
+  if(!modo || modo.style.display==="none"){ var v=document.getElementById("aspFrSteps"); if(v)v.remove(); return }
+  var ul=document.getElementById("aspFrSteps");
+  if(!ul){
+    ul=document.createElement("ul"); ul.id="aspFrSteps";
+    modo.insertBefore(ul,modo.firstChild);
+  }
+  var p=pasos(), primeroPendiente=-1;
+  p.forEach(function(x,i){ if(!x.ok&&primeroPendiente<0)primeroPendiente=i });
+  ul.innerHTML=p.map(function(x,i){
+    var cls=x.ok?"done":(i===primeroPendiente?"now":"");
+    return '<li class="'+cls+'"><b>'+x.k+'</b>'+x.t+(x.ok?" \u2713":"")+'</li>';
+  }).join("");
+}
+
+/* Se escucha en el propio formulario en vez de envolver una funcion: el
+   indicador es de lectura, asi que no tiene por que meterse en el camino de
+   nadie. Delegado en #ticketMode, con lo que sirve para los campos que se
+   pinten despues. */
+function engancha(){
+  var modo=document.getElementById("ticketMode");
+  if(!modo)return;
+  ["input","change","click"].forEach(function(ev){
+    modo.addEventListener(ev,function(){ setTimeout(pinta,60) },true);
+  });
+  pinta();
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",engancha);
+else engancha();
+setTimeout(engancha,1600);
+/* Al entrar a la pestana del reporte hay que repintar: setMode la muestra. */
+if(typeof window.setMode==="function"){
+  var _sm=window.setMode;
+  window.setMode=function(){ var r=_sm.apply(this,arguments); try{ setTimeout(pinta,80) }catch(_e){} return r };
 }
 })();
 </script>
