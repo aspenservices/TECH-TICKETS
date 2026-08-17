@@ -6761,8 +6761,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.35.0";
-var BUILD_DATE="2026-08-16";
+var APP_VERSION="2.37.0";
+var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -35035,7 +35035,11 @@ function _itkKnown(it){
     }
     var out=[], S=null;
     try{ S=_itkSpaParse(H.spa||"") }catch(_e){}
-    var modelo=(S&&S.corto)||"";
+    /* v2.37.0 — BUG: aqui se leia S.corto, que es un BOOLEANO ("el texto es una
+     etiqueta corta, no un volcado"), asi que el chip salia como "true". El
+     modelo vive en S.modelo, y _itkSpaParse lo rellena en los dos casos: con
+     el texto entero cuando es corto, y con el campo Model cuando parsea. */
+  var modelo=(S&&S.modelo)||"";
     if(!modelo&&S&&S.campos&&S.campos.length){
       for(var i=0;i<S.campos.length;i++){
         if(/^model$/i.test(S.campos[i].k)){modelo=S.campos[i].v;break}
@@ -35054,11 +35058,19 @@ function _itkKnown(it){
       if(!isNaN(ms))dias=Math.floor((Date.now()-ms)/86400000);
     }
     if(ult){
-      out.push('<span class="itk-chip ne">Last: '+esc(ult.date||"no date")
+      out.push('<span class="itk-chip ne">'+((dias!==null&&dias<0)?"Booked: ":"Last: ")+esc(ult.date||"no date")
         +(ult.job?' \u00b7 '+esc(ult.job):'')+(ult.tech?' \u00b7 '+esc(ult.tech):'')+'</span>');
     }
+    /* v2.37.0 — BUG: si la visita mas reciente esta AGENDADA (fecha futura),
+       `dias` sale NEGATIVO y el aviso decia "We were there -4 days ago", que es
+       falso: todavia no hemos ido. Se parte en dos, y el caso futuro deja de ser
+       un error para volverse un dato util: avisa de que ya hay visita, para no
+       agendar otra encima. */
     var aviso="";
-    if(dias!==null&&dias<=90){
+    if(dias!==null&&dias<0&&dias>=-60){
+      aviso='<div class="itk-warn">\u26A0 They already have a visit booked for '+esc(ult.date||"")
+        +(ult.tech?' with '+esc(ult.tech):'')+'. Check that before you book another one.</div>';
+    }else if(dias!==null&&dias>=0&&dias<=90){
       aviso='<div class="itk-warn">\u26A0 We were there '+dias+' day'+(dias===1?"":"s")
         +' ago'+(ult.job?' ('+esc(ult.job)+')':'')+'. If this is the same problem it is a '
         +'<b>repeat</b> — labor is covered. Check before you price it.</div>';
@@ -48741,156 +48753,8 @@ setTimeout(monta,1500);
 })();
 </script>
 
-<style id="aspenNextStopSkin">
-/* ═══════════════════════════════════════════════════════════════════════
-   FASE 2 — "SIGUIENTE PARADA"  (v2.29.0, 16 ago 2026)
-   Del rediseno "Aspen Service 2.0". ADITIVO Y REVERSIBLE: borrar este bloque
-   y el de abajo (aspenNextStopScript) revierte la funcion entera.
 
-   Se inserta ARRIBA de la vista Route (pg4) cuando el dia mostrado es HOY.
-   No toca rndrCalTimeline ni ningun renderizador: lee los mismos tickets que
-   ya estan en memoria y pinta una tarjeta encima.
 
-   Para que sirve: hoy el tecnico tiene que LEER su carril del calendario y
-   armar de cabeza cual sigue, buscar el telefono, copiar la direccion. Esto
-   se lo da resuelto con tres botones — Llamar, Ir, Abrir ticket — que es
-   exactamente lo que hace al bajarse de la camioneta.
-   ═══════════════════════════════════════════════════════════════════════ */
-#aspNext{background:var(--hdr-bg);color:#F7F1E9;border-radius:18px;padding:18px 20px;margin:0 0 16px;
-  position:relative;overflow:hidden}
-#aspNext::after{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;
-  border-radius:50%;background:rgba(255,255,255,.03)}
-#aspNext .an-k{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:1.3px;
-  text-transform:uppercase;font-weight:800;color:var(--ac)}
-#aspNext .an-k i{width:7px;height:7px;border-radius:50%;background:var(--ac);font-style:normal;display:inline-block}
-#aspNext h3{margin:10px 0 3px;font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-.4px;position:relative}
-#aspNext .an-addr{font-size:14px;color:#C6B5A4;position:relative}
-#aspNext .an-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;position:relative}
-#aspNext .an-c{background:rgba(255,255,255,.1);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700}
-#aspNext .an-c.money{background:#E8B54B;color:#3a2a10}
-#aspNext .an-c.warn{background:#F0A05A;color:#2a1a08}
-#aspNext .an-btns{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;position:relative}
-#aspNext .an-b{border:none;border-radius:12px;padding:12px 20px;font:inherit;font-size:14.5px;
-  font-weight:800;cursor:pointer;font-family:inherit}
-#aspNext .an-call{background:#fff;color:var(--ink)}
-#aspNext .an-go{background:transparent;color:#F7F1E9;border:1.5px solid rgba(255,255,255,.28)}
-#aspNext .an-open{background:var(--ac);color:#fff}
-#aspNext .an-b:hover{opacity:.92}
-#aspNext .an-rest{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);
-  font-size:12.5px;color:#C6B5A4;position:relative}
-#aspNext .an-rest b{color:#F7F1E9}
-@media(max-width:640px){
-  #aspNext{padding:15px 16px;border-radius:15px}
-  #aspNext h3{font-size:21px}
-  #aspNext .an-btns{gap:7px}
-  #aspNext .an-b{flex:1;min-width:96px;padding:13px 10px;font-size:14px;text-align:center}
-}
-</style>
-<script id="aspenNextStopScript">
-/* Ver el comentario de arriba. Borrar los dos bloques = revertir. */
-(function(){
-"use strict";
-if(window.__aspNext)return; window.__aspNext=true;
-
-function hoy(){ try{ return fmtD(new Date()) }catch(_e){ return "" } }
-
-/* Las paradas de HOY que todavia no estan cerradas, en orden de llegada.
-   Para un tecnico, solo las suyas — es su pantalla, no la del despacho. */
-function paradas(){
-  try{
-    var d=hoy(), yo=(currentUser&&currentUser.role==="tech")?currentUser.name:null;
-    var todos=(typeof active!=="undefined"?active:[]);
-    return todos.filter(function(t){
-      if(!t||t.date!==d)return false;
-      if(t.fieldReportSubmitted)return false;
-      if(t.status==="canceled"||t.status==="cancelled"||t.status==="complete")return false;
-      if(yo && !((t.techs||[]).indexOf(yo)>=0))return false;
-      return true;
-    }).sort(function(a,b){ return String(a.arrival||"99:99").localeCompare(String(b.arrival||"99:99")) });
-  }catch(_e){ return [] }
-}
-
-function tel(t){
-  try{
-    var p=(t.phones&&t.phones.length?t.phones[0]:t.phone)||"";
-    return String(p).replace(/[^0-9+]/g,"");
-  }catch(_e){ return "" }
-}
-function dir(t){
-  var a=[t.address,t.city,t.zip].filter(function(x){return String(x||"").trim()}).join(", ");
-  return a.trim();
-}
-function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
-
-function pinta(){
-  var pg=document.getElementById("pg4");
-  if(!pg||!pg.classList.contains("show")){ quita(); return }
-  /* solo cuando el dia que se esta viendo ES hoy: en otro dia esta tarjeta
-     mentiria — "siguiente parada" de un martes que ya paso no existe. */
-  var verHoy=false;
-  try{ verHoy=(!calSelectedDate||calSelectedDate===hoy()) && calView==="timeline" }catch(_e){}
-  if(!verHoy){ quita(); return }
-
-  var lista=paradas();
-  if(!lista.length){ quita(); return }
-  var t=lista[0], faltan=lista.length-1;
-  var host=document.getElementById("aspNext");
-  if(!host){
-    host=document.createElement("div"); host.id="aspNext";
-    var grid=document.getElementById("calGrid");
-    if(grid&&grid.parentNode)grid.parentNode.insertBefore(host,grid);
-    else pg.insertBefore(host,pg.firstChild);
-  }
-  var ph=tel(t), ad=dir(t), monto=0;
-  try{ monto=(typeof window.moneySub==="function")?(window.moneySub(t)||0):0 }catch(_e){}
-  var garantia=false;
-  try{ garantia=!!(t.warranty&&t.warranty.has) }catch(_e){}
-
-  host.innerHTML=''
-    +'<div class="an-k"><i></i>'+L2("SIGUIENTE PARADA","NEXT STOP")+'</div>'
-    +'<h3>'+esc2(t.customer||"—")+'</h3>'
-    +(ad?'<div class="an-addr">'+esc2(ad)+'</div>':'')
-    +'<div class="an-chips">'
-      +(t.arrival?'<span class="an-c">'+esc2(t.arrival)+'</span>':'')
-      +(t.spaDesc||t.spaModel?'<span class="an-c">'+esc2(t.spaDesc||t.spaModel)+'</span>':'')
-      +(garantia?'<span class="an-c warn">'+L2("Garantía","Warranty")+'</span>':'')
-      +(monto?'<span class="an-c money">'+L2("Cobrar","Collect")+' $'+Math.round(monto).toLocaleString("en-US")+'</span>':'')
-    +'</div>'
-    +'<div class="an-btns">'
-      +(ph?'<button type="button" class="an-b an-call" data-a="call">'+L2("Llamar","Call")+'</button>':'')
-      +(ad?'<button type="button" class="an-b an-go" data-a="go">'+L2("Ir","Go")+'</button>':'')
-      +'<button type="button" class="an-b an-open" data-a="open">'+L2("Abrir ticket","Open ticket")+'</button>'
-    +'</div>'
-    +(faltan>0?'<div class="an-rest">'+L2("Después de esta: ","After this one: ")
-        +'<b>'+faltan+'</b> '+L2(faltan===1?"parada más hoy":"paradas más hoy",faltan===1?"more stop today":"more stops today")+'</div>':'');
-
-  host.onclick=function(ev){
-    var b=ev.target&&ev.target.closest?ev.target.closest("[data-a]"):null;
-    if(!b)return;
-    var a=b.getAttribute("data-a");
-    try{
-      if(a==="call"&&ph){ window.location.href="tel:"+ph; return }
-      if(a==="go"&&ad){ window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(ad),"_blank"); return }
-      if(a==="open"&&typeof openTktDetail==="function"){ openTktDetail(t.id); return }
-    }catch(_e){}
-  };
-}
-function quita(){ var h=document.getElementById("aspNext"); if(h)h.remove() }
-
-/* Se engancha a rndrCal, que es quien repinta la vista Route — asi la tarjeta
-   se actualiza sola al cambiar de dia, al llegar un ticket nuevo o al cerrar
-   una visita, sin observers ni temporizadores propios. */
-if(typeof window.rndrCal==="function"){
-  var _orig=window.rndrCal;
-  window.rndrCal=function(){
-    var r=_orig.apply(this,arguments);
-    try{ pinta() }catch(e){ console.warn("[nextstop]",e) }
-    return r;
-  };
-}
-setTimeout(function(){ try{ pinta() }catch(_e){} },1400);
-})();
-</script>
 
 <style id="aspenCardSkin">
 /* ═══════════════════════════════════════════════════════════════════════
@@ -49116,114 +48980,107 @@ if(typeof window.setMode==="function"){
 
 <style id="aspenTodaySkin">
 /* ═══════════════════════════════════════════════════════════════════════
-   ASPEN SERVICE 2.0 — FASE 6: LA PANTALLA "HOY"  (v2.34.0, 16 ago 2026)
-   La portada del dia, del rediseno que hizo Alberto. ADITIVO Y REVERSIBLE:
-   borrar este bloque y el de abajo (aspenTodayScript) devuelve la app
-   exactamente a como estaba — no se toco ni un renderizador ni una pantalla.
+   ASPEN SERVICE 2.0 — FASE 6: LA PANTALLA "HOY"  (v2.36.0, 17 ago 2026)
+   ADITIVO Y REVERSIBLE: borrar este bloque y el de abajo (aspenTodayScript)
+   devuelve la app a como estaba.
 
-   CERO DATOS NUEVOS. Todo sale de lo que la app ya tiene en memoria:
-   `active`/`done` para las paradas, `_statCompletedOn` (el motor unico de
-   KPI de la v1.9.0) para las completadas, `moneySub` del Billing Sprint
-   para el dinero, y `openTktDetail` para abrir. Cero lecturas de Firestore.
+   v2.36.0 — REHECHA. La primera version tenia un heroe grande y una lista
+   corrida, y en produccion se llenaba de letras: `spaDesc` no es un modelo
+   corto sino un volcado de 600+ caracteres. Ahora: franja fina de siguiente
+   parada, cuatro numeros, y LOS TICKETS AGRUPADOS POR TECNICO, que es como
+   Alberto los quiere leer. Del spa solo se muestra el modelo, sacado con
+   `_itkSpaParse` (el parser que ya existia en Intake).
 
-   Las MILLAS del recorrido que salen en la maqueta NO estan: no hay
-   distancias sin geocodificar, y un numero inventado en la pantalla que
-   el tecnico mira primero es peor que no ponerlo.
+   CERO DATOS NUEVOS: `active`/`done` para las paradas, `_statCompletedOn`
+   para las completadas, `moneySub` para el dinero, `openTktDetail` para
+   abrir. Cero lecturas de Firestore.
    ═══════════════════════════════════════════════════════════════════════ */
 #pg16{padding-bottom:80px}
-#pg16 .tdy-h{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:2px 0 18px}
-#pg16 .tdy-h h1{margin:0;font-size:31px;font-weight:800;letter-spacing:-.02em;line-height:1}
-#pg16 .tdy-h .tdy-sub{color:var(--i3);font-size:13.5px;padding-bottom:4px;flex:1;min-width:150px}
+#pg16 .tdy-h{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:2px 0 14px}
+#pg16 .tdy-h h1{margin:0;font-size:29px;font-weight:800;letter-spacing:-.02em;line-height:1}
+#pg16 .tdy-h .tdy-sub{color:var(--i3);font-size:13.5px;padding-bottom:4px;flex:1;min-width:170px}
 
-/* ── el heroe: la siguiente parada ── */
-#pg16 .tdy-next{background:var(--hdr-bg);color:#F7F1E9;border-radius:20px;padding:22px 24px 20px;
-  margin-bottom:16px;position:relative;overflow:hidden}
-#pg16 .tdy-next::after{content:"";position:absolute;right:-70px;top:-70px;width:230px;height:230px;
-  border-radius:50%;background:rgba(212,119,44,.10);pointer-events:none}
-#pg16 .tdy-next .tdy-k{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;
-  letter-spacing:1.5px;text-transform:uppercase;color:#C6B5A4;margin-bottom:9px}
-#pg16 .tdy-next .tdy-k i{width:8px;height:8px;border-radius:50%;background:var(--ac);flex:none}
-#pg16 .tdy-next h2{margin:0 0 5px;font-size:29px;font-weight:800;line-height:1.12;letter-spacing:-.02em}
-#pg16 .tdy-next .tdy-addr{color:rgba(247,241,233,.72);font-size:14.5px;margin-bottom:14px}
-#pg16 .tdy-next .tdy-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-#pg16 .tdy-next .tdy-c{background:rgba(255,255,255,.10);border-radius:999px;padding:6px 13px;
-  font-size:12.5px;font-weight:700}
-#pg16 .tdy-next .tdy-c.money{background:#C9A227;color:#211712;font-weight:800}
-#pg16 .tdy-next .tdy-c.warn{background:rgba(255,255,255,.16);color:#F7F1E9}
-#pg16 .tdy-acts{display:flex;gap:10px;flex-wrap:wrap}
-#pg16 .tdy-b{border:none;border-radius:12px;padding:12px 22px;font:inherit;font-size:14.5px;
+/* ── franja de siguiente parada ── */
+#pg16 .tdy-next{background:var(--hdr-bg);color:#F7F1E9;border-radius:16px;padding:15px 18px;
+  margin-bottom:14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+#pg16 .tdy-nx-i{flex:1;min-width:210px}
+#pg16 .tdy-k{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:800;
+  letter-spacing:1.3px;text-transform:uppercase;color:#C6B5A4;margin-bottom:5px}
+#pg16 .tdy-k i{width:7px;height:7px;border-radius:50%;background:var(--ac);flex:none}
+#pg16 .tdy-next h2{margin:0 0 4px;font-size:21px;font-weight:800;line-height:1.15;letter-spacing:-.01em}
+#pg16 .tdy-addr{color:rgba(247,241,233,.72);font-size:13px;display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap}
+#pg16 .tdy-mod{background:rgba(255,255,255,.12);border-radius:999px;padding:2px 9px;font-size:11.5px;
+  font-weight:700;color:#F7F1E9;white-space:nowrap}
+#pg16 .tdy-mod.war{background:rgba(255,255,255,.2)}
+#pg16 .tdy-mod.money{background:#C9A227;color:#211712;font-weight:800}
+#pg16 .tdy-acts{display:flex;gap:8px;flex-wrap:wrap}
+#pg16 .tdy-b{border:none;border-radius:10px;padding:9px 16px;font:inherit;font-size:13.5px;
   font-weight:800;cursor:pointer;line-height:1.2}
 #pg16 .tdy-b.call{background:#fff;color:#211712}
 #pg16 .tdy-b.go{background:transparent;color:#F7F1E9;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.34)}
 #pg16 .tdy-b.open{background:var(--ac);color:#fff}
 #pg16 .tdy-b:active{transform:scale(.985)}
-#pg16 .tdy-rest{margin-top:14px;font-size:12.5px;color:rgba(247,241,233,.6)}
-#pg16 .tdy-rest b{color:#F7F1E9}
-/* sin paradas: el heroe no desaparece, dice por que */
 #pg16 .tdy-next.vacio{background:var(--cd);color:var(--ink);border:1px solid var(--ln)}
-#pg16 .tdy-next.vacio::after{display:none}
 #pg16 .tdy-next.vacio .tdy-k{color:var(--i3)}
-#pg16 .tdy-next.vacio h2{font-size:20px;font-weight:700}
-#pg16 .tdy-next.vacio .tdy-addr{color:var(--i3);margin-bottom:0}
+#pg16 .tdy-next.vacio h2{font-size:17px;font-weight:700;margin:0}
 
 /* ── los cuatro numeros ── */
-#pg16 .tdy-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
-  margin-bottom:24px}
-#pg16 .tdy-kpi{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px;
+#pg16 .tdy-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+  margin-bottom:22px}
+#pg16 .tdy-kpi{background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:13px 15px;
   box-shadow:0 1px 2px rgba(27,22,19,.04)}
-#pg16 .tdy-kpi .kl{font-size:10.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
-  color:var(--i3);margin-bottom:8px}
-#pg16 .tdy-kpi .kv{font-size:33px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink)}
+#pg16 .tdy-kpi .kl{font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--i3);margin-bottom:6px}
+#pg16 .tdy-kpi .kv{font-size:28px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink)}
 #pg16 .tdy-kpi .kv.money{color:#C9A227}
 #pg16 .tdy-kpi .kv.ac{color:var(--ac)}
-#pg16 .tdy-kpi .kd{font-size:12.5px;color:var(--i3);margin-top:7px}
+#pg16 .tdy-kpi .kd{font-size:12px;color:var(--i3);margin-top:5px}
 
-/* ── la ruta del dia ── */
-#pg16 .tdy-rh{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
-#pg16 .tdy-rh h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+/* ── columnas por tecnico ── */
+#pg16 .tdy-rh{display:flex;align-items:baseline;gap:12px;margin:0 0 11px}
+#pg16 .tdy-rh h3{margin:0;font-size:18px;font-weight:800;letter-spacing:-.01em}
 #pg16 .tdy-rh span{margin-left:auto;font-size:12.5px;color:var(--i3)}
-#pg16 .tdy-stop{display:flex;gap:14px;align-items:stretch;margin-bottom:9px}
-#pg16 .tdy-n{flex:none;width:34px;display:flex;flex-direction:column;align-items:center;gap:5px}
-#pg16 .tdy-n b{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;flex:none;
-  background:var(--acl);color:var(--acd);font-size:13.5px;font-weight:800;
-  box-shadow:inset 0 0 0 1px var(--ln)}
-#pg16 .tdy-stop.now .tdy-n b{background:var(--ac);color:#fff;box-shadow:none}
-#pg16 .tdy-stop.hecha .tdy-n b{background:var(--c-success-bg);color:var(--c-success-fg);box-shadow:none}
-#pg16 .tdy-n i{flex:1;width:2px;background:var(--ln);border-radius:1px}
-#pg16 .tdy-stop:last-child .tdy-n i{display:none}
-#pg16 .tdy-card{flex:1;min-width:0;background:var(--cd);border:1px solid var(--ln);border-radius:14px;
-  padding:14px 16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;
+#pg16 .tdy-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:12px;
+  align-items:start}
+#pg16 .tdy-col{background:var(--cd);border:1px solid var(--ln);border-radius:14px;overflow:hidden;
   box-shadow:0 1px 2px rgba(27,22,19,.04)}
-#pg16 .tdy-card:hover{border-color:var(--ac)}
-#pg16 .tdy-card .tdy-i{flex:1;min-width:0}
-#pg16 .tdy-card .tdy-nm{font-size:15.5px;font-weight:800;line-height:1.25;display:flex;gap:9px;
-  align-items:center;flex-wrap:wrap}
-#pg16 .tdy-card .tdy-meta{font-size:13px;color:var(--i3);margin-top:5px;line-height:1.5}
-#pg16 .tdy-card .tdy-r{text-align:right;white-space:nowrap;flex:none}
-#pg16 .tdy-card .tdy-r .hh{font-size:15px;font-weight:800;color:var(--ink)}
-#pg16 .tdy-card .tdy-r .mm{font-size:13.5px;font-weight:800;color:var(--acd);margin-top:5px}
-#pg16 .tdy-card .tdy-r .mm.na{color:var(--i3);font-weight:600}
-#pg16 .tdy-p{border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:.02em}
+#pg16 .tdy-th{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--c-ash,#F4F1EC);
+  border-bottom:1px solid var(--ln)}
+#pg16 .tdy-th b{font-size:13px;font-weight:800;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--i2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pg16 .tdy-th span{margin-left:auto;background:var(--cd);border:1px solid var(--ln);border-radius:999px;
+  min-width:22px;text-align:center;padding:1px 7px;font-size:11.5px;font-weight:800;color:var(--i2)}
+#pg16 .tdy-card{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;cursor:pointer;
+  border-bottom:1px solid var(--ln)}
+#pg16 .tdy-card:last-child{border-bottom:none}
+#pg16 .tdy-card:hover{background:var(--acl)}
+#pg16 .tdy-card.now{box-shadow:inset 3px 0 0 var(--ac)}
+#pg16 .tdy-card.hecha{opacity:.62}
+#pg16 .tdy-hh{flex:none;font-size:12.5px;font-weight:800;color:var(--i2);width:44px;padding-top:1px}
+#pg16 .tdy-i{flex:1;min-width:0}
+#pg16 .tdy-nm{font-size:14.5px;font-weight:700;line-height:1.25;word-break:break-word}
+#pg16 .tdy-meta{font-size:12px;color:var(--i3);margin-top:3px;line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pg16 .tdy-meta.mod{color:var(--i2);font-weight:600}
+#pg16 .tdy-pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+#pg16 .tdy-mm{flex:none;font-size:13px;font-weight:800;color:var(--acd);white-space:nowrap;padding-top:1px}
+#pg16 .tdy-p{border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:800;letter-spacing:.02em}
 #pg16 .tdy-p.now{background:var(--acl);color:var(--acd)}
 #pg16 .tdy-p.hecha{background:var(--c-success-bg);color:var(--c-success-fg)}
 #pg16 .tdy-p.gar{background:var(--c-success-bg);color:var(--c-success-fg)}
-#pg16 .tdy-p.pend{background:var(--c-neutral-bg);color:var(--c-neutral-fg)}
 #pg16 .tdy-p.urg{background:var(--c-danger-bg);color:var(--c-danger-fg)}
 #pg16 .tdy-none{background:var(--cd);border:1px dashed var(--ln);border-radius:14px;padding:30px 16px;
   text-align:center;color:var(--i3);font-size:14px}
 
 @media(max-width:640px){
-  #pg16 .tdy-h h1{font-size:26px}
-  #pg16 .tdy-next{padding:18px 18px 16px;border-radius:16px}
-  #pg16 .tdy-next h2{font-size:23px}
-  #pg16 .tdy-acts{display:grid;grid-template-columns:1fr 1fr}
-  #pg16 .tdy-b.open{grid-column:1/-1}
-  #pg16 .tdy-kpis{grid-template-columns:1fr 1fr;gap:10px}
-  #pg16 .tdy-kpi{padding:13px 14px}
-  #pg16 .tdy-kpi .kv{font-size:27px}
-  #pg16 .tdy-card{flex-direction:column;gap:8px}
-  #pg16 .tdy-card .tdy-r{text-align:left;display:flex;gap:12px;align-items:baseline}
-  #pg16 .tdy-card .tdy-r .mm{margin-top:0}
+  #pg16 .tdy-h h1{font-size:25px}
+  #pg16 .tdy-next{padding:14px;border-radius:14px}
+  #pg16 .tdy-next h2{font-size:19px}
+  #pg16 .tdy-acts{width:100%;display:grid;grid-template-columns:1fr 1fr 1fr}
+  #pg16 .tdy-kpis{grid-template-columns:1fr 1fr;gap:9px}
+  #pg16 .tdy-kpi .kv{font-size:24px}
+  #pg16 .tdy-cols{grid-template-columns:1fr}
 }
 </style>
 
@@ -49283,7 +49140,36 @@ function tel(t){
 function dir(t){
   return [t.address,t.city,t.zip].filter(function(x){return String(x||"").trim()}).join(", ").trim();
 }
-function tina(t){ return t.spaDesc||t.spaModel||"" }
+/* v2.36.0 — `spaDesc` NO es un modelo corto: en produccion es un volcado de
+   600+ caracteres (jets, bombas, pack, cabinet...) y pintado entero llenaba
+   esta pantalla de letras. Ya existe un parser para eso, `_itkSpaParse` del
+   bloque de Intake, que saca el modelo — se REUSA en vez de escribir otro.
+   Si no hay parser o no encuentra modelo, se corta por lo sano; nunca se
+   vuelca el parrafo. */
+function tina(t){
+  var crudo=String(t.spaDesc||t.spaModel||"").replace(/\s+/g," ").trim();
+  if(!crudo)return "";
+  try{
+    if(typeof _itkSpaParse==="function"){
+      var p=_itkSpaParse(crudo);
+      if(p&&p.modelo)return String(p.modelo).trim().slice(0,42);
+      if(p&&p.corto)return crudo.slice(0,42);
+    }
+  }catch(_e){}
+  /* sin parser: la cabeza del volcado suele ser "2024 13' Swim Party Spa - ES
+     SERIAL #..." — se toma lo de antes del primer guion o de "SERIAL". */
+  var corte=crudo.split(/\s+-\s+|\bES SERIAL\b|\bSERIAL\b/i)[0];
+  return corte.trim().slice(0,42);
+}
+/* Direccion en una linea corta: calle y ciudad, sin el codigo postal. */
+function dirCorta(t){
+  return [t.address,t.city].filter(function(x){return String(x||"").trim()}).join(", ").trim();
+}
+/* Los tecnicos asignados a una parada. Sin asignar = su propio grupo. */
+function tecnicos(t){
+  var ts=(t&&Array.isArray(t.techs))?t.techs.filter(Boolean):[];
+  return ts.length?ts:[null];
+}
 function dinero(n){ return "$"+Math.round(n).toLocaleString("en-US") }
 
 /* Horas del dia = suma de llegada→salida de las paradas que traen las dos.
@@ -49309,10 +49195,9 @@ function fechaLarga(){
 }
 
 function pinta(){
-  var pg=document.getElementById("pg"+IDX);
-  if(!pg)return;
+  var pg=document.getElementById("pg"+IDX); if(!pg)return;
   var lista=paradas(), abiertas=lista.filter(function(t){ return !cerrada(t) });
-  var sig=abiertas[0]||null, faltan=Math.max(0,abiertas.length-1);
+  var sig=abiertas[0]||null;
 
   /* completadas: el motor unico de la v1.9.0, para que este numero no
      contradiga al de Daily ni al del panel de Admin (ya paso una vez). */
@@ -49334,35 +49219,32 @@ function pinta(){
     +'<div class="tdy-sub">'+esc2(fechaLarga())+(lista.length?' &middot; '+lista.length+' '
       +L2(lista.length===1?"parada":"paradas",lista.length===1?"stop":"stops"):'')+'</div></div>';
 
-  /* ── siguiente parada ── */
+  /* ── siguiente parada: UNA FRANJA, no un cartel ──
+     v2.36.0 — antes era un heroe con el volcado del spa dentro y ocupaba
+     media pantalla. Lo que hace falta saber de un vistazo es a quien toca
+     ahora, a que hora y donde; el resto esta a un toque en el ticket. */
   if(sig){
-    var ph=tel(sig), ad=dir(sig), mn=monto(sig);
+    var ph=tel(sig), ad=dirCorta(sig), mn=monto(sig), md=tina(sig);
     H+='<div class="tdy-next" id="tdyNext">'
-      +'<div class="tdy-k"><i></i>'+L2("SIGUIENTE PARADA","NEXT STOP")+'</div>'
-      +'<h2>'+esc2(sig.customer||"—")+'</h2>'
-      +(ad?'<div class="tdy-addr">'+esc2(ad)+'</div>':'')
-      +'<div class="tdy-chips">'
-        +(sig.arrival?'<span class="tdy-c">'+esc2(sig.arrival)+'</span>':'')
-        +(tina(sig)?'<span class="tdy-c">'+esc2(tina(sig))+'</span>':'')
-        +(garantia(sig)?'<span class="tdy-c warn">'+L2("Garantía","Warranty")+'</span>':'')
-        +(mn?'<span class="tdy-c money">'+L2("Cobrar","Collect")+' '+dinero(mn)+'</span>':'')
+      +'<div class="tdy-nx-i">'
+        +'<div class="tdy-k"><i></i>'+L2("SIGUIENTE","NEXT")+(sig.arrival?' &middot; '+esc2(sig.arrival):'')+'</div>'
+        +'<h2>'+esc2(sig.customer||"—")+'</h2>'
+        +'<div class="tdy-addr">'+esc2(ad||"")
+          +(md?'<span class="tdy-mod">'+esc2(md)+'</span>':'')
+          +(garantia(sig)?'<span class="tdy-mod war">'+L2("Garantía","Warranty")+'</span>':'')
+          +(mn?'<span class="tdy-mod money">'+dinero(mn)+'</span>':'')
+        +'</div>'
       +'</div>'
       +'<div class="tdy-acts">'
-        +(ph?'<button type="button" class="tdy-b call" data-a="call">'+L2("Llamar","Call")+'</button>':'')
-        +(ad?'<button type="button" class="tdy-b go" data-a="go">'+L2("Ir","Go")+'</button>':'')
-        +'<button type="button" class="tdy-b open" data-a="open">'+L2("Abrir ticket","Open ticket")+'</button>'
-      +'</div>'
-      +(faltan>0?'<div class="tdy-rest">'+L2("Después de esta: ","After this one: ")+'<b>'+faltan+'</b> '
-        +L2(faltan===1?"parada más hoy":"paradas más hoy",faltan===1?"more stop today":"more stops today")
-        +'</div>':'')
-      +'</div>';
+        +(ph?'<button type="button" class="tdy-b call" data-a="call" title="'+L2("Llamar","Call")+'">'+L2("Llamar","Call")+'</button>':'')
+        +(ad?'<button type="button" class="tdy-b go" data-a="go" title="'+L2("Ir","Go")+'">'+L2("Ir","Go")+'</button>':'')
+        +'<button type="button" class="tdy-b open" data-a="open">'+L2("Abrir","Open")+'</button>'
+      +'</div></div>';
   }else{
-    H+='<div class="tdy-next vacio"><div class="tdy-k">'+L2("SIGUIENTE PARADA","NEXT STOP")+'</div>'
+    H+='<div class="tdy-next vacio"><div class="tdy-nx-i">'
+      +'<div class="tdy-k">'+L2("SIGUIENTE","NEXT")+'</div>'
       +'<h2>'+(lista.length?L2("Todo cerrado por hoy","All wrapped up for today")
                           :L2("No hay paradas para hoy","No stops scheduled today"))+'</h2>'
-      +'<div class="tdy-addr">'+(lista.length
-          ?L2("Las "+lista.length+" paradas del día ya tienen reporte.","All "+lista.length+" stops are reported.")
-          :L2("Lo que se agende para hoy aparece aquí solo.","Anything scheduled for today shows up here on its own."))
       +'</div></div>';
   }
 
@@ -49370,8 +49252,8 @@ function pinta(){
   H+='<div class="tdy-kpis">'
     +'<div class="tdy-kpi"><div class="kl">'+L2("Paradas","Stops")+'</div>'
       +'<div class="kv">'+lista.length+'</div>'
-      +'<div class="kd">'+hechas+' '+L2(hechas===1?"completada":"completadas",hechas===1?"completed":"completed")+'</div></div>'
-    +'<div class="tdy-kpi"><div class="kl">'+L2("Por cobrar hoy","To collect today")+'</div>'
+      +'<div class="kd">'+hechas+' '+L2("hechas","done")+'</div></div>'
+    +'<div class="tdy-kpi"><div class="kl">'+L2("Por cobrar","To collect")+'</div>'
       +'<div class="kv money">'+(porCobrar?dinero(porCobrar):"$0")+'</div>'
       +'<div class="kd">'+nClientes+' '+L2(nClientes===1?"cliente":"clientes",nClientes===1?"customer":"customers")+'</div></div>'
     +'<div class="tdy-kpi"><div class="kl">'+L2("Reportes","Reports")+'</div>'
@@ -49379,32 +49261,60 @@ function pinta(){
       +'<div class="kd">'+(lista.length-conReporte)+' '+L2("pendientes","pending")+'</div></div>'
     +'<div class="tdy-kpi"><div class="kl">'+L2("Horas","Hours")+'</div>'
       +'<div class="kv">'+(hs?hs.toFixed(1):"—")+'</div>'
-      +'<div class="kd">'+L2("de llegada a salida","arrival to departure")+'</div></div>'
+      +'<div class="kd">'+L2("llegada a salida","arrival to departure")+'</div></div>'
     +'</div>';
 
-  /* ── la ruta del dia ── */
-  H+='<div class="tdy-rh"><h3>'+L2("Ruta de hoy","Today\u2019s route")+'</h3>'
+  /* ── LOS TICKETS, POR TECNICO ──
+     v2.36.0 — Alberto pidio verlos asi y no como una lista corrida. Una
+     parada con dos tecnicos aparece en las dos columnas, igual que en la
+     vista Route del calendario. Las que nadie tiene van a "Sin asignar". */
+  var col={}, orden=[], soloYo=yo();
+  lista.forEach(function(t){
+    /* Un tecnico ve UNA columna: la suya. Si la parada es compartida, la
+       columna del companero seria la misma parada repetida — ruido, no dato. */
+    (soloYo?[soloYo]:tecnicos(t)).forEach(function(n){
+      var k=n||"__sin__";
+      if(!col[k]){ col[k]={nombre:n,paradas:[]}; orden.push(k) }
+      col[k].paradas.push(t);
+    });
+  });
+  /* mas paradas primero; "sin asignar" siempre al final */
+  orden.sort(function(a,b){
+    if(a==="__sin__")return 1; if(b==="__sin__")return -1;
+    return col[b].paradas.length-col[a].paradas.length;
+  });
+
+  H+='<div class="tdy-rh"><h3>'+L2("Por técnico","By tech")+'</h3>'
     +'<span>'+lista.length+' '+L2(lista.length===1?"parada":"paradas",lista.length===1?"stop":"stops")+'</span></div>';
+
   if(!lista.length){
     H+='<div class="tdy-none">'+L2("Nada agendado para hoy.","Nothing scheduled for today.")+'</div>';
   }else{
-    lista.forEach(function(t,n){
-      var fin=cerrada(t), esSig=(sig&&t===sig), m=monto(t);
-      var pill = fin ? '<span class="tdy-p hecha">'+L2("Completada","Done")+'</span>'
-               : esSig? '<span class="tdy-p now">'+L2("En camino","On the way")+'</span>'
-               : '<span class="tdy-p pend">'+L2("Pendiente","Pending")+'</span>';
-      var extra = garantia(t)?'<span class="tdy-p gar">'+L2("Garantía","Warranty")+'</span>':'';
-      if(t.urgent)extra+='<span class="tdy-p urg">'+L2("Urgente","Urgent")+'</span>';
-      var meta=[dir(t),tina(t)].filter(Boolean).map(esc2).join('<br>');
-      H+='<div class="tdy-stop'+(fin?" hecha":(esSig?" now":""))+'">'
-        +'<div class="tdy-n"><b>'+(n+1)+'</b><i></i></div>'
-        +'<div class="tdy-card" data-open="'+esc2(t.id)+'">'
-          +'<div class="tdy-i"><div class="tdy-nm">'+esc2(t.customer||"—")+pill+extra+'</div>'
-          +(meta?'<div class="tdy-meta">'+meta+'</div>':'')+'</div>'
-          +'<div class="tdy-r"><div class="hh">'+esc2(t.arrival||"—")+'</div>'
-          +'<div class="mm'+(m?"":" na")+'">'+(m?dinero(m):"—")+'</div></div>'
-        +'</div></div>';
+    H+='<div class="tdy-cols">';
+    orden.forEach(function(k){
+      var c=col[k];
+      H+='<div class="tdy-col"><div class="tdy-th">'
+        +'<b>'+esc2(c.nombre||L2("Sin asignar","Unassigned"))+'</b>'
+        +'<span>'+c.paradas.length+'</span></div>';
+      c.paradas.forEach(function(t){
+        var fin=cerrada(t), esSig=(sig&&t===sig), m=monto(t), md=tina(t);
+        var estado = fin ? '<span class="tdy-p hecha">'+L2("Hecha","Done")+'</span>'
+                 : esSig? '<span class="tdy-p now">'+L2("Ahora","Now")+'</span>' : '';
+        if(garantia(t))estado+='<span class="tdy-p gar">'+L2("Gar.","Wty")+'</span>';
+        if(t.urgent)  estado+='<span class="tdy-p urg">'+L2("Urgente","Urgent")+'</span>';
+        H+='<div class="tdy-card'+(fin?" hecha":(esSig?" now":""))+'" data-open="'+esc2(t.id)+'">'
+          +'<div class="tdy-hh">'+esc2(t.arrival||"—")+'</div>'
+          +'<div class="tdy-i"><div class="tdy-nm">'+esc2(t.customer||"—")+'</div>'
+          +(dirCorta(t)?'<div class="tdy-meta">'+esc2(dirCorta(t))+'</div>':'')
+          +(md?'<div class="tdy-meta mod">'+esc2(md)+'</div>':'')
+          +(estado?'<div class="tdy-pills">'+estado+'</div>':'')
+          +'</div>'
+          +(m?'<div class="tdy-mm">'+dinero(m)+'</div>':'')
+          +'</div>';
+      });
+      H+='</div>';
     });
+    H+='</div>';
   }
   pg.innerHTML=H;
 
@@ -49932,6 +49842,664 @@ function entra(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta);
 else monta();
 setTimeout(monta,1500);
+})();
+</script>
+
+
+<script id="aspenNavTrimScript">
+/* ═══════════════════════════════════════════════════════════════════════
+   RECORTE DE NAVEGACION  (v2.36.0, 17 ago 2026)
+   Alberto: "conversations no se que es, no se para que sirve, nunca lo
+   utilizo". Se esconde del menu — NO se borra: el codigo, los datos y los
+   listeners siguen intactos, asi que volver a verla es quitar su id de la
+   lista de aqui abajo. Si Nela o Celia si la usan, con eso vuelve.
+
+   Va en bloque propio y no metido en otro para que se lea de un vistazo
+   que pestanas estan escondidas y por que.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+if(window.__aspNavTrim)return; window.__aspNavTrim=true;
+
+var OCULTAR=["tab13"];   /* 13 = Conversations */
+
+function recorta(){
+  OCULTAR.forEach(function(id){
+    var t=document.getElementById(id);
+    if(t)t.classList.add("hidden");
+  });
+}
+
+/* updAdmin vuelve a decidir que pestanas se ven en cada entrada, asi que hay
+   que recortar DESPUES de que corra; si no, ella la reabre. */
+if(typeof window.updAdmin==="function"){
+  var _ua=window.updAdmin;
+  window.updAdmin=function(){ var r=_ua.apply(this,arguments); try{ recorta() }catch(_e){} return r };
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",recorta);
+else recorta();
+setTimeout(recorta,1500);
+})();
+</script>
+
+
+<style id="aspenIntakeASkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   INTAKE — BANDEJA  (v2.37.0, 17 ago 2026)   La opcion A que eligio Alberto.
+   ADITIVO Y REVERSIBLE: borrar este bloque y el de abajo (aspenIntakeAScript)
+   deja la pantalla de Intake exactamente como estaba.
+
+   NO se reescribe rndrIntake ni se duplica un solo dato. El bloque de abajo
+   REORDENA lo que la pantalla ya pinto: mueve los MISMOS campos del formulario
+   a una barra de una linea (los ids no cambian, asi que itkCreate sigue
+   funcionando sin tocarla) y le anade a cada fila el riel del viaje, leyendo
+   el objeto con _itkFind.
+
+   Dos cosas que Alberto pidio expresamente:
+     · el formulario de "New link" SIEMPRE abierto — nada de pulsar para abrir;
+     · y compacto: ocupaba media pantalla para pedir UN campo obligatorio.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── la barra de nuevo link ── */
+body.itk-a #pg14 .itk-form{padding:11px 13px;border-radius:14px;margin-bottom:16px}
+body.itk-a #pg14 .itk-form h3,
+body.itk-a #pg14 .itk-form>p{display:none}
+body.itk-a #pg14 .itk-lbl{display:none}
+body.itk-a .itka-l1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+body.itk-a .itka-et{font-size:10.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--i3);white-space:nowrap;padding-right:3px}
+body.itk-a .itka-l1 .itk-inp{height:40px;padding:0 12px;font-size:14px;margin:0;min-width:0;resize:none}
+body.itk-a .itka-l1 #itkName{flex:2 1 210px}
+body.itk-a .itka-l1 #itkPhone{flex:1 1 130px}
+body.itk-a .itka-l1 #itkNote{flex:3 1 260px;line-height:38px;overflow:hidden;white-space:nowrap}
+body.itk-a .itka-mas{background:none;border:none;font:inherit;font-size:12.5px;font-weight:700;
+  color:var(--i3);cursor:pointer;padding:8px 2px 0;text-decoration:underline;text-underline-offset:3px}
+body.itk-a .itka-mas:hover{color:var(--acd)}
+body.itk-a .itka-l2{display:none;gap:8px;margin-top:8px;flex-wrap:wrap}
+body.itk-a .itka-l2.on{display:flex}
+body.itk-a .itka-l2 .itk-inp{flex:1 1 150px;height:40px;padding:0 12px;font-size:14px;margin:0}
+/* el boton de "+ New link" del encabezado deja de tener sentido */
+body.itk-a #pg14 .itk-head>button{display:none}
+
+/* ── el riel del viaje, en cada fila ── */
+body.itk-a #pg14 .itk-row{flex-wrap:wrap;align-items:flex-start}
+body.itk-a .itka-via{flex:0 0 100%;display:flex;align-items:center;margin:7px 0 1px;padding-left:1px}
+body.itk-a .itka-via i{width:8px;height:8px;border-radius:50%;background:var(--ln);flex:none}
+body.itk-a .itka-via i.on{background:var(--c-success-strong,#2E8B57)}
+body.itk-a .itka-via i.now{background:var(--ac);box-shadow:0 0 0 3px var(--acl)}
+body.itk-a .itka-via s{flex:none;width:22px;height:2px;background:var(--ln);text-decoration:none}
+body.itk-a .itka-via s.on{background:var(--c-success-strong,#2E8B57)}
+body.itk-a .itka-via em{font-style:normal;font-size:11px;color:var(--i3);margin-left:10px;
+  font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.itk-a .itka-via em.tarde{color:var(--c-warning-fg)}
+
+@media(max-width:700px){
+  /* OJO: nada de flex-direction:column aqui. Los campos llevan flex-basis y en
+     una columna ese basis se convierte en ALTURA — cajas de 210 y 260 px. Con
+     grid ese valor no aplica y el fallo no puede volver. */
+  body.itk-a .itka-l1{display:grid;grid-template-columns:1fr;gap:7px;align-items:stretch}
+  body.itk-a .itka-l1 #itkName,
+  body.itk-a .itka-l1 #itkPhone,
+  body.itk-a .itka-l1 #itkNote{flex:none;width:100%}
+  /* 16px o menos hace que Safari de iPhone haga zoom al enfocar */
+  body.itk-a .itka-l1 .itk-inp,
+  body.itk-a .itka-l2 .itk-inp{height:46px;font-size:16px}
+  body.itk-a .itka-l1 #itkNote{line-height:44px}
+  body.itk-a .itka-l1 .itk-btn{width:100%;height:46px}
+  body.itk-a .itka-l2{display:none;grid-template-columns:1fr 1fr;gap:7px}
+  body.itk-a .itka-l2.on{display:grid}
+  body.itk-a .itka-l2 .itk-inp{flex:none;width:100%}
+  body.itk-a .itka-l2 #itkEmail,
+  body.itk-a .itka-l2 #itkAddr{grid-column:1/-1}
+}
+</style>
+
+<script id="aspenIntakeAScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__itkA)return; window.__itkA=true;
+
+var MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+/* 2026-08-20 -> "20 ago". La fecha ISO cruda convive hoy con "7 days ago" en la
+   misma pantalla; con dos formatos a la vez cuesta comparar de un vistazo. */
+function fechaCorta(iso){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||"").trim());
+  if(!m)return null;
+  return String(+m[3])+" "+MESES[(+m[2])-1];
+}
+function textoFechas(el){
+  if(!el)return;
+  var t=el.textContent;
+  if(!/\d{4}-\d{2}-\d{2}/.test(t))return;
+  el.textContent=t.replace(/(\d{4}-\d{2}-\d{2})/g,function(x){ return fechaCorta(x)||x });
+}
+
+/* ── EL FORMULARIO, SIEMPRE ABIERTO Y EN UNA LINEA ──────────────────────
+   Se MUEVEN los campos que rndrIntake ya pinto; no se recrean. Conservan sus
+   ids, asi que itkCreate() los sigue leyendo igual y no hay una segunda copia
+   de la logica de creacion que mantener a la par.                         */
+function compacta(){
+  var form=document.querySelector("#pg14 .itk-form");
+  if(!form||form.getAttribute("data-itka")==="1")return;
+  var nom=form.querySelector("#itkName");
+  if(!nom)return;                      /* es el panel "Link ready", no el alta */
+  var btn=form.querySelector("#itkCreateBtn");
+  if(!btn)return;
+
+  var l1=document.createElement("div"); l1.className="itka-l1";
+  var et=document.createElement("span"); et.className="itka-et";
+  et.textContent=(typeof L2==="function")?L2("Nuevo link","New link"):"New link";
+  l1.appendChild(et);
+  ["itkName","itkPhone","itkNote"].forEach(function(id){
+    var e=form.querySelector("#"+id); if(e)l1.appendChild(e);
+  });
+  l1.appendChild(btn);
+
+  var mas=document.createElement("button");
+  mas.type="button"; mas.className="itka-mas";
+  mas.textContent=(typeof L2==="function")
+    ? L2("+ correo y direcci\u00f3n (opcional)","+ email and address (optional)")
+    : "+ email and address (optional)";
+
+  var l2=document.createElement("div"); l2.className="itka-l2";
+  ["itkEmail","itkAddr","itkCity","itkZip"].forEach(function(id){
+    var e=form.querySelector("#"+id); if(e)l2.appendChild(e);
+  });
+  mas.onclick=function(){ l2.classList.toggle("on") };
+
+  /* fuera lo que ya no aplica: el "Cancel" del formulario y los envoltorios
+     vacios que quedaron al sacar los campos */
+  Array.prototype.forEach.call(form.querySelectorAll(".itk-acts"),function(a){ a.remove() });
+  Array.prototype.forEach.call(form.querySelectorAll(".itk-g2,.itk-g3"),function(g){ g.remove() });
+  Array.prototype.forEach.call(form.querySelectorAll(".itk-lbl"),function(l){ l.remove() });
+
+  form.appendChild(l1); form.appendChild(mas); form.appendChild(l2);
+  form.setAttribute("data-itka","1");
+
+  /* Enter en el nombre o en el telefono crea el link: es un formulario de una
+     linea, obligar a soltar el teclado para ir al boton seria un paso de mas. */
+  ["itkName","itkPhone","itkNote"].forEach(function(id){
+    var e=document.getElementById(id); if(!e)return;
+    e.onkeydown=function(ev){
+      if(ev.key==="Enter"){ ev.preventDefault(); try{ itkCreate() }catch(_e){} }
+    };
+  });
+}
+
+/* ── EL RIEL DEL VIAJE ──────────────────────────────────────────────────
+   enviado -> abrio -> contesto -> agendado -> ticket. Sale del propio objeto
+   de la solicitud; no se guarda ni se calcula nada nuevo.                 */
+function etapas(it){
+  /* "enviado" NO es "creado": un link puede existir sin haberse mandado. La
+     app ya tiene esa distincion en _itkSentOk — se usa esa y no un criterio
+     mio, que ya me dio un falso "mandado" en el arnes. */
+  var enviado=false;
+  try{ enviado=(typeof _itkSentOk==="function")?!!_itkSentOk(it):!!it.sentAtMs }
+  catch(_e){ enviado=!!it.sentAtMs }
+  var abrio  =!!it.openedAtMs;
+  var contesto=(it.status==="received"||it.status==="triaged"||!!it.submittedAtMs);
+  var agendado=false, ticket=(it.status==="triaged");
+  try{
+    if(ticket&&typeof _itkTicketState==="function"){
+      var tk=(_itkTicketState(it)||{}).t||{};
+      agendado=!!((tk.techs&&tk.techs.length)||tk.date);
+    }
+  }catch(_e){}
+  return [enviado,abrio,contesto,agendado,ticket];
+}
+function queFalta(it,e){
+  var l=function(a,b){ return (typeof L2==="function")?L2(a,b):b };
+  if(!e[0])return l("falta mandarlo","not sent yet");
+  if(!e[2])return e[1]?l("abri\u00f3, sin contestar","opened, no answer")
+                      :l("mandado, sin abrir","sent, not opened");
+  if(!e[4])return l("falta convertirlo","needs a ticket");
+  if(!e[3])return l("falta asignar t\u00e9cnico","needs a tech");
+  return l("en marcha","in motion");
+}
+function riel(fila,tok){
+  if(fila.querySelector(".itka-via"))return;
+  var it=null;
+  try{ it=(typeof _itkFind==="function")?_itkFind(tok):null }catch(_e){}
+  if(!it)return;
+  var e=etapas(it), h="";
+  for(var i=0;i<5;i++){
+    var hecha=e[i], toca=(!hecha && (i===0||e[i-1]));
+    h+='<i class="'+(hecha?"on":(toca?"now":""))+'"></i>';
+    if(i<4)h+='<s class="'+(e[i]&&e[i+1]?"on":"")+'"></s>';
+  }
+  var falta=queFalta(it,e), vieja=false;
+  try{
+    var t0=it.convertedAtMs||it.submittedAtMs||it.sentAtMs||it.createdAtMs;
+    vieja=!!t0 && (Date.now()-t0)>12*86400000;
+  }catch(_e){}
+  var v=document.createElement("div");
+  v.className="itka-via";
+  v.innerHTML=h+'<em class="'+(vieja?"tarde":"")+'">'+falta+'</em>';
+  fila.appendChild(v);
+}
+
+function bandeja(){
+  var pg=document.getElementById("pg14"); if(!pg)return;
+  Array.prototype.forEach.call(pg.querySelectorAll(".itk-row"),function(f){
+    var oc=f.getAttribute("onclick")||"";
+    var m=/_itkOpen\('([^']+)'\)/.exec(oc);
+    if(m)riel(f,m[1]);
+    textoFechas(f.querySelector(".tx i"));
+  });
+  /* el panel de la derecha tambien mezcla formatos de fecha. Los avisos
+     (.itk-warn) entran aqui tambien: el de "ya tiene visita agendada" trae la
+     fecha dentro de la frase, y se me escapaba. */
+  Array.prototype.forEach.call(pg.querySelectorAll(".itk-chip,.itk-warn,.itk-kmini"),textoFechas);
+
+  /* El encabezado decia "1 thing needs you" mientras el filtro marcaba
+     "Needs you 0": dos cuentas distintas con el mismo nombre. Se alinea con
+     la del filtro, que es la que el usuario puede pulsar. */
+  var p=pg.querySelector(".itk-head p");
+  var b=pg.querySelector('.itk-fil button[onclick*="you"]');
+  if(p&&b){
+    var n=parseInt((b.textContent.match(/(\d+)\s*$/)||[])[1],10);
+    if(!isNaN(n)){
+      p.textContent=n
+        ? ((typeof L2==="function")?L2(n+" por atender",n+" waiting on you"):n+" waiting on you")
+        : ((typeof L2==="function")?L2("Nada te espera","Nothing needs you"):"Nothing needs you");
+    }
+  }
+}
+
+function pasada(){
+  try{ document.body.classList.add("itk-a") }catch(_e){}
+  try{ compacta() }catch(e){ console.warn("[intake A] forma",e) }
+  try{ bandeja() }catch(e){ console.warn("[intake A] bandeja",e) }
+}
+
+/* El formulario deja de ser un desplegable: se abre solo y no se cierra. */
+function abreSiempre(){
+  try{ if(typeof _itkNewOpen!=="undefined" && !_itkNewOpen && !_itkLastToken){
+    window._itkNewOpen=true;
+  } }catch(_e){}
+}
+if(typeof window.itkToggleNew==="function"){
+  var _tg=window.itkToggleNew;
+  window.itkToggleNew=function(){
+    /* si lo llama algo interno, que nunca acabe cerrado */
+    var r=_tg.apply(this,arguments);
+    try{ window._itkNewOpen=true; rndrIntake() }catch(_e){}
+    return r;
+  };
+}
+if(typeof window.rndrIntake==="function"){
+  var _rn=window.rndrIntake;
+  window.rndrIntake=function(){
+    abreSiempre();
+    var r=_rn.apply(this,arguments);
+    try{ pasada() }catch(_e){}
+    return r;
+  };
+}
+/* al entrar a la pestana, y de arranque */
+if(typeof window.showTab==="function"){
+  var _st=window.showTab;
+  window.showTab=function(i){
+    var r=_st.apply(this,arguments);
+    if(i===14){ try{ abreSiempre(); rndrIntake() }catch(_e){} }
+    return r;
+  };
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pasada);
+else pasada();
+setTimeout(function(){ try{ abreSiempre() }catch(_e){} },1500);
+})();
+</script>
+
+
+<style id="aspenLimpiezaSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   LIMPIEZA DE PANTALLAS  (v2.37.0, 17 ago 2026)
+   Alberto, mirando la app en produccion: "en mi pagina de service log esas
+   cosas no quiero que se muestren, son suciedad" y "en calendario no quiero
+   que se vea eso de atencion y credit card, muy sucio se ve".
+
+   NADA SE BORRA. Se esconde de la vista, y el codigo, los datos y los
+   listeners siguen intactos: quitar una regla de aqui lo devuelve.
+   - La regla de redondeo y el registro de garantia siguen EN ADMIN, que es
+     donde viven de verdad; aqui eran un espejo para organizers.
+   - El panel de atencion y el de tarjetas pendientes siguen existiendo y
+     calculandose; solo dejan de pintarse encima del calendario.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Service Log (pg5) ── */
+#billingRuleCardOrg,
+#warLogCardOrg{display:none!important}
+#pg5 .asp-orphan-banner{display:none!important}
+
+/* ── Calendario (pg4) ── */
+#attnPanel,
+#calCcReminders{display:none!important}
+
+/* ── Las secciones del Service Log, una al lado de la otra ──
+   Antes iban apiladas: reagendar, luego spa nuevo, luego tarjetas, y habia
+   que bajar por todas. El envoltorio lo pone el script de abajo. */
+.sl-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+  gap:14px;align-items:start;margin-bottom:14px}
+.sl-cols > div{margin-bottom:0!important}
+/* dentro de una columna, las tarjetas van en vertical: la columna ya es angosta */
+.sl-cols > div > div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
+@media(max-width:700px){ .sl-cols{grid-template-columns:1fr;gap:11px} }
+</style>
+
+<script id="aspenLimpiezaScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspLimpieza)return; window.__aspLimpieza=true;
+
+/* ── 1. marcar el banner de "Rescheduled visits not in Service Log" ──
+   Se pinta dentro de rndrSlog sin id propio, asi que no hay selector al que
+   agarrarse: se le pone una clase despues de pintar y el CSS lo esconde. */
+function marcaBanner(){
+  var pg=document.getElementById("pg5"); if(!pg)return;
+  var nodos=pg.querySelectorAll("div");
+  for(var i=0;i<nodos.length;i++){
+    var n=nodos[i];
+    if(n.classList.contains("asp-orphan-banner"))continue;
+    var t=(n.textContent||"");
+    if(t.indexOf("Rescheduled visits not in Service Log")>=0 && n.children.length<=3){
+      n.classList.add("asp-orphan-banner"); break;
+    }
+  }
+}
+
+/* ── 2. las secciones de tarjetas, en columnas ──
+   rndrSlog escupe cada seccion como un <div style="margin-bottom:13px"> con
+   un titulo .lbl dentro. Se agrupan LAS CONSECUTIVAS en un envoltorio de
+   rejilla. Se hace despues de pintar y sobre el DOM, sin tocar el generador:
+   asi el dia que rndrSlog cambie, esto simplemente no encuentra nada y no
+   rompe nada. */
+function columnas(){
+  var pg=document.getElementById("pg5"); if(!pg)return;
+  /* si ya se agrupo en este repintado, fuera */
+  if(pg.querySelector(".sl-cols"))return;
+  var todos=pg.querySelectorAll('div[style*="margin-bottom:13px"]');
+  var secciones=[];
+  for(var i=0;i<todos.length;i++){
+    var d=todos[i];
+    if(d.querySelector(":scope > .lbl"))secciones.push(d);
+  }
+  if(secciones.length<2)return;
+  /* agrupar solo tramos de hermanos SEGUIDOS */
+  var grupo=[secciones[0]];
+  function cierra(g){
+    if(g.length<2)return;
+    var box=document.createElement("div");
+    box.className="sl-cols";
+    g[0].parentNode.insertBefore(box,g[0]);
+    g.forEach(function(x){ box.appendChild(x) });
+  }
+  for(var k=1;k<secciones.length;k++){
+    var prev=grupo[grupo.length-1];
+    if(secciones[k].previousElementSibling===prev &&
+       secciones[k].parentNode===prev.parentNode){ grupo.push(secciones[k]); }
+    else { cierra(grupo); grupo=[secciones[k]]; }
+  }
+  cierra(grupo);
+}
+
+function pasada(){ try{ marcaBanner(); columnas() }catch(e){ console.warn("[limpieza]",e) } }
+
+if(typeof window.rndrSlog==="function"){
+  var _rs=window.rndrSlog;
+  window.rndrSlog=function(){ var r=_rs.apply(this,arguments); try{ setTimeout(pasada,0) }catch(_e){} return r };
+}
+/* red de seguridad: el Service Log tambien lo repintan otros caminos */
+var _mo=null;
+function vigila(){
+  var pg=document.getElementById("pg5"); if(!pg||_mo)return;
+  _mo=new MutationObserver(function(){ if(pg.classList.contains("show"))pasada() });
+  _mo.observe(pg,{childList:true,subtree:true});
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){pasada();vigila()});
+else { pasada(); vigila() }
+setTimeout(function(){ pasada(); vigila() },1500);
+})();
+</script>
+
+<style id="aspenTimeOffSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   TIME OFF QUE DE VERDAD BLOQUEA  (v2.37.0, 17 ago 2026)
+   Alberto: "sebastian tiene time off el 20 pero aun puedo agendarle tickets
+   ese dia... quiero que bloquee ese dia, no deje agendar, y ese dia aparezca
+   un aviso en todo su dia".
+
+   CAUSA RAIZ (medida en el codigo, no supuesta): la funcion `_isTechOff(tech,
+   fecha)` YA EXISTE y funciona. La vista TEAM la consulta y pinta rayas y un
+   "OFF" en la cabecera. Pero:
+     · `rndrCalTimeline` — la vista ROUTE, la que se usa a diario — no la
+       menciona NI UNA VEZ, asi que el dia libre era invisible ahi; y
+     · NINGUN camino de asignacion la consulta (soltar en una columna, soltar
+       en un dia, Program now, guardar la hoja del ticket, triage de Intake,
+       reasignar rapido), asi que nada impedia agendarle.
+   No habia que escribir la logica: habia que CONECTARLA.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* la columna del tecnico libre, en la vista Route */
+.ctl-tcol.asp-off{position:relative}
+.ctl-tcol.asp-off::after{content:"\1F334 OFF";position:absolute;right:7px;top:50%;
+  transform:translateY(-50%);background:rgba(255,255,255,.9);color:#92400E;
+  font-size:9.5px;font-weight:800;border-radius:999px;padding:1px 7px;letter-spacing:.03em}
+.ctl-slot.asp-off,.ctl-lane.asp-off{position:relative;
+  background-image:repeating-linear-gradient(45deg,transparent,transparent 9px,
+    rgba(146,64,14,.055) 9px,rgba(146,64,14,.055) 18px)}
+.asp-off-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:2}
+.asp-off-msg span{background:var(--c-warning-bg);color:var(--c-warning-fg);
+  border:1.5px solid var(--c-warning-strong,#C98A17);border-radius:999px;
+  padding:6px 14px;font-size:12px;font-weight:800;letter-spacing:.02em;
+  box-shadow:0 3px 10px rgba(27,22,19,.10);white-space:nowrap;max-width:92%;
+  overflow:hidden;text-overflow:ellipsis}
+</style>
+
+<script id="aspenTimeOffScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspTimeOff)return; window.__aspTimeOff=true;
+
+/* ── quien esta libre ─────────────────────────────────────────────────
+   Se apoya en `_isTechOff`, que ya existia. No se reimplementa la regla de
+   fechas: si algun dia cambia, cambia en un solo sitio.                  */
+function libre(tech,ds){
+  try{ if(typeof _isTechOff==="function" && _isTechOff(tech,ds))return true }catch(_e){}
+  /* Respaldo SIN distinguir mayusculas: el encabezado de la columna de Route
+     llega como "SEBASTIAN (0)" mientras el time off guarda "Sebastian", y una
+     comparacion exacta dejaba el aviso invisible justo donde hace falta. */
+  return !!entradaOff(tech,ds);
+}
+function entradaOff(tech,ds){
+  if(!tech||!ds)return null;
+  var n=String(tech).trim().toLowerCase();
+  try{
+    var l=(typeof _techsOffOn==="function")?(_techsOffOn(ds)||[]):[];
+    for(var i=0;i<l.length;i++)
+      if(String(l[i].tech||"").trim().toLowerCase()===n)return l[i];
+  }catch(_e){}
+  return null;
+}
+function libresDe(techs,ds){
+  var out=[];
+  (techs||[]).forEach(function(t){
+    var n=t;
+    try{ if(typeof _resolveTechPill==="function")n=_resolveTechPill(t) }catch(_e){}
+    if(n&&libre(n,ds)&&out.indexOf(n)<0)out.push(n);
+  });
+  return out;
+}
+function nota(tech,ds){ var e=entradaOff(tech,ds); return (e&&e.note)||"" }
+window._aspTechLibre=libre;   /* util para la consola y para futuros bloques */
+
+/* ── el freno ──────────────────────────────────────────────────────────
+   Devuelve true si hay que PARAR. Avisa con el nombre y el dia, y dice como
+   levantarlo, para no dejar a nadie atascado sin saber que hacer.        */
+function frena(techs,ds,queHace){
+  var offs=libresDe(techs,ds);
+  if(!offs.length)return false;
+  var quien=offs.join(", ");
+  var n=nota(offs[0],ds);
+  var msg=(typeof L2==="function")
+    ? L2(quien+" no trabaja el "+ds+(n?" ("+n+")":"")+". Quita el día libre en Time Off si de verdad hay que agendarlo.",
+         quien+" is off on "+ds+(n?" ("+n+")":"")+". Remove the day in Time Off if this really must be scheduled.")
+    : quien+" no trabaja el "+ds;
+  try{ toast(msg,"err") }catch(_e){ try{ alert(msg) }catch(_e2){} }
+  try{ console.warn("[time off] bloqueado:",queHace,{tecnicos:offs,fecha:ds}) }catch(_e){}
+  return true;
+}
+
+/* ── se envuelven TODOS los caminos que asignan ─────────────────────────
+   Cada uno recibe el tecnico y la fecha de sitio distinto, por eso hay que
+   envolverlos uno a uno; el freno es el mismo para los seis.             */
+function envuelve(nombre, saca){
+  var f=window[nombre];
+  if(typeof f!=="function")return false;
+  window[nombre]=function(){
+    try{
+      var d=saca.apply(null,arguments);
+      if(d && d.ds && d.techs && d.techs.length && frena(d.techs,d.ds,nombre))return;
+    }catch(e){ console.warn("[time off] guard "+nombre,e) }
+    return f.apply(this,arguments);
+  };
+  return true;
+}
+
+function tktDe(id){
+  try{
+    var todos=[].concat(typeof active!=="undefined"?active:[], typeof done!=="undefined"?done:[]);
+    for(var i=0;i<todos.length;i++)if(todos[i]&&todos[i].id===id)return todos[i];
+  }catch(_e){}
+  return null;
+}
+
+var puestos=[];
+/* soltar una tarjeta en la columna de un tecnico: (evento, tecnico, fecha) */
+if(envuelve("calDropOnTech", function(e,tech,ds){ return {techs:[tech],ds:ds} }))puestos.push("calDropOnTech");
+/* soltar en un dia: el ticket conserva sus tecnicos, cambia la fecha */
+if(envuelve("calDropOnDay", function(e,ds){
+    var t=tktDe(typeof dragTktId!=="undefined"?dragTktId:null);
+    return {techs:(t&&t.techs)||[],ds:ds};
+  }))puestos.push("calDropOnDay");
+/* reasignar desde la tarjeta del board */
+if(envuelve("_boardReassign", function(id,tech){
+    var t=tktDe(id); return {techs:[tech],ds:(t&&t.date)||""};
+  }))puestos.push("_boardReassign");
+/* poner o quitar un tecnico desde el Service Log */
+if(envuelve("slToggleTech", function(docId,tech){
+    var t=tktDe(docId); return {techs:[tech],ds:(t&&t.date)||""};
+  }))puestos.push("slToggleTech");
+/* guardar la hoja del ticket: fecha en #dtDate, tecnicos en las pastillas encendidas */
+if(envuelve("saveDetailEdits", function(id){
+    var f=document.getElementById("dtDate");
+    var ds=f?String(f.value||"").slice(0,10):"";
+    if(!ds){ var t=tktDe(id); ds=(t&&t.date)||"" }
+    var techs=[];
+    try{
+      document.querySelectorAll("#tktDetailBody .pill.on").forEach(function(b){
+        var n=String(b.textContent||"").trim(); if(n)techs.push(n);
+      });
+    }catch(_e){}
+    return {ds:ds,techs:techs};
+  }))puestos.push("saveDetailEdits");
+/* agendar desde Intake: itkTriage(tok,dest,{date,tech}) */
+if(envuelve("itkTriage", function(tok,dest,opts){
+    opts=opts||{};
+    return {techs:opts.tech?[opts.tech]:[],ds:opts.date||""};
+  }))puestos.push("itkTriage");
+
+/* ── "Program now" no tiene funcion propia que envolver ────────────────
+   Guarda dentro de un onclick anonimo del boton #_pnOk que crea al vuelo.
+   Se frena en captura, ANTES de que corra ese manejador: se leen la fecha
+   del campo y las pastillas encendidas (las que el propio codigo pinta con
+   el fondo de acento) y, si hay alguien libre, se corta ahi.             */
+document.addEventListener("click",function(ev){
+  try{
+    var b=ev.target&&ev.target.closest?ev.target.closest("#_pnOk"):null;
+    if(!b)return;
+    var caja=b.closest("div");
+    var raiz=caja?caja.parentNode:document;
+    var f=(raiz.querySelector&&raiz.querySelector("#_pnDate"))||document.getElementById("_pnDate");
+    var ds=f?String(f.value||"").trim():"";
+    if(!ds)return;
+    var techs=[];
+    var pills=(raiz.querySelectorAll?raiz:document).querySelectorAll("._pnTech");
+    Array.prototype.forEach.call(pills,function(p){
+      var bg=String(p.style&&p.style.background||"");
+      if(bg.indexOf("--acl")>=0||bg.indexOf("acl")>=0){
+        var n=p.getAttribute("data-tech"); if(n)techs.push(n);
+      }
+    });
+    if(techs.length && frena(techs,ds,"Program now")){
+      ev.preventDefault(); ev.stopImmediatePropagation();
+    }
+  }catch(e){ console.warn("[time off] Program now",e) }
+},true);
+puestos.push("Program now");
+
+try{ console.log("[time off] frenos puestos:",puestos.join(", ")||"(ninguno)") }catch(_e){}
+
+/* ── el aviso en la vista Route ────────────────────────────────────────
+   rndrCalTimeline no consulta el time off, asi que se marca DESPUES de que
+   pinte, leyendo el DOM. Aditivo: si esa vista cambia, esto no encuentra
+   columnas y no rompe nada.                                              */
+function marcaRoute(){
+  var ds="";
+  try{ ds=calSelectedDate||(typeof fmtD==="function"?fmtD(new Date()):"") }catch(_e){}
+  if(!ds)return;
+  var head=document.querySelectorAll("#calGrid .ctl-head .ctl-tcol");
+  if(!head.length)return;
+  var carriles=document.querySelectorAll("#calGrid .ctl-body .ctl-lane, #calGrid .ctl-lane");
+  Array.prototype.forEach.call(head,function(h,i){
+    var nombre=String(h.textContent||"").replace(/\s*\(\d+\)\s*$/,"").trim();
+    var off=nombre&&libre(nombre,ds);
+    h.classList.toggle("asp-off",!!off);
+    var lane=carriles[i];
+    if(!lane)return;
+    lane.classList.toggle("asp-off",!!off);
+    var viejo=lane.querySelector(":scope > .asp-off-msg");
+    if(off){
+      if(!viejo){
+        var n=nota(nombre,ds);
+        var d=document.createElement("div");
+        d.className="asp-off-msg";
+        d.innerHTML='<span>'+((typeof L2==="function")?L2("No trabaja hoy","Off today"):"No trabaja hoy")
+          +(n?' \u00b7 '+String(n).replace(/[<>&]/g,""):'')+'</span>';
+        if(getComputedStyle(lane).position==="static")lane.style.position="relative";
+        lane.appendChild(d);
+      }
+    }else if(viejo)viejo.remove();
+  });
+}
+
+/* ── la capacidad diaria sigue al dia de Route ─────────────────────────
+   `calSelectedDate` se asigna en diez sitios distintos; envolver rndrCal es
+   el unico punto por el que pasan todos. `_capSetDate` repinta la capacidad,
+   no el calendario, asi que no hay bucle.                                */
+function sincroniza(){
+  try{
+    if(typeof _capGetDate!=="function"||typeof _capSetDate!=="function")return;
+    var ds=calSelectedDate||"";
+    if(ds && ds!==_capGetDate())_capSetDate(ds);
+  }catch(e){ console.warn("[capacidad]",e) }
+}
+
+if(typeof window.rndrCal==="function"){
+  var _rc=window.rndrCal;
+  window.rndrCal=function(){
+    var r=_rc.apply(this,arguments);
+    try{ sincroniza(); setTimeout(marcaRoute,0) }catch(e){ console.warn("[time off]",e) }
+    return r;
+  };
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",marcaRoute);
+else setTimeout(marcaRoute,0);
+setTimeout(marcaRoute,1500);
 })();
 </script>
 
