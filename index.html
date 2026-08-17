@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.33.1";
+var APP_VERSION="2.35.0";
 var BUILD_DATE="2026-08-16";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -48277,21 +48277,50 @@ var PARTS_NATIVE=(function(){
     return String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
       .replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g,"-").slice(0,120);
   }
-  var FOTOS={}, FOTOS_OK=false;
+  var FOTOS={}, FOTOS_OK=false, FOTOS_ERR="";
   function cargaFotos(cb){
     try{
       if(typeof db==="undefined"||!db){cb&&cb();return}
       db.collection("part_photos").get().then(function(s){
         s.forEach(function(d){ var v=d.data()||{}; if(v.url)FOTOS[d.id]=v.url });
-        FOTOS_OK=true; cb&&cb();
+        FOTOS_OK=true; FOTOS_ERR=""; cb&&cb();
       }).catch(function(e){
         /* Si las reglas no dejan leer, se DICE. No fallar en silencio es la
            leccion que nos costo tres horas el jueves. */
-        console.warn("[partes] no se pudieron leer las fotos:",(e&&e.code)||e);
+        FOTOS_ERR=(e&&(e.code||e.message))||String(e);
+        console.warn("[partes] no se pudieron leer las fotos:",FOTOS_ERR);
         cb&&cb();
       });
     }catch(_e){ cb&&cb() }
   }
+
+  /* v2.35.0 — la subida sale a una funcion CON NOMBRE y el bloque expone su API.
+     Antes vivia dentro del onclick de la fila: la pantalla "Admin partes" habria
+     necesitado una segunda copia de la ruta de Storage, de la forma del documento
+     y del slug — dos copias que hay que mantener a la par o las fotos dejan de
+     emparejar con las partes. Una sola. */
+  async function subeFoto(sl,nombre,categoria,f){
+    if(typeof storage==="undefined"||!storage)throw new Error("Storage no est\u00e1 inicializado");
+    if(!navigator.onLine)throw new Error("sin conexi\u00f3n");
+    var blob=await compressPhoto(f,900,0.75);
+    var up=await uploadPhotoToStorage(blob,"_parts/"+sl,0);
+    await db.collection("part_photos").doc(sl).set({
+      name:String(nombre||"").trim(), cat:String(categoria||"").trim(),
+      url:up.url, path:up.path,
+      by:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
+      at:new Date().toISOString()
+    },{merge:true});
+    FOTOS[sl]=up.url;
+    return up.url;
+  }
+  /* Lo que consume la pantalla Admin partes. `fotos()` devuelve el mapa YA
+     cargado y `cargaFotos` es el mismo lector de siempre, asi que abrir las dos
+     pantallas no lee la coleccion dos veces. */
+  window._aspPartes={
+    slug:slug, fotos:function(){return FOTOS}, cargadas:function(){return FOTOS_OK},
+    error:function(){return FOTOS_ERR},
+    cargaFotos:cargaFotos, subeFoto:subeFoto
+  };
 
   function boot(){
     var cat="",q="",shown=60,CAT_TOP=14;
@@ -48355,17 +48384,7 @@ var PARTS_NATIVE=(function(){
             if(!f)return;
             var txt0=b.textContent; b.textContent="\u2026"; b.disabled=true;
             try{
-              if(typeof storage==="undefined"||!storage)throw new Error("Storage no est\u00e1 inicializado");
-              if(!navigator.onLine)throw new Error("sin conexi\u00f3n");
-              var blob=await compressPhoto(f,900,0.75);
-              var up=await uploadPhotoToStorage(blob,"_parts/"+sl,0);
-              await db.collection("part_photos").doc(sl).set({
-                name:String(nombre).trim(), cat:String(categoria).trim(),
-                url:up.url, path:up.path,
-                by:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",
-                at:new Date().toISOString()
-              },{merge:true});
-              FOTOS[sl]=up.url;
+              await subeFoto(sl,nombre,categoria,f);   /* v2.35.0 — una sola copia */
               try{toast(L2("Foto guardada \u2713","Photo saved \u2713"))}catch(_t){}
               render();
             }catch(e){
@@ -48497,6 +48516,59 @@ body.asp-shell .hdr,body.asp-shell header{padding-left:0}
   font:inherit;font-size:14.5px;font-weight:700;color:var(--ink);text-align:left;cursor:pointer}
 #aspMore .as-m .as-b{margin-left:auto;background:var(--acl);color:var(--acd);border-radius:999px;
   padding:1px 9px;font-size:11.5px;font-weight:800}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.33.2 — LA BARRA SE VUELVE A CONTRAER (aditivo: todo lo de arriba queda)
+   Hasta la v2.27 la navegacion era el #tabBar convertido en rail: 74px de
+   iconos que se abrian a 248px al pasar el mouse. La Fase 1 lo cambio por
+   este #aspShell de 236px FIJOS y de paso oculto el #tabBar, asi que el
+   colapso se quedo en la barra vieja. Aqui se le devuelve a #aspShell.
+   Como antes: el contenido solo cede el ancho ESTRECHO, y la barra abierta
+   FLOTA por encima con sombra — no hay reflow al pasar el mouse.
+   El boton ‹‹/›› la deja fijada abierta (se recuerda). El telefono no cambia.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{ --shell-rail:76px; }
+@media(min-width:901px){
+  body.asp-shell{padding-left:var(--shell-rail)}
+  body.asp-shell.asp-pin{padding-left:var(--shell-w)}
+  body.asp-shell #aspShell{width:var(--shell-rail);padding:14px 10px;
+    transition:width .18s ease,box-shadow .18s ease,padding .18s ease}
+  body.asp-shell.asp-pin #aspShell,
+  body.asp-shell #aspShell:hover,
+  body.asp-shell #aspShell:focus-within{width:var(--shell-w);padding:14px 12px}
+  body.asp-shell:not(.asp-pin) #aspShell:hover,
+  body.asp-shell:not(.asp-pin) #aspShell:focus-within{box-shadow:8px 0 28px rgba(0,0,0,.22)}
+
+  /* ── estado CONTRAIDO: ni fijada, ni con el cursor o el foco encima ── */
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-lbl{display:none}
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-i{
+    position:relative;justify-content:center;gap:0;padding:11px 0}
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-i .as-ico{font-size:18px}
+  /* el titulo de grupo se vuelve un separador fino, como en el rail de junio */
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-grp{
+    height:1px;overflow:hidden;font-size:0;color:transparent;padding:0;
+    margin:12px 7px 8px;background:rgba(255,255,255,.10);border-radius:1px}
+  /* el contador se vuelve un punto sobre el icono (el numero no cabe) */
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-i .as-b{
+    position:absolute;top:6px;right:15px;width:9px;min-width:9px;height:9px;margin:0;
+    padding:0;font-size:0;line-height:0;background:var(--ac);color:transparent;
+    box-shadow:0 0 0 2px var(--hdr-bg)}
+  /* el logo se reduce a la inicial */
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-logo{padding:11px 6px}
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-logo .as-word{font-size:0}
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-logo .as-word::after{
+    content:"A";font-size:19px;font-weight:800;letter-spacing:0;color:var(--ac)}
+  /* el boton de fijar solo aparece con la barra abierta */
+  body.asp-shell:not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-pin{opacity:0;pointer-events:none}
+
+  body.asp-shell #aspShell .as-pin{align-self:flex-end;margin:-8px 2px 8px;background:none;border:none;
+    color:#8E8377;font:inherit;font-size:15px;font-weight:800;line-height:1;cursor:pointer;
+    padding:5px 7px;border-radius:8px;transition:opacity .18s ease,color .12s,background .12s}
+  body.asp-shell #aspShell .as-pin:hover{background:rgba(255,255,255,.08);color:#F7F1E9}
+  body.asp-shell #aspShell .as-pin:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+}
+@media(max-width:900px){ body.asp-shell #aspShell .as-pin{display:none} }
+@media(prefers-reduced-motion:reduce){ body.asp-shell #aspShell{transition:none} }
 </style>
 <script id="aspenShellScript">
 /* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
@@ -48504,13 +48576,46 @@ body.asp-shell .hdr,body.asp-shell header{padding-left:0}
 "use strict";
 if(window.__aspShell)return; window.__aspShell=true;
 
+/* v2.33.2 — la barra vuelve a contraerse (rail de iconos que se abre al pasar
+   el mouse, como antes de la Fase 1). Esto solo guarda si el usuario la dejo
+   FIJADA abierta; el resto del comportamiento es CSS. */
+function _aspFijada(){ try{ return localStorage.getItem("aspShellPin")==="1" }catch(_e){ return false } }
+function _aspFijar(v){
+  try{ v?localStorage.setItem("aspShellPin","1"):localStorage.removeItem("aspShellPin") }catch(_e){}
+  document.body.classList.toggle("asp-pin",!!v);
+  try{ pinta() }catch(_e){}
+}
+
 /* Los cinco que van en la barra inferior del telefono. Se eligen por id de
-   pestana, no por posicion, para que no se desordene si cambia el orden. */
-var MOVIL=["tab0","tab4","tab1","tab5","tab8"];
+   pestana, no por posicion, para que no se desordene si cambia el orden.
+
+   v2.34.1 — dejan de ser CINCO FIJOS y pasan a ser los cinco primeros de esta
+   lista de PRIORIDAD que el rol tenga visibles. Dos razones:
+     · "Hoy" (tab16) es la portada del dia y tiene que estar la primera;
+     · con la lista fija un TECNICO se quedaba con tres botones y media barra
+       vacia, porque Registro de servicio (tab5) y Alertas (tab8) estan
+       ocultos para el. Ahora ese hueco lo llenan Herramientas y Coaching,
+       que si usa en campo.
+   Para reordenar la barra solo hay que mover ids en esta linea. */
+var MOVIL_PRIO=["tab16","tab0","tab4","tab1","tab8","tab5","tab10","tab12","tab6"];
+var MOVIL_MAX=5;
+function movil(lista){
+  var out=[];
+  MOVIL_PRIO.forEach(function(id){
+    if(out.length>=MOVIL_MAX)return;
+    for(var i=0;i<lista.length;i++)if(lista[i].id===id){ out.push(id); return }
+  });
+  /* si el rol deja menos de cinco, se rellena con lo que haya, en su orden */
+  lista.forEach(function(t){
+    if(out.length>=MOVIL_MAX)return;
+    if(out.indexOf(t.id)<0)out.push(t.id);
+  });
+  return out;
+}
 var ICONO={tab0:"\uD83D\uDD27",tab4:"\uD83D\uDCC5",tab5:"\uD83D\uDCCB",tab1:"\u2705",tab6:"\uD83D\uDC65",
   tab13:"\uD83D\uDCAC",tab8:"\uD83D\uDD14",tab10:"\uD83E\uDDF0",tab9:"\uD83D\uDCBC",tab2:"\uD83D\uDCE6",
   tab12:"\uD83D\uDCDE",tab3:"\u2699\uFE0F",tab7:"\uD83D\uDDFA\uFE0F",tab11:"\uD83D\uDCD3",
-  tab14:"\uD83D\uDCE8",tab15:"\uD83D\uDCB5"};
+  tab14:"\uD83D\uDCE8",tab15:"\uD83D\uDCB5",tab16:"\u2600\uFE0F",tab17:"\uD83D\uDCF7"};
 
 function limpio(t){
   /* el label del tab trae emoji y a veces el badge dentro: se saca solo el texto */
@@ -48532,7 +48637,7 @@ function tabs(){
    futura que no este aqui cae en "work", que es un degradado sano: sale en la
    barra igual, solo que en el primer grupo. */
 var GRUPO={tab0:"work",tab4:"work",tab5:"work",tab1:"work",tab2:"work",tab12:"work",
-           tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",
+           tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",tab17:"manage",
            tab10:"tools",tab9:"tools",tab7:"tools",tab11:"tools"};
 function grupoDe(t){ return GRUPO[t.id]||"work" }
 var TITULO={work:"Trabajo",manage:"Gesti\u00f3n",tools:"Herramientas"};
@@ -48547,8 +48652,14 @@ function badge(t){
 function pinta(){
   var host=document.getElementById("aspShell");
   if(!host)return;
-  var lista=tabs(), html="";
+  var lista=tabs(), html="", PRI=movil(lista);
   html+='<div class="as-logo"><div class="as-word">ASPEN SPAS</div></div>';
+  /* v2.33.2 — fijar la barra abierta. Va DENTRO de pinta() porque esta funcion
+     rehace el innerHTML entero cada vez que cambia un contador: un boton puesto
+     desde fuera se borraria al primer repintado. */
+  html+='<button type="button" class="as-pin" id="aspPin" aria-pressed="'+(_aspFijada()?'true':'false')
+    +'" title="'+(_aspFijada()?'Contraer la barra':'Dejar la barra abierta')+'">'
+    +(_aspFijada()?'\u2039\u2039':'\u203A\u203A')+'</button>';
   /* Se pinta POR GRUPO, no en orden del DOM: en el #tabBar las pestanas van y
      vienen entre Trabajo/Gestion/Herramientas, asi que recorrerlas en orden
      repetia los encabezados (lo encontro la prueba). Dentro de cada grupo se
@@ -48558,7 +48669,7 @@ function pinta(){
     if(!del.length)return;
     html+='<div class="as-grp">'+(TITULO[g]||g)+'</div>';
     del.forEach(function(t){
-      var b=badge(t), pri=MOVIL.indexOf(t.id)>=0;
+      var b=badge(t), pri=PRI.indexOf(t.id)>=0;
       html+='<button type="button" class="as-i'+(t.classList.contains("on")?" on":"")
         +(pri?" as-primary":"")+'" data-tab="'+t.id+'">'
         +'<span class="as-ico">'+(ICONO[t.id]||"\u2022")+'</span>'
@@ -48571,15 +48682,24 @@ function pinta(){
     +'<span class="as-ico">\u2630</span><span class="as-lbl">M\u00e1s</span></button>';
   host.innerHTML=html;
   Array.prototype.forEach.call(host.querySelectorAll("[data-tab]"),function(b){
-    b.onclick=function(){ var t=document.getElementById(b.getAttribute("data-tab")); if(t)t.click() };
+    b.onclick=function(ev){
+      var t=document.getElementById(b.getAttribute("data-tab")); if(t)t.click();
+      /* con el raton, soltar el foco para que la barra se vuelva a contraer al
+         retirar el cursor (:focus-within la mantendria abierta). Con teclado
+         (detail===0) NO se toca el foco: se perderia el hilo de navegacion. */
+      if(ev&&ev.detail>0){try{b.blur()}catch(_e){}}
+    };
   });
+  var pin=document.getElementById("aspPin");
+  if(pin)pin.onclick=function(){ _aspFijar(!_aspFijada()); };
   var mb=document.getElementById("aspMoreBtn");
   if(mb)mb.onclick=abreMas;
 }
 
 function abreMas(){
   var m=document.getElementById("aspMore"); if(!m)return;
-  var lista=tabs().filter(function(t){ return MOVIL.indexOf(t.id)<0 }), gA="", h='<div class="as-sheet"><h3>M\u00e1s</h3>';
+  var todo=tabs(), PRI=movil(todo);
+  var lista=todo.filter(function(t){ return PRI.indexOf(t.id)<0 }), gA="", h='<div class="as-sheet"><h3>M\u00e1s</h3>';
   lista.forEach(function(t){
     var g=grupoDe(t);
     if(g!==gA){ h+='<div class="as-grp2">'+(TITULO[g]||g)+'</div>'; gA=g }
@@ -48604,6 +48724,7 @@ function monta(){
     var m=document.createElement("div"); m.id="aspMore"; document.body.appendChild(m);
   }
   document.body.classList.add("asp-shell");
+  document.body.classList.toggle("asp-pin",_aspFijada());   // v2.33.2
   pinta();
   /* Se espejea del #tabBar real: pestana nueva, rol que oculta una, o badge que
      cambia -> la barra se entera sola. Sin esto el reskin se desincroniza. */
@@ -48989,6 +49110,828 @@ if(typeof window.setMode==="function"){
   var _sm=window.setMode;
   window.setMode=function(){ var r=_sm.apply(this,arguments); try{ setTimeout(pinta,80) }catch(_e){} return r };
 }
+})();
+</script>
+
+
+<style id="aspenTodaySkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   ASPEN SERVICE 2.0 — FASE 6: LA PANTALLA "HOY"  (v2.34.0, 16 ago 2026)
+   La portada del dia, del rediseno que hizo Alberto. ADITIVO Y REVERSIBLE:
+   borrar este bloque y el de abajo (aspenTodayScript) devuelve la app
+   exactamente a como estaba — no se toco ni un renderizador ni una pantalla.
+
+   CERO DATOS NUEVOS. Todo sale de lo que la app ya tiene en memoria:
+   `active`/`done` para las paradas, `_statCompletedOn` (el motor unico de
+   KPI de la v1.9.0) para las completadas, `moneySub` del Billing Sprint
+   para el dinero, y `openTktDetail` para abrir. Cero lecturas de Firestore.
+
+   Las MILLAS del recorrido que salen en la maqueta NO estan: no hay
+   distancias sin geocodificar, y un numero inventado en la pantalla que
+   el tecnico mira primero es peor que no ponerlo.
+   ═══════════════════════════════════════════════════════════════════════ */
+#pg16{padding-bottom:80px}
+#pg16 .tdy-h{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:2px 0 18px}
+#pg16 .tdy-h h1{margin:0;font-size:31px;font-weight:800;letter-spacing:-.02em;line-height:1}
+#pg16 .tdy-h .tdy-sub{color:var(--i3);font-size:13.5px;padding-bottom:4px;flex:1;min-width:150px}
+
+/* ── el heroe: la siguiente parada ── */
+#pg16 .tdy-next{background:var(--hdr-bg);color:#F7F1E9;border-radius:20px;padding:22px 24px 20px;
+  margin-bottom:16px;position:relative;overflow:hidden}
+#pg16 .tdy-next::after{content:"";position:absolute;right:-70px;top:-70px;width:230px;height:230px;
+  border-radius:50%;background:rgba(212,119,44,.10);pointer-events:none}
+#pg16 .tdy-next .tdy-k{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;
+  letter-spacing:1.5px;text-transform:uppercase;color:#C6B5A4;margin-bottom:9px}
+#pg16 .tdy-next .tdy-k i{width:8px;height:8px;border-radius:50%;background:var(--ac);flex:none}
+#pg16 .tdy-next h2{margin:0 0 5px;font-size:29px;font-weight:800;line-height:1.12;letter-spacing:-.02em}
+#pg16 .tdy-next .tdy-addr{color:rgba(247,241,233,.72);font-size:14.5px;margin-bottom:14px}
+#pg16 .tdy-next .tdy-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+#pg16 .tdy-next .tdy-c{background:rgba(255,255,255,.10);border-radius:999px;padding:6px 13px;
+  font-size:12.5px;font-weight:700}
+#pg16 .tdy-next .tdy-c.money{background:#C9A227;color:#211712;font-weight:800}
+#pg16 .tdy-next .tdy-c.warn{background:rgba(255,255,255,.16);color:#F7F1E9}
+#pg16 .tdy-acts{display:flex;gap:10px;flex-wrap:wrap}
+#pg16 .tdy-b{border:none;border-radius:12px;padding:12px 22px;font:inherit;font-size:14.5px;
+  font-weight:800;cursor:pointer;line-height:1.2}
+#pg16 .tdy-b.call{background:#fff;color:#211712}
+#pg16 .tdy-b.go{background:transparent;color:#F7F1E9;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.34)}
+#pg16 .tdy-b.open{background:var(--ac);color:#fff}
+#pg16 .tdy-b:active{transform:scale(.985)}
+#pg16 .tdy-rest{margin-top:14px;font-size:12.5px;color:rgba(247,241,233,.6)}
+#pg16 .tdy-rest b{color:#F7F1E9}
+/* sin paradas: el heroe no desaparece, dice por que */
+#pg16 .tdy-next.vacio{background:var(--cd);color:var(--ink);border:1px solid var(--ln)}
+#pg16 .tdy-next.vacio::after{display:none}
+#pg16 .tdy-next.vacio .tdy-k{color:var(--i3)}
+#pg16 .tdy-next.vacio h2{font-size:20px;font-weight:700}
+#pg16 .tdy-next.vacio .tdy-addr{color:var(--i3);margin-bottom:0}
+
+/* ── los cuatro numeros ── */
+#pg16 .tdy-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+  margin-bottom:24px}
+#pg16 .tdy-kpi{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px;
+  box-shadow:0 1px 2px rgba(27,22,19,.04)}
+#pg16 .tdy-kpi .kl{font-size:10.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--i3);margin-bottom:8px}
+#pg16 .tdy-kpi .kv{font-size:33px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink)}
+#pg16 .tdy-kpi .kv.money{color:#C9A227}
+#pg16 .tdy-kpi .kv.ac{color:var(--ac)}
+#pg16 .tdy-kpi .kd{font-size:12.5px;color:var(--i3);margin-top:7px}
+
+/* ── la ruta del dia ── */
+#pg16 .tdy-rh{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+#pg16 .tdy-rh h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+#pg16 .tdy-rh span{margin-left:auto;font-size:12.5px;color:var(--i3)}
+#pg16 .tdy-stop{display:flex;gap:14px;align-items:stretch;margin-bottom:9px}
+#pg16 .tdy-n{flex:none;width:34px;display:flex;flex-direction:column;align-items:center;gap:5px}
+#pg16 .tdy-n b{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:var(--acl);color:var(--acd);font-size:13.5px;font-weight:800;
+  box-shadow:inset 0 0 0 1px var(--ln)}
+#pg16 .tdy-stop.now .tdy-n b{background:var(--ac);color:#fff;box-shadow:none}
+#pg16 .tdy-stop.hecha .tdy-n b{background:var(--c-success-bg);color:var(--c-success-fg);box-shadow:none}
+#pg16 .tdy-n i{flex:1;width:2px;background:var(--ln);border-radius:1px}
+#pg16 .tdy-stop:last-child .tdy-n i{display:none}
+#pg16 .tdy-card{flex:1;min-width:0;background:var(--cd);border:1px solid var(--ln);border-radius:14px;
+  padding:14px 16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;
+  box-shadow:0 1px 2px rgba(27,22,19,.04)}
+#pg16 .tdy-card:hover{border-color:var(--ac)}
+#pg16 .tdy-card .tdy-i{flex:1;min-width:0}
+#pg16 .tdy-card .tdy-nm{font-size:15.5px;font-weight:800;line-height:1.25;display:flex;gap:9px;
+  align-items:center;flex-wrap:wrap}
+#pg16 .tdy-card .tdy-meta{font-size:13px;color:var(--i3);margin-top:5px;line-height:1.5}
+#pg16 .tdy-card .tdy-r{text-align:right;white-space:nowrap;flex:none}
+#pg16 .tdy-card .tdy-r .hh{font-size:15px;font-weight:800;color:var(--ink)}
+#pg16 .tdy-card .tdy-r .mm{font-size:13.5px;font-weight:800;color:var(--acd);margin-top:5px}
+#pg16 .tdy-card .tdy-r .mm.na{color:var(--i3);font-weight:600}
+#pg16 .tdy-p{border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:.02em}
+#pg16 .tdy-p.now{background:var(--acl);color:var(--acd)}
+#pg16 .tdy-p.hecha{background:var(--c-success-bg);color:var(--c-success-fg)}
+#pg16 .tdy-p.gar{background:var(--c-success-bg);color:var(--c-success-fg)}
+#pg16 .tdy-p.pend{background:var(--c-neutral-bg);color:var(--c-neutral-fg)}
+#pg16 .tdy-p.urg{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+#pg16 .tdy-none{background:var(--cd);border:1px dashed var(--ln);border-radius:14px;padding:30px 16px;
+  text-align:center;color:var(--i3);font-size:14px}
+
+@media(max-width:640px){
+  #pg16 .tdy-h h1{font-size:26px}
+  #pg16 .tdy-next{padding:18px 18px 16px;border-radius:16px}
+  #pg16 .tdy-next h2{font-size:23px}
+  #pg16 .tdy-acts{display:grid;grid-template-columns:1fr 1fr}
+  #pg16 .tdy-b.open{grid-column:1/-1}
+  #pg16 .tdy-kpis{grid-template-columns:1fr 1fr;gap:10px}
+  #pg16 .tdy-kpi{padding:13px 14px}
+  #pg16 .tdy-kpi .kv{font-size:27px}
+  #pg16 .tdy-card{flex-direction:column;gap:8px}
+  #pg16 .tdy-card .tdy-r{text-align:left;display:flex;gap:12px;align-items:baseline}
+  #pg16 .tdy-card .tdy-r .mm{margin-top:0}
+}
+</style>
+
+<script id="aspenTodayScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspToday)return; window.__aspToday=true;
+
+var IDX=16;   /* la pantalla nueva: tab16 / pg16 */
+
+function hoy(){ try{ return fmtD(new Date()) }catch(_e){ return "" } }
+function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
+function yo(){
+  try{ return (currentUser&&currentUser.role==="tech")?currentUser.name:null }catch(_e){ return null }
+}
+
+/* TODAS las paradas del dia — abiertas y cerradas, en orden de llegada.
+   La Fase 2 se queda solo con las abiertas porque muestra "la siguiente";
+   aqui hace falta el dia completo para poder decir "1 de 5 completada". */
+function paradas(){
+  try{
+    var d=hoy(), mi=yo(), out=[];
+    function mete(arr,cerrada){
+      (arr||[]).forEach(function(t){
+        if(!t||t.status==="canceled"||t.status==="cancelled")return;
+        var k=(cerrada&&t.completedAt&&typeof _dateOnly==="function"&&_dateOnly(t.completedAt))||t.date||"";
+        if(k!==d)return;
+        if(mi && !((t.techs||[]).indexOf(mi)>=0))return;
+        out.push(t);
+      });
+    }
+    mete(typeof active!=="undefined"?active:[],false);
+    mete(typeof done!=="undefined"?done:[],true);
+    return out.sort(function(a,b){
+      return String(a.arrival||"99:99").localeCompare(String(b.arrival||"99:99"));
+    });
+  }catch(_e){ return [] }
+}
+function cerrada(t){
+  try{
+    if(t.fieldReportSubmitted)return true;
+    if(t.status==="done"||t.status==="complete")return true;
+    return (typeof done!=="undefined"&&Array.isArray(done)&&done.indexOf(t)>=0);
+  }catch(_e){ return false }
+}
+function monto(t){
+  try{ return (typeof window.moneySub==="function")?(Number(window.moneySub(t))||0):0 }catch(_e){ return 0 }
+}
+function garantia(t){ try{ return !!(t.warranty&&t.warranty.has) }catch(_e){ return false } }
+function tel(t){
+  try{
+    var p=(t.phones&&t.phones.length?t.phones[0]:t.phone)||"";
+    return String(p).replace(/[^0-9+]/g,"");
+  }catch(_e){ return "" }
+}
+function dir(t){
+  return [t.address,t.city,t.zip].filter(function(x){return String(x||"").trim()}).join(", ").trim();
+}
+function tina(t){ return t.spaDesc||t.spaModel||"" }
+function dinero(n){ return "$"+Math.round(n).toLocaleString("en-US") }
+
+/* Horas del dia = suma de llegada→salida de las paradas que traen las dos.
+   Sin inventar: una parada sin salida registrada aporta 0. */
+function horas(lista){
+  var min=0;
+  lista.forEach(function(t){
+    var a=String(t.arrival||""), d=String(t.departure||"");
+    var ra=/^(\d{1,2}):(\d{2})/.exec(a), rd=/^(\d{1,2}):(\d{2})/.exec(d);
+    if(!ra||!rd)return;
+    var m=(+rd[1]*60+ +rd[2])-(+ra[1]*60+ +ra[2]);
+    if(m>0&&m<16*60)min+=m;
+  });
+  return min/60;
+}
+
+function fechaLarga(){
+  try{
+    var f=new Date();
+    return f.toLocaleDateString(APP_LANG==="en"?"en-US":"es-ES",
+      {weekday:"long",day:"numeric",month:"long"});
+  }catch(_e){ return "" }
+}
+
+function pinta(){
+  var pg=document.getElementById("pg"+IDX);
+  if(!pg)return;
+  var lista=paradas(), abiertas=lista.filter(function(t){ return !cerrada(t) });
+  var sig=abiertas[0]||null, faltan=Math.max(0,abiertas.length-1);
+
+  /* completadas: el motor unico de la v1.9.0, para que este numero no
+     contradiga al de Daily ni al del panel de Admin (ya paso una vez). */
+  var hechas=0;
+  try{ hechas=(typeof _statCompletedOn==="function")?_statCompletedOn(hoy()):0 }catch(_e){}
+  if(yo())hechas=lista.filter(cerrada).length;   /* un tecnico cuenta las SUYAS */
+
+  var porCobrar=0, clientes={};
+  lista.forEach(function(t){
+    var m=monto(t);
+    if(m>0){ porCobrar+=m; clientes[String(t.customer||"")]=1 }
+  });
+  var nClientes=Object.keys(clientes).length;
+  var conReporte=lista.filter(function(t){ return !!t.fieldReportSubmitted }).length;
+  var hs=horas(lista);
+
+  var H='';
+  H+='<div class="tdy-h"><h1>'+L2("Hoy","Today")+'</h1>'
+    +'<div class="tdy-sub">'+esc2(fechaLarga())+(lista.length?' &middot; '+lista.length+' '
+      +L2(lista.length===1?"parada":"paradas",lista.length===1?"stop":"stops"):'')+'</div></div>';
+
+  /* ── siguiente parada ── */
+  if(sig){
+    var ph=tel(sig), ad=dir(sig), mn=monto(sig);
+    H+='<div class="tdy-next" id="tdyNext">'
+      +'<div class="tdy-k"><i></i>'+L2("SIGUIENTE PARADA","NEXT STOP")+'</div>'
+      +'<h2>'+esc2(sig.customer||"—")+'</h2>'
+      +(ad?'<div class="tdy-addr">'+esc2(ad)+'</div>':'')
+      +'<div class="tdy-chips">'
+        +(sig.arrival?'<span class="tdy-c">'+esc2(sig.arrival)+'</span>':'')
+        +(tina(sig)?'<span class="tdy-c">'+esc2(tina(sig))+'</span>':'')
+        +(garantia(sig)?'<span class="tdy-c warn">'+L2("Garantía","Warranty")+'</span>':'')
+        +(mn?'<span class="tdy-c money">'+L2("Cobrar","Collect")+' '+dinero(mn)+'</span>':'')
+      +'</div>'
+      +'<div class="tdy-acts">'
+        +(ph?'<button type="button" class="tdy-b call" data-a="call">'+L2("Llamar","Call")+'</button>':'')
+        +(ad?'<button type="button" class="tdy-b go" data-a="go">'+L2("Ir","Go")+'</button>':'')
+        +'<button type="button" class="tdy-b open" data-a="open">'+L2("Abrir ticket","Open ticket")+'</button>'
+      +'</div>'
+      +(faltan>0?'<div class="tdy-rest">'+L2("Después de esta: ","After this one: ")+'<b>'+faltan+'</b> '
+        +L2(faltan===1?"parada más hoy":"paradas más hoy",faltan===1?"more stop today":"more stops today")
+        +'</div>':'')
+      +'</div>';
+  }else{
+    H+='<div class="tdy-next vacio"><div class="tdy-k">'+L2("SIGUIENTE PARADA","NEXT STOP")+'</div>'
+      +'<h2>'+(lista.length?L2("Todo cerrado por hoy","All wrapped up for today")
+                          :L2("No hay paradas para hoy","No stops scheduled today"))+'</h2>'
+      +'<div class="tdy-addr">'+(lista.length
+          ?L2("Las "+lista.length+" paradas del día ya tienen reporte.","All "+lista.length+" stops are reported.")
+          :L2("Lo que se agende para hoy aparece aquí solo.","Anything scheduled for today shows up here on its own."))
+      +'</div></div>';
+  }
+
+  /* ── los cuatro numeros ── */
+  H+='<div class="tdy-kpis">'
+    +'<div class="tdy-kpi"><div class="kl">'+L2("Paradas","Stops")+'</div>'
+      +'<div class="kv">'+lista.length+'</div>'
+      +'<div class="kd">'+hechas+' '+L2(hechas===1?"completada":"completadas",hechas===1?"completed":"completed")+'</div></div>'
+    +'<div class="tdy-kpi"><div class="kl">'+L2("Por cobrar hoy","To collect today")+'</div>'
+      +'<div class="kv money">'+(porCobrar?dinero(porCobrar):"$0")+'</div>'
+      +'<div class="kd">'+nClientes+' '+L2(nClientes===1?"cliente":"clientes",nClientes===1?"customer":"customers")+'</div></div>'
+    +'<div class="tdy-kpi"><div class="kl">'+L2("Reportes","Reports")+'</div>'
+      +'<div class="kv ac">'+conReporte+'/'+lista.length+'</div>'
+      +'<div class="kd">'+(lista.length-conReporte)+' '+L2("pendientes","pending")+'</div></div>'
+    +'<div class="tdy-kpi"><div class="kl">'+L2("Horas","Hours")+'</div>'
+      +'<div class="kv">'+(hs?hs.toFixed(1):"—")+'</div>'
+      +'<div class="kd">'+L2("de llegada a salida","arrival to departure")+'</div></div>'
+    +'</div>';
+
+  /* ── la ruta del dia ── */
+  H+='<div class="tdy-rh"><h3>'+L2("Ruta de hoy","Today\u2019s route")+'</h3>'
+    +'<span>'+lista.length+' '+L2(lista.length===1?"parada":"paradas",lista.length===1?"stop":"stops")+'</span></div>';
+  if(!lista.length){
+    H+='<div class="tdy-none">'+L2("Nada agendado para hoy.","Nothing scheduled for today.")+'</div>';
+  }else{
+    lista.forEach(function(t,n){
+      var fin=cerrada(t), esSig=(sig&&t===sig), m=monto(t);
+      var pill = fin ? '<span class="tdy-p hecha">'+L2("Completada","Done")+'</span>'
+               : esSig? '<span class="tdy-p now">'+L2("En camino","On the way")+'</span>'
+               : '<span class="tdy-p pend">'+L2("Pendiente","Pending")+'</span>';
+      var extra = garantia(t)?'<span class="tdy-p gar">'+L2("Garantía","Warranty")+'</span>':'';
+      if(t.urgent)extra+='<span class="tdy-p urg">'+L2("Urgente","Urgent")+'</span>';
+      var meta=[dir(t),tina(t)].filter(Boolean).map(esc2).join('<br>');
+      H+='<div class="tdy-stop'+(fin?" hecha":(esSig?" now":""))+'">'
+        +'<div class="tdy-n"><b>'+(n+1)+'</b><i></i></div>'
+        +'<div class="tdy-card" data-open="'+esc2(t.id)+'">'
+          +'<div class="tdy-i"><div class="tdy-nm">'+esc2(t.customer||"—")+pill+extra+'</div>'
+          +(meta?'<div class="tdy-meta">'+meta+'</div>':'')+'</div>'
+          +'<div class="tdy-r"><div class="hh">'+esc2(t.arrival||"—")+'</div>'
+          +'<div class="mm'+(m?"":" na")+'">'+(m?dinero(m):"—")+'</div></div>'
+        +'</div></div>';
+    });
+  }
+  pg.innerHTML=H;
+
+  pg.onclick=function(ev){
+    var el=ev.target&&ev.target.closest?ev.target.closest("[data-a],[data-open]"):null;
+    if(!el)return;
+    try{
+      var a=el.getAttribute("data-a");
+      if(a==="call"&&sig){ window.location.href="tel:"+tel(sig); return }
+      if(a==="go"&&sig){ window.open("https://www.google.com/maps/dir/?api=1&destination="
+        +encodeURIComponent(dir(sig)),"_blank"); return }
+      if(a==="open"&&sig&&typeof openTktDetail==="function"){ openTktDetail(sig.id); return }
+      var id=el.getAttribute("data-open");
+      if(id&&typeof openTktDetail==="function")openTktDetail(id);
+    }catch(e){ console.warn("[hoy]",e) }
+  };
+}
+
+function monta(){
+  var bar=document.getElementById("tabBar");
+  if(!bar||document.getElementById("tab"+IDX))return;
+
+  /* La pestana va DELANTE de las demas: es la portada del dia. La barra
+     lateral de la Fase 1 se deriva del #tabBar con un observer, asi que
+     aparece sola — y su mapa GRUPO no la conoce, cayendo en "Trabajo",
+     que es justo donde va (asi lo dejo escrito ese bloque a proposito). */
+  var t=document.createElement("div");
+  t.className="tab hidden"; t.id="tab"+IDX;
+  t.setAttribute("data-i18n-es","Hoy"); t.setAttribute("data-i18n-en","Today");
+  t.textContent=L2("Hoy","Today");
+  t.onclick=function(){ showTab(IDX) };
+  bar.insertBefore(t,bar.querySelector(".tab"));
+
+  var pg=document.createElement("div");
+  pg.className="wrap"; pg.id="pg"+IDX;
+  var pg0=document.getElementById("pg0");
+  if(pg0&&pg0.parentNode)pg0.parentNode.insertBefore(pg,pg0);
+  else document.body.appendChild(pg);
+
+  rol();
+}
+
+/* Quien la ve: cualquiera con sesion. El rol viewer NO — updAdmin cierra a
+   mano la lista [0..15] y una pantalla 16 se le colaria por el hueco. */
+function rol(){
+  var t=document.getElementById("tab"+IDX); if(!t)return;
+  var hay=false, viewer=false;
+  try{ hay=!!currentUser }catch(_e){}
+  try{ viewer=(typeof _isViewer==="function")&&_isViewer() }catch(_e){}
+  t.classList.toggle("hidden",!hay||viewer);
+}
+
+/* _showTabImpl recorre [0..15] escrito a mano: sin esto, pg16 se quedaria
+   pegado encima de la pantalla siguiente al cambiar de pestana. */
+if(typeof window.showTab==="function"){
+  var _st=window.showTab;
+  window.showTab=function(i){
+    var r=_st.apply(this,arguments);
+    try{
+      var t=document.getElementById("tab"+IDX), p=document.getElementById("pg"+IDX);
+      if(t)t.classList.toggle("on",i===IDX);
+      if(p)p.classList.toggle("show",i===IDX);
+      if(i===IDX)pinta();
+    }catch(e){ console.warn("[hoy]",e) }
+    return r;
+  };
+}
+/* v2.34.2 — ATERRIZAJE: al entrar, la app abre en "Hoy".
+   Se hace DESDE AQUI y no tocando la cadena de updAdmin por dos razones:
+     · orden de arranque — pg16 lo crea monta(), que corre en esta misma
+       envoltura ANTES del salto; cambiando la linea de alla se saltaria a una
+       pantalla que en el primer login todavia no existe, y saldria en blanco;
+     · reversibilidad — borrar los dos bloques devuelve tambien el aterrizaje
+       viejo (admin→Daily, tecnico y organizer→Calendario en vista Route).
+   Solo la PRIMERA pasada con sesion: updAdmin corre al entrar, al auto-entrar
+   y al salir, y nadie debe ser arrancado de la pestana donde ya estaba. */
+var _aterrizado=false;
+function aterriza(){
+  var hay=false, viewer=false;
+  try{ hay=!!currentUser }catch(_e){}
+  try{ viewer=(typeof _isViewer==="function")&&_isViewer() }catch(_e){}
+  if(!hay){ _aterrizado=false; return }        /* al salir se rearma */
+  if(viewer||_aterrizado)return;               /* el viewer se queda en Tech Tools */
+  var t=document.getElementById("tab"+IDX);
+  if(!t||t.classList.contains("hidden"))return;
+  _aterrizado=true;
+  try{ showTab(IDX) }catch(_e){}
+}
+if(typeof window.updAdmin==="function"){
+  var _ua=window.updAdmin;
+  window.updAdmin=function(){
+    var r=_ua.apply(this,arguments);
+    try{ monta();rol();aterriza() }catch(_e){}
+    return r;
+  };
+}
+/* el idioma de la app cambia el rotulo y el contenido ya pintado */
+if(typeof window.applyAppLang==="function"){
+  var _al=window.applyAppLang;
+  window.applyAppLang=function(){
+    var r=_al.apply(this,arguments);
+    try{
+      var t=document.getElementById("tab"+IDX); if(t)t.textContent=L2("Hoy","Today");
+      var p=document.getElementById("pg"+IDX); if(p&&p.classList.contains("show"))pinta();
+    }catch(_e){}
+    return r;
+  };
+}
+
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta);
+else monta();
+setTimeout(monta,1500);
+/* mientras la pantalla esta abierta se refresca sola: es calculo local sobre
+   lo que ya esta en memoria, cero lecturas de Firestore. Si no esta a la
+   vista, no hace nada. */
+setInterval(function(){
+  try{
+    var p=document.getElementById("pg"+IDX);
+    if(p&&p.classList.contains("show")&&!document.hidden)pinta();
+  }catch(_e){}
+},60000);
+})();
+</script>
+
+
+<style id="aspenPartsAdminSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   ASPEN SERVICE 2.0 — FASE 7: "ADMIN PARTES"  (v2.35.0, 16 ago 2026)
+   Del rediseno que hizo Alberto. ADITIVO Y REVERSIBLE: borrar este bloque y
+   el de abajo (aspenPartsAdminScript) devuelve la app a como estaba.
+
+   POR QUE ASI Y NO COMO LA MAQUETA. La maqueta pinta una rejilla del catalogo
+   con un hueco de FOTO en cada parte. El catalogo real tiene 1.522 articulos:
+   una rejilla de 1.522 huecos no es una tarea, es un muro. Lo que si es una
+   tarea es la COLA: que partes usan los tecnicos de verdad y cuales de esas
+   todavia no tienen foto. Ese dato ya existe — cada visita guarda `t.parts[]`
+   con el nombre de lo que se puso — asi que la pantalla se ordena por uso real
+   y de arriba abajo se va cerrando el hueco.
+
+   Cero datos nuevos y cero logica duplicada: el slug, el mapa de fotos y la
+   subida son los del propio Catalogo de partes, expuestos en `_aspPartes`.
+   ═══════════════════════════════════════════════════════════════════════ */
+#pg17{padding-bottom:80px}
+#pg17 .pa-h{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:2px 0 16px}
+#pg17 .pa-h h1{margin:0;font-size:29px;font-weight:800;letter-spacing:-.02em;line-height:1}
+#pg17 .pa-h .pa-sub{color:var(--i3);font-size:13.5px;padding-bottom:4px;flex:1;min-width:180px}
+
+/* aviso cuando las reglas no dejan leer las fotos — es EL sitio donde se nota */
+#pg17 .pa-warn{background:var(--c-warning-bg);border:1px solid var(--c-warning-border);
+  color:var(--c-warning-fg);border-radius:12px;padding:12px 15px;font-size:13.5px;
+  line-height:1.55;margin-bottom:14px}
+#pg17 .pa-warn b{font-weight:800}
+#pg17 .pa-warn code{background:rgba(0,0,0,.06);border-radius:5px;padding:1px 6px;
+  font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+
+/* los cuatro numeros */
+#pg17 .pa-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;
+  margin-bottom:18px}
+#pg17 .pa-kpi{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:15px 17px;
+  box-shadow:0 1px 2px rgba(27,22,19,.04)}
+#pg17 .pa-kpi .kl{font-size:10.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--i3);margin-bottom:7px}
+#pg17 .pa-kpi .kv{font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink)}
+#pg17 .pa-kpi .kv.falta{color:var(--ac)}
+#pg17 .pa-kpi .kd{font-size:12.5px;color:var(--i3);margin-top:6px}
+#pg17 .pa-bar{height:7px;border-radius:99px;background:var(--ln);overflow:hidden;margin-top:9px}
+#pg17 .pa-bar i{display:block;height:100%;background:var(--ac);border-radius:99px}
+
+/* filtros + buscador */
+#pg17 .pa-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+#pg17 .pa-f{border:1px solid var(--ln);background:var(--cd);border-radius:999px;padding:7px 14px;
+  font:inherit;font-size:12.5px;font-weight:700;color:var(--i2);cursor:pointer}
+#pg17 .pa-f:hover{border-color:var(--ac)}
+#pg17 .pa-f[aria-pressed="true"]{background:var(--br);border-color:var(--br);color:#F6EFE6;font-weight:800}
+#pg17 .pa-q{flex:1;min-width:200px;border:1.5px solid var(--ln);border-radius:11px;padding:10px 13px;
+  font:inherit;font-size:14.5px;background:var(--cd);color:var(--ink)}
+#pg17 .pa-q:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--acl)}
+#pg17 .pa-count{font-size:12.5px;color:var(--i3);white-space:nowrap}
+
+/* la fila */
+#pg17 .pa-row{background:var(--cd);border:1px solid var(--ln);border-radius:13px;padding:12px 14px;
+  margin-bottom:8px;display:flex;gap:14px;align-items:center;box-shadow:0 1px 2px rgba(27,22,19,.04)}
+#pg17 .pa-row.sinfoto{border-left:4px solid var(--ac)}
+#pg17 .pa-th{width:62px;height:62px;border-radius:10px;flex:none;border:1px solid var(--ln);
+  background:var(--c-ash,#F4F1EC) center/cover no-repeat;display:grid;place-items:center;font-size:21px}
+#pg17 .pa-th.vacia span{opacity:.32}
+#pg17 .pa-i{flex:1;min-width:0}
+#pg17 .pa-nm{font-size:14.5px;font-weight:700;line-height:1.3;word-break:break-word}
+#pg17 .pa-meta{font-size:12px;color:var(--i3);margin-top:4px;line-height:1.5}
+#pg17 .pa-tag{display:inline-block;background:var(--c-ash,#F4F1EC);border-radius:5px;padding:1px 7px;
+  font-size:10.5px;font-family:ui-monospace,Menlo,monospace;color:var(--i2);margin-right:6px}
+#pg17 .pa-uso{font-weight:800;color:var(--acd)}
+#pg17 .pa-r{text-align:right;white-space:nowrap;flex:none;display:flex;flex-direction:column;
+  align-items:flex-end;gap:7px}
+#pg17 .pa-p{font-size:14.5px;font-weight:800;color:var(--acd)}
+#pg17 .pa-p small{display:block;font-size:11px;color:var(--i3);font-weight:600;margin-top:2px}
+#pg17 .pa-b{border:none;border-radius:10px;padding:8px 15px;font:inherit;font-size:12.5px;
+  font-weight:800;cursor:pointer;background:var(--ac);color:#fff}
+#pg17 .pa-b.sec{background:var(--cd);color:var(--acd);box-shadow:inset 0 0 0 1.5px var(--ln)}
+#pg17 .pa-b:disabled{opacity:.55;cursor:default}
+#pg17 .pa-none{background:var(--cd);border:1px dashed var(--ln);border-radius:14px;padding:34px 16px;
+  text-align:center;color:var(--i3);font-size:14px;line-height:1.6}
+#pg17 .pa-more{width:100%;border:1.5px dashed var(--ln);background:none;border-radius:12px;padding:11px;
+  font:inherit;font-size:13.5px;font-weight:700;color:var(--i2);cursor:pointer;margin-top:4px}
+#pg17 .pa-more:hover{border-color:var(--ac);color:var(--acd)}
+
+@media(max-width:640px){
+  #pg17 .pa-h h1{font-size:25px}
+  #pg17 .pa-kpis{grid-template-columns:1fr 1fr;gap:10px}
+  #pg17 .pa-kpi{padding:13px 14px}
+  #pg17 .pa-kpi .kv{font-size:25px}
+  #pg17 .pa-row{flex-wrap:wrap}
+  #pg17 .pa-r{flex-direction:row;align-items:center;width:100%;justify-content:space-between;
+    text-align:left;border-top:1px solid var(--ln);padding-top:10px}
+}
+</style>
+
+<script id="aspenPartsAdminScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspPartsAdmin)return; window.__aspPartsAdmin=true;
+
+var IDX=17;                 /* tab17 / pg17 */
+var PAGINA=40;
+var filtro="falta", q="", mostrar=PAGINA, _uso=null, _avisoFotos="";
+/* Lo que se acaba de fotografiar SE QUEDA a la vista aunque el filtro sea
+   "faltan foto". Si desapareciera al instante no habria forma de comprobar que
+   la foto subida es la correcta — y una foto equivocada en una parte es peor
+   que ninguna. Se limpia al cambiar de filtro o al volver a entrar. */
+var _recien={};
+
+function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
+function api(){ return window._aspPartes||null }
+function dinero(n){ n=Number(n)||0; return "$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",") }
+
+/* ── USO REAL: cada visita guarda `t.parts[]` con lo que se puso. De ahi sale
+      el orden de la cola. Recorre lo que ya esta en memoria; cero lecturas. ── */
+function uso(){
+  if(_uso)return _uso;
+  var m={}, A=api();
+  if(!A)return {};
+  function mete(t){
+    var ps=(t&&Array.isArray(t.parts))?t.parts:[];
+    var cuando=(t.completedAt&&String(t.completedAt).slice(0,10))||t.date||"";
+    ps.forEach(function(p){
+      var n=p&&p.n; if(!n)return;
+      var sl=A.slug(n); if(!sl)return;
+      if(!m[sl])m[sl]={n:n,veces:0,ultima:"",cant:0};
+      m[sl].veces++;
+      m[sl].cant+=(Number(p.qty)||1);
+      if(cuando>m[sl].ultima)m[sl].ultima=cuando;
+    });
+  }
+  try{ (typeof active!=="undefined"?active:[]).forEach(mete) }catch(_e){}
+  try{ (typeof done!=="undefined"?done:[]).forEach(mete) }catch(_e){}
+  _uso=m; return m;
+}
+
+/* El catalogo indexado por slug, para cruzarlo con el uso y con las fotos. */
+function catalogo(){
+  var A=api(), out={};
+  if(!A)return out;
+  try{
+    (Array.isArray(P)?P:[]).forEach(function(x){
+      var sl=A.slug(x&&x.n); if(sl&&!out[sl])out[sl]=x;
+    });
+  }catch(_e){}
+  return out;
+}
+
+/* La lista que se pinta: TODO lo que se ha usado alguna vez + el catalogo,
+   cada uno con su foto (si la tiene) y su uso (si lo tiene). */
+function filas(){
+  var A=api(); if(!A)return [];
+  var FOTOS=A.fotos()||{}, U=uso(), C=catalogo(), vistos={}, out=[];
+  function agrega(sl,nombre,item,u){
+    if(vistos[sl])return; vistos[sl]=1;
+    out.push({sl:sl, n:(item&&item.n)||nombre, cat:(item&&item.c)||"",
+              r:item?Number(item.r)||0:0, p:item?Number(item.p)||0:0,
+              foto:FOTOS[sl]||"", veces:u?u.veces:0, cant:u?u.cant:0,
+              ultima:u?u.ultima:"", enCatalogo:!!item});
+  }
+  Object.keys(U).forEach(function(sl){ agrega(sl,U[sl].n,C[sl],U[sl]) });
+  Object.keys(C).forEach(function(sl){ agrega(sl,C[sl].n,C[sl],U[sl]) });
+  return out;
+}
+
+function pinta(){
+  var pg=document.getElementById("pg"+IDX); if(!pg)return;
+  var A=api();
+  if(!A){
+    pg.innerHTML='<div class="pa-h"><h1>'+L2("Admin partes","Parts admin")+'</h1></div>'
+      +'<div class="pa-none">'+L2("El Catálogo de partes todavía no se ha abierto en esta sesión.",
+          "The Parts Catalog hasn\u2019t been opened yet in this session.")+'<br>'
+      +L2("Ábrelo una vez desde 🧰 Herramientas y vuelve.",
+          "Open it once from \uD83E\uDDF0 Tech Tools and come back.")+'</div>';
+    return;
+  }
+  var todo=filas();
+  var conFoto=todo.filter(function(f){ return !!f.foto }).length;
+  var usadas=todo.filter(function(f){ return f.veces>0 });
+  var usadasSinFoto=usadas.filter(function(f){ return !f.foto });
+  var cobertura=usadas.length?Math.round((usadas.length-usadasSinFoto.length)/usadas.length*100):0;
+
+  var lista=todo.slice();
+  if(filtro==="falta")      lista=lista.filter(function(f){ return (f.veces>0 && !f.foto) || _recien[f.sl] });
+  else if(filtro==="tiene") lista=lista.filter(function(f){ return !!f.foto });
+  else if(filtro==="usadas")lista=lista.filter(function(f){ return f.veces>0 });
+  if(q){
+    var ws=q.split(/\s+/);
+    lista=lista.filter(function(f){
+      var s=(f.n+" "+f.cat).toLowerCase();
+      return ws.every(function(w){ return !w||s.indexOf(w)>=0 });
+    });
+  }
+  /* orden: primero lo que mas se usa; a igualdad, lo mas reciente */
+  lista.sort(function(a,b){ return (b.veces-a.veces)||(b.ultima>a.ultima?1:-1) });
+
+  var H='';
+  H+='<div class="pa-h"><h1>'+L2("Admin partes","Parts admin")+'</h1>'
+    +'<div class="pa-sub">'+L2("Foto por parte, para que el técnico la reconozca antes de agregarla",
+        "A photo per part, so the tech recognizes it before adding it")+'</div></div>';
+
+  if(_avisoFotos){
+    H+='<div class="pa-warn"><b>'+L2("No se pudieron leer las fotos guardadas.","Couldn\u2019t read the saved photos.")+'</b> '
+      +L2("Firestore respondió ","Firestore answered ")+'<code>'+esc2(_avisoFotos)+'</code>. '
+      +L2("Si dice permission-denied, falta la regla de la colección ",
+          "If it says permission-denied, the rule for collection ")
+      +'<code>part_photos</code>'+L2(" — es una línea, no código."," is missing — one line, not code.")+'</div>';
+  }
+
+  H+='<div class="pa-kpis">'
+    +'<div class="pa-kpi"><div class="kl">'+L2("Partes con foto","Parts with a photo")+'</div>'
+      +'<div class="kv">'+conFoto+'</div><div class="kd">'+L2("de ","of ")+todo.length+' '
+      +L2("en total","total")+'</div></div>'
+    +'<div class="pa-kpi"><div class="kl">'+L2("Se usan de verdad","Actually used")+'</div>'
+      +'<div class="kv">'+usadas.length+'</div><div class="kd">'
+      +L2("distintas, en las visitas que hay cargadas","distinct, across the loaded visits")+'</div></div>'
+    +'<div class="pa-kpi"><div class="kl">'+L2("De ésas, sin foto","Of those, no photo")+'</div>'
+      +'<div class="kv falta">'+usadasSinFoto.length+'</div><div class="kd">'
+      +L2("la cola de trabajo","the work queue")+'</div></div>'
+    +'<div class="pa-kpi"><div class="kl">'+L2("Cobertura","Coverage")+'</div>'
+      +'<div class="kv">'+cobertura+'%</div>'
+      +'<div class="pa-bar"><i style="width:'+cobertura+'%"></i></div></div>'
+    +'</div>';
+
+  H+='<div class="pa-tools">'
+    +'<button type="button" class="pa-f" data-f="falta" aria-pressed="'+(filtro==="falta")+'">'
+      +L2("Faltan foto","Missing photo")+' <span style="opacity:.6">'+usadasSinFoto.length+'</span></button>'
+    +'<button type="button" class="pa-f" data-f="usadas" aria-pressed="'+(filtro==="usadas")+'">'
+      +L2("Se usan","Used")+' <span style="opacity:.6">'+usadas.length+'</span></button>'
+    +'<button type="button" class="pa-f" data-f="tiene" aria-pressed="'+(filtro==="tiene")+'">'
+      +L2("Ya tienen","Have one")+' <span style="opacity:.6">'+conFoto+'</span></button>'
+    +'<button type="button" class="pa-f" data-f="todo" aria-pressed="'+(filtro==="todo")+'">'
+      +L2("Todo el catálogo","Whole catalog")+'</button>'
+    +'<input id="paQ" class="pa-q" type="search" value="'+esc2(q)+'" placeholder="'
+      +L2("Buscar por nombre o categoría…","Search by name or category\u2026")+'" autocomplete="off">'
+    +'<span class="pa-count">'+lista.length+'</span></div>';
+
+  if(!lista.length){
+    H+='<div class="pa-none">'+(filtro==="falta"
+      ? L2("Ninguna parte usada se quedó sin foto. Eso es tener el catálogo al día.",
+           "Every used part has a photo. The catalog is up to date.")
+      : L2("Nada con esa búsqueda.","Nothing matches that search."))+'</div>';
+  }else{
+    var trozo=lista.slice(0,mostrar);
+    trozo.forEach(function(f){
+      var meta=[];
+      if(f.cat)meta.push('<span class="pa-tag">'+esc2(f.cat)+'</span>');
+      if(f.veces)meta.push('<span class="pa-uso">'+L2("usada ","used ")+f.veces+' '
+        +L2(f.veces===1?"vez":"veces",f.veces===1?"time":"times")+'</span>'
+        +(f.ultima?' &middot; '+L2("última ","last ")+esc2(f.ultima):''));
+      else meta.push(L2("sin uso registrado","no recorded use"));
+      if(!f.enCatalogo)meta.push('&middot; '+L2("fuera del catálogo","not in the catalog"));
+      H+='<div class="pa-row'+(f.foto?"":" sinfoto")+'" data-sl="'+esc2(f.sl)+'">'
+        +'<div class="pa-th'+(f.foto?"":" vacia")+'"'
+          +(f.foto?' style="background-image:url(\''+esc2(f.foto)+'\')"':'')+'>'
+          +(f.foto?'':'<span>\uD83D\uDCE6</span>')+'</div>'
+        +'<div class="pa-i"><div class="pa-nm">'+esc2(f.n)+'</div>'
+        +'<div class="pa-meta">'+meta.join(" ")+'</div></div>'
+        +'<div class="pa-r">'
+          +(f.r?'<div class="pa-p">'+dinero(f.r)+(f.p?'<small>'+L2("costo ","cost ")+dinero(f.p)+'</small>':'')+'</div>':'')
+          +'<button type="button" class="pa-b'+(f.foto?" sec":"")+'" data-up="'+esc2(f.sl)+'">'
+          +(f.foto?L2("Reemplazar","Replace"):L2("Subir foto","Add photo"))+'</button>'
+        +'</div></div>';
+    });
+    if(lista.length>mostrar){
+      H+='<button type="button" class="pa-more" id="paMore">'
+        +L2("Ver ","Show ")+Math.min(PAGINA,lista.length-mostrar)+L2(" más &middot; quedan "," more &middot; ")
+        +(lista.length-mostrar)+'</button>';
+    }
+  }
+  pg.innerHTML=H;
+
+  var qi=document.getElementById("paQ");
+  if(qi){
+    var t=null;
+    qi.oninput=function(){ clearTimeout(t); t=setTimeout(function(){
+      q=qi.value.trim().toLowerCase(); mostrar=PAGINA; pinta();
+      var n=document.getElementById("paQ"); if(n){ n.focus(); n.selectionStart=n.value.length }
+    },160) };
+  }
+}
+
+/* Un solo manejador para toda la pantalla: sobrevive a cada repintado. */
+function clics(ev){
+  var el=ev.target&&ev.target.closest?ev.target.closest("[data-f],[data-up],#paMore"):null;
+  if(!el)return;
+  if(el.id==="paMore"){ mostrar+=PAGINA; pinta(); return }
+  var f=el.getAttribute("data-f");
+  if(f){ filtro=f; mostrar=PAGINA; _recien={}; pinta(); return }
+  var sl=el.getAttribute("data-up");
+  if(sl)sube(el,sl);
+}
+
+function sube(boton,sl){
+  var A=api(); if(!A)return;
+  var fila=boton.closest?boton.closest(".pa-row"):null;
+  var nombre=fila?((fila.querySelector(".pa-nm")||{}).textContent||""):"";
+  var cat=fila?((fila.querySelector(".pa-tag")||{}).textContent||""):"";
+  var inp=document.createElement("input");
+  inp.type="file"; inp.accept="image/*"; inp.style.display="none";
+  document.body.appendChild(inp);
+  inp.onchange=async function(){
+    var f=inp.files&&inp.files[0];
+    try{ document.body.removeChild(inp) }catch(_r){}
+    if(!f)return;
+    var txt0=boton.textContent; boton.textContent="\u2026"; boton.disabled=true;
+    try{
+      await A.subeFoto(sl,nombre,cat,f);          /* la MISMA subida del catálogo */
+      _recien[sl]=1;
+      try{ toast(L2("Foto guardada \u2713","Photo saved \u2713")) }catch(_t){}
+      pinta();
+    }catch(e){
+      boton.textContent=txt0; boton.disabled=false;
+      var m=(e&&(e.code||e.message))||String(e);
+      console.error("[admin partes] subida:",e);
+      try{ toast(L2("No se pudo subir: ","Upload failed: ")+m,"err") }catch(_t){}
+    }
+  };
+  inp.click();
+}
+
+function monta(){
+  var bar=document.getElementById("tabBar");
+  if(!bar||document.getElementById("tab"+IDX))return;
+  var t=document.createElement("div");
+  t.className="tab hidden"; t.id="tab"+IDX;
+  t.setAttribute("data-i18n-es","Admin partes"); t.setAttribute("data-i18n-en","Parts admin");
+  t.textContent=L2("Admin partes","Parts admin");
+  t.onclick=function(){ showTab(IDX) };
+  bar.appendChild(t);
+  var pg=document.createElement("div");
+  pg.className="wrap"; pg.id="pg"+IDX;
+  var pg0=document.getElementById("pg0");
+  if(pg0&&pg0.parentNode)pg0.parentNode.insertBefore(pg,pg0); else document.body.appendChild(pg);
+  pg.addEventListener("click",clics);
+  rol();
+}
+
+/* Quien la ve: admin y organizer. Un tecnico NO — aqui se ve el costo dealer,
+   igual que el catalogo se lo esconde. El viewer tampoco (updAdmin cierra a
+   mano la lista [0..15] y una pantalla 17 se le colaria por el hueco). */
+function rol(){
+  var t=document.getElementById("tab"+IDX); if(!t)return;
+  var ok=false, viewer=false;
+  try{ viewer=(typeof _isViewer==="function")&&_isViewer() }catch(_e){}
+  try{
+    ok=!!currentUser && !viewer &&
+       (!!(typeof isAdmin!=="undefined"&&isAdmin) || currentUser.role==="organizer");
+  }catch(_e){}
+  t.classList.toggle("hidden",!ok);
+}
+
+/* _showTabImpl recorre [0..15] escrito a mano: sin esto, pg17 se queda pegado
+   encima de la pantalla siguiente al cambiar de pestana. */
+if(typeof window.showTab==="function"){
+  var _st=window.showTab;
+  window.showTab=function(i){
+    var r=_st.apply(this,arguments);
+    try{
+      var t=document.getElementById("tab"+IDX), p=document.getElementById("pg"+IDX);
+      if(t)t.classList.toggle("on",i===IDX);
+      if(p)p.classList.toggle("show",i===IDX);
+      if(i===IDX)entra();
+    }catch(e){ console.warn("[admin partes]",e) }
+    return r;
+  };
+}
+if(typeof window.updAdmin==="function"){
+  var _ua=window.updAdmin;
+  window.updAdmin=function(){ var r=_ua.apply(this,arguments); try{ monta();rol() }catch(_e){} return r };
+}
+if(typeof window.applyAppLang==="function"){
+  var _al=window.applyAppLang;
+  window.applyAppLang=function(){
+    var r=_al.apply(this,arguments);
+    try{
+      var t=document.getElementById("tab"+IDX); if(t)t.textContent=L2("Admin partes","Parts admin");
+      var p=document.getElementById("pg"+IDX); if(p&&p.classList.contains("show"))pinta();
+    }catch(_e){}
+    return r;
+  };
+}
+
+/* Al entrar: el uso se recalcula (pudo cerrarse una visita) y las fotos se
+   piden UNA vez — si el catalogo ya las cargo, se reusan tal cual. */
+function entra(){
+  _uso=null; _recien={};
+  var A=api();
+  pinta();
+  if(A && !A.cargadas()){
+    /* El aviso NO se caza interceptando console.warn — era fragil, y ademas el
+       propio callback lo borraba justo despues de capturarlo (lo encontro el
+       arnes). El catalogo ya guarda POR QUE fallo: si al terminar sigue sin
+       cargar, se le pregunta y se DICE en pantalla. */
+    try{ A.cargaFotos(function(){
+      _avisoFotos=A.cargadas()?"":((A.error&&A.error())||"sin detalle");
+      pinta();
+    }) }catch(_e){}
+  }
+}
+
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta);
+else monta();
+setTimeout(monta,1500);
 })();
 </script>
 
