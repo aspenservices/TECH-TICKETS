@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.38.1";
+var APP_VERSION="2.38.2";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -50208,6 +50208,17 @@ setTimeout(function(){ try{ abreSiempre() }catch(_e){} },1500);
 #billingRuleCardOrg,
 #warLogCardOrg{display:none!important}
 #pg5 .asp-orphan-banner{display:none!important}
+
+/* v2.38.2 — La BANDEJA DE REAGENDAR (`#rbTray`) tambien fuera. Se inserta
+   como primer hijo de #pg5, encima de todo, con tres tarjetas grandes de tres
+   botones cada una — y muestra a la MISMA gente que la seccion "Rescheduled —
+   needs new date" que ya vive mas abajo en esta pantalla. Era la misma
+   informacion dos veces en la misma pagina.
+   El `!important` hace falta porque el bloque escribe `style.display` inline.
+   Lo que se pierde al esconderla: el boton "Sugerir dia" (propone tecnico y
+   fecha) y el de "Duplicados". Abajo queda "Program now" para reagendar.
+   Volver a verla = quitar esta regla. */
+#rbTray{display:none!important}
 
 /* ── Calendario (pg4) ── */
 #attnPanel,
