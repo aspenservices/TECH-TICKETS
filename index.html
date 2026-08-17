@@ -6761,8 +6761,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.33.0";
-var BUILD_DATE="2026-08-13";
+var APP_VERSION="2.33.1";
+var BUILD_DATE="2026-08-16";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -29219,7 +29219,14 @@ var TECH_TOOLS=[
 // fully namespaced CSS (#xxApp), strict-mode IIFE, xx-prefixed ids → safe to
 // inject straight into the page (no iframe). Drives the generic _ttMountNative.
 var _TT_NATIVE_BUNDLES={
-  parts:{bundle:function(){return PARTS_NATIVE},app:"ptApp",nav:"ptNav",screen:"ptScreen",top:".pt-top",title:".pt-screentitle",lang:"ptLang"},
+  /* v2.33.1 — El catalogo NO sigue el patron de Blu Fusion, y registrarlo como si
+     lo siguiera lo dejaba muerto: (a) su css/html son TEXTO PLANO, no base64 →
+     _ttDecode reventaba con "Failed to execute 'atob'"; (b) arranca por boot(),
+     no por un IIFE en `js`; (c) no tiene nav/screen/titulo propios; (d) `.pt-top`
+     es su BARRA DE BUSQUEDA, no un header de marca — declararlo como `top` la
+     escondia; (e) ya esta escrito con los tokens de la app, asi que el puente de
+     tema (escrito para el design system de BF) solo le pisaba los chips. */
+  parts:{bundle:function(){return PARTS_NATIVE},app:"ptApp",plain:true,bridge:false},
   blufusion:{bundle:function(){return BF_NATIVE},app:"bfApp",nav:"bfNav",screen:"bfScreen",top:".bf-top",title:".bf-screentitle",lang:"bfLang"},
   waterbalance:{bundle:function(){return CB_NATIVE},app:"cbApp",nav:"cbNav",screen:"cbScreen",top:".cb-top",title:".cb-screentitle",lang:"cbLang"},
   smartouch:{bundle:function(){return ST_NATIVE},lazy:function(){return _stLoadBundle()},app:"stApp",nav:"stNav",screen:"stScreen",top:".st-top",title:".st-screentitle",lang:"stLang"},
@@ -29520,6 +29527,13 @@ function _ttMountNative(t){
     // Each tool ships fully-namespaced CSS, a strict IIFE and prefixed ids.
     var cfg=_TT_NATIVE_BUNDLES[t.key]; if(!cfg)return false;
     var NAT=cfg.bundle();
+    /* CONTRATO DEL BUNDLE (v2.33.1) — declarado por el registro, no adivinado.
+       Por defecto se mantiene el de siempre: css/html/js en base64 + puente de
+       tema. Una herramienta puede declarar:
+         plain:true   → su css/html vienen en texto plano (sin base64)
+         bridge:false → no aplicarle el puente de tema de BF (ya usa los tokens)
+         NAT.boot()   → arranca por funcion en vez de un IIFE en NAT.js         */
+    var dec=cfg.plain?function(s){return String(s==null?"":s)}:_ttDecode;
     // The theme bridge in _TT_NATIVE_OVERRIDES is authored against #bfApp/.bf-*.
     // Re-target it to this tool's prefix so non-BF tools inherit the same
     // light/dark/ember bridge automatically.
@@ -29531,12 +29545,13 @@ function _ttMountNative(t){
     if(!document.getElementById("ttNativeCss_"+t.key)){
       var st=document.createElement("style");
       st.id="ttNativeCss_"+t.key;
-      st.textContent=_ttDecode(NAT.css)+overrides;
+      st.textContent=dec(NAT.css)+(cfg.bridge===false?"":overrides);
       document.head.appendChild(st);
     }
     var host=document.getElementById("ttNativeHost");
-    host.innerHTML=_ttDecode(NAT.html);
-    (new Function(_ttDecode(NAT.js)))(); // the tool's own strict IIFE
+    host.innerHTML=dec(NAT.html);
+    if(typeof NAT.boot==="function")NAT.boot();   // bundle con arranque por funcion
+    else (new Function(dec(NAT.js)))();           // the tool's own strict IIFE
     // ── DE-APP-IFICATION (Jun 2026 — "sigue flotando como app dentro de otra"):
     //    physical DOM restructure + inline !important styles. Inline beats any
     //    stylesheet cascade, DOM order beats flex `order` tricks.
