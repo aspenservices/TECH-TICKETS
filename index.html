@@ -6761,7 +6761,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.38.2";
+var APP_VERSION="2.39.1";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -34361,7 +34361,10 @@ function _itkHistory(name, tickets, now){
   var spa="";
   for(var i=0;i<mine.length;i++){ if((mine[i].spaDesc||"").trim()){spa=mine[i].spaDesc.trim();break} }
   var rows=mine.slice(0,6).map(function(t){
-    return {date:t.date||"", job:(t.workTypes||[]).join(", ")||"Service",
+    /* v2.39.0 — se lleva tambien el id: sin el, el historial del panel es
+       una lista que no lleva a ningun sitio. Con el, cada visita abre SU
+       ticket. Nadie mas usa `rows`, asi que anadir un campo no rompe nada. */
+    return {id:t.id||"", date:t.date||"", job:(t.workTypes||[]).join(", ")||"Service",
             tech:(t.techs||[]).filter(Boolean).join(", ")||"\u2014"};
   });
   var oldest=mine.length?String(mine[mine.length-1].date||"") : "";
@@ -50547,6 +50550,247 @@ if(typeof window.rndrCal==="function"){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",marcaRoute);
 else setTimeout(marcaRoute,0);
 setTimeout(marcaRoute,1500);
+})();
+</script>
+
+
+<style id="aspenIntakeVivoSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   INTAKE: FUERA EL AGENDAR, Y EL PANEL CON VIDA  (v2.39.0, 17 ago 2026)
+   Alberto: "porque intake me sigue sugiriendo agendar tecnico, no quiero
+   eso, eliminalo" y "la info del spa y demas cosas esta como muy muerto,
+   cuando deberia poder verse mas y tener funcionalidad".
+
+   (1) La seccion "Schedule a tech" (cinco dias + siete tecnicos + el boton
+       "Pick a day and a tech") se va. Quedan las tres acciones que si usa:
+       mandar sin asignar, coaching call y descartar. Agendar se hace en el
+       calendario, que es donde se ve la carga real del dia.
+   (2) El panel lateral era texto plano: un telefono que no llama, una
+       direccion que no abre el mapa y un historial que no lleva a ningun
+       lado. Ahora cada dato es una accion.
+
+   ADITIVO Y REVERSIBLE: borrar estos dos bloques devuelve las dos cosas.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* filas del panel: la etiqueta arriba, el dato grande y tocable debajo */
+#pg14 .iv-row{display:block;padding:9px 0;border-bottom:1px solid var(--ln)}
+#pg14 .iv-row:last-of-type{border-bottom:none}
+#pg14 .iv-k{display:block;font-size:9.5px;font-weight:800;letter-spacing:1.1px;
+  text-transform:uppercase;color:var(--i3);margin-bottom:3px}
+#pg14 .iv-v{display:block;font-size:14px;font-weight:600;color:var(--ink);line-height:1.4;word-break:break-word}
+#pg14 a.iv-v{color:var(--acd);text-decoration:none}
+#pg14 a.iv-v:hover{text-decoration:underline}
+#pg14 .iv-acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+#pg14 .iv-b{border:1.5px solid var(--ln);background:var(--cd);border-radius:10px;
+  padding:8px 13px;font:inherit;font-size:12.5px;font-weight:800;color:var(--i2);
+  cursor:pointer;line-height:1.2;text-decoration:none;display:inline-block}
+#pg14 .iv-b:hover{border-color:var(--ac);color:var(--acd)}
+#pg14 .iv-b.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+#pg14 .iv-b.pri:hover{color:#fff;opacity:.92}
+
+/* historial: cada visita es un boton que abre su ticket */
+#pg14 .iv-tl{display:block}
+#pg14 .iv-e{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;
+  border:none;background:none;font:inherit;padding:9px 8px;border-radius:10px;cursor:pointer;
+  border-bottom:1px solid var(--ln)}
+#pg14 .iv-e:last-child{border-bottom:none}
+#pg14 .iv-e:hover{background:var(--acl)}
+#pg14 .iv-e .dot{width:8px;height:8px;border-radius:50%;background:var(--ln);flex:none;margin-top:5px}
+#pg14 .iv-e.hi .dot{background:var(--ac);box-shadow:0 0 0 3px var(--acl)}
+#pg14 .iv-e .tx{flex:1;min-width:0}
+#pg14 .iv-e b{display:block;font-size:13.5px;font-weight:700;line-height:1.3;color:var(--ink)}
+#pg14 .iv-e i{display:block;font-style:normal;font-size:11.5px;color:var(--i3);margin-top:2px}
+#pg14 .iv-e .ar{flex:none;color:var(--i3);font-size:13px;align-self:center}
+#pg14 .iv-sum{font-size:12px;color:var(--i3);margin-top:10px;padding-top:9px;border-top:1px solid var(--ln)}
+#pg14 .iv-none{color:var(--i3);font-size:13px;line-height:1.55;padding:6px 0 2px}
+</style>
+
+<script id="aspenIntakeVivoScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspIntakeVivo)return; window.__aspIntakeVivo=true;
+
+function E(v){ try{ return esc(String(v==null?"":v)) }catch(_e){ return "" } }
+function JS(v){ return String(v==null?"":v).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;") }
+
+/* ── (1) fuera el agendar ─────────────────────────────────────────────
+   Se sustituye el bloque entero por sus tres acciones. Los `onclick` son
+   LOS MISMOS de antes (`itkTriage` / `itkDiscard`), asi que no hay una
+   segunda copia del triage: solo desaparece la eleccion de dia y tecnico. */
+if(typeof window._itkSchedBlock==="function"){
+  window._itkSchedBlock=function(it){
+    if(!it||!it.token)return "";
+    var t=JS(it.token);
+    return '<div class="itk-sec"><div class="k">What to do with it</div>'
+      +'<div class="itk-acts">'
+      +'<button type="button" class="itk-btn itk-pri" onclick="itkTriage(\''+t+'\',\'dispatch\')">'
+        +'Send to Service Log</button>'
+      +'<button type="button" class="itk-btn itk-warn" onclick="itkTriage(\''+t+'\',\'coaching\')">'
+        +'Coaching call</button>'
+      +'<button type="button" class="itk-btn itk-gh" onclick="itkDiscard(\''+t+'\')">Discard</button>'
+      +'</div></div>';
+  };
+}
+
+/* ── (2) el panel lateral, con vida ───────────────────────────────────
+   Se reconstruye la PRESENTACION reusando las mismas fuentes de siempre
+   (`_itkHistory`, `_itkSpaParse`): ni un dato nuevo, ni una lectura mas.
+   Lo que cambia es que ahora se puede hacer algo con cada cosa.        */
+function fila(k,v,href,extra){
+  if(!v)return "";
+  var val=href
+    ? '<a class="iv-v" href="'+href+'"'+(extra||"")+'>'+E(v)+'</a>'
+    : '<span class="iv-v">'+E(v)+'</span>';
+  return '<div class="iv-row"><span class="iv-k">'+E(k)+'</span>'+val+'</div>';
+}
+function tel(p){ return String(p||"").replace(/[^0-9+]/g,"") }
+
+if(typeof window._itkAsideHTML==="function"){
+  var _orig=window._itkAsideHTML;
+  window._itkAsideHTML=function(it){
+    try{
+      /* sin registro no hay panel que pintar. El original reventaba aqui
+         (hace `it.customer` sin comprobar); nadie lo llama asi hoy, pero
+         devolver vacio es estrictamente mejor que heredar el fallo. */
+      if(!it)return "";
+      var all=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+      var H=_itkHistory(it.customer, all, Date.now());
+      var S=_itkSpaParse(H.spa||"");
+
+      /* ── SPA ── */
+      var spa;
+      if(S.campos.length){
+        spa=S.campos.map(function(c){ return fila(c.k,c.v) }).join("")
+           +(S.resto?'<div class="iv-row"><span class="iv-k">Factory notes</span>'
+                     +'<span class="iv-v" style="font-weight:500;font-size:13px">'+E(S.resto)+'</span></div>':'');
+      }else if(S.corto||H.spa){
+        spa=fila("Spa",S.corto?H.spa:H.spa);
+      }else{
+        spa='<div class="iv-none">Sin ficha del spa todav\u00eda. '
+           +'Se rellena sola en cuanto un t\u00e9cnico apunte el modelo en una visita.</div>';
+      }
+      if(it.customer&&typeof openCustomerByName==="function"){
+        spa+='<div class="iv-acts"><button type="button" class="iv-b" '
+          +'onclick="try{openCustomerByName(\''+JS(it.customer)+'\')}catch(e){}">'
+          +'Abrir la ficha del cliente</button></div>';
+      }
+
+      /* ── HISTORIAL: cada visita abre SU ticket ── */
+      var hist;
+      if(H.isNew){
+        hist='<div class="iv-none">Primera vez que sabemos de ellos. '
+            +'Vale la pena confirmar c\u00f3mo se escribe el nombre antes de despachar.</div>';
+      }else{
+        hist='<div class="iv-tl">'+H.rows.map(function(r,i){
+          var ab=(r.id&&typeof openTktDetail==="function")
+            ? ' onclick="try{openTktDetail(\''+JS(r.id)+'\')}catch(e){}"' : ' disabled';
+          return '<button type="button" class="iv-e'+(i===0?" hi":"")+'"'+ab+'>'
+            +'<span class="dot"></span><span class="tx"><b>'+E(r.job)+'</b>'
+            +'<i>'+E(r.date||"sin fecha")+' \u00b7 '+E(r.tech)+'</i></span>'
+            +(r.id?'<span class="ar">\u203a</span>':'')+'</button>';
+        }).join("")+'</div>'
+        +'<div class="iv-sum">'+H.count+(H.count===1?" ticket":" tickets")
+        +(H.since?(" \u00b7 cliente desde "+E(H.since)):"")+'</div>';
+      }
+
+      /* ── RUTA: llamar, textear, abrir el mapa ── */
+      var dir=[it.address,it.city,it.zip].filter(function(x){return String(x||"").trim()}).join(", ");
+      var ph=tel(it.phone);
+      var ruta=fila("Direcci\u00f3n",dir,dir?("https://www.google.com/maps/dir/?api=1&destination="
+                +encodeURIComponent(dir)):"", ' target="_blank" rel="noopener"')
+        +fila("Tel\u00e9fono",it.phone,ph?("tel:"+ph):"")
+        +fila("Correo",it.email,it.email?("mailto:"+encodeURIComponent(it.email)):"");
+      var acc="";
+      if(ph)acc+='<a class="iv-b pri" href="tel:'+E(ph)+'">Llamar</a>'
+                +'<a class="iv-b" href="sms:'+E(ph)+'">Mandar texto</a>';
+      if(dir)acc+='<a class="iv-b" target="_blank" rel="noopener" '
+                +'href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(dir)+'">'
+                +'Abrir en Maps</a>';
+      if(acc)ruta+='<div class="iv-acts">'+acc+'</div>';
+      if(!String(it.address||"").trim())
+        ruta+='<div class="iv-none">Sin direcci\u00f3n en la ficha \u2014 h\u00e1cela falta antes de despachar.</div>';
+
+      function tab(id,lbl){
+        return '<button type="button" role="tab" aria-selected="'+(_itkAside===id)+'"'
+          +' onclick="_itkSetAside(\''+id+'\')">'+lbl+'</button>';
+      }
+      return '<aside class="itk-aside">'
+        +'<div class="itk-atabs" role="tablist">'+tab("spa","Spa")+tab("hist","Historial")+tab("route","Ruta")+'</div>'
+        +'<div class="itk-abody">'
+          +'<div class="itk-apane'+(_itkAside==="spa"?" on":"")+'">'
+            +(S.modelo?'<div class="itk-spahd">'+E(S.modelo)
+                      +(S.serial?'<span>Serial '+E(S.serial)+'</span>':'')+'</div>':'')
+            +spa+'</div>'
+          +'<div class="itk-apane'+(_itkAside==="hist"?" on":"")+'">'+hist+'</div>'
+          +'<div class="itk-apane'+(_itkAside==="route"?" on":"")+'">'+ruta+'</div>'
+        +'</div></aside>';
+    }catch(e){
+      console.warn("[intake vivo]",e);
+      return _orig.apply(this,arguments);   /* ante la duda, lo de antes */
+    }
+  };
+}
+})();
+</script>
+
+
+<style id="aspenCapasSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   LAS CAPAS DEL CAJÓN DE TICKET  (v2.39.1, 17 ago 2026)
+   Alberto: "cuando pongo AI report se abre otra ventana y esto hace que la
+   primera se cierre".
+
+   CAUSA RAIZ, medida en el propio CSS:
+     #ticketDetailBack (el velo que cierra el cajon al tocarlo) ... z-index 3998
+     #ticketDetail     (el cajon del ticket) ....................... z-index 3998
+     .mbg              (Send Customer Report y TODOS los modales) .. z-index 1000
+   El modal se abria POR DEBAJO del velo. Ese velo tapa la pantalla entera y
+   lleva `onclick="closeTicketDetail()"`, asi que cada toque sobre el modal
+   caia en realidad en el velo y cerraba el cajon de atras.
+
+   Es la MISMA leccion de julio con el visor del reporte (#v8ReportOverlay a
+   999999 sobre modales en 1000), solo que al reves: alli el overlay tapaba a
+   los modales; aqui es el cajon. Ya existe el arreglo para aquel caso
+   (`body.v8r-open .mbg`); esto hace lo propio para este.
+
+   Se usa `:has()` en vez de una clase en el body porque el cajon se abre y se
+   cierra desde varios sitios y una clase mas seria otra cosa que mantener
+   sincronizada. El archivo ya usa `:has()` en otro bloque.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* con el cajon abierto, los modales van POR ENCIMA del velo */
+body:has(#ticketDetail.open) .mbg{z-index:1000002}
+/* y los avisos por encima de los modales, o un error dentro del modal
+   volveria a ser invisible — que es como se pierden horas */
+body:has(#ticketDetail.open) .toast{z-index:1000010}
+</style>
+
+<script id="aspenCapasScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspCapas)return; window.__aspCapas=true;
+
+/* El cajon registra `keydown` → Escape → closeTicketDetail(), SIN mirar si hay
+   un modal encima. Asi que con "Send Customer Report" abierto, Escape cerraba
+   los dos de golpe y el trabajo del modal se perdia.
+   Esto va en fase de CAPTURA, o sea antes que aquel manejador: si hay un modal
+   abierto, Escape cierra SOLO el modal y no deja pasar la tecla. */
+document.addEventListener("keydown", function(e){
+  if(e.key!=="Escape")return;
+  var abiertos=document.querySelectorAll(".mbg.open");
+  if(!abiertos.length)return;
+  var top=abiertos[abiertos.length-1];
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  try{
+    /* cada modal tiene su cierre propio (limpia su estado); si no lo
+       encontramos, se quita la clase, que es lo que todos hacen al final */
+    if(top.id==="repMBg" && typeof closeReportModal==="function")closeReportModal();
+    else top.classList.remove("open");
+  }catch(err){ try{ top.classList.remove("open") }catch(_e){} }
+}, true);
 })();
 </script>
 
