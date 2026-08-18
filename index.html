@@ -89,7 +89,16 @@
   --z-modal:1000000;   /* Modales: SIEMPRE encima de cualquier overlay */
   --z-overlay:3000; /* Picker drawers, image lightbox */
   --z-toast:1000010;   /* Toast notifications */
-  --z-dialog:5000;  /* Confirm/prompt — must always win */
+  /* v2.42.2 — POR ENCIMA DE LOS MODALES. Estaba en 5000 y los modales en 1000,
+     asi que un Confirm salia delante de cualquier modal. Al subir --z-modal a
+     1000000 en la v2.40.0 se INVIRTIO el orden sin querer: el dialogo quedo
+     detras, y "Assignment saved. Send appointment notification SMS?" abierto
+     desde un modal se iba al fondo. Un dialogo que pregunta algo TIENE que
+     verse: es lo ultimo que se pinta antes de los avisos.
+     Escala completa, de abajo a arriba:
+       base 1 · dropdown 100 · sticky 200 · fixed 500 · overlay 3000
+       · modal 1000000 · dialog 1000005 · toast 1000010                    */
+  --z-dialog:1000005;  /* Confirm/prompt — must always win */
 
   /* ─── ANIMATION TOKENS ─── */
   --ease-out:cubic-bezier(.16,1,.3,1);     /* Apple-style spring decel */
@@ -6827,7 +6836,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.42.1";
+var APP_VERSION="2.42.2";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -24359,10 +24368,44 @@ function openAppointmentSMS(ticket,techs,date,arrival){
   if(ticket.phone2)phones.push(ticket.phone2);
   if(Array.isArray(ticket.phones))ticket.phones.forEach(function(p){if(p)phones.push(p)});
   if(!phones.length){toast("No phone on ticket to text","warn");return}
-  var phClean=phones[0].replace(/[^0-9+]/g,"");
   var body=buildAppointmentSMS(ticket,techs,date,arrival);
-  var href="sms:"+phClean+"?&body="+encodeURIComponent(body);
-  window.location.href=href;
+  /* v2.42.2 — se usa `_smsHref`, que ya existe y elige el separador segun la
+     plataforma: Apple quiere `&body=` y Android `?body=`. Aqui se armaba a
+     mano con `?&body=`, un truco que no siempre rellena el mensaje en
+     Mensajes de macOS. Ocho sitios del archivo ya usaban _smsHref; este no. */
+  var href=(typeof _smsHref==="function")
+    ? _smsHref(phones[0],body)
+    : ("sms:"+phones[0].replace(/[^0-9+]/g,"")+"?&body="+encodeURIComponent(body));
+  _abrirSMS(href,body);
+}
+
+/* Abre la app de mensajes sin perder el gesto del usuario, y si el sistema no
+   la abre, deja una salida en vez de no hacer nada.
+   `window.location.href="sms:..."` se ejecuta despues del `await` del dialogo
+   de confirmacion, cuando el permiso de navegacion del clic ya puede haber
+   caducado: el navegador entonces lo ignora en silencio. Un <a> con click()
+   se trata como navegacion iniciada por el usuario y aguanta mejor. */
+function _abrirSMS(href,body){
+  var abierto=false;
+  try{
+    var a=document.createElement("a");
+    a.href=href; a.style.display="none";
+    document.body.appendChild(a);
+    a.click();
+    abierto=true;
+    setTimeout(function(){ try{ a.remove() }catch(_e){} },0);
+  }catch(_e){ abierto=false }
+  if(!abierto){ try{ window.location.href=href; abierto=true }catch(_e2){} }
+  /* red de seguridad: si al segundo y medio seguimos aqui con el foco puesto,
+     es que no se abrio nada. Se copia el mensaje y se dice como seguir. */
+  setTimeout(function(){
+    try{
+      if(document.hidden||!document.hasFocus())return;   /* se abrio: bien */
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(body);
+      toast(L2("No se abrio Mensajes — el texto quedo copiado, pegalo tu",
+               "Messages didn\u2019t open \u2014 the text is copied, paste it"),"warn");
+    }catch(_e){}
+  },1500);
 }
 // ── Shared offer-SMS-after-assignment helper ──────────────────────────
 // Re-used by Service Log (slToggleTech), Calendar queue (calSaveAssign),
