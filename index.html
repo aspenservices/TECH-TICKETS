@@ -6836,7 +6836,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.42.2";
+var APP_VERSION="2.42.4";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -13962,6 +13962,15 @@ function compressPhoto(file,maxW=1200,quality=0.72){
 async function uploadPhotoToStorage(blob,ticketKey,idx){
   if(!storage)throw new Error("Storage not initialized");
   if(!navigator.onLine)throw new Error("offline");
+  /* v2.42.4 — red de seguridad. `compressPhoto` devuelve {blob,dataUrl,type},
+     y quien le pase ese objeto entero aqui subia un archivo que no era una
+     imagen SIN QUE NADIE SE QUEJARA: Firebase lo acepta y hasta devuelve una
+     URL. Paso con las fotos de partes. Ahora se acepta el objeto y se saca el
+     blob, y se rechaza lo que no tenga tamaño. */
+  if(blob&&typeof blob.size!=="number"&&blob.blob)blob=blob.blob;
+  if(!blob||typeof blob.size!=="number")
+    throw new Error("uploadPhotoToStorage: esperaba un Blob, llego "+(typeof blob));
+  if(!blob.size)throw new Error("uploadPhotoToStorage: el archivo esta vacio");
   const path="tickets/"+ticketKey+"/"+Date.now()+"_"+idx+".jpg";
   const ref=storage.ref().child(path);
   const snap=await ref.put(blob,{contentType:"image/jpeg"});
@@ -48299,7 +48308,19 @@ var PARTS_NATIVE=(function(){
   async function subeFoto(sl,nombre,categoria,f){
     if(typeof storage==="undefined"||!storage)throw new Error("Storage no est\u00e1 inicializado");
     if(!navigator.onLine)throw new Error("sin conexi\u00f3n");
-    var blob=await compressPhoto(f,900,0.75);
+    /* v2.42.4 — `compressPhoto` NO devuelve un blob: devuelve
+       {blob, dataUrl, type}. Aqui se le pasaba el OBJETO ENTERO a
+       `uploadPhotoToStorage`, que lo mete tal cual en `ref.put()`. Firebase no
+       se queja — sube un archivo que no es una imagen y devuelve su URL tan
+       campante — asi que el documento se guardaba bien y la miniatura salia en
+       blanco, sin un solo error. Todos los demas caminos de la app (fotos del
+       reporte, del ticket, del delivery) hacen `.blob`; este no.
+       Se comprueba ademas que llegue algo con tamaño: subir 0 bytes seria el
+       mismo fallo silencioso con otra cara. */
+    var comp=await compressPhoto(f,900,0.75);
+    var blob=(comp&&comp.blob)?comp.blob:comp;
+    if(!blob||typeof blob.size!=="number"||!blob.size)
+      throw new Error("la imagen quedo vacia al comprimir");
     var up=await uploadPhotoToStorage(blob,"_parts/"+sl,0);
     await db.collection("part_photos").doc(sl).set({
       name:String(nombre||"").trim(), cat:String(categoria||"").trim(),
@@ -48345,7 +48366,10 @@ var PARTS_NATIVE=(function(){
       var sl=x._sl||(x._sl=slug(x.n)), foto=FOTOS[sl];   /* v2.41.0 — se calcula
          la primera vez que esta parte se pinta y se queda ahi */
       return '<div class="pt-row" data-slug="'+esc2(sl)+'">'
-        +'<div class="pt-th'+(foto?"":" vacio")+'"'+(foto?' style="background-image:url(\''+esc2(foto)+'\')"':'')+'>'
+        +'<div class="pt-th'+(foto?"":" vacio")+'">'
+          /* v2.42.3 — <img> en vez de background: asi el navegador puede avisar
+             si la foto no carga, en vez de dejar un cuadro blanco. */
+          +(foto?'<img src="'+esc2(foto)+'" alt="" loading="lazy" onerror="this.parentNode.classList.add(\'vacio\',\'rota\');this.outerHTML=\'<span>\\u26A0\\uFE0F</span>\';console.warn(\'[partes] foto no carga\')">':'')
           +(foto?'':'<span>\uD83D\uDCE6</span>')
           +(admin?'<button type="button" class="pt-up" data-up="'+esc2(sl)+'">'+(foto?"\u21bb":"+")+'</button>':'')
         +'</div>'
@@ -49522,8 +49546,11 @@ setInterval(function(){
   margin-bottom:8px;display:flex;gap:14px;align-items:center;box-shadow:0 1px 2px rgba(27,22,19,.04)}
 #pg17 .pa-row.sinfoto{border-left:4px solid var(--ac)}
 #pg17 .pa-th{width:62px;height:62px;border-radius:10px;flex:none;border:1px solid var(--ln);
-  background:var(--c-ash,#F4F1EC) center/cover no-repeat;display:grid;place-items:center;font-size:21px}
+  background:var(--c-ash,#F4F1EC);display:grid;place-items:center;font-size:21px;overflow:hidden}
+#pg17 .pa-th img{width:100%;height:100%;object-fit:cover;display:block}
 #pg17 .pa-th.vacia span{opacity:.32}
+#pg17 .pa-th.rota{border-color:var(--c-warning-strong,#C98A17);background:var(--c-warning-bg)}
+#pg17 .pa-th.rota span{opacity:1;font-size:18px}
 #pg17 .pa-i{flex:1;min-width:0}
 #pg17 .pa-nm{font-size:14.5px;font-weight:700;line-height:1.3;word-break:break-word}
 #pg17 .pa-meta{font-size:12px;color:var(--i3);margin-top:4px;line-height:1.5}
@@ -49571,6 +49598,25 @@ var filtro="falta", q="", mostrar=PAGINA, _uso=null, _avisoFotos="";
 var _recien={};
 
 function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
+
+/* Una miniatura que no carga deja de ser un cuadro blanco: dice que fallo y
+   guarda la URL en la consola para poder mirarla. */
+window._paFotoRota=function(img){
+  try{
+    var src=img.getAttribute("src")||"";
+    console.warn("[admin partes] la foto no carga:",src);
+    var box=img.parentNode;
+    if(box){
+      box.classList.add("vacia","rota");
+      box.innerHTML='<span title="'+esc2(src)+'">\u26A0\uFE0F</span>';
+    }
+    if(!window.__paAvisoFoto){
+      window.__paAvisoFoto=true;
+      try{ toast(L2("Hay fotos que no cargan \u2014 mira la consola para la URL",
+                    "Some photos won\u2019t load \u2014 check the console for the URL"),"err") }catch(_t){}
+    }
+  }catch(_e){}
+};
 function api(){ return window._aspPartes||null }
 function dinero(n){ n=Number(n)||0; return "$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",") }
 
@@ -49714,9 +49760,17 @@ function pinta(){
       else meta.push(L2("sin uso registrado","no recorded use"));
       if(!f.enCatalogo)meta.push('&middot; '+L2("fuera del catálogo","not in the catalog"));
       H+='<div class="pa-row'+(f.foto?"":" sinfoto")+'" data-sl="'+esc2(f.sl)+'">'
-        +'<div class="pa-th'+(f.foto?"":" vacia")+'"'
-          +(f.foto?' style="background-image:url(\''+esc2(f.foto)+'\')"':'')+'>'
-          +(f.foto?'':'<span>\uD83D\uDCE6</span>')+'</div>'
+        /* v2.42.3 — la miniatura es un <img>, no un background.
+           Con `background-image` el navegador no avisa cuando la imagen no
+           carga: queda un cuadro blanco y a adivinar (pasó el 18 de agosto:
+           el documento se guardó bien y la foto no aparecía, sin una sola
+           pista). Un <img> tiene `onerror`, así que puede DECIR que falló. */
+        +'<div class="pa-th'+(f.foto?"":" vacia")+'">'
+          +(f.foto
+            ? '<img src="'+esc2(f.foto)+'" alt="" loading="lazy" '
+              +'onerror="_paFotoRota(this)">'
+            : '<span>\uD83D\uDCE6</span>')
+          +'</div>'
         +'<div class="pa-i"><div class="pa-nm">'+esc2(f.n)+'</div>'
         +'<div class="pa-meta">'+meta.join(" ")+'</div></div>'
         +'<div class="pa-r">'
