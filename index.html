@@ -6797,7 +6797,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.48.0";
+var APP_VERSION="2.50.0";
 var BUILD_DATE="2026-08-19";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -18813,10 +18813,10 @@ function rndrSlog(){
   if(urgents.length){
     h+='<div style="margin-bottom:13px">';
     h+='<div class="lbl" style="color:var(--c-danger-strong);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("flame",15,{style:"vertical-align:-2px"})+' Urgent <span style="background:var(--c-danger-strong);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+urgents.length+'</span></div>';
-    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
+    h+='<div class="slc-g" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     urgents.forEach(function(t){
       var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
-      h+='<div style="background:#fff;border:1px solid var(--c-danger-bg);border-left:3px solid var(--c-danger-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
+      h+='<div class="slc" style="background:#fff;border:1px solid var(--c-danger-bg);border-left:3px solid var(--c-danger-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="font-weight:800;font-size:var(--fs-md);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
         (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
@@ -18840,7 +18840,7 @@ function rndrSlog(){
   if(rescheds.length){
     h+='<div style="margin-bottom:13px">';
     h+='<div class="lbl" style="color:var(--c-warning-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("rotate-ccw",16,{color:"var(--c-warning-fg)"})+'Rescheduled \u2014 needs new date <span style="background:var(--c-warning-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+rescheds.length+'</span></div>';
-    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
+    h+='<div class="slc-g" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     rescheds.forEach(function(t){
       var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       var days=_daysSince(t.reschedAtMs);
@@ -18854,12 +18854,12 @@ function rndrSlog(){
         ageHtml='<span style="font-size:var(--fs-xs);font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;'+sev+'">'+_agIc+'waiting '+ageTxt+'</span>';
       }
       var reasonHtml=t.reschedReason?'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);margin-bottom:4px;font-style:italic">'+esc(t.reschedReason)+'</div>':'';
-      h+='<div style="background:#fff;border:1px solid var(--c-warning-bg);border-left:3px solid var(--c-warning-fg);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
+      h+='<div class="slc" style="background:#fff;border:1px solid var(--c-warning-bg);border-left:3px solid var(--c-warning-fg);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-md);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span>'+ageHtml+'</div>'+
         reasonHtml+
         (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
-        ((currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar-days",14,{color:"#fff"})+'Program now</button>':'')+
+        ((currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" class="slc-prog" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar-days",14,{color:"#fff"})+'Program now</button>':'')+
       '</div>';
     });
     h+='</div></div>';
@@ -18872,10 +18872,10 @@ function rndrSlog(){
   if(newSpas.length){
     h+='<div style="margin-bottom:13px">';
     h+='<div class="lbl" style="color:var(--c-purple-strong);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("sparkles",15,{style:"vertical-align:-2px"})+' New Spa <span style="background:var(--c-purple-strong);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+newSpas.length+'</span></div>';
-    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
+    h+='<div class="slc-g" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     newSpas.forEach(function(t){
       var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
-      h+='<div style="background:#fff;border:1px solid var(--c-purple-bg);border-left:3px solid var(--c-purple-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
+      h+='<div class="slc" style="background:#fff;border:1px solid var(--c-purple-bg);border-left:3px solid var(--c-purple-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="font-weight:800;font-size:var(--fs-md);color:var(--ink);margin-bottom:6px;line-height:1.25">'+esc(t.customer)+'</div>'+
         (t.date?'<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("calendar",11,{color:"var(--i3)"})+t.date+(t.arrival?' · '+t.arrival:'')+'</div>':'')+
         (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
@@ -18891,7 +18891,7 @@ function rndrSlog(){
     var _canProgRep=currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer");
     h+='<div style="margin-bottom:13px">';
     h+='<div class="lbl" style="color:var(--c-danger-fg);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("repeat",16,{color:"var(--c-danger-fg)"})+'Repeats <span style="background:var(--c-danger-fg);color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+repeats.length+'</span></div>';
-    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
+    h+='<div class="slc-g" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     repeats.forEach(function(t){
       var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       var techLine=(t.techs&&t.techs.length)?t.techs.join(", "):"";
@@ -18908,7 +18908,7 @@ function rndrSlog(){
           (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
           (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
         '</div>'+
-        (_canProgRep?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar",13,{color:"#fff"})+(hasDate?'Reschedule':'Program now')+'</button>':'')+
+        (_canProgRep?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" class="slc-prog" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar",13,{color:"#fff"})+(hasDate?'Reschedule':'Program now')+'</button>':'')+
       '</div>';
     });
     h+='</div></div>';
@@ -18927,7 +18927,7 @@ function rndrSlog(){
   if(ccReqs.length){
     h+='<div style="margin-bottom:13px">';
     h+='<div class="lbl" style="color:#854d0e;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:800;letter-spacing:.4px;text-transform:uppercase">'+icon("credit-card",16,{color:"#854d0e"})+'Pending Credit Card Requests <span style="background:#854d0e;color:#fff;font-size:var(--fs-sm);padding:2px 8px;border-radius:10px;font-weight:700">'+ccReqs.length+'</span></div>';
-    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
+    h+='<div class="slc-g" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
     ccReqs.forEach(function(t){
       var _sc=_slCust(t);var addrLine=_sc.addrLine?esc(_sc.addrLine):'';
       h+='<div style="background:#fff;border:1px solid var(--c-warning-border);border-left:3px solid var(--c-warning-strong);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
@@ -22985,7 +22985,19 @@ function _dtv2Css(){
      +'.dtv2-top{grid-area:top}.dtv2-colV{grid-area:v}.dtv2-colC{grid-area:c}.dtv2-colW{grid-area:w}.dtv2-acts{grid-area:acts}'
      +'.dtv2-colhead{display:block;font-size:var(--fs-xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--i3);margin:2px 2px 8px;border-bottom:1px solid var(--ln);padding-bottom:5px}'
      +'.dtv2-morebtn,.dtv2-actbar{display:none}'
-   +'}';
+   +'}'
+   +((typeof _dtHojaCompacta==="function"&&_dtHojaCompacta())?
+      /* v2.50.0 \u2014 lo mismo que el telefono hace desde hace meses, ahora
+         tambien en escritorio. Va al FINAL de la hoja a proposito: misma
+         especificidad que las reglas de arriba, asi que gana esta. */
+      '@media(min-width:1100px){'
+       +'.dtv2-grid{grid-template-areas:"top top top" "v c w" "more more more" "acts acts acts"}'
+       +'.dtv2-morebtn{display:block;grid-area:more;max-width:470px;margin:6px auto 14px;padding:11px}'
+       +'.dtv2-grid:not(.dtv2-open) .dtv2-more{display:none}'
+       +'.dtv2-grid:not(.dtv2-open) .dtv2-core{display:block}'
+       +'.dtv2-grid:not(.dtv2-open) .dtv2-acts .dtv2-more{display:block}'
+      +'}'
+    :"");
   document.head.appendChild(s);
 }
 function _dtLayoutV2(){
@@ -23026,6 +23038,9 @@ function _dtLayoutV2(){
     }
     else dest=top;                                                           // banners, check-in, chips
     if(more)el.classList.add("dtv2-more");
+    /* v2.50.0 — lo que no debe esconderse nunca lleva ademas dtv2-core; solo
+       lo usa el CSS de escritorio, el telefono sigue igual que siempre */
+    try{ if(more && typeof _dtEsNucleo==="function" && _dtEsNucleo(el,sect)) el.classList.add("dtv2-core"); }catch(_e){}
     dest.appendChild(el);
   });
   // Bot\u00F3n "M\u00E1s opciones" (solo m\u00F3vil por CSS)
@@ -51207,6 +51222,60 @@ window.aspOrigenDeContinuacion=function(t){
     activa:function(){ return actual; },
     sucias:function(){ var o=[],i; for(i=0;i<SECS.length;i++) if(sucias[SECS[i].k]) o.push(SECS[i].k); return o; },
     montado:function(){ return montado; }
+  };
+})();
+</script>
+
+<style id="aspenSlogCompacto">
+/* ══ TARJETAS DEL SERVICE LOG, COMPACTAS (v2.49.0) ══════════════════
+   Los estilos de estas tarjetas van EN LINEA (las arma rndrSlog), asi que
+   aqui hace falta !important: una declaracion !important de hoja gana a una
+   declaracion en linea normal. No se toca ningun dato, solo el tamano.
+   Borrar este bloque devuelve las tarjetas grandes.                        */
+#pg5 .slc{padding:5px 8px!important;border-radius:8px!important;box-shadow:none!important}
+#pg5 .slc>div{margin-bottom:1px!important}
+#pg5 .slc>div:first-child{margin-bottom:2px!important}
+/* Todo el texto baja un escalon y el NOMBRE se recupera al siguiente. Se hace
+   por estructura y no con [style*=...]: el navegador reserializa el atributo
+   style, asi que casar por su texto es fragil (lo enseno el arnes). */
+#pg5 .slc *{font-size:var(--fs-xs)!important;line-height:1.2!important}
+#pg5 .slc>div:first-child,
+#pg5 .slc>div:first-child>span:first-child{font-size:var(--fs-sm)!important;line-height:1.15!important}
+/* "Program now" deja de ser una barra naranja a todo lo ancho */
+#pg5 .slc-prog{width:auto!important;margin-top:5px!important;padding:4px 10px!important;
+  font-size:var(--fs-xs)!important;border-radius:7px!important;gap:4px!important}
+/* y caben mas por fila: la seccion deja de crecer hacia abajo */
+#pg5 .slc-g{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important;gap:6px!important}
+</style>
+
+<script id="aspenHojaCompacta">
+/* ══ LA HOJA DEL TICKET ABRE CON LO ESENCIAL (v2.50.0) ═══════════════
+   Solo escritorio. El telefono ya lo hacia y no se toca; los tecnicos no
+   pasan por esta capa (_dtLayoutV2 sale con if(!isAdmin)return).
+   Borrar este bloque devuelve la hoja de la v2.49.0.                        */
+(function(){
+  "use strict";
+
+  /* interruptor: localStorage tktCompacta="0" devuelve la hoja completa */
+  window._dtHojaCompacta=function(){
+    try{ return localStorage.getItem("tktCompacta")!=="0"; }catch(_e){ return true; }
+  };
+
+  /* Lo que NUNCA se esconde. Se decide por el titulo de la seccion, que es lo
+     que el propio clasificador ya lee (.dt-sec-t), y por los ids del editor de
+     cliente. Los titulos van en ingles porque asi los escribe openTktDetail;
+     se comprueba tambien la version en espanol por si se traducen. */
+  var NUCLEO=/(Customer\s*&\s*Address|Cliente\s*y\s*direcci|Visit\s*&\s*Warranty|Visita\s*y\s*garant|Billing|Facturaci|Spa\s*Info|Notes\s*&\s*Updates|Notas)/i;
+
+  window._dtEsNucleo=function(el, sect){
+    try{
+      if(!el) return false;
+      if(sect && NUCLEO.test(String(sect))) return true;
+      /* el editor de cliente: su seccion es "Customer & Address" pero por si
+         el titulo cambia, se reconoce tambien por sus campos */
+      if(el.querySelector && el.querySelector("#dtCust,#dtAddr")) return true;
+      return false;
+    }catch(_e){ return false; }
   };
 })();
 </script>
