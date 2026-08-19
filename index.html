@@ -6836,7 +6836,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.42.4";
+var APP_VERSION="2.43.0";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -49938,7 +49938,10 @@ setTimeout(monta,1500);
 "use strict";
 if(window.__aspNavTrim)return; window.__aspNavTrim=true;
 
-var OCULTAR=["tab13"];   /* 13 = Conversations */
+var OCULTAR=["tab13","tab11"]  /* tab13 Conversations · tab11 Journal (18 ago 2026:
+     "no sé para qué es, no lo utilizamos" — se esconde, no se borra: sus
+     entradas siguen en la coleccion `bujo` de Firestore y volver a verlo es
+     quitar el id de esta lista) */;   /* 13 = Conversations */
 
 function recorta(){
   OCULTAR.forEach(function(id){
@@ -50984,6 +50987,138 @@ window.aspOrigenDeContinuacion=function(t){
     bloqueador:(pv&&pv.blocker)||t.reschedBlocker||""
   };
 };
+})();
+</script>
+
+
+<style id="aspenChipsFix">
+/* ═══════════════════════════════════════════════════════════════════════
+   LOS BOTONES QUE CRECEN AL TOCARLOS  (v2.42.5, 18 ago 2026)
+   Alberto, en el iPhone: al elegir un tipo de trabajo el boton se estira
+   hasta ocupar media pantalla. Pasa en el Field Report y en los tickets del
+   Service Log.
+
+   POR QUE. Las filas de chips son `display:flex; flex-wrap:wrap` SIN decir
+   nada de alineacion, y el valor por defecto de `align-items` y de
+   `align-content` es **stretch**. Con `wrap`, si el contenedor acaba con mas
+   altura que sus lineas — y eso pasa en cuanto un chip envuelve a una linea
+   propia — el sobrante se REPARTE entre las lineas y los chips se estiran
+   para llenarlas. En escritorio casi no se nota porque casi todo cabe en una
+   linea; en el telefono, donde cada chip envuelve, se ve enorme.
+
+   El arreglo es decir lo que siempre se quiso: los chips miden lo que mide su
+   texto y se alinean arriba. Cero cambios donde ya se veia bien.
+
+   Se aplica a las filas de chips de TODA la app, no solo a la que reporto,
+   porque el defecto es del patron y no de una pantalla.
+   ═══════════════════════════════════════════════════════════════════════ */
+.wt-row, .w-row, #wtRow, #slWtRow,
+.chips-row, .pill-row, .tech-row, .vt-row{
+  align-items:flex-start;      /* que un chip no se estire al alto de su linea */
+  align-content:flex-start;    /* ni las lineas al alto del contenedor        */
+}
+.wt-row > .wt, .w-row > .wb, #wtRow > .wt, #slWtRow > .wt,
+.wt-row > button, #wtRow > button, #slWtRow > button{
+  flex:0 0 auto;               /* mide lo que mide su texto: ni crece ni se encoge */
+  align-self:flex-start;
+  height:auto;
+}
+/* el minimo de 44px sigue: es el tamaño comodo para el dedo, no un alto fijo */
+.wt-row > .wt, #wtRow > .wt, #slWtRow > .wt{ min-height:44px }
+
+/* ── LA CABECERA DE "DAILY CAPACITY", EN EL TELEFONO ──────────────────────
+   El panel recuerda si esta plegado. Su cabecera es una fila flex con el
+   titulo, la navegacion de fecha (‹ dia › Hoy) y el boton de plegar/desplegar
+   al final — sin `wrap`. En una pantalla de telefono la fila no cabe y el
+   boton de desplegar se sale por la derecha: el panel queda plegado y **no
+   hay forma de abrirlo desde el movil**. En la captura de Alberto se ve
+   "Today" cortado justo en el borde.
+   Que envuelva, y que el control de plegar quede siempre alcanzable.        */
+@media(max-width:700px){
+  .cap-hdr{flex-wrap:wrap;row-gap:8px;padding:10px 12px}
+  .cap-hdr-title{flex:1 1 auto;min-width:0}
+  .cap-toggle{order:2;margin-left:auto;font-size:18px;padding:4px 10px}
+  .cap-hdr-meta{order:3;flex:1 1 100%;white-space:normal;overflow:visible}
+  .cap-hdr .cap-nav,.cap-hdr>div:not(.cap-hdr-title):not(.cap-hdr-meta){
+    flex-wrap:wrap;max-width:100%}
+  .cap-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));padding:0 12px 12px}
+}
+</style>
+
+
+<script id="aspenDiagSlogScript">
+/* ═══════════════════════════════════════════════════════════════════════
+   POR QUE EL SERVICE LOG SALE EN BLANCO  (v2.43.0, 18 ago 2026)
+   En el iPhone la pantalla queda vacia bajo las sub-pestañas. Se comprobo
+   que NO hay ninguna regla de movil que la esconda, asi que el contenido no
+   se esta generando — pero desde un telefono no hay consola donde mirarlo.
+
+   Esto hace que la pantalla SE EXPLIQUE SOLA: si el area de contenido queda
+   vacia, en vez de dejar el hueco en blanco pinta lo que hace falta saber
+   (que modo tiene el contenedor, si la lista existe, cuanto ocupa, y el
+   ultimo error que se haya tragado un try/catch). Con una captura basta.
+
+   Es temporal, para cazar esto. Cuando este resuelto, borrar el bloque.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+if(window.__aspDiagSlog)return; window.__aspDiagSlog=true;
+
+var ultimoError="";
+/* atrapar el error que rndrSlog se traga en su propio catch */
+if(typeof window.rndrSlog==="function"){
+  var _rs=window.rndrSlog;
+  window.rndrSlog=function(){
+    try{ return _rs.apply(this,arguments) }
+    catch(e){ ultimoError=String(e&&e.message||e); throw e }
+    finally{ setTimeout(revisa,60) }
+  };
+}
+
+function vis(el){ try{ return el?getComputedStyle(el).display:"(no existe)" }catch(_e){ return "?" } }
+
+function revisa(){
+  var pg=document.getElementById("pg5");
+  if(!pg||!pg.classList.contains("show"))return;
+  var wrap=pg.querySelector(".cal-wrap");
+  var main=pg.querySelector(".cal-main");
+  var lista=document.getElementById("slogList");
+  var texto=(main?main.textContent:"").replace(/\s+/g,"").length;
+  /* si hay contenido de verdad, quitar el aviso y callarse */
+  var viejo=document.getElementById("aspDiagSlog");
+  if(texto>40){ if(viejo)viejo.remove(); return }
+  if(viejo)return;
+
+  var d=document.createElement("div");
+  d.id="aspDiagSlog";
+  d.style.cssText="margin:14px;padding:14px 16px;border:1.5px solid var(--c-warning-strong,#C98A17);"
+    +"background:var(--c-warning-bg,#FDF3D7);color:var(--c-warning-fg,#7A5A12);border-radius:14px;"
+    +"font-size:13px;line-height:1.6";
+  var filas=[
+    ["modo del contenedor", wrap?(wrap.className||"(sin clases)"):"NO EXISTE .cal-wrap"],
+    ["cal-main", vis(main)+(main?(" · "+texto+" caracteres"):"")],
+    ["cal-side", vis(pg.querySelector(".cal-side"))],
+    ["slogList", lista?(lista.innerHTML.length+" caracteres"):"NO EXISTE"],
+    ["buscador", document.getElementById("searchSlog")?"presente":"NO EXISTE"],
+    ["sub guardado", (function(){try{return sessionStorage.getItem("aspSlogSub")||"(ninguno)"}catch(_e){return "?"}})()],
+    ["ancho de pantalla", window.innerWidth+" px"],
+    ["ultimo error", ultimoError||"(ninguno)"]
+  ];
+  d.innerHTML='<div style="font-weight:800;margin-bottom:8px">El Registro de servicio sali\u00f3 vac\u00edo</div>'
+    +'<div style="font-size:12px;margin-bottom:10px">Mand\u00e1 una captura de esto y se arregla.</div>'
+    +filas.map(function(f){
+        return '<div><b>'+f[0]+':</b> '+String(f[1]).replace(/[<>&]/g,"")+'</div>' }).join("")
+    +'<button type="button" style="margin-top:11px;border:1.5px solid currentColor;background:none;'
+    +'color:inherit;border-radius:10px;padding:8px 14px;font:inherit;font-weight:800;cursor:pointer" '
+    +'onclick="try{rndrSlog()}catch(e){alert(e.message)}">Intentar pintarlo otra vez</button>';
+  (main||pg).appendChild(d);
+}
+
+if(typeof window.showTab==="function"){
+  var _st=window.showTab;
+  window.showTab=function(i){ var r=_st.apply(this,arguments); if(i===5)setTimeout(revisa,500); return r };
+}
+setTimeout(revisa,2000);
 })();
 </script>
 
