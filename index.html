@@ -6796,8 +6796,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.45.1";
-var BUILD_DATE="2026-08-17";
+var APP_VERSION="2.45.3";
+var BUILD_DATE="2026-08-19";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -47161,6 +47161,15 @@ updateNotifButton();
 document.addEventListener('click', function(e){
   const host = e.target.closest('button, .btn, [role=button]');
   if(!host) return;
+  /* v2.45.2 — el ripple es del Invoice Tracker y su CSS vive bajo #pg15
+     (bloque itkStyles). Al portarlo, el escuchador quedo colgado de document.
+     Fuera de pg15 el span no recibe NINGUN estilo: no es position:absolute, y
+     dentro de un boton inline-flex se vuelve un hijo flex que ocupa sitio real
+     (Save Changes pasaba de 162 a 526 px durante 0,75 s). Delimitarlo aqui
+     restaura la intencion original y de paso corta el getComputedStyle y los
+     estilos inline residuales en cada clic del resto de la app.
+     Quitar esta linea devuelve el comportamiento de 2.45.1. */
+  if(!host.closest('#pg15')) return;
   const cs = getComputedStyle(host);
   if(cs.position === 'static') host.style.position = 'relative';
   if(cs.overflow !== 'hidden') host.style.overflow = 'hidden';
@@ -50534,6 +50543,49 @@ window.aspOrigenDeContinuacion=function(t){
      2026: cumplio su trabajo. Dijo en pantalla, sin consola, que el contenedor
      llevaba la clase `asp-orphan-banner` — que la ponia nuestra propia
      limpieza — y con eso se encontro la causa en un minuto. -->
+
+<style id="aspenFilasFix">
+/* ════════════════════════════════════════════════════════════════════════
+   FILAS QUE ENVUELVEN  (v2.45.3, 19 ago 2026)
+
+   La segunda causa conocida de "el boton se hace grande", despues del ripple:
+   una fila `display:flex; flex-wrap:wrap` SIN decir alineacion. El valor por
+   defecto de `align-content` es stretch, asi que en cuanto la fila envuelve a
+   dos lineas y el contenedor tiene mas alto que ellas, el sobrante se REPARTE
+   entre las lineas y los hijos se estiran. Es lo que ya se arreglo en la
+   v2.42.5 para las filas de chips (bloque aspenChipsFix); el barrido del 19
+   ago encontro 27 filas mas con la misma forma y con botones dentro.
+
+   AQUI SOLO SE TOCA `align-content`, a proposito:
+     - en una fila de UNA sola linea no tiene ningun efecto (no hay lineas que
+       repartir), asi que no puede cambiar nada de lo que hoy se ve bien;
+     - `align-items` NO se toca, para que los botones de una misma linea sigan
+       igualandose de alto como ahora.
+
+   Quedan FUERA a proposito: `.cal-wrap` (es la estructura del calendario, no
+   una fila de botones), las rejillas de fotos (.media-grid, .tkt-media,
+   .ent-photos) por si alguna miniatura se dimensiona con el estirado, y las
+   filas de datos del Invoice Tracker (#pg15 .invoice-meta y compañía), que
+   funcionan y son de una app portada.
+
+   Reversible: borrar este bloque.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* filas de botones, chips y filtros que el barrido encontro sin declarar */
+.slog-subtabs, .tkt-att, .usr-actions, .slog-filter, .qb-cust-action-bar,
+.slog-map-tabs, .ent-actions, .co-type-row, .co-actions, .co-inv-acts,
+.itk-fun, .itk-fil, .itk-days, .itk-acts, .itk-chips,
+#bsOv .bs-ck, #pg16 .tdy-acts, #pg16 .tdy-pills, #pg14 .iv-acts{
+  align-content:flex-start;
+}
+
+/* las filas que arma el JS al vuelo llevan el flex en el atributo style y no
+   tienen clase a la que agarrarse; el atributo no declara align-content, asi
+   que esta regla si les llega. Inerte en las que no envuelven. */
+[style*="flex-wrap:wrap"], [style*="flex-wrap: wrap"]{
+  align-content:flex-start;
+}
+</style>
 
 </body>
 </html>
