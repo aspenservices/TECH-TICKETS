@@ -6796,7 +6796,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.45.0";
+var APP_VERSION="2.45.1";
 var BUILD_DATE="2026-08-17";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -49702,7 +49702,10 @@ setTimeout(function(){ try{ abreSiempre() }catch(_e){} },1500);
    se BORRARON del archivo, junto con la bandeja de reagendar y los dos paneles
    del calendario. Esconder sirvio para probar que no hacian falta; una vez
    confirmado, dejarlos corriendo era trabajo en cada repintado para nadie. */
-#pg5 .asp-orphan-banner{display:none!important}
+/* v2.45.1 — el `:not(...)` es un cinturon de seguridad, no un adorno: si el
+   JS vuelve a marcar el contenedor equivocado, esta regla YA NO puede
+   esconder la pantalla entera. Lo aprendimos por las malas. */
+#pg5 .asp-orphan-banner:not(.cal-wrap):not(.cal-main):not(.cal-side):not(.slog-loggroup):not(.slog-mapgroup){display:none!important}
 
 
 
@@ -49730,15 +49733,47 @@ if(window.__aspLimpieza)return; window.__aspLimpieza=true;
    agarrarse: se le pone una clase despues de pintar y el CSS lo esconde. */
 function marcaBanner(){
   var pg=document.getElementById("pg5"); if(!pg)return;
+  var FRASE="Rescheduled visits not in Service Log";
+  /* v2.45.1 — ESTO ESCONDIA EL SERVICE LOG ENTERO.
+     La version anterior marcaba "el primer div cuyo texto contenga la frase y
+     tenga 3 hijos o menos". Pero `textContent` ACUMULA el de todos los
+     descendientes: `.cal-wrap` contiene el banner y tiene exactamente dos
+     hijos (.cal-main y .cal-side), asi que se llevaba la marca el contenedor
+     padre — y con el `display:none` se iba la pantalla completa, incluidas
+     New Service Call y Map & Stats. Solo pasaba cuando HABIA reagendadas
+     huerfanas, por eso no fallaba siempre.
+     Ahora: (1) nunca se miran los contenedores estructurales, y (2) de los
+     candidatos se elige el MAS PROFUNDO — el que no contiene a ningun otro
+     candidato — que es el banner de verdad y no quien lo envuelve. */
+  var ESTRUCTURA=/(^|\s)(cal-wrap|cal-main|cal-side|wrap|slog-loggroup|slog-mapgroup|slog-subtabs)(\s|$)/;
+  var cands=[];
   var nodos=pg.querySelectorAll("div");
   for(var i=0;i<nodos.length;i++){
     var n=nodos[i];
     if(n.classList.contains("asp-orphan-banner"))continue;
-    var t=(n.textContent||"");
-    if(t.indexOf("Rescheduled visits not in Service Log")>=0 && n.children.length<=3){
-      n.classList.add("asp-orphan-banner"); break;
-    }
+    if(n===pg||n.id==="pg5"||n.id==="slogList")continue;
+    if(ESTRUCTURA.test(n.className||""))continue;
+    if((n.textContent||"").indexOf(FRASE)<0)continue;
+    cands.push(n);
   }
+  for(var k=0;k<cands.length;k++){
+    var envuelveAOtro=false;
+    for(var j=0;j<cands.length;j++){
+      if(j!==k && cands[k].contains(cands[j])){ envuelveAOtro=true; break }
+    }
+    if(!envuelveAOtro){ cands[k].classList.add("asp-orphan-banner"); return }
+  }
+}
+
+/* Si una version anterior ya marco un contenedor, se le quita la marca: si no,
+   el navegador de quien tenga la pagina abierta sigue con el Service Log en
+   blanco hasta que recargue. */
+function reparaMarcaVieja(){
+  var pg=document.getElementById("pg5"); if(!pg)return;
+  ["cal-wrap","cal-main","cal-side","slog-loggroup","slog-mapgroup"].forEach(function(c){
+    var el=pg.querySelector("."+c+".asp-orphan-banner");
+    if(el)el.classList.remove("asp-orphan-banner");
+  });
 }
 
 /* ── 2. las secciones de tarjetas, en columnas ──
@@ -49776,7 +49811,7 @@ function columnas(){
   cierra(grupo);
 }
 
-function pasada(){ try{ marcaBanner(); columnas() }catch(e){ console.warn("[limpieza]",e) } }
+function pasada(){ try{ reparaMarcaVieja(); marcaBanner(); columnas() }catch(e){ console.warn("[limpieza]",e) } }
 
 if(typeof window.rndrSlog==="function"){
   var _rs=window.rndrSlog;
@@ -50495,109 +50530,10 @@ window.aspOrigenDeContinuacion=function(t){
 </style>
 
 
-<script id="aspenDiagSlogScript">
-/* ═══════════════════════════════════════════════════════════════════════
-   POR QUE EL SERVICE LOG SALE EN BLANCO  (v2.44.0, 18 ago 2026)
-   En el iPhone la pantalla queda vacia bajo las sub-pestañas: ni la lista,
-   ni New Service Call, ni Map & Stats. Y desde el telefono no hay consola.
-
-   Se comprobo en el codigo que el CSS es correcto: `.cal-wrap` lleva
-   `slog-mode-log`, `.cal-main` se pone en `display:block` y el buscador es
-   HTML estatico, asi que deberia verse aunque no haya un solo ticket. O sea
-   que algo lo esta tapando u ocultando EN EL DISPOSITIVO.
-
-   La primera version de este bloque metia el aviso DENTRO de `.cal-main` —
-   justo el elemento sospechoso de estar oculto — asi que el aviso tampoco se
-   veia. Ahora se cuelga de `#pg5`, delante del contenedor, con estilo propio
-   y `display:block!important`: se ve pase lo que pase.
-
-   Y ademas INTENTA ARREGLARLO solo: si el contenedor perdio su clase de modo
-   o alguien le dejo un `display` inline, se lo repone.
-
-   Bloque temporal. Cuando esto quede resuelto, borrarlo.
-   ═══════════════════════════════════════════════════════════════════════ */
-(function(){
-"use strict";
-if(window.__aspDiagSlog)return; window.__aspDiagSlog=true;
-var ultimoError="";
-
-if(typeof window.rndrSlog==="function"){
-  var _rs=window.rndrSlog;
-  window.rndrSlog=function(){
-    try{ return _rs.apply(this,arguments) }
-    catch(e){ ultimoError=String(e&&e.message||e); throw e }
-    finally{ setTimeout(revisa,80) }
-  };
-}
-function disp(el){ try{ return el?getComputedStyle(el).display:"(no existe)" }catch(_e){ return "?" } }
-function alto(el){ try{ return el?Math.round(el.getBoundingClientRect().height)+"px":"—" }catch(_e){ return "?" } }
-
-/* ── auto-reparacion: lo mas probable primero ── */
-function repara(pg){
-  var wrap=pg.querySelector(".cal-wrap"); if(!wrap)return false;
-  var hizo=false;
-  if(!/slog-mode-(log|new|map)/.test(wrap.className)){
-    wrap.classList.add("slog-mode-log"); hizo=true;
-  }
-  ["cal-main","cal-side",".slog-loggroup"].forEach(function(){});
-  var main=pg.querySelector(".cal-main");
-  if(main&&main.style.display==="none"){ main.style.display=""; hizo=true }
-  if(wrap.style.display==="none"){ wrap.style.display=""; hizo=true }
-  if(hizo){ try{ if(typeof rndrSlog==="function")rndrSlog() }catch(_e){} }
-  return hizo;
-}
-
-function revisa(){
-  var pg=document.getElementById("pg5");
-  if(!pg||!pg.classList.contains("show"))return;
-  var wrap=pg.querySelector(".cal-wrap");
-  var main=pg.querySelector(".cal-main");
-  var lista=document.getElementById("slogList");
-  var texto=(main?main.textContent:"").replace(/\s+/g,"").length;
-  var viejo=document.getElementById("aspDiagSlog");
-  if(texto>40 && alto(main)!=="0px"){ if(viejo)viejo.remove(); return }
-  if(viejo)return;
-
-  var reparado=repara(pg);
-  var v=(typeof APP_VERSION!=="undefined")?APP_VERSION:"?";
-  var filas=[
-    ["version de la app", v],
-    ["ancho de pantalla", window.innerWidth+" px"],
-    ["contenedor", wrap?(wrap.className||"(sin clases)"):"NO EXISTE"],
-    ["cal-main", disp(main)+" · alto "+alto(main)+" · "+texto+" caracteres"],
-    ["cal-side", disp(pg.querySelector(".cal-side"))],
-    ["grupo del registro", disp(pg.querySelector(".slog-loggroup"))+" · alto "+alto(pg.querySelector(".slog-loggroup"))],
-    ["slogList", lista?(lista.innerHTML.length+" caracteres"):"NO EXISTE"],
-    ["buscador", document.getElementById("searchSlog")?"presente":"NO EXISTE"],
-    ["sub guardado", (function(){try{return sessionStorage.getItem("aspSlogSub")||"(ninguno)"}catch(_e){return "?"}})()],
-    ["se intento reparar", reparado?"SI":"no hizo falta"],
-    ["ultimo error", ultimoError||"(ninguno)"]
-  ];
-  var d=document.createElement("div");
-  d.id="aspDiagSlog";
-  d.setAttribute("style","display:block!important;position:relative;z-index:9;margin:14px 12px;"
-    +"padding:14px 16px;border:1.5px solid #C98A17;background:#FDF3D7;color:#7A5A12;"
-    +"border-radius:14px;font-size:13px;line-height:1.65;font-family:inherit");
-  d.innerHTML='<div style="font-weight:800;margin-bottom:6px">El Registro de servicio sali\u00f3 vac\u00edo</div>'
-    +'<div style="font-size:12px;margin-bottom:10px">Mand\u00e1 una captura de este recuadro.</div>'
-    +filas.map(function(f){ return '<div><b>'+f[0]+':</b> '+String(f[1]).replace(/[<>&]/g,"")+'</div>' }).join("")
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'
-    +'<button type="button" style="border:1.5px solid currentColor;background:none;color:inherit;'
-    +'border-radius:10px;padding:9px 14px;font:inherit;font-weight:800;cursor:pointer" '
-    +'onclick="try{rndrSlog()}catch(e){alert(e.message)}">Pintarlo otra vez</button>'
-    +'<button type="button" style="border:1.5px solid currentColor;background:none;color:inherit;'
-    +'border-radius:10px;padding:9px 14px;font:inherit;font-weight:800;cursor:pointer" '
-    +'onclick="try{sessionStorage.removeItem(\'aspSlogSub\');slogSwitchSub(\'log\')}catch(e){alert(e.message)}">'
-    +'Volver al Registro</button></div>';
-  pg.insertBefore(d, wrap||pg.firstChild);
-}
-if(typeof window.showTab==="function"){
-  var _st=window.showTab;
-  window.showTab=function(i){ var r=_st.apply(this,arguments); if(i===5)setTimeout(revisa,500); return r };
-}
-setTimeout(revisa,2200);
-})();
-</script>
+<!-- El bloque de diagnostico del Service Log (v2.43-2.44) se retiro el 18 ago
+     2026: cumplio su trabajo. Dijo en pantalla, sin consola, que el contenedor
+     llevaba la clase `asp-orphan-banner` — que la ponia nuestra propia
+     limpieza — y con eso se encontro la causa en un minuto. -->
 
 </body>
 </html>
