@@ -6366,6 +6366,7 @@ function rndrSpaDataWorklist(){
     else needDate.push({name:c.name,parsed:parsed});
   });
   var total=needDate.length+needSeries.length;
+  try{ window._aspSpaWorklistN=total; }catch(_e){}   /* lo lee la cola de Resumen */
   if(total===0){
     fill('<div class="card" style="margin:0;border-left:4px solid var(--c-success-fg)"><div style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--c-success-fg)">'+icon("check-circle",16,{color:"var(--c-success-fg)"})+'Spa data complete</div><div style="font-size:var(--fs-sm);color:var(--i2);margin-top:6px">🎉 Nela — every customer with spa info can be auto-anchored'+(legacyOOW?' \u00B7 '+legacyOOW+' auto-marked out of warranty from model year':'')+'. Nothing to do right now!</div></div>');
     return;
@@ -6796,7 +6797,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.46.1";
+var APP_VERSION="2.48.0";
 var BUILD_DATE="2026-08-19";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -7715,6 +7716,7 @@ function rndrAdminOrphans(){
     var ms=Date.parse(t.fieldReportSubmittedAt||"");
     return !isNaN(ms)&&ms>=_cutMs;
   }).sort(function(a,b){return (b.fieldReportSubmittedAt||"").localeCompare(a.fieldReportSubmittedAt||"")}).slice(0,50);
+  try{ window._aspOrfanosN=orphans.length+victims.length; }catch(_e){}  /* lo lee la cola de Resumen */
   if(!orphans.length&&!victims.length&&!recent.length){el.innerHTML="";return}
   orphans.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});
   victims.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});
@@ -7735,6 +7737,17 @@ function rndrAdminOrphans(){
     _recentHtml='<details class="adm-fold" style="margin-top:10px"><summary style="border-bottom:none;padding-bottom:0"><div style="display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);font-weight:800;color:var(--i2)">'+icon("history",14,{color:"var(--i2)"})+'Recently closed (last 30 days) — '+recent.length+'</div><span class="adm-fold-arrow">\u25BC</span></summary><div class="adm-fold-body">'+
       '<div style="font-size:var(--fs-xs);color:var(--i3);margin:6px 0 8px;line-height:1.4">Every dispatch auto-closed or report-matched in the last 30 days. If a customer\'s visit is missing from the calendar, look here first and Restore it.</div>'+
       recent.map(function(t){return _row(t,"")}).join("")+'</div></details>';
+  }
+  /* v2.46.2 — con 0 huerfanos y 0 victimas, esto era una tarjeta de ALERTA
+     anunciando que no pasa nada; solo seguia en pantalla porque la lista de
+     auditoria de 30 dias no estaba vacia. Se queda esa lista, plegada y sin
+     cabecera de aviso. La herramienta NO se pierde: sigue siendo el unico
+     sitio donde Restaurar una visita que el sanador cerro por error.
+     Volver a la tarjeta de siempre: localStorage admOrfanos="1". */
+  if(!orphans.length && !victims.length &&
+     typeof _admOrfanosDiscreto==="function" && _admOrfanosDiscreto()){
+    el.innerHTML=_recentHtml?('<div class="card" style="margin-bottom:0">'+_recentHtml+'</div>'):"";
+    return;
   }
   el.innerHTML='<div class="card" style="margin-bottom:0">'+
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:2px solid var(--c-warning-strong)">'+
@@ -50630,9 +50643,72 @@ window.aspOrigenDeContinuacion=function(t){
 .admBSecSub{font-size:12.5px;color:var(--i3);margin:2px 0 14px}
 /* rejilla de verdad, NO column-count: se lee en orden, sin saltar de una
    columna a otra a mitad de tarjeta (era una de las quejas de «Sistema») */
-.admBCols{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
-  gap:14px;align-items:start;align-content:flex-start}
+/* v2.47.0 — DOS columnas como maximo. Con auto-fit y 340px una pantalla de
+   1.800 px hacia CINCO, y como una fila de rejilla se estira al alto de la
+   tarjeta mas alta, la de ZIP (100 elementos) abria un socavon en las otras
+   cuatro. Dos columnas: menos hueco y mejor ancho de lectura. */
+.admBCols{display:grid;grid-template-columns:1fr;gap:14px;align-items:start;align-content:flex-start}
+@media(min-width:1100px){.admBCols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ── Configuracion como LISTA DE AJUSTES (v2.47.0) ────────────────────
+   Siete herramientas de tamanos muy distintos no caben bien en una rejilla.
+   En una lista si: filas iguales, se abre una a la vez, y la tarjeta de
+   verdad aparece dentro sin duplicar nada.                                  */
+.admBList{display:flex;flex-direction:column;gap:8px}
+.admBItem{background:var(--cd);border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+.admBItem.on{border-color:var(--ac);box-shadow:0 4px 18px rgba(30,25,15,.10)}
+.admBItemHd{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;
+  background:transparent;border:0;cursor:pointer;text-align:left;font:inherit}
+.admBItemHd:hover{background:var(--c-ash-2,#f3eee6)}
+.admBItemHd:focus-visible{outline:2px solid var(--ac);outline-offset:-3px}
+.admBItemIco{font-size:19px;line-height:1;flex:0 0 auto}
+.admBItemTxt{flex:1 1 auto;min-width:0}
+.admBItemTxt b{display:block;font-size:var(--fs-md);font-weight:700;color:var(--ink)}
+.admBItemTxt span{display:block;font-size:var(--fs-xs);color:var(--i3);margin-top:2px}
+.admBItemCnt{flex:0 0 auto;background:var(--c-ash-2,#eee8dd);color:var(--i2);
+  font-size:var(--fs-xs);font-weight:800;border-radius:20px;padding:3px 10px}
+.admBItemArr{flex:0 0 auto;color:var(--i3);font-size:13px;transition:transform .15s}
+.admBItem.on .admBItemArr{transform:rotate(90deg)}
+.admBItemBody{display:none;padding:0 16px 16px}
+.admBItem.on .admBItemBody{display:block}
+.admBItemBody>.card{border:0;padding:0;background:transparent;margin:0!important}
+@media(prefers-reduced-motion:reduce){.admBItemArr{transition:none}}
+
+/* ── la cola de atencion (v2.48.0) ───────────────────────────── */
+#admBCola{background:var(--cd);border:1px solid var(--ln);border-radius:16px;
+  overflow:hidden;margin-bottom:16px}
+.admBColaHd{display:flex;align-items:baseline;gap:10px;padding:15px 18px 13px;
+  border-bottom:1px solid var(--ln)}
+.admBColaHd b{font-size:17px;font-weight:800;letter-spacing:-.2px;color:var(--ink)}
+.admBColaHd span{font-size:var(--fs-xs);color:var(--i3)}
+.admBFila{display:flex;align-items:center;gap:14px;padding:13px 18px;border-top:1px solid var(--ln)}
+.admBFila:first-of-type{border-top:0}
+.admBFilaN{font-size:21px;font-weight:800;min-width:64px;text-align:right;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.admBFila.urg .admBFilaN{color:var(--c-danger-strong,#C0492F)}
+.admBFila.warn .admBFilaN{color:var(--c-warning-fg,#C98A17)}
+.admBFila.calm .admBFilaN{color:var(--i3)}
+.admBFilaT{flex:1 1 auto;min-width:0}
+.admBFilaT b{display:block;font-size:var(--fs-md);font-weight:700;color:var(--ink)}
+.admBFilaT span{display:block;font-size:var(--fs-xs);color:var(--i3);margin-top:2px}
+.admBFilaB{flex:0 0 auto;border:1px solid var(--ln);background:var(--cd);color:var(--br);
+  font-weight:800;font-size:var(--fs-xs);padding:8px 13px;border-radius:10px;cursor:pointer;
+  white-space:nowrap;font-family:inherit}
+.admBFilaB:hover{background:var(--acl);border-color:var(--ac)}
+.admBFilaB:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.admBColaOk{padding:22px 18px;text-align:center}
+.admBColaOk b{display:block;font-size:var(--fs-md);font-weight:700;color:var(--c-success-strong,#2E8B57)}
+.admBColaOk span{display:block;font-size:var(--fs-xs);color:var(--i3);margin-top:4px}
+@media(max-width:620px){
+  .admBFila{flex-wrap:wrap;row-gap:9px}
+  .admBFilaN{min-width:48px;text-align:left}
+  .admBFilaB{width:100%}
+}
 .admBCols>*{margin:0!important;min-width:0}
+/* v2.46.2 — varios paneles se vacian con innerHTML="" cuando no tienen nada
+   que decir (reagendadas repetidas, seguimientos, capacidad sin tickets), pero
+   su div seguia ocupando una celda: de ahi los huecos entre tarjetas. */
+.admBCols>*:empty,.admBOne>*:empty{display:none}
 .admBOne>*{margin:0 0 14px!important}
 .admBAviso{background:var(--c-warning-bg,#fdf3c0);border:1px solid var(--ln);
   border-radius:12px;padding:12px 14px;font-size:var(--fs-sm);color:var(--br);margin-bottom:12px}
@@ -50663,7 +50739,7 @@ window.aspOrigenDeContinuacion=function(t){
 
   var SECS=[
     {k:"Resumen",   t:"Resumen",              ico:"\uD83D\uDCCA",
-     sub:"Lo esencial de hoy y del periodo", una:true, per:true,
+     sub:"Lo que hay que atender, y despu\u00e9s los n\u00fameros", una:true, per:true,
      ids:["adminWelcome"]},
     {k:"Volumen",   t:"Volumen",              ico:"\uD83D\uDCC8",
      sub:"Cu\u00e1ntos trabajos y por qui\u00e9n", una:true, per:true,
@@ -50681,7 +50757,7 @@ window.aspOrigenDeContinuacion=function(t){
      sub:"Actividad cross-app y auditor\u00eda",
      ids:["adminBrainBody","auditLogPanel","warLogBody"]},
     {k:"Config",    t:"Configuraci\u00f3n",   ico:"\u2699\uFE0F",
-     sub:"Nada de esto caduca",
+     sub:"Siete herramientas \u00b7 se abre una a la vez", lista:true,
      ids:["adminTechBody","adminUserBody","adminZipBody","backupCard",
           "billingExportCard","aiKeyStatus","billingRoundBody"]}
   ];
@@ -50690,7 +50766,7 @@ window.aspOrigenDeContinuacion=function(t){
      Cerebro no lleva ninguna a proposito: su feed y el audit log se cargan
      cuando el usuario pulsa, que es como se disenaron (cero lecturas en reposo). */
   var PINTAN={
-    Resumen:  ["rndrAdminWelcome"],
+    Resumen:  ["_admPintaCola","rndrAdminWelcome"],
     Volumen:  ["_metricsRender"],
     Equipo:   ["rndrAdminFTF","rndrAdminStats"],
     Reportes: ["rndrAdminStats","_statVisitCompact","rndrWarByYear","rndrSvcWarranty"],
@@ -50702,6 +50778,216 @@ window.aspOrigenDeContinuacion=function(t){
   };
 
   var montado=false, actual=null, rail=null, cont=null, sucias={};
+
+  /* que ensena cada fila de la lista de Configuracion. `hdr` es la cabecera
+     VIEJA de esa tarjeta, que se esconde porque la fila ya la sustituye:
+     "sel" = un selector dentro de la tarjeta, "first" = su primer hijo. */
+  var META={
+    adminTechBody:    {ico:"\uD83D\uDC77", t:"T\u00e9cnicos",
+                       sub:"Alta, baja, renombrar y ocultar",
+                       hdr:"#adminTechHdr", cnt:"adminTechCount"},
+    adminUserBody:    {ico:"\uD83D\uDD11", t:"Usuarios y PINs",
+                       sub:"Qui\u00e9n entra y con qu\u00e9 rol",
+                       hdr:"#adminUserHdr", cnt:"adminUserCount"},
+    adminZipBody:     {ico:"\uD83D\uDCCD", t:"ZIP y zonas",
+                       sub:"Buscar, administrar e importar c\u00f3digos",
+                       hdr:"#adminZipHdr", cnt:"adminZipCount"},
+    backupCard:       {ico:"\uD83D\uDEDF", t:"Respaldo",
+                       sub:"Descargar un JSON con todo", hdr:".lbl"},
+    billingExportCard:{ico:"\uD83D\uDCE4", t:"Export a facturaci\u00f3n",
+                       sub:"Trabajo cerrado \u2192 Invoice Tracker", hdr:".lbl"},
+    aiKeyStatus:      {ico:"\uD83E\uDD16", t:"Llave de IA",
+                       sub:"Para el bot\u00f3n Mejorar de los reportes", hdr:"first"},
+    billingRoundBody: {ico:"\uD83D\uDCB5", t:"Regla de redondeo",
+                       sub:"C\u00f3mo el tiempo en sitio se vuelve hora facturable",
+                       hdr:"first"}
+  };
+
+  function escondeCabecera(card, meta){
+    try{
+      if(!meta||!meta.hdr) return;
+      var h=null;
+      if(meta.hdr==="first"){ h=card.firstElementChild; }
+      else { h=card.querySelector(meta.hdr); }
+      /* guardia: si eso que vamos a esconder trae un campo o un boton, NO es
+         una cabecera y no se toca (mejor un titulo repetido que un control
+         desaparecido). */
+      if(h && !h.querySelector("input,select,textarea,button")) h.style.display="none";
+    }catch(_e){}
+  }
+
+  function fila(id, cuerpo){
+    var card=tarjeta(id); if(!card) return false;
+    var meta=META[id]||{ico:"\u2699\uFE0F", t:id, sub:""};
+    var it=document.createElement("div"); it.className="admBItem"; it.setAttribute("data-id",id);
+    var hd=document.createElement("button"); hd.type="button"; hd.className="admBItemHd";
+    hd.setAttribute("aria-expanded","false");
+    var ico=document.createElement("span"); ico.className="admBItemIco"; ico.textContent=meta.ico;
+    var txt=document.createElement("div"); txt.className="admBItemTxt";
+    var b=document.createElement("b"); b.textContent=meta.t;
+    var s=document.createElement("span"); s.textContent=meta.sub||"";
+    txt.appendChild(b); txt.appendChild(s);
+    hd.appendChild(ico); hd.appendChild(txt);
+    if(meta.cnt){
+      var cn=document.createElement("span"); cn.className="admBItemCnt";
+      cn.setAttribute("data-cnt",meta.cnt); cn.textContent="\u2014";
+      hd.appendChild(cn);
+    }
+    var ar=document.createElement("span"); ar.className="admBItemArr"; ar.textContent="\u276F";
+    hd.appendChild(ar);
+    var bd=document.createElement("div"); bd.className="admBItemBody";
+    escondeCabecera(card, meta);
+    bd.appendChild(card); card.style.display="";
+    it.appendChild(hd); it.appendChild(bd);
+    hd.onclick=function(){ abre(it.classList.contains("on")?null:id); };
+    cuerpo.appendChild(it);
+    return true;
+  }
+
+  function abre(id){
+    var its=document.querySelectorAll(".admBItem"), i;
+    for(i=0;i<its.length;i++){
+      var on=(its[i].getAttribute("data-id")===id);
+      its[i].classList.toggle("on",on);
+      var h=its[i].querySelector(".admBItemHd");
+      if(h) h.setAttribute("aria-expanded",on?"true":"false");
+    }
+    try{ localStorage.setItem("admAjuste", id||""); }catch(_e){}
+  }
+
+  /* los contadores viven dentro de la tarjeta (#adminTechCount y compania) y
+     los reescriben sus render; la fila los espeja despues de pintar */
+  function espejaContadores(){
+    try{
+      var cs=document.querySelectorAll(".admBItemCnt[data-cnt]"), i;
+      for(i=0;i<cs.length;i++){
+        var src=document.getElementById(cs[i].getAttribute("data-cnt"));
+        var v=src?(src.textContent||"").trim():"";
+        cs[i].textContent=v||"\u2014";
+        cs[i].style.display=v?"":"none";
+      }
+    }catch(_e){}
+  }
+
+
+  /* ══ LA COLA DE ATENCION (v2.48.0) ═══════════════════════════
+     Cada fila reusa lo que la app YA calculaba; aqui no se inventa ninguna
+     regla nueva. El numero es solo la mitad: la otra mitad es el boton, que
+     lleva al sitio donde eso se arregla.                                     */
+  var _colaEspera=false;
+
+  function _pool(){
+    try{ return [].concat(active||[], done||[]); }catch(_e){ return []; }
+  }
+  function _diaCorte(dias){
+    var d=new Date(Date.now()-dias*86400000);
+    if(typeof fmtD==="function") return fmtD(d);
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+
+  function cola(){
+    var A=[], pool=_pool();
+
+    /* 1 · errores de campo: el mismo numero que el chip del heroe */
+    var errs=(typeof window._errBadgeN==="number")?window._errBadgeN:null;
+    if(errs>0) A.push({n:errs,sev:"urg",t:"Errores de campo",
+      s:"Env\u00edos de reporte que fallaron \u00b7 \u00faltimos 7 d\u00edas",
+      b:"Ver errores", go:function(){ try{ _showFieldErrors(); }catch(_e){} }});
+
+    /* 2 · despachos sin agendar: mismo predicado que el KPI Pending Dispatch */
+    var pend=0;
+    try{ pend=(active||[]).filter(function(t){
+      return t && t.source==="dispatch" && t.status==="pending" && !t.fieldReportSubmitted;
+    }).length; }catch(_e){}
+    if(pend>0) A.push({n:pend,sev:"urg",t:"Despachos sin agendar",
+      s:"Esperan d\u00eda y t\u00e9cnico",
+      b:"Ir al calendario", go:function(){ try{ showTab(4); }catch(_e){} }});
+
+    /* 3 · cerradas sin reporte, con la funcion canonica de fechas */
+    var corte=_diaCorte(30), sinRep=0;
+    try{ sinRep=pool.filter(function(t){
+      if(!t || !t.date || String(t.date).slice(0,10) < corte) return false;
+      if(t.source==="dispatch") return false;
+      return (typeof aspCerradaSinReporte==="function") ? aspCerradaSinReporte(t) : false;
+    }).length; }catch(_e){}
+    if(sinRep>0) A.push({n:sinRep,sev:"warn",t:"Cerradas sin reporte",
+      s:"Visitas dadas por hechas que no traen reporte \u00b7 \u00faltimos 30 d\u00edas",
+      b:"Ver en Diario", go:function(){ try{ showTab(1); }catch(_e){} }});
+
+    /* 4 · reagendadas repetidas */
+    var rep=0;
+    try{ rep=(_repeatedReschedAlerts()||[]).length; }catch(_e){}
+    if(rep>0) A.push({n:rep,sev:"warn",t:"Reagendadas repetidas",
+      s:"Clientes que ya volvieron dos veces o m\u00e1s",
+      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+
+    /* 5 · seguimientos vencidos: el mismo _followUpDueInfo del panel */
+    var seg=0;
+    try{ seg=pool.filter(function(t){
+      if(!t || !t.followUpDate || t.status==="canceled") return false;
+      var i=_followUpDueInfo(t.followUpDate); return !!(i && i.due);
+    }).length; }catch(_e){}
+    if(seg>0) A.push({n:seg,sev:"warn",t:"Seguimientos vencidos",
+      s:"Ten\u00edan fecha de volver a llamar y ya pas\u00f3",
+      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+
+    /* 6 · spas sin datos de garantia (lo cuenta rndrSpaDataWorklist) */
+    var spa=(typeof window._aspSpaWorklistN==="number")?window._aspSpaWorklistN:0;
+    if(spa>0) A.push({n:spa,sev:"calm",t:"Spas sin datos de garant\u00eda",
+      s:"Sin serie o sin fecha, as\u00ed que la cobertura no se puede calcular",
+      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+
+    /* 7 · despachos huerfanos (lo cuenta rndrAdminOrphans) */
+    var orf=(typeof window._aspOrfanosN==="number")?window._aspOrfanosN:0;
+    if(orf>0) A.push({n:orf,sev:"urg",t:"Despachos hu\u00e9rfanos",
+      s:"Cerrados sin un reporte real detr\u00e1s: desaparecen del calendario",
+      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+
+    var ord={urg:0,warn:1,calm:2};
+    A.sort(function(a,b){ return (ord[a.sev]-ord[b.sev]) || (b.n-a.n); });
+    return A;
+  }
+
+  function pintaCola(){
+    var host=document.getElementById("admBCola"); if(!host) return;
+    /* estos dos no se pueden preguntar sin pintar su panel: se pintan una vez
+       (van a un contenedor escondido) y dejan su total en una variable */
+    try{ if(typeof rndrSpaDataWorklist==="function") rndrSpaDataWorklist(); }catch(_e){}
+    try{ if(typeof rndrAdminOrphans==="function") rndrAdminOrphans(); }catch(_e){}
+
+    var A=cola(), h="";
+    h+='<div class="admBColaHd"><b>Necesita tu atenci\u00f3n</b><span>'+
+       (A.length?(A.length+" cosa"+(A.length!==1?"s":"")+" \u00b7 lo m\u00e1s caro de dejar, arriba")
+                :"revisado ahora mismo")+'</span></div>';
+    if(!A.length){
+      h+='<div class="admBColaOk"><b>Nada pendiente \u2713</b>'+
+         '<span>Ning\u00fan error de campo, ning\u00fan despacho sin agendar y ninguna visita cerrada sin reporte.</span></div>';
+    }
+    host.innerHTML=h;
+    if(A.length){
+      A.forEach(function(r,i){
+        var f=document.createElement("div"); f.className="admBFila "+r.sev;
+        var n=document.createElement("div"); n.className="admBFilaN"; n.textContent=r.n;
+        var tx=document.createElement("div"); tx.className="admBFilaT";
+        var b=document.createElement("b"); b.textContent=r.t;
+        var s=document.createElement("span"); s.textContent=r.s;
+        tx.appendChild(b); tx.appendChild(s);
+        var bt=document.createElement("button"); bt.type="button"; bt.className="admBFilaB";
+        bt.textContent=r.b; bt.onclick=r.go;
+        f.appendChild(n); f.appendChild(tx); f.appendChild(bt);
+        host.appendChild(f);
+      });
+    }
+    /* el conteo de errores llega por Firestore un segundo despues del primer
+       pintado; se repinta UNA vez cuando aterriza, no en bucle */
+    if(errsPendiente() && !_colaEspera){
+      _colaEspera=true;
+      setTimeout(function(){ _colaEspera=false;
+        try{ if(actual==="Resumen") pintaCola(); }catch(_e){} }, 2000);
+    }
+  }
+  function errsPendiente(){ return typeof window._errBadgeN!=="number"; }
+  window._admPintaCola=pintaCola;
 
   function def(k){ for(var i=0;i<SECS.length;i++) if(SECS[i].k===k) return SECS[i]; return null; }
   function esViewer(){ try{ return typeof window._isViewer==="function" && window._isViewer(); }
@@ -50737,6 +51023,11 @@ window.aspOrigenDeContinuacion=function(t){
         localStorage.setItem("admDinero","1")  y recargar.                    */
   window._admSinDinero=function(){
     try{ return localStorage.getItem("admDinero")!=="1"; }catch(_e){ return true; }
+  };
+
+  /* ── huerfanos: la tarjeta solo cuando hay algo que arreglar (v2.46.2) ── */
+  window._admOrfanosDiscreto=function(){
+    try{ return localStorage.getItem("admOrfanos")!=="1"; }catch(_e){ return true; }
   };
 
   function ponPeriodo(p, repinta){
@@ -50799,6 +51090,7 @@ window.aspOrigenDeContinuacion=function(t){
       }
     }
     sucias[k]=false;
+    if(k==="Config") espejaContadores();
   }
   function ensuciar(){ for(var i=0;i<SECS.length;i++) if(SECS[i].k!==actual) sucias[SECS[i].k]=true; }
 
@@ -50838,12 +51130,18 @@ window.aspOrigenDeContinuacion=function(t){
       sec.setAttribute("data-k",sc.k); sec.style.display="none";
       var h=document.createElement("div"); h.className="admBSecHdr"; h.textContent=sc.ico+" "+sc.t;
       var s=document.createElement("div"); s.className="admBSecSub"; s.textContent=sc.sub;
-      var cuerpo=document.createElement("div"); cuerpo.className=sc.una?"admBOne":"admBCols";
+      var cuerpo=document.createElement("div");
+      cuerpo.className=sc.lista?"admBList":(sc.una?"admBOne":"admBCols");
       sec.appendChild(h); sec.appendChild(s); sec.appendChild(cuerpo);
       cont.appendChild(sec);
 
+      if(sc.k==="Resumen"){
+        var cl=document.createElement("div"); cl.id="admBCola";
+        cuerpo.appendChild(cl);
+      }
       var puestos=0;
       sc.ids.forEach(function(id){
+        if(sc.lista){ if(fila(id,cuerpo)) puestos++; return; }
         var c=tarjeta(id); if(!c) return;
         cuerpo.appendChild(c); c.style.display=""; puestos++;
       });
@@ -50861,9 +51159,15 @@ window.aspOrigenDeContinuacion=function(t){
       if(ch===lay) return; if(ch && ch.style) ch.style.display="none";
     });
 
-    /* el plegado nativo de Tecnicos/Usuarios/ZIP/Tipos sigue vivo: en
-       Configuracion es util, y asi no hace falta neutralizar nada */
-    try{ if(typeof _applyAdminCollapse==="function") _applyAdminCollapse(); }catch(_e){}
+    /* v2.47.0 — en Configuracion quien pliega es la FILA, asi que el plegado
+       nativo de esas tarjetas se deja ABIERTO; si no, abrir una fila ensenaria
+       una tarjeta vacia. Las de estadisticas se abren por la misma razon. */
+    try{
+      ["Tech","User","Zip","StatTech","StatVisit"].forEach(function(k){
+        try{ localStorage.setItem("admin"+k+"Collapsed","0"); }catch(_e){}
+      });
+      if(typeof _applyAdminCollapse==="function") _applyAdminCollapse();
+    }catch(_e){}
 
     montado=true;
     for(var i=0;i<SECS.length;i++) sucias[SECS[i].k]=true;
