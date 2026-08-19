@@ -6796,7 +6796,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.45.3";
+var APP_VERSION="2.46.1";
 var BUILD_DATE="2026-08-19";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -7433,7 +7433,8 @@ function _metricsRender(){
     if(_gp==="month")mStart=new Date(now.getFullYear(),now.getMonth(),1);
     else if(_gp==="week"){mStart=new Date(now);mStart.setDate(now.getDate()-now.getDay());mStart.setHours(0,0,0,0);}
     var monthT=completed.filter(function(t){var dt=dOf(t);return dt&&(!mStart||dt>=mStart);});
-    var monthMoney=monthT.reduce(function(sm,t){return sm+_metricsMoney(t);},0);
+    var monthMoney=(typeof _admSinDinero==="function"&&_admSinDinero())?0
+      :monthT.reduce(function(sm,t){return sm+_metricsMoney(t);},0);
     // FTF: mismo motor que Daily y Admin. Antes contaba "reworks" como visitNum 2 ó 4
     // dentro del periodo: otra fórmula → otro número para el MISMO indicador. Y sin
     // datos devolvía 0%, mientras Daily devolvía 100%.
@@ -7447,7 +7448,8 @@ function _metricsRender(){
     var tc={};monthT.forEach(function(t){(t.techs||[]).forEach(function(tech){if(tech)tc[tech]=(tc[tech]||0)+1;});});
     var techArr=Object.keys(tc).map(function(k){return{name:k,n:tc[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,8);
     var maxT=Math.max(1,(techArr[0]||{n:1}).n);
-    var mName=now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+    var mName=(typeof _admEtiqueta==="function")?_admEtiqueta()
+      :now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
     function tile(l,v,c){return '<div style="flex:1;min-width:96px;background:var(--c-ash-2);border:1px solid var(--ln);border-radius:12px;padding:12px 14px"><div style="font-size:22px;font-weight:800;color:'+c+';line-height:1.1">'+v+'</div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">'+l+'</div></div>';}
     var h='';
     h+='<div style="background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:16px">';
@@ -7455,7 +7457,9 @@ function _metricsRender(){
     h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:14px">'+esc(mName)+' \u00b7 '+(typeof L2==="function"?L2("calculado de tus tickets, sin costo de lecturas","computed from your tickets, no read cost"):"")+'</div>';
     h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">';
     h+=tile(L2?L2("Completados","Completed"):"Completed",monthT.length,"var(--ac)");
-    h+=tile(L2?L2("Facturado","Billed"):"Billed",'$'+Math.round(monthMoney).toLocaleString(),"var(--c-success-strong)");
+    /* v2.46.1 — misma razon que en el heroe: es dinero estimado del ticket */
+    if(!(typeof _admSinDinero==="function"&&_admSinDinero()))
+      h+=tile(L2?L2("Facturado","Billed"):"Billed",'$'+Math.round(monthMoney).toLocaleString(),"var(--c-success-strong)");
     h+=tile(L2?L2("Resueltos 1\u00aa vez","First-time fix"):"First-time fix",(ftfRate==null?"\u2014":ftfRate+'%'),"var(--br)");
     h+='</div>';
     h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-bottom:8px">'+(L2?L2("Tickets por semana","Tickets per week"):"Tickets per week")+'</div>';
@@ -7463,7 +7467,7 @@ function _metricsRender(){
     weeks.forEach(function(w){var hp=Math.max(3,Math.round((w.n/maxW)*78));h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:10px;font-weight:700;color:var(--i3)">'+w.n+'</div><div title="'+w.n+'" style="width:100%;height:'+hp+'px;background:linear-gradient(180deg,var(--ac),var(--br));border-radius:5px 5px 0 0"></div><div style="font-size:9px;color:var(--i3)">'+(w.s.getMonth()+1)+'/'+w.s.getDate()+'</div></div>';});
     h+='</div>';
     if(techArr.length){
-      h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-bottom:8px">'+(L2?L2("Por t\u00e9cnico (este mes)","By tech (this month)"):"By tech")+'</div>';
+      h+='<div style="font-size:var(--fs-sm);font-weight:700;color:var(--i2);margin-bottom:8px">'+(L2?L2("Por t\u00e9cnico \u00b7 "+mName,"By tech \u00b7 "+mName):"By tech")+'</div>';
       techArr.forEach(function(tt){var wp=Math.round((tt.n/maxT)*100);h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:var(--fs-sm);min-width:92px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tt.name)+'</span><div style="flex:1;height:14px;background:var(--c-ash-2);border-radius:7px;overflow:hidden"><div style="width:'+wp+'%;height:100%;background:var(--ac);border-radius:7px"></div></div><span style="font-size:var(--fs-sm);font-weight:800;color:var(--i2);min-width:26px;text-align:right">'+tt.n+'</span></div>';});
     }
     h+='</div>';
@@ -10428,10 +10432,19 @@ function rndrAdminWelcome(){
   var completedToday=[].concat(active,done).filter(function(t){return t&&t.source!=="dispatch"&&(t.date||"")===todayStr&&(t.status==="complete"||t.status==="done")}).length;
   var pendingDispatch=active.filter(function(t){return t&&t.source==="dispatch"&&t.status==="pending"&&!t.fieldReportSubmitted}).length;
   // Team first-time-fix rate (this month) — same logic as the FTF panel
-  var now=new Date();var monthStart=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
+  var now=new Date();
+  /* v2.46.0 — el heroe respeta la pildora Semana/Mes/Todo. Sin el bloque
+     aspenAdminBScript estas dos lineas valen exactamente lo de antes. */
+  var _admLbl=(typeof _admEtiqueta==="function")?_admEtiqueta():"this month";
+  var monthStart=(typeof _admDesde==="function")?(_admDesde()||"0000-01-01")
+    :(now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01");
   // Last-month boundary (computed from existing tickets — no stored history needed)
   var _lm=new Date(now.getFullYear(),now.getMonth()-1,1);
-  var lastMonthStart=_lm.getFullYear()+"-"+String(_lm.getMonth()+1).padStart(2,"0")+"-01";
+  var lastMonthStart=(window._admPeriod&&window._admPeriod!=="month")?monthStart
+    :(_lm.getFullYear()+"-"+String(_lm.getMonth()+1).padStart(2,"0")+"-01");
+  /* con Semana o Todo no existe un “mes pasado” comparable, asi que
+     lastMonthStart==monthStart deja hasPrev en false y las flechas de
+     tendencia no salen, en vez de comparar peras con manzanas. */
   // FTF v2 (bounce-aware) + Avg Ticket from the billing engine (recomputed $),
   // not the stale client-written t.total.
   var resched=0,billSum=0,billCount=0,pResched=0,pBillSum=0,pBillCount=0;
@@ -10481,12 +10494,16 @@ function rndrAdminWelcome(){
   h+=card(todayStops,"","Today\u2019s Stops","Scheduled for "+(todayStr||"today"),"var(--ac)");
   h+=card(completedToday,"","Completed Today","Jobs finished","var(--c-success-strong)");
   h+=card(pendingDispatch,"","Pending Dispatch","Awaiting scheduling","var(--c-warning-strong)");
-  h+=card(ftf,"%","Team Fix Rate","First-time fix · this month",ftfCol,trendBadge(ftf,pFtf,true,pFtfTot>0,"","pt"));
-  h+=card(resched,"","Reschedules","Sent back · this month","var(--c-warning-strong)",trendBadge(resched,pResched,false,(pFixed+pResched)>0,"",""));
+  h+=card(ftf,"%","Team Fix Rate","First-time fix · "+_admLbl,ftfCol,trendBadge(ftf,pFtf,true,pFtfTot>0,"","pt"));
+  h+=card(resched,"","Reschedules","Sent back · "+_admLbl,"var(--c-warning-strong)",trendBadge(resched,pResched,false,(pFixed+pResched)>0,"",""));
+  /* v2.46.1 — Avg Ticket y Receivable salen del dinero CALCULADO del ticket
+     (_metricsMoney = partes + calcLabor), que no es lo que acaba facturandose
+     al cliente. Alberto los quito. Sin el bloque aspenAdminBScript vuelven. */
+  if(!(typeof _admSinDinero==="function"&&_admSinDinero())){
   h+='<div class="kpi-card" style="--kpi-ac:var(--c-money-strong)">'
     +'<div class="kpi-num">'+(avgTicket?("$"+avgTicket):"—")+'</div>'
     +'<div class="kpi-lbl">Avg Ticket</div>'
-    +'<div class="kpi-sub">Billed jobs · this month</div>'
+    +'<div class="kpi-sub">Billed jobs · '+_admLbl+'</div>'
     +trendBadge(avgTicket,pAvgTicket,true,pBillCount>0,"$","")
     +'</div>';
   var _recv=0,_recvN=0;try{var _pc=_porCobrarData();_recv=_pc.total||0;_recvN=_pc.count||0;}catch(_e){}
@@ -10495,6 +10512,7 @@ function rndrAdminWelcome(){
     +'<div class="kpi-lbl">Receivable</div>'
     +'<div class="kpi-sub">'+(_recvN?(_recvN+" open · awaiting payment"):"All collected ✓")+'</div>'
     +'</div>';
+  }
   if(typeof _canSendCustomerReport==="function"&&_canSendCustomerReport()){
     h+=card(qbToday,"","Reports \u2192 QB","Copied today","var(--c-money-strong)");
   }
@@ -50586,6 +50604,308 @@ window.aspOrigenDeContinuacion=function(t){
   align-content:flex-start;
 }
 </style>
+
+<style id="aspenAdminBSkin">
+/* ════════════════════════════════════════════════════════════════════
+   ADMIN B  (v2.46.0, 19 ago 2026) — la barra lateral por fin NAVEGA.
+
+   Antes: 17 paneles en un solo scroll, el riel hacia scrollIntoView y abrir
+   Admin disparaba 18 funciones de pintado, mirases lo que mirases.
+   Ahora: 7 secciones, una a la vez, y cada una se pinta la primera vez que se
+   abre. Las tarjetas NO salen del DOM (se mueven a su seccion y se esconden
+   con CSS): lo que se ahorra es el PINTADO, que es lo que se midio, y asi los
+   espejos de rndrAdminCapacity hacia calCapacity y dailyCapacity siguen vivos.
+
+   Reversible: borrar este bloque y su gemelo aspenAdminBScript.
+   ════════════════════════════════════════════════════════════════════ */
+.admBLayout{display:grid;grid-template-columns:196px minmax(0,1fr);gap:24px;align-items:start}
+.admBRail{position:sticky;top:10px;display:flex;flex-direction:column;gap:3px;z-index:20}
+.admBRail button{border:1px solid transparent;background:transparent;text-align:left;
+  padding:10px 13px;border-radius:11px;font-size:var(--fs-sm);font-weight:700;color:var(--i2);
+  cursor:pointer;display:flex;gap:9px;align-items:center;white-space:nowrap;width:100%}
+.admBRail button.on{background:var(--cd);color:var(--ink);border-color:var(--ln);
+  box-shadow:0 2px 10px rgba(30,25,15,.10)}
+.admBRail button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.admBSecHdr{font-size:19px;font-weight:800;letter-spacing:-.3px;color:var(--ink)}
+.admBSecSub{font-size:12.5px;color:var(--i3);margin:2px 0 14px}
+/* rejilla de verdad, NO column-count: se lee en orden, sin saltar de una
+   columna a otra a mitad de tarjeta (era una de las quejas de «Sistema») */
+.admBCols{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+  gap:14px;align-items:start;align-content:flex-start}
+.admBCols>*{margin:0!important;min-width:0}
+.admBOne>*{margin:0 0 14px!important}
+.admBAviso{background:var(--c-warning-bg,#fdf3c0);border:1px solid var(--ln);
+  border-radius:12px;padding:12px 14px;font-size:var(--fs-sm);color:var(--br);margin-bottom:12px}
+#admPeriodPills{display:flex;gap:4px;background:var(--c-ash-2,#eee8dd);border-radius:11px;
+  padding:4px;margin:0 0 14px;max-width:330px}
+#admPeriodPills button{flex:1;border:none;background:transparent;padding:8px 4px;border-radius:8px;
+  font-weight:800;font-size:var(--fs-xs);color:var(--i2);cursor:pointer}
+#admPeriodPills button.on{background:var(--cd);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+/* el <select> de periodo de las estadisticas sobra: manda la pildora */
+#adminStatPeriod{display:none!important}
+/* se conserva el pulido que traia el organizador viejo, para que el look no cambie */
+.welcome-hero>div:first-child{font-size:34px;letter-spacing:-.6px}
+#pg3 .kpi-card{border-radius:18px;box-shadow:0 8px 26px rgba(19,42,60,.10);transition:transform .15s}
+#pg3 .kpi-card:hover{transform:translateY(-2px)}
+@media(max-width:920px){
+  .admBLayout{grid-template-columns:1fr}
+  .admBRail{position:static;flex-direction:row;overflow-x:auto;padding-bottom:6px;
+    -webkit-overflow-scrolling:touch}
+  .admBCols{grid-template-columns:1fr}
+}
+</style>
+
+<script id="aspenAdminBScript">
+/* ADMIN B (v2.46.0). Ver el bloque de estilo gemelo aspenAdminBSkin. */
+(function(){
+  "use strict";
+  var LLAVE="admSeccion";
+
+  var SECS=[
+    {k:"Resumen",   t:"Resumen",              ico:"\uD83D\uDCCA",
+     sub:"Lo esencial de hoy y del periodo", una:true, per:true,
+     ids:["adminWelcome"]},
+    {k:"Volumen",   t:"Volumen",              ico:"\uD83D\uDCC8",
+     sub:"Cu\u00e1ntos trabajos y por qui\u00e9n", una:true, per:true,
+     ids:["aspenMetrics"]},
+    {k:"Equipo",    t:"Equipo",               ico:"\uD83C\uDFC6",
+     sub:"Rendimiento del equipo", per:true,
+     ids:["adminFTF","adminStatTechBody"]},
+    {k:"Reportes",  t:"Reportes",             ico:"\uD83D\uDEE1\uFE0F",
+     sub:"Tipos de visita y garant\u00edas", per:true,
+     ids:["adminStatVisitBody","warByYearCard","svcWarrantyPanel"]},
+    {k:"Operacion", t:"Operaci\u00f3n",       ico:"\uD83E\uDDED",
+     sub:"Lo que se atasca",
+     ids:["adminCapacity","adminRepeatResched","adminFollowUps","adminOrphans","adminSpaWorklist"]},
+    {k:"Cerebro",   t:"Cerebro",              ico:"\uD83E\uDDE0",
+     sub:"Actividad cross-app y auditor\u00eda",
+     ids:["adminBrainBody","auditLogPanel","warLogBody"]},
+    {k:"Config",    t:"Configuraci\u00f3n",   ico:"\u2699\uFE0F",
+     sub:"Nada de esto caduca",
+     ids:["adminTechBody","adminUserBody","adminZipBody","backupCard",
+          "billingExportCard","aiKeyStatus","billingRoundBody"]}
+  ];
+
+  /* Que pinta cada seccion. El resto NO se llama mientras no la abras.
+     Cerebro no lleva ninguna a proposito: su feed y el audit log se cargan
+     cuando el usuario pulsa, que es como se disenaron (cero lecturas en reposo). */
+  var PINTAN={
+    Resumen:  ["rndrAdminWelcome"],
+    Volumen:  ["_metricsRender"],
+    Equipo:   ["rndrAdminFTF","rndrAdminStats"],
+    Reportes: ["rndrAdminStats","_statVisitCompact","rndrWarByYear","rndrSvcWarranty"],
+    Operacion:["rndrAdminCapacity","rndrAdminRepeatResched","rndrAdminFollowUps",
+               "rndrAdminOrphans","rndrSpaDataWorklist"],
+    Cerebro:  ["rndrWarrantyLog"],
+    Config:   ["rndrAdminTechs","rndrAdminUsers","rndrAdminZips",
+               "renderAIKeyStatus","rndrBillingCard"]
+  };
+
+  var montado=false, actual=null, rail=null, cont=null, sucias={};
+
+  function def(k){ for(var i=0;i<SECS.length;i++) if(SECS[i].k===k) return SECS[i]; return null; }
+  function esViewer(){ try{ return typeof window._isViewer==="function" && window._isViewer(); }
+                       catch(_e){ return false; } }
+  function tarjeta(id){ var el=document.getElementById(id); if(!el) return null;
+                        return (el.closest && el.closest(".card")) || el; }
+
+  /* ── el periodo, para que deje de mentir ─────────────────────────────
+     Antes la pildora movia 4 paneles de 17: el heroe de KPI seguia clavado
+     en el mes, asi que \u00abTEAM FIX RATE 96%\u00bb convivia con \u00abResueltos 1a vez
+     89%\u00bb en la misma pantalla. Estas dos las lee rndrAdminWelcome y
+     _metricsRender; sin este bloque valen exactamente lo de antes.        */
+  window._admDesde=function(){
+    var p=window._admPeriod||"month", n=new Date();
+    if(p==="all") return null;
+    if(p==="week"){ var w=new Date(n); w.setDate(n.getDate()-n.getDay()); w.setHours(0,0,0,0);
+      return (typeof fmtD==="function")?fmtD(w)
+        :(w.getFullYear()+"-"+String(w.getMonth()+1).padStart(2,"0")+"-"+String(w.getDate()).padStart(2,"0")); }
+    return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01";
+  };
+  window._admEtiqueta=function(){
+    var p=window._admPeriod||"month", L=(typeof L2==="function")?L2:function(a,b){return b;};
+    if(p==="all")  return L("todo el historial","all time");
+    if(p==="week") return L("esta semana","this week");
+    return new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"});
+  };
+
+  /* ── el dinero calculado, fuera de Admin (v2.46.1) ──────────────────
+     Avg Ticket, Receivable y Facturado salian de _metricsMoney(t): partes por
+     precio mas calcLabor. Es una estimacion sacada del ticket y no cuadra con
+     lo que acaba en la factura del cliente, asi que Alberto los quito.
+     Para verlos otra vez, sin tocar codigo:
+        localStorage.setItem("admDinero","1")  y recargar.                    */
+  window._admSinDinero=function(){
+    try{ return localStorage.getItem("admDinero")!=="1"; }catch(_e){ return true; }
+  };
+
+  function ponPeriodo(p, repinta){
+    window._admPeriod=p;
+    try{ localStorage.setItem("admPeriod",p); }catch(_e){}
+    try{ window._ftfPeriod=p; }catch(_e){}
+    try{ var sel=document.getElementById("adminStatPeriod"); if(sel) sel.value=p; }catch(_e){}
+    marca();
+    if(repinta){ ensuciar(); sucias[actual]=true; pintar(actual); }
+  }
+  function marca(){
+    var p=document.getElementById("admPeriodPills"); if(!p) return;
+    var cur=window._admPeriod||"month", bs=p.querySelectorAll("button"), i;
+    for(i=0;i<bs.length;i++) bs[i].classList.toggle("on", bs[i].getAttribute("data-p")===cur);
+  }
+
+  function pildoras(k){
+    var p=document.getElementById("admPeriodPills");
+    if(!p){
+      p=document.createElement("div"); p.id="admPeriodPills";
+      [["week","Semana"],["month","Mes"],["all","Todo"]].forEach(function(d){
+        var b=document.createElement("button"); b.type="button";
+        b.setAttribute("data-p",d[0]); b.textContent=d[1];
+        b.onclick=function(){ ponPeriodo(d[0], true); };
+        p.appendChild(b);
+      });
+    }
+    var d2=def(k), host=document.getElementById("admBSec"+k);
+    if(d2 && d2.per && host){
+      var ref=host.querySelector(".admBOne,.admBCols");
+      if(ref) host.insertBefore(p, ref);
+      p.style.display="";
+    }else{
+      p.style.display="none";
+    }
+    marca();
+  }
+
+  function avisa(k, fn, e){
+    /* Regla 6: nada de fallar en silencio. Si un panel revienta, lo dice la
+       propia pantalla y no solo la consola, que desde el telefono no existe. */
+    try{
+      var host=document.getElementById("admBSec"+k); if(!host) return;
+      var cuerpo=host.querySelector(".admBOne,.admBCols") || host;
+      var av=document.createElement("div"); av.className="admBAviso";
+      av.textContent="No se pudo pintar "+fn+": "+((e&&(e.message||e.code))||e);
+      cuerpo.insertBefore(av, cuerpo.firstChild);
+    }catch(_e){}
+  }
+
+  function pintar(k){
+    if(!k || !sucias[k]) return;
+    var fns=PINTAN[k]||[], i;
+    for(i=0;i<fns.length;i++){
+      try{
+        if(typeof window[fns[i]]==="function") window[fns[i]]();
+      }catch(e){
+        console.warn("[adminB] "+k+" \u2192 "+fns[i], e);
+        avisa(k, fns[i], e);
+      }
+    }
+    sucias[k]=false;
+  }
+  function ensuciar(){ for(var i=0;i<SECS.length;i++) if(SECS[i].k!==actual) sucias[SECS[i].k]=true; }
+
+  function ir(k){
+    if(!montado) return;
+    actual=k;
+    try{ localStorage.setItem(LLAVE,k); }catch(_e){}
+    var bs=rail.querySelectorAll("button"), i;
+    for(i=0;i<bs.length;i++) bs[i].classList.toggle("on", bs[i].getAttribute("data-k")===k);
+    var ss=cont.querySelectorAll(".admBSec");
+    for(i=0;i<ss.length;i++) ss[i].style.display=(ss[i].getAttribute("data-k")===k)?"":"none";
+    pildoras(k);
+    pintar(k);
+  }
+
+  function montar(){
+    if(montado) return true;
+    if(esViewer()) return false;
+    var pg=document.getElementById("pg3"); if(!pg) return false;
+
+    /* el organizador de julio no debe correr: este bloque ocupa su sitio */
+    try{ window._adminOrganized=true; }catch(_e){}
+
+    var lay=document.createElement("div"); lay.className="admBLayout";
+    rail=document.createElement("div"); rail.className="admBRail"; rail.id="admBRail";
+    cont=document.createElement("div"); cont.id="admBCont"; cont.style.minWidth="0";
+    lay.appendChild(rail); lay.appendChild(cont); pg.appendChild(lay);
+
+    SECS.forEach(function(sc){
+      var b=document.createElement("button"); b.type="button";
+      b.setAttribute("data-k",sc.k); b.textContent=sc.ico+" "+sc.t;
+      b.onclick=function(){ ir(sc.k); };
+      rail.appendChild(b);
+
+      var sec=document.createElement("div");
+      sec.className="admBSec"; sec.id="admBSec"+sc.k;
+      sec.setAttribute("data-k",sc.k); sec.style.display="none";
+      var h=document.createElement("div"); h.className="admBSecHdr"; h.textContent=sc.ico+" "+sc.t;
+      var s=document.createElement("div"); s.className="admBSecSub"; s.textContent=sc.sub;
+      var cuerpo=document.createElement("div"); cuerpo.className=sc.una?"admBOne":"admBCols";
+      sec.appendChild(h); sec.appendChild(s); sec.appendChild(cuerpo);
+      cont.appendChild(sec);
+
+      var puestos=0;
+      sc.ids.forEach(function(id){
+        var c=tarjeta(id); if(!c) return;
+        cuerpo.appendChild(c); c.style.display=""; puestos++;
+      });
+      if(!puestos){
+        var av=document.createElement("div"); av.className="admBAviso";
+        av.textContent="Esta secci\u00f3n no encontr\u00f3 sus tarjetas ("+sc.ids.join(", ")+
+                       "). Ninguna se perdi\u00f3: siguen en la p\u00e1gina, sin colocar.";
+        cuerpo.appendChild(av);
+      }
+    });
+
+    /* lo que quede suelto en pg3 (titulo Settings, auto-cleanup, Logout) se
+       esconde, igual que hacia el organizador viejo. Salir vive en el header. */
+    Array.prototype.forEach.call(pg.children, function(ch){
+      if(ch===lay) return; if(ch && ch.style) ch.style.display="none";
+    });
+
+    /* el plegado nativo de Tecnicos/Usuarios/ZIP/Tipos sigue vivo: en
+       Configuracion es util, y asi no hace falta neutralizar nada */
+    try{ if(typeof _applyAdminCollapse==="function") _applyAdminCollapse(); }catch(_e){}
+
+    montado=true;
+    for(var i=0;i<SECS.length;i++) sucias[SECS[i].k]=true;
+
+    var guardado="month"; try{ guardado=localStorage.getItem("admPeriod")||"month"; }catch(_e){}
+    ponPeriodo(guardado, false);
+
+    var sec=""; try{ sec=localStorage.getItem(LLAVE)||""; }catch(_e){}
+    ir(def(sec) ? sec : SECS[0].k);
+    return true;
+  }
+
+  /* rndrAdmin se llama al abrir la pestana, al cambiar datos y desde los 11
+     sitios de alta/baja de tecnicos y usuarios. Ahora repinta LA SECCION
+     ABIERTA, no las 18 funciones. */
+  var orig=window.rndrAdmin;
+  window.rndrAdmin=function(){
+    if(esViewer() || !document.getElementById("pg3")){
+      if(typeof orig==="function") return orig.apply(this,arguments);
+      return;
+    }
+    try{ _runDispatchCleanup({silent:true,force:false}); }
+    catch(e){ console.warn("[adminB cleanup]", e); }
+    var yaMontado=montado;
+    if(!montar()){
+      if(typeof orig==="function") return orig.apply(this,arguments);
+      return;
+    }
+    /* en el primer montaje ir() ya pinto la seccion de aterrizaje; repintar
+       aqui la llamaba DOS veces. Lo cazo el arnes, no la vista. */
+    if(yaMontado){ ensuciar(); sucias[actual]=true; pintar(actual); }
+  };
+
+  window._admB={
+    SECS:SECS, PINTAN:PINTAN,
+    ir:ir, montar:montar,
+    activa:function(){ return actual; },
+    sucias:function(){ var o=[],i; for(i=0;i<SECS.length;i++) if(sucias[SECS[i].k]) o.push(SECS[i].k); return o; },
+    montado:function(){ return montado; }
+  };
+})();
+</script>
 
 </body>
 </html>
