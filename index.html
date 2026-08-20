@@ -6797,7 +6797,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.56.0";
+var APP_VERSION="2.57.1";
 var BUILD_DATE="2026-08-20";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -50771,32 +50771,32 @@ window.aspOrigenDeContinuacion=function(t){
   var LLAVE="admSeccion";
 
   var SECS=[
-    {k:"Resumen",   t:"Resumen",              ico:"\uD83D\uDCCA",
-     sub:"Lo que hay que atender, y despu\u00e9s los n\u00fameros", una:true, per:true,
+    {k:"Resumen",   t:"Overview",              ico:"\uD83D\uDCCA",
+     sub:"What needs attention, then the numbers", una:true, per:true,
      ids:["adminWelcome"]},
-    {k:"Volumen",   t:"Volumen",              ico:"\uD83D\uDCC8",
-     sub:"Cu\u00e1ntos trabajos y por qui\u00e9n", una:true, per:true,
+    {k:"Volumen",   t:"Volume",              ico:"\uD83D\uDCC8",
+     sub:"How many jobs and by whom", una:true, per:true,
      ids:["aspenMetrics"]},
-    {k:"Equipo",    t:"Equipo",               ico:"\uD83C\uDFC6",
-     sub:"Rendimiento del equipo", per:true,
+    {k:"Equipo",    t:"Team",               ico:"\uD83C\uDFC6",
+     sub:"Team performance", per:true,
      ids:["adminFTF","adminStatTechBody"]},
-    {k:"Reportes",  t:"Reportes",             ico:"\uD83D\uDEE1\uFE0F",
-     sub:"Tipos de visita y garant\u00edas", per:true,
+    {k:"Reportes",  t:"Reports",             ico:"\uD83D\uDEE1\uFE0F",
+     sub:"Visit types and warranties", per:true,
      ids:["adminStatVisitBody","warByYearCard","svcWarrantyPanel"]},
-    {k:"Operacion", t:"Operaci\u00f3n",       ico:"\uD83E\uDDED",
-     sub:"Lo que se atasca",
+    {k:"Operacion", t:"Operations",       ico:"\uD83E\uDDED",
+     sub:"What gets stuck",
      ids:["adminCapacity","adminRepeatResched","adminFollowUps","adminOrphans","adminSpaWorklist"]},
-    {k:"Cerebro",   t:"Cerebro",              ico:"\uD83E\uDDE0",
-     sub:"Actividad cross-app y auditor\u00eda",
+    {k:"Cerebro",   t:"Brain",              ico:"\uD83E\uDDE0",
+     sub:"Cross-app activity and audit",
      ids:["adminBrainBody","auditLogPanel","warLogBody"]},
-    {k:"Config",    t:"Configuraci\u00f3n",   ico:"\u2699\uFE0F",
-     sub:"Siete herramientas \u00b7 se abre una a la vez", lista:true,
+    {k:"Config",    t:"Settings",   ico:"\u2699\uFE0F",
+     sub:"Seven tools · one opens at a time", lista:true,
      ids:["adminTechBody","adminUserBody","adminZipBody","backupCard",
           "billingExportCard","aiKeyStatus","billingRoundBody"]}
   ];
 
   /* Que pinta cada seccion. El resto NO se llama mientras no la abras.
-     Cerebro no lleva ninguna a proposito: su feed y el audit log se cargan
+     Brain no lleva ninguna a proposito: su feed y el audit log se cargan
      cuando el usuario pulsa, que es como se disenaron (cero lecturas en reposo). */
   var PINTAN={
     Resumen:  ["_admPintaCola","rndrAdminWelcome"],
@@ -50816,23 +50816,23 @@ window.aspOrigenDeContinuacion=function(t){
      VIEJA de esa tarjeta, que se esconde porque la fila ya la sustituye:
      "sel" = un selector dentro de la tarjeta, "first" = su primer hijo. */
   var META={
-    adminTechBody:    {ico:"\uD83D\uDC77", t:"T\u00e9cnicos",
-                       sub:"Alta, baja, renombrar y ocultar",
+    adminTechBody:    {ico:"\uD83D\uDC77", t:"Technicians",
+                       sub:"Add, remove, rename and hide",
                        hdr:"#adminTechHdr", cnt:"adminTechCount"},
-    adminUserBody:    {ico:"\uD83D\uDD11", t:"Usuarios y PINs",
-                       sub:"Qui\u00e9n entra y con qu\u00e9 rol",
+    adminUserBody:    {ico:"\uD83D\uDD11", t:"Users and PINs",
+                       sub:"Who signs in and with what role",
                        hdr:"#adminUserHdr", cnt:"adminUserCount"},
-    adminZipBody:     {ico:"\uD83D\uDCCD", t:"ZIP y zonas",
-                       sub:"Buscar, administrar e importar c\u00f3digos",
+    adminZipBody:     {ico:"\uD83D\uDCCD", t:"ZIP and zones",
+                       sub:"Search, manage and import codes",
                        hdr:"#adminZipHdr", cnt:"adminZipCount"},
-    backupCard:       {ico:"\uD83D\uDEDF", t:"Respaldo",
-                       sub:"Descargar un JSON con todo", hdr:".lbl"},
-    billingExportCard:{ico:"\uD83D\uDCE4", t:"Export a facturaci\u00f3n",
-                       sub:"Trabajo cerrado \u2192 Invoice Tracker", hdr:".lbl"},
-    aiKeyStatus:      {ico:"\uD83E\uDD16", t:"Llave de IA",
-                       sub:"Para el bot\u00f3n Mejorar de los reportes", hdr:"first"},
-    billingRoundBody: {ico:"\uD83D\uDCB5", t:"Regla de redondeo",
-                       sub:"C\u00f3mo el tiempo en sitio se vuelve hora facturable",
+    backupCard:       {ico:"\uD83D\uDEDF", t:"Backup",
+                       sub:"Download a JSON with everything", hdr:".lbl"},
+    billingExportCard:{ico:"\uD83D\uDCE4", t:"Billing export",
+                       sub:"Closed work → Invoice Tracker", hdr:".lbl"},
+    aiKeyStatus:      {ico:"\uD83E\uDD16", t:"AI key",
+                       sub:"For the Improve button on reports", hdr:"first"},
+    billingRoundBody: {ico:"\uD83D\uDCB5", t:"Rounding rule",
+                       sub:"How on-site time becomes billable hours",
                        hdr:"first"}
   };
 
@@ -50923,18 +50923,18 @@ window.aspOrigenDeContinuacion=function(t){
 
     /* 1 · errores de campo: el mismo numero que el chip del heroe */
     var errs=(typeof window._errBadgeN==="number")?window._errBadgeN:null;
-    if(errs>0) A.push({n:errs,sev:"urg",t:"Errores de campo",
-      s:"Env\u00edos de reporte que fallaron \u00b7 \u00faltimos 7 d\u00edas",
-      b:"Ver errores", go:function(){ try{ _showFieldErrors(); }catch(_e){} }});
+    if(errs>0) A.push({n:errs,sev:"urg",t:"Field errors",
+      s:"Report submissions that failed · last 7 days",
+      b:"View errors", go:function(){ try{ _showFieldErrors(); }catch(_e){} }});
 
     /* 2 · despachos sin agendar: mismo predicado que el KPI Pending Dispatch */
     var pend=0;
     try{ pend=(active||[]).filter(function(t){
       return t && t.source==="dispatch" && t.status==="pending" && !t.fieldReportSubmitted;
     }).length; }catch(_e){}
-    if(pend>0) A.push({n:pend,sev:"urg",t:"Despachos sin agendar",
-      s:"Esperan d\u00eda y t\u00e9cnico",
-      b:"Ir al calendario", go:function(){ try{ showTab(4); }catch(_e){} }});
+    if(pend>0) A.push({n:pend,sev:"urg",t:"Unscheduled dispatches",
+      s:"Waiting on day and tech",
+      b:"Go to calendar", go:function(){ try{ showTab(4); }catch(_e){} }});
 
     /* 3 · cerradas sin reporte, con la funcion canonica de fechas */
     var corte=_diaCorte(30), sinRep=0;
@@ -50943,16 +50943,16 @@ window.aspOrigenDeContinuacion=function(t){
       if(t.source==="dispatch") return false;
       return (typeof aspCerradaSinReporte==="function") ? aspCerradaSinReporte(t) : false;
     }).length; }catch(_e){}
-    if(sinRep>0) A.push({n:sinRep,sev:"warn",t:"Cerradas sin reporte",
-      s:"Visitas dadas por hechas que no traen reporte \u00b7 \u00faltimos 30 d\u00edas",
-      b:"Ver en Diario", go:function(){ try{ showTab(1); }catch(_e){} }});
+    if(sinRep>0) A.push({n:sinRep,sev:"warn",t:"Closed without a report",
+      s:"Visits marked done with no field report · last 30 days",
+      b:"View in Daily", go:function(){ try{ showTab(1); }catch(_e){} }});
 
     /* 4 · reagendadas repetidas */
     var rep=0;
     try{ rep=(_repeatedReschedAlerts()||[]).length; }catch(_e){}
-    if(rep>0) A.push({n:rep,sev:"warn",t:"Reagendadas repetidas",
-      s:"Clientes que ya volvieron dos veces o m\u00e1s",
-      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+    if(rep>0) A.push({n:rep,sev:"warn",t:"Repeat reschedules",
+      s:"Customers back twice or more",
+      b:"Open Operations", go:function(){ ir("Operacion"); }});
 
     /* 5 · seguimientos vencidos: el mismo _followUpDueInfo del panel */
     var seg=0;
@@ -50960,21 +50960,21 @@ window.aspOrigenDeContinuacion=function(t){
       if(!t || !t.followUpDate || t.status==="canceled") return false;
       var i=_followUpDueInfo(t.followUpDate); return !!(i && i.due);
     }).length; }catch(_e){}
-    if(seg>0) A.push({n:seg,sev:"warn",t:"Seguimientos vencidos",
-      s:"Ten\u00edan fecha de volver a llamar y ya pas\u00f3",
-      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+    if(seg>0) A.push({n:seg,sev:"warn",t:"Overdue follow-ups",
+      s:"Had a call-back date that has passed",
+      b:"Open Operations", go:function(){ ir("Operacion"); }});
 
     /* 6 · spas sin datos de garantia (lo cuenta rndrSpaDataWorklist) */
     var spa=(typeof window._aspSpaWorklistN==="number")?window._aspSpaWorklistN:0;
-    if(spa>0) A.push({n:spa,sev:"calm",t:"Spas sin datos de garant\u00eda",
-      s:"Sin serie o sin fecha, as\u00ed que la cobertura no se puede calcular",
-      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+    if(spa>0) A.push({n:spa,sev:"calm",t:"Spas missing warranty data",
+      s:"No serial or no date, so coverage cannot be computed",
+      b:"Open Operations", go:function(){ ir("Operacion"); }});
 
     /* 7 · despachos huerfanos (lo cuenta rndrAdminOrphans) */
     var orf=(typeof window._aspOrfanosN==="number")?window._aspOrfanosN:0;
-    if(orf>0) A.push({n:orf,sev:"urg",t:"Despachos hu\u00e9rfanos",
-      s:"Cerrados sin un reporte real detr\u00e1s: desaparecen del calendario",
-      b:"Abrir Operaci\u00f3n", go:function(){ ir("Operacion"); }});
+    if(orf>0) A.push({n:orf,sev:"urg",t:"Orphan dispatches",
+      s:"Closed with no real report behind them: they vanish from the calendar",
+      b:"Open Operations", go:function(){ ir("Operacion"); }});
 
     var ord={urg:0,warn:1,calm:2};
     A.sort(function(a,b){ return (ord[a.sev]-ord[b.sev]) || (b.n-a.n); });
@@ -50989,14 +50989,15 @@ window.aspOrigenDeContinuacion=function(t){
     try{ if(typeof rndrAdminOrphans==="function") rndrAdminOrphans(); }catch(_e){}
 
     var A=cola(), h="";
-    h+='<div class="admBColaHd"><b>Necesita tu atenci\u00f3n</b><span>'+
-       (A.length?(A.length+" cosa"+(A.length!==1?"s":"")+" \u00b7 lo m\u00e1s caro de dejar, arriba")
-                :"revisado ahora mismo")+'</span></div>';
+    h+='<div class="admBColaHd"><b>Needs your attention</b><span>'+
+       (A.length?(A.length+" cosa"+(A.length!==1?"s":"")+" \u00b7 costliest to ignore first")
+                :"checked just now")+'</span></div>';
     if(!A.length){
-      h+='<div class="admBColaOk"><b>Nada pendiente \u2713</b>'+
-         '<span>Ning\u00fan error de campo, ning\u00fan despacho sin agendar y ninguna visita cerrada sin reporte.</span></div>';
+      h+='<div class="admBColaOk"><b>Nothing pending ✓</b>'+
+         '<span>No field errors, no unscheduled dispatches and no closed visit without a report.</span></div>';
     }
     host.innerHTML=h;
+    _tr(host);
     if(A.length){
       A.forEach(function(r,i){
         var f=document.createElement("div"); f.className="admBFila "+r.sev;
@@ -51011,6 +51012,7 @@ window.aspOrigenDeContinuacion=function(t){
         host.appendChild(f);
       });
     }
+    _tr(host);
     /* el conteo de errores llega por Firestore un segundo despues del primer
        pintado; se repinta UNA vez cuando aterriza, no en bucle */
     if(errsPendiente() && !_colaEspera){
@@ -51022,6 +51024,14 @@ window.aspOrigenDeContinuacion=function(t){
   function errsPendiente(){ return typeof window._errBadgeN!=="number"; }
   window._admPintaCola=pintaCola;
 
+
+  /* v2.57.0 \u2014 estos bloques pintan DESPUES de la pasada de idioma, asi que
+     cada uno traduce lo suyo al terminar. Sin esto, en espanol se quedarian
+     en ingles justo lo que se acaba de pintar. */
+  function _tr(el){
+    try{ if(typeof APP_LANG!=="undefined" && APP_LANG==="es" &&
+             typeof _i18nPass==="function") _i18nPass(el||document.body); }catch(_e){}
+  }
   function def(k){ for(var i=0;i<SECS.length;i++) if(SECS[i].k===k) return SECS[i]; return null; }
   function esViewer(){ try{ return typeof window._isViewer==="function" && window._isViewer(); }
                        catch(_e){ return false; } }
@@ -51081,7 +51091,7 @@ window.aspOrigenDeContinuacion=function(t){
     var p=document.getElementById("admPeriodPills");
     if(!p){
       p=document.createElement("div"); p.id="admPeriodPills";
-      [["week","Semana"],["month","Mes"],["all","Todo"]].forEach(function(d){
+      [["week","Week"],["month","Mes"],["all","All"]].forEach(function(d){
         var b=document.createElement("button"); b.type="button";
         b.setAttribute("data-p",d[0]); b.textContent=d[1];
         b.onclick=function(){ ponPeriodo(d[0], true); };
@@ -51106,7 +51116,7 @@ window.aspOrigenDeContinuacion=function(t){
       var host=document.getElementById("admBSec"+k); if(!host) return;
       var cuerpo=host.querySelector(".admBOne,.admBCols") || host;
       var av=document.createElement("div"); av.className="admBAviso";
-      av.textContent="No se pudo pintar "+fn+": "+((e&&(e.message||e.code))||e);
+      av.textContent="Could not render "+fn+": "+((e&&(e.message||e.code))||e);
       cuerpo.insertBefore(av, cuerpo.firstChild);
     }catch(_e){}
   }
@@ -51124,6 +51134,7 @@ window.aspOrigenDeContinuacion=function(t){
     }
     sucias[k]=false;
     if(k==="Config") espejaContadores();
+    _tr(cont);
   }
   function ensuciar(){ for(var i=0;i<SECS.length;i++) if(SECS[i].k!==actual) sucias[SECS[i].k]=true; }
 
@@ -51137,6 +51148,7 @@ window.aspOrigenDeContinuacion=function(t){
     for(i=0;i<ss.length;i++) ss[i].style.display=(ss[i].getAttribute("data-k")===k)?"":"none";
     pildoras(k);
     pintar(k);
+    _tr(cont);
   }
 
   function montar(){
@@ -51180,8 +51192,8 @@ window.aspOrigenDeContinuacion=function(t){
       });
       if(!puestos){
         var av=document.createElement("div"); av.className="admBAviso";
-        av.textContent="Esta secci\u00f3n no encontr\u00f3 sus tarjetas ("+sc.ids.join(", ")+
-                       "). Ninguna se perdi\u00f3: siguen en la p\u00e1gina, sin colocar.";
+        av.textContent="This section did not find its cards ("+sc.ids.join(", ")+
+                       "). None were lost: they are still on the page, unplaced.";
         cuerpo.appendChild(av);
       }
     });
@@ -51336,19 +51348,22 @@ window.aspOrigenDeContinuacion=function(t){
   /* El orden de la llamada. Cada "celda" es un grupo de bloques que van juntos;
      `full` = ocupa las dos columnas. Los anclajes son ids que ya existen. */
   var PASOS=[
-    {t:"\u00bfQui\u00e9n llama?", celdas:[
+    {t:"Who is calling?", celdas:[
       {ids:["slCustName"]},
       {ids:["slCustPhone","slPhone2Wrap","slAddPhoneBtn"]},
       {ids:["slCustAddr"], full:true},
       {ids:["slCustCity","slZoneBadge"], full:true},
       {ids:["slCustEmail"]}
     ]},
-    {t:"\u00bfQu\u00e9 le pasa?", celdas:[
-      {ids:["slHistBox"], full:true},       /* la tarjeta de comentarios: reportado, atajos, notas, IA */
+    {t:"What is wrong?", celdas:[
+      /* v2.57.1 — Alberto: la descripcion del spa va PRIMERO y los comentarios
+         despues. Tiene sentido: primero que tina es, y con eso delante se
+         escribe lo que reporto el cliente. */
       {ids:["slSpaDesc"], full:true},
+      {ids:["slHistBox"], full:true},       /* comentarios: reportado, atajos, notas, IA */
       {ids:["slMediaGrid"], full:true}
     ]},
-    {t:"\u00bfCu\u00e1ndo vamos y c\u00f3mo se cobra?", celdas:[
+    {t:"When do we go and how is it billed?", celdas:[
       {ids:["slDate"]},
       {ids:["slVisitBtn1"], full:true},
       {ids:["slWtRow"], full:true},
@@ -51417,8 +51432,8 @@ window.aspOrigenDeContinuacion=function(t){
         var av=document.createElement("div");
         av.style.cssText="background:var(--c-warning-bg,#fdf3c0);border:1px solid var(--ln);"+
           "border-radius:10px;padding:10px 12px;font-size:var(--fs-sm)";
-        av.textContent="Este paso no encontr\u00f3 sus campos. No se perdi\u00f3 nada: "+
-                       "est\u00e1n abajo, en \u00abOtros\u00bb.";
+        av.textContent="This step did not find its fields. Nothing was lost: "+
+                       "they are below, under «Other».";
         dos.appendChild(av);
       }
       wrap.appendChild(sec);
@@ -51432,7 +51447,7 @@ window.aspOrigenDeContinuacion=function(t){
     if(sobras.length){
       var sec=document.createElement("div"); sec.className="slcf-paso"; sec.setAttribute("data-paso","otros");
       var t=document.createElement("div"); t.className="slcf-t";
-      t.appendChild(document.createTextNode("Otros"));
+      t.appendChild(document.createTextNode("Other"));
       var dos=document.createElement("div"); dos.className="slcf-dos";
       var cel=document.createElement("div"); cel.className="slcf-cel slcf-full";
       sobras.forEach(function(ch){ cel.appendChild(ch); });
@@ -51444,11 +51459,13 @@ window.aspOrigenDeContinuacion=function(t){
     if(btnCrear) barra.appendChild(btnCrear);
     if(btnLimpiar) barra.appendChild(btnLimpiar);
     var hint=document.createElement("span"); hint.className="slcf-hint";
-    hint.textContent="S\u00f3lo hace falta el nombre del cliente.";
+    hint.textContent="Only the customer name is required.";
     barra.appendChild(hint);
     wrap.appendChild(barra);
 
     form.appendChild(wrap);
+    try{ if(typeof APP_LANG!=="undefined" && APP_LANG==="es" &&
+             typeof _i18nPass==="function") _i18nPass(form); }catch(_e){}
     hecho=true;
     return true;
   }
@@ -51621,6 +51638,90 @@ html.panel textarea{
      Fuera a proposito: Labor, Parts, Total, Bill To, Customer Signature,
      SERVICE REPORT y compania — salen en el papel del cliente.            */
   var NUEVAS={
+    /* v2.57.0 \u2014 lo que construi el 19-20 de agosto lo escribi en espanol a
+       pelo, y el traductor solo va EN->ES: una cadena en espanol no tiene
+       camino de vuelta al ingles. Ahora esos textos se escriben en INGLES y su
+       espanol vive aqui, como todo lo demas. */
+    "What needs attention, then the numbers":"Lo que hay que atender, y despu\u00e9s los n\u00fameros",
+    "How many jobs and by whom":"Cu\u00e1ntos trabajos y por qui\u00e9n",
+    "Team performance":"Rendimiento del equipo",
+    "Visit types and warranties":"Tipos de visita y garant\u00edas",
+    "What gets stuck":"Lo que se atasca",
+    "Cross-app activity and audit":"Actividad cross-app y auditor\u00eda",
+    "Seven tools \u00b7 one opens at a time":"Siete herramientas \u00b7 se abre una a la vez",
+    "Operations":"Operaci\u00f3n",
+    "Settings":"Configuraci\u00f3n",
+    "Volume":"Volumen",
+    "Team":"Equipo",
+    "Reports":"Reportes",
+    "Brain":"Cerebro",
+    "Overview":"Resumen",
+    "Technicians":"T\u00e9cnicos",
+    "Add, remove, rename and hide":"Alta, baja, renombrar y ocultar",
+    "Users and PINs":"Usuarios y PINs",
+    "Who signs in and with what role":"Qui\u00e9n entra y con qu\u00e9 rol",
+    "ZIP and zones":"ZIP y zonas",
+    "Search, manage and import codes":"Buscar, administrar e importar c\u00f3digos",
+    "Backup":"Respaldo",
+    "Download a JSON with everything":"Descargar un JSON con todo",
+    "Billing export":"Export a facturaci\u00f3n",
+    "Closed work \u2192 Invoice Tracker":"Trabajo cerrado \u2192 Invoice Tracker",
+    "AI key":"Llave de IA",
+    "For the Improve button on reports":"Para el bot\u00f3n Mejorar de los reportes",
+    "Rounding rule":"Regla de redondeo",
+    "How on-site time becomes billable hours":"C\u00f3mo el tiempo en sitio se vuelve hora facturable",
+    "Week":"Semana",
+    "All":"Todo",
+    "Needs your attention":"Necesita tu atenci\u00f3n",
+    "costliest to ignore first":"lo m\u00e1s caro de dejar, arriba",
+    "checked just now":"revisado ahora mismo",
+    "Nothing pending \u2713":"Nada pendiente \u2713",
+    "No field errors, no unscheduled dispatches and no closed visit without a report.":"Ning\u00fan error de campo, ning\u00fan despacho sin agendar y ninguna visita cerrada sin reporte.",
+    "Field errors":"Errores de campo",
+    "Report submissions that failed \u00b7 last 7 days":"Env\u00edos de reporte que fallaron \u00b7 \u00faltimos 7 d\u00edas",
+    "View errors":"Ver errores",
+    "Unscheduled dispatches":"Despachos sin agendar",
+    "Waiting on day and tech":"Esperan d\u00eda y t\u00e9cnico",
+    "Go to calendar":"Ir al calendario",
+    "Closed without a report":"Cerradas sin reporte",
+    "Visits marked done with no field report \u00b7 last 30 days":"Visitas dadas por hechas que no traen reporte \u00b7 \u00faltimos 30 d\u00edas",
+    "View in Daily":"Ver en Diario",
+    "Repeat reschedules":"Reagendadas repetidas",
+    "Customers back twice or more":"Clientes que ya volvieron dos veces o m\u00e1s",
+    "Open Operations":"Abrir Operaci\u00f3n",
+    "Overdue follow-ups":"Seguimientos vencidos",
+    "Had a call-back date that has passed":"Ten\u00edan fecha de volver a llamar y ya pas\u00f3",
+    "Spas missing warranty data":"Spas sin datos de garant\u00eda",
+    "No serial or no date, so coverage cannot be computed":"Sin serie o sin fecha, as\u00ed que la cobertura no se puede calcular",
+    "Orphan dispatches":"Despachos hu\u00e9rfanos",
+    "Closed with no real report behind them: they vanish from the calendar":"Cerrados sin un reporte real detr\u00e1s: desaparecen del calendario",
+    "Who is calling?":"\u00bfQui\u00e9n llama?",
+    "What is wrong?":"\u00bfQu\u00e9 le pasa?",
+    "When do we go and how is it billed?":"\u00bfCu\u00e1ndo vamos y c\u00f3mo se cobra?",
+    "Other":"Otros",
+    "Only the customer name is required.":"S\u00f3lo hace falta el nombre del cliente.",
+    "Nobody has come back twice":"Nadie ha vuelto dos veces",
+    "No customer with repeat visits in the period":"Ning\u00fan cliente con visitas repetidas en el periodo",
+    "No overdue follow-ups":"Sin seguimientos vencidos",
+    "Everything with a call-back date is current":"Todo lo que ten\u00eda fecha de volver a llamar est\u00e1 al d\u00eda",
+    "Every spa has its data":"Todos los spas tienen sus datos",
+    "No serial or date missing to compute warranty":"No falta ninguna serie ni fecha para calcular garant\u00eda",
+    "Nobody inside the 90 days":"Nadie dentro de los 90 d\u00edas",
+    "No customer with live service warranty right now":"Ning\u00fan cliente con garant\u00eda de servicio viva ahora mismo",
+    "No warranties on record":"Sin garant\u00edas registradas",
+    "No spa with a warranty year recorded":"Ning\u00fan spa con a\u00f1o de garant\u00eda anotado",
+    "Nobody has stops this day":"Nadie tiene paradas este d\u00eda",
+    "No technician with assigned tickets":"Ning\u00fan t\u00e9cnico con tickets asignados",
+    "No visits in this period":"Sin visitas en este periodo",
+    "Try switching Week / Month / All":"Prueba a cambiar Semana / Mes / Todo",
+    "No work by technician":"Sin trabajo por t\u00e9cnico",
+    "Nobody closed visits in the chosen period":"Nadie cerr\u00f3 visitas en el periodo elegido",
+    "New customer":"Cliente nuevo",
+    "No previous visits under this customer":"No hay visitas anteriores a nombre de este cliente",
+    "No open invoices":"Sin facturas abiertas",
+    "This customer owes nothing":"Este cliente no debe nada",
+    "No parts under warranty":"Sin partes en garant\u00eda",
+    "No installed parts with live warranty":"No hay partes instaladas con garant\u00eda viva",
     /* KPI y resumen */
     "Today\u2019s Stops":"Paradas de hoy", "Today's Stops":"Paradas de hoy",
     "Team Fix Rate":"Arreglo a la primera", "Reschedules":"Reagendadas",
@@ -51861,7 +51962,7 @@ html.panel textarea{
    76 sitios del codigo hacen innerHTML="" y se acabo: el hueco no distingue
    "no hay nada" de "se rompio". Esta pasada mete un mensaje en los paneles
    que se quedan vacios, y lo quita solo cuando llegan datos.
-   FUERA a proposito los que se cargan BAJO DEMANDA (feed del Cerebro,
+   FUERA a proposito los que se cargan BAJO DEMANDA (feed del Brain,
    registro de auditoria): decir "no hay nada" a algo que nadie ha pedido
    todavia seria mentir.  Borrar los dos bloques revierte.
    \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
@@ -51874,28 +51975,28 @@ html.panel textarea{
 
   /* Cada linea dice QUE SIGNIFICA estar vacio, no solo que lo esta. */
   var PANELES=[
-    {id:"adminRepeatResched", ico:"\uD83D\uDD01", t:"Nadie ha vuelto dos veces",
-     s:"Ning\u00fan cliente con visitas repetidas en el periodo"},
-    {id:"adminFollowUps", ico:"\uD83D\uDCDE", t:"Sin seguimientos vencidos",
-     s:"Todo lo que ten\u00eda fecha de volver a llamar est\u00e1 al d\u00eda"},
-    {id:"adminSpaWorklist", ico:"\uD83D\uDEC1", t:"Todos los spas tienen sus datos",
-     s:"No falta ninguna serie ni fecha para calcular garant\u00eda"},
-    {id:"svcWarrantyPanel", ico:"\u2705", t:"Nadie dentro de los 90 d\u00edas",
-     s:"Ning\u00fan cliente con garant\u00eda de servicio viva ahora mismo"},
-    {id:"warByYearCard", ico:"\uD83D\uDEE1\uFE0F", t:"Sin garant\u00edas registradas",
-     s:"Ning\u00fan spa con a\u00f1o de garant\u00eda anotado"},
-    {id:"adminCapacity", ico:"\uD83D\uDCC5", t:"Nadie tiene paradas este d\u00eda",
-     s:"Ning\u00fan t\u00e9cnico con tickets asignados"},
-    {id:"adminStatVisits", ico:"\uD83D\uDCCB", t:"Sin visitas en este periodo",
-     s:"Prueba a cambiar Semana / Mes / Todo"},
-    {id:"adminStatTechs", ico:"\uD83D\uDC77", t:"Sin trabajo por t\u00e9cnico",
-     s:"Nadie cerr\u00f3 visitas en el periodo elegido"},
-    {id:"slHistBox", ico:"\uD83D\uDD52", t:"Cliente nuevo",
-     s:"No hay visitas anteriores a nombre de este cliente"},
-    {id:"slAccountStatusPanel", ico:"\uD83D\uDCB3", t:"Sin facturas abiertas",
-     s:"Este cliente no debe nada"},
-    {id:"slWarrantyPanel", ico:"\uD83D\uDD27", t:"Sin partes en garant\u00eda",
-     s:"No hay partes instaladas con garant\u00eda viva"}
+    {id:"adminRepeatResched", ico:"\uD83D\uDD01", t:"Nobody has come back twice",
+     s:"No customer with repeat visits in the period"},
+    {id:"adminFollowUps", ico:"\uD83D\uDCDE", t:"No overdue follow-ups",
+     s:"Everything with a call-back date is current"},
+    {id:"adminSpaWorklist", ico:"\uD83D\uDEC1", t:"Alls los spas tienen sus datos",
+     s:"No serial or date missing to compute warranty"},
+    {id:"svcWarrantyPanel", ico:"\u2705", t:"Nobody inside the 90 days",
+     s:"No customer with live service warranty right now"},
+    {id:"warByYearCard", ico:"\uD83D\uDEE1\uFE0F", t:"No warranties on record",
+     s:"No spa with a warranty year recorded"},
+    {id:"adminCapacity", ico:"\uD83D\uDCC5", t:"Nobody has stops this day",
+     s:"No technician with assigned tickets"},
+    {id:"adminStatVisits", ico:"\uD83D\uDCCB", t:"No visits in this period",
+     s:"Prueba a cambiar Week / Mes / All"},
+    {id:"adminStatTechs", ico:"\uD83D\uDC77", t:"No work by technician",
+     s:"Nobody closed visits in the chosen period"},
+    {id:"slHistBox", ico:"\uD83D\uDD52", t:"New customer",
+     s:"No previous visits under this customer"},
+    {id:"slAccountStatusPanel", ico:"\uD83D\uDCB3", t:"No open invoices",
+     s:"This customer owes nothing"},
+    {id:"slWarrantyPanel", ico:"\uD83D\uDD27", t:"No parts under warranty",
+     s:"No installed parts with live warranty"}
   ];
   window._vaciosPaneles=PANELES;
 
@@ -51940,6 +52041,8 @@ html.panel textarea{
           mio.parentNode.removeChild(mio); n++;
         }
       });
+      if(n){ try{ if(typeof APP_LANG!=="undefined" && APP_LANG==="es" &&
+                   typeof _i18nPass==="function") _i18nPass(document.body); }catch(_e){} }
       window._vaciosTocados=n;
       return n;
     }catch(e){ console.warn("[vacios]", e); return 0; }
