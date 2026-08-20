@@ -6797,7 +6797,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.57.1";
+var APP_VERSION="2.58.0";
 var BUILD_DATE="2026-08-20";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -9539,95 +9539,106 @@ function rndrAdminStats(){
 //
 // FOR CLEANUP MATCHING we use _custSameCustomer() — pairwise, returns true
 // if ANY key matches between the two records.
-function _custKeys(s){
-  if(!s)return [];
-  var lower=String(s).toLowerCase();
-  var out=[];
-  // Full normalized (alphanumeric only)
-  var fullNorm=lower.replace(/[^a-z0-9]/g,"");
-  if(fullNorm)out.push(fullNorm);
-  // Comma-aware family name extraction
-  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
-  if(clean.indexOf(",")>=0){
-    // "Last, First" or "Last, First and Spouse" → family name is before the comma
-    var fam=clean.split(",")[0].trim().replace(/\s+/g,"");
-    if(fam.length>=3)out.push("fam:"+fam);
-  }else{
-    // No comma — could be "Last First" or "First Last" (we can't tell). To
-    // maximise the chance of matching across the two formats, generate fam:
-    // keys for BOTH the first and the last word. The pairwise matcher only
-    // needs ONE shared key, so this lets "Bellinger Vince" (no comma) match
-    // "Bellinger, Vince" (with comma) via the shared "fam:bellinger" key.
-    var words=clean.split(/\s+/).filter(Boolean);
-    if(words.length>=2){
-      var first=words[0];
-      var last=words[words.length-1];
-      if(first.length>=3)out.push("fam:"+first);
-      if(last.length>=3&&last!==first)out.push("fam:"+last);
-    }
-  }
-  return out;
+/* ═══════════════════════════════════════════════════════════════════════════
+   IDENTIDAD DE CLIENTE — DEFINICIÓN ÚNICA Y CANÓNICA  (v2.58.0, 20 ago 2026)
+   ═══════════════════════════════════════════════════════════════════════════
+   Caso que la motivó: la ficha «Miller, Julie and Bob» mostraba la dirección,
+   el teléfono y el spa de «Miller, Julie & Steve». Antes de este arreglo había
+   TRES definiciones de _custGroupKey en el archivo (línea ~9593 global,
+   ~31368 en aspenBillingSprintJS, ~43531 en el módulo del Invoice Tracker) y
+   ganaba la del medio, cuya regla era {apellido, primer nombre} — DESCARTABA al
+   cónyuge, así que dos hogares con el mismo apellido y el mismo primer nombre
+   eran indistinguibles. La del módulo era peor: apellido solo.
+
+   REGLA (la misma de la v2.0.4, caso de los tres «Meyer, Doug & …»):
+   la identidad es el CONJUNTO COMPLETO de nombres, ordenado alfabéticamente
+   para que el orden en que se escribieron no importe. Nunca un subconjunto.
+     · «Miller, Julie & Steve» -> fam:julie|miller|steve
+     · «Miller, Julie and Bob» -> fam:bob|julie|miller     (hogares distintos ✓)
+     · «Cox, Sara» == «Sara Cox» == «Cox Sara»             (mismo hogar ✓)
+     · «Smith, John Jr» != «Smith, John Sr»                (Jr/Sr SE CONSERVAN)
+   Se filtran solo los conectores "and"/"the" — así «Julie & Steve» y
+   «Julie and Steve» son el mismo hogar.
+
+   POR QUÉ ESTA REGLA Y NO UNA MÁS FLOJA: una regla floja FUSIONA hogares
+   distintos, en silencio, cruza direcciones y spas, y custSaveInfo puede
+   escribir eso encima en Firestore. Una regla estricta a lo sumo PARTE un
+   hogar escrito de dos formas en dos fichas: se ve, no destruye nada, y se
+   arregla con «Merge into another customer», que es una decisión humana.
+
+   NO SE PERSISTE: se calcula en vivo. Verificado que cambiar el formato no
+   huérfana datos — la colección `events` se llavea con AspenBrain.custKey
+   (el nombre literal en minúsculas, otra cosa) y en `cross_app_events` los
+   documentos viejos siguen matcheando por el nombre completo normalizado,
+   que esta versión sigue emitiendo primero en _custKeys.
+
+   SI TOCÁS ESTO: corré antes el banco de pruebas de identidad. Este bug ya se
+   arregló y se volvió a romper dos veces (v2.0.4 y la auditoría del 20 jul).
+   ═══════════════════════════════════════════════════════════════════════════ */
+function _aspIdNorm(s){
+  var l=String(s||"").toLowerCase();
+  if(l.normalize)l=l.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  // apóstrofes, guiones y puntos se BORRAN (no se espacian): o'brien -> obrien,
+  // smith-jones -> smithjones. Si se espaciaran, el mismo hogar daría dos claves.
+  return l.replace(/['\u2018\u2019\-\u2010\u2011\u2013\u2014.]/g,"");
 }
-// Single deterministic key for grouping/dedup. Builds an ORDER-INDEPENDENT
-// two-token signature {surname, primary-first-name}, alphabetically sorted, so
-// the SAME household collapses to one key regardless of how the name was typed.
-//
-// AUDIT FIX (Jun 2026 — cross-format identity, simulated 400 households × 9
-// renderings each): the old logic produced a DIFFERENT key for each format —
-// "Cox, Sara" -> fam:cox|sara, but "Sara Cox" / "Cox Sara" (no comma, e.g. from
-// a chemical-maintenance dispatch) fell into a "longest word" branch and keyed
-// on fam:sara, so the same family scattered across separate cards and a record
-// looked "missing". Sorting the two name tokens makes "Cox, Sara" == "Sara Cox"
-// == "Cox Sara". Simulation: SPLIT rate 100% -> 35.5% (the entire remainder is
-// the rare no-comma "First & Spouse Last" form, which is a SAFE split — a
-// lingering visible card, never a deleted record), with ZERO new false merges.
-//
-// The May-2026 Cox disambiguation is PRESERVED: the primary first name (the part
-// before any "&"/"and") stays in the signature, so "Cox, Sara" (fam:cox|sara)
-// and "Cox, Jim & Martha" (fam:cox|jim) remain distinct households, while
-// "Ruck, Linda & Jim" and "Ruck, Linda" both collapse to fam:linda|ruck.
-//
-// NOTE: this key is computed live everywhere it is used (grouping, dedup, card
-// selection) and is NEVER persisted to Firestore — only the literal customer
-// name string is stored — so changing the key FORMAT orphans no data.
+function _aspIdTokens(s){
+  var lower=_aspIdNorm(s);
+  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
+  if(!clean)return [];
+  return clean.replace(/,/g," ").split(/\s+/).filter(function(w){
+    return w.length>=2 && w!=="and" && w!=="the";
+  });
+}
 function _custGroupKey(s){
   if(!s)return "";
-  var lower=String(s).toLowerCase();
-  // AUDIT FIX (Jun 2026 — accent/punctuation identity, found by 200k-name
-  // simulation): accented letters and intra-name punctuation were replaced
-  // with SPACES by the cleaner below, splitting the name into fragments and
-  // producing a DIFFERENT key per format — "Muñoz, José" keyed fam:jos|muoz
-  // but "José Muñoz" keyed fam:jos|mu|oz; "O'Brien, Pat" vs "Pat O'Brien"
-  // and "Smith-Jones, Mary" vs "Mary Smith-Jones" split the same way.
-  // Fix: (a) strip diacritics via NFD so ñ→n, é→e ("muñoz"→"munoz"), and
-  // (b) DELETE apostrophes/hyphens/periods (instead of spacing them) so
-  // "o'brien"→"obrien" and "smith-jones"→"smithjones" stay single tokens.
-  if(lower.normalize)lower=lower.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  lower=lower.replace(/['\u2018\u2019\-\u2010\u2011\u2013\u2014.]/g,"");
-  var clean=lower.replace(/[^a-z0-9, ]/g," ").replace(/\s+/g," ").trim();
+  var sig=_aspIdTokens(s);
+  if(!sig.length)return _aspIdNorm(s).replace(/[^a-z0-9]/g,"");
+  sig.sort();
+  return "fam:"+sig.join("|");
+}
+/* _custKeys = matcher por pares (dedup, auto-cierre de dispatch, alertas
+   cross-app). Emite el nombre completo normalizado (compatibilidad con los
+   documentos ya guardados en Firestore) + la MISMA clave de hogar, para que
+   _custSameCustomer y _custSameHousehold NO PUEDAN volver a discrepar: que el
+   matcher por pares fuera más flojo que la clave de grupo es exactamente lo
+   que dejaba que _findExistingCustomerData copiara datos entre hogares. */
+function _custKeys(s){
+  if(!s)return [];
+  var out=[];
+  var fullNorm=_aspIdNorm(s).replace(/[^a-z0-9]/g,"");
+  if(fullNorm)out.push(fullNorm);
+  var gk=_custGroupKey(s);
+  if(gk&&out.indexOf(gk)<0)out.push(gk);
+  return out;
+}
+/* La versión LEGADO (dos tokens) que estuvo viva entre el 20 jul y el 20 ago
+   2026. NO se usa para agrupar: queda solo para poder DETECTAR qué fichas
+   estaban fusionadas y avisar. Ver _aspIdCollisions() más abajo. */
+function _custGroupKeyLegacy(s){
+  if(!s)return "";
+  var lower=_aspIdNorm(s);
+  var clean=lower.replace(/&/g," & ").replace(/[^a-z0-9,& ]/g," ").replace(/\s+/g," ").trim();
   if(!clean)return lower.replace(/[^a-z0-9]/g,"");
-  var sig;
+  var SUF=/^(jr|sr|ii|iii|iv|md|dds|esq)$/, STOP=/^(and|the|of)$/;
+  var keep=function(w){return w&&!SUF.test(w)&&!STOP.test(w);};
+  var fam="",first="";
   if(clean.indexOf(",")>=0){
-    // "Last, First [& Spouse]" — the comma fixes the surname unambiguously.
-    var parts=clean.split(",");
-    var fam=parts[0].trim().replace(/\s+/g,"");
-    var afterComma=(parts[1]||"").trim();
-    // primary first = the name BEFORE any "&"/"and" (the "&" is already a space
-    // after cleaning, so the first space-token of afterComma is the primary).
-    var primaryFirst=afterComma.split(/\s*(?:&|\band\b)\s*/i)[0].trim().split(/\s+/)[0]||"";
-    sig=[];
-    if(fam.length>=2)sig.push(fam);
-    if(primaryFirst.length>=2)sig.push(primaryFirst);
+    var pp=clean.split(",");
+    fam=pp[0].replace(/&/g," ").trim().split(/\s+/).filter(keep).join("");
+    var after=(pp.slice(1).join(" ")||"").split(/\s*(?:&|\band\b)\s*/i)[0].trim();
+    first=(after.split(/\s+/).filter(keep)[0])||"";
   }else{
-    // No comma — word order is unknown ("Sara Cox" vs "Cox Sara"). Keep ALL
-    // name tokens (>=2 chars) and rely on the sort below to make order
-    // irrelevant. Keeping every token (rather than dropping a spouse we can't
-    // reliably identify) keeps the surname in the signature, which PREVENTS
-    // first-name-only keys that would over-merge unrelated families.
-    sig=clean.split(/\s+/).filter(function(w){return w.length>=2;});
+    var amp=(clean.indexOf("&")>=0)||/\band\b/.test(clean);
+    var tk=clean.replace(/&/g," ").split(/\s+/).filter(keep);
+    if(amp&&tk.length>=3){ first=tk[0]; fam=tk[tk.length-1]; }
+    else if(tk.length>=2){ var sr=[tk[0],tk[tk.length-1]].sort(); first=sr[0]; fam=sr[1]; }
+    else { fam=tk[0]||""; }
   }
+  var sig=[];
+  if(fam.length>=2)sig.push(fam);
+  if(first.length>=2&&first!==fam)sig.push(first);
   if(!sig.length)return lower.replace(/[^a-z0-9]/g,"");
-  // Order-independent: sort so "Cox Sara" === "Sara Cox" === "Cox, Sara".
   sig.sort();
   return "fam:"+sig.join("|");
 }
@@ -9670,36 +9681,55 @@ function _custSameHousehold(a,b){
 function _findExistingCustomerData(name,excludeTicketId){
   if(!name)return null;
   var pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+  /* v2.58.0 — DOS ARREGLOS AQUÍ, los dos con el mismo caso detrás (la ficha
+     «Miller, Julie and Bob» con la dirección y el spa de «Miller, Julie & Steve»):
+
+     (1) EL MATCHER. Antes usaba _custSameCustomer, el matcher FLOJO, con el
+         argumento de que "solo puede AGREGAR contacto, nunca borrar un ticket".
+         Eso es falso en la práctica: esta función alimenta a
+         _enrichTicketWithExistingCustomer, que MUTA el objeto vivo del ticket
+         ("subsequent saves include the enriched values automatically"), así que
+         el dato del hogar equivocado terminaba guardándose. Ahora exige la
+         MISMA clave de hogar: rellenar un dato que falta es útil; inventar de
+         qué casa es, no.
+
+     (2) QUÉ VALOR GANA. Antes ganaba el MÁS LARGO
+         (`if(t.address.length>data.address.length)`). Con dos hogares en la
+         bolsa, eso elegía la dirección más larga sin importar de quién era ni
+         de cuándo. Ahora se ordena por fecha y gana EL MÁS RECIENTE no vacío,
+         campo por campo — que es lo que un humano esperaría: si el cliente se
+         mudó, vale la dirección nueva. */
   var matches=pool.filter(function(t){
     if(!t||!t.customer)return false;
     if(excludeTicketId&&t.id===excludeTicketId)return false;
-    return _custSameCustomer(name,t.customer);
+    return _custSameHousehold(name,t.customer);
   });
   if(!matches.length)return null;
-  // Build the richest possible contact record from all matches
+  // más reciente primero (sin fecha = lo más viejo, nunca pisa a uno fechado)
+  matches=matches.slice().sort(function(a,b){
+    return String(b.date||"").localeCompare(String(a.date||""));
+  });
   var data={phone:"",phone2:"",phones:[],address:"",city:"",zip:"",zone:"",email:"",bestName:""};
   var allPhones=[];
   matches.forEach(function(t){
     if(t.phone&&allPhones.indexOf(t.phone)<0)allPhones.push(t.phone);
     if(t.phone2&&allPhones.indexOf(t.phone2)<0)allPhones.push(t.phone2);
     if(Array.isArray(t.phones))t.phones.forEach(function(p){if(p&&allPhones.indexOf(p)<0)allPhones.push(p)});
-    if(t.address&&t.address.length>data.address.length)data.address=t.address;
+    if(!data.address&&t.address)data.address=t.address;
     var _ec=(typeof effectiveCity==="function")?effectiveCity(t):(t.city||"");
-    if(_ec&&_ec.length>data.city.length)data.city=_ec;
-    if(t.zip&&!data.zip)data.zip=t.zip;
+    if(!data.city&&_ec)data.city=_ec;
+    if(!data.zip&&t.zip)data.zip=t.zip;
     var _ez=(typeof effectiveZone==="function")?effectiveZone(t):(t.zone||"");
-    if(_ez&&!data.zone)data.zone=_ez;
-    if(t.email&&!data.email)data.email=t.email;
-    // Prefer the LONGEST customer-name variant ("Ruck, Linda & Jim" beats
-    // "Ruck, Linda") since it carries more info.
+    if(!data.zone&&_ez)data.zone=_ez;
+    if(!data.email&&t.email)data.email=t.email;
+    // el nombre más largo sigue ganando: dentro de un MISMO hogar,
+    // "Ruck, Linda & Jim" es más informativo que "Ruck, Linda".
     if(t.customer&&t.customer.length>data.bestName.length)data.bestName=t.customer;
   });
   data.phone=allPhones[0]||"";
   data.phone2=allPhones[1]||"";
   data.phones=allPhones.slice(2);
   data.matchCount=matches.length;
-  // Return null if we genuinely have nothing useful — the caller can skip
-  // applying empty data.
   if(!data.phone&&!data.address&&!data.city&&!data.zip&&!data.zone)return null;
   return data;
 }
@@ -20810,11 +20840,21 @@ function effectiveZone(t){
   }
   return t.zone||"";
 }
+/* v2.58.0 — ZIPs que cubren MÁS DE UNA ciudad. Caso real (20 ago 2026): la app
+   mostraba «Chesterfield» para 2517 Pepperfield Court y QuickBooks dice
+   «Wildwood, MO 63005». No estaba mal el dato del cliente: el ticket no traía
+   ciudad escrita y ZIP_CITIES rellenaba 63005 -> Chesterfield. El 63005 cubre
+   las dos. Para estos ZIPs es mejor no decir nada que decir la ciudad de al
+   lado: la ciudad sale en rutas y en el reporte que ve el cliente.
+   Si aparece otro ZIP así, se agrega a esta lista y listo.
+   `customZips` (lo que un admin escribió a mano) SIGUE mandando siempre. */
+var ZIP_AMBIGUOUS={"63005":1};
 function effectiveCity(t){
   if(!t)return"";
   if(t.city)return t.city; // explicit city always wins (admin/tech may have typed it)
   if(t.zip){
     if(customZips[t.zip+"_city"])return customZips[t.zip+"_city"];
+    if(ZIP_AMBIGUOUS[t.zip])return"";
     if(ZIP_CITIES[t.zip])return ZIP_CITIES[t.zip];
   }
   return"";
@@ -25607,14 +25647,45 @@ async function custSaveInfo(){
   var addressChanged=!oldAddrs.has(newAddrLow)||(city&&!oldAddrs.has(newCityLow));
   var batch=db.batch();var count=0;
   var updateObj={phone:phone,phone2:phone2,email:email,address:addr,city:city,zip:zip,zone:zone};
-  // If the name was changed, update it on every matching ticket
   var oldKey=selectedCustKey;
-  // AUDIT FIX (May 2026): compute the new group key the SAME way the sidebar
-  // builds it, so after rename the customer card stays selected. Previously
-  // this just used newName.toLowerCase() which never matched the family key.
   var newKey=(typeof _custGroupKey==="function"?_custGroupKey(newName):"")||newName.toLowerCase();
-  if(newName!==(allTkts.find(_ticketMatchesSelected)||{}).customer)updateObj.customer=newName;
-  allTkts.forEach(function(t){if(_ticketMatchesSelected(t)){var ref=db.collection("tickets").doc(t.id);batch.update(ref,updateObj);count++}});
+  /* ── v2.58.0 — DOS FRENOS. El 20 ago 2026 este botón era el camino más corto
+     para convertir un problema de pantalla en pérdida de datos: escribe en TODOS
+     los tickets que comparten la clave, y con la clave floja de entonces eso eran
+     DOS HOGARES a la vez.
+
+     FRENO 1 — el renombrado. La línea que había aquí era:
+         if(newName!==(allTkts.find(_ticketMatchesSelected)||{}).customer) updateObj.customer=newName;
+     `.find()` devuelve el PRIMER ticket que matchea, que puede ser de cualquier
+     variante del nombre. Si esa variante no era la que estaba en la caja, se
+     agregaba `customer:newName` y se renombraban TODOS los tickets de la ficha a
+     un solo nombre — sin pedir nada y sin vuelta atrás. Ahora solo se renombra si
+     el nombre escrito NO EXISTE YA entre los tickets de la ficha, o sea si de
+     verdad lo cambiaste vos.
+
+     FRENO 2 — la confirmación. Si la ficha contiene más de una grafía distinta,
+     se dicen cuáles y se pide confirmación antes de escribir. Con la clave
+     canónica esto debería ser raro y legítimo («Ruck, Linda & Jim» vs
+     «Ruck Linda & Jim»), pero si alguna vez vuelve a colarse una fusión, el
+     guardado se detiene y se ve ANTES de tocar Firestore. ── */
+  var _tocados=allTkts.filter(_ticketMatchesSelected);
+  var _nombres=[];
+  _tocados.forEach(function(t){if(t.customer&&_nombres.indexOf(t.customer)<0)_nombres.push(t.customer)});
+  if(_nombres.indexOf(newName)<0)updateObj.customer=newName;
+  if(_nombres.length>1){
+    var _msg=L2("Esta ficha contiene "+_nombres.length+" nombres distintos:\n\n  · "+_nombres.join("\n  · ")
+                +"\n\nSe va a escribir el MISMO teléfono, dirección y correo en las "+_tocados.length
+                +" visitas de todos ellos"+(updateObj.customer?", y además se van a renombrar todas a \u201C"+newName+"\u201D":"")
+                +". ¿Seguir?",
+                "This card holds "+_nombres.length+" different names:\n\n  · "+_nombres.join("\n  · ")
+                +"\n\nThe SAME phone, address and email will be written to all "+_tocados.length
+                +" visits"+(updateObj.customer?", and they will all be renamed to \u201C"+newName+"\u201D":"")
+                +". Continue?");
+    var _ok=false;
+    try{_ok=(typeof confirmDialog==="function")?await confirmDialog(_msg):confirm(_msg);}catch(_e){_ok=false;}
+    if(!_ok){toast(L2("Guardado cancelado","Save cancelled"),"warn");return;}
+  }
+  _tocados.forEach(function(t){var ref=db.collection("tickets").doc(t.id);batch.update(ref,updateObj);count++});
   try{
     await batch.commit();
     try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:newName||selectedCustKey||"",app:"tickets",type:"customer.updated",title:"✏️ Customer info updated",actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}catch(_be){}
@@ -31364,47 +31435,18 @@ function _aspNormName(s){
    huerfana ningun dato. ══════════════════════════════════════════════════ */
 window.AUDIT_BUILD="2026-07-20-auditoria";
 try{console.log("%c[Aspen] build "+window.AUDIT_BUILD+" activo — P1 identidad · P2 listener sin-fecha · P3 cita futura · P5 firma/cuota","color:#7c3aed;font-weight:700")}catch(_e){}
-var _ASP_SUFX=/^(jr|sr|ii|iii|iv|md|dds|esq)$/, _ASP_STOP=/^(and|the|of)$/;
-window._custGroupKey=function(s){
-  if(!s)return "";
-  var lower=_aspNormName(s);
-  var clean=lower.replace(/&/g," & ").replace(/[^a-z0-9,& ]/g," ").replace(/\s+/g," ").trim();
-  if(!clean)return lower.replace(/[^a-z0-9]/g,"");
-  var keep=function(w){return w&&!_ASP_SUFX.test(w)&&!_ASP_STOP.test(w);};
-  var fam="",first="";
-  if(clean.indexOf(",")>=0){
-    // "Apellido, Nombre [& Conyuge]" — la coma fija el apellido sin ambiguedad.
-    var pp=clean.split(",");
-    fam=pp[0].replace(/&/g," ").trim().split(/\s+/).filter(keep).join("");
-    var after=(pp.slice(1).join(" ")||"").split(/\s*(?:&|\band\b)\s*/i)[0].trim();
-    first=(after.split(/\s+/).filter(keep)[0])||"";
-  }else{
-    // Sin coma no sabemos el orden ("Sara Cox" vs "Cox Sara") -> se ordena.
-    var amp=(clean.indexOf("&")>=0)||/\band\b/.test(clean);
-    var tk=clean.replace(/&/g," ").split(/\s+/).filter(keep);
-    if(amp&&tk.length>=3){ first=tk[0]; fam=tk[tk.length-1]; }         // "Sara & Martha Cox"
-    else if(tk.length>=2){ var sr=[tk[0],tk[tk.length-1]].sort(); first=sr[0]; fam=sr[1]; }
-    else { fam=tk[0]||""; }
-  }
-  var sig=[];
-  if(fam.length>=2)sig.push(fam);
-  if(first.length>=2&&first!==fam)sig.push(first);
-  if(!sig.length)return lower.replace(/[^a-z0-9]/g,"");
-  sig.sort();
-  return "fam:"+sig.join("|");
-};
-/* _custKeys (matcher por pares: dedup, auto-cierre de dispatch, merge de
-   contacto). Emite la firma completa + la MISMA clave de hogar, para que
-   _custSameCustomer y _custSameHousehold no puedan volver a discrepar. */
-window._custKeys=function(s){
-  if(!s)return [];
-  var lower=_aspNormName(s),out=[];
-  var fullNorm=lower.replace(/[^a-z0-9]/g,"");
-  if(fullNorm)out.push(fullNorm);
-  var gk=window._custGroupKey(s);
-  if(gk&&out.indexOf(gk)<0)out.push(gk);
-  return out;
-};
+/* v2.58.0 — AQUÍ VIVÍA EL OVERRIDE QUE CAUSÓ LA FUSIÓN DE CLIENTES.
+   Este bloque redefinía window._custGroupKey y window._custKeys con la regla de
+   dos tokens {apellido, primer nombre} (descartaba al cónyuge), y por asignarse
+   a window DESPUÉS de que se parsea el bloque de arriba, era la que mandaba en
+   toda la app: «Miller, Julie & Steve» y «Miller, Julie and Bob» daban la MISMA
+   clave y compartían una sola ficha, con la dirección y el spa cruzados.
+   Se eliminó: ahora hay UNA SOLA definición, la canónica del bloque de arriba
+   (buscá "IDENTIDAD DE CLIENTE — DEFINICIÓN ÚNICA Y CANÓNICA"). Las
+   declaraciones `function _custGroupKey` / `function _custKeys` de un script
+   clásico ya crean la propiedad en window, así que todo lo que llamaba a
+   window._custGroupKey sigue funcionando sin tocar una sola llamada.
+   NO VOLVER A REDEFINIRLAS AQUÍ NI EN NINGÚN OTRO BLOQUE. */
 /* ── C360 LOGIC FIX (Jul 2026, pedido de Nela):
    SERVICE HISTORY = trabajo realizado por el técnico.
    NOTES = llamadas, citas, comunicaciones y acciones administrativas (estilo QB,
@@ -43507,40 +43549,42 @@ function getTicketsConnectionHint(lang) {
 // Mirrors TECH-TICKETS' _custKeys / _custGroupKey so customer matching is
 // consistent across apps. "Sickbert, Michelle" and "Michelle Sickbert" both
 // resolve to "fam:sickbert" → same customer in TECH-TICKETS.
-function _custKeys(s) {
-  if (!s) return [];
-  const lower = String(s).toLowerCase();
-  const out = [];
-  const fullNorm = lower.replace(/[^a-z0-9]/g, '');
-  if (fullNorm) out.push(fullNorm);
-  const clean = lower.replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (clean.indexOf(',') >= 0) {
-    const fam = clean.split(',')[0].trim().replace(/\s+/g, '');
-    if (fam.length >= 3) out.push('fam:' + fam);
-  } else {
-    const words = clean.split(/\s+/).filter(Boolean);
-    if (words.length >= 2) {
-      const first = words[0];
-      const last = words[words.length - 1];
-      if (first.length >= 3) out.push('fam:' + first);
-      if (last.length >= 3 && last !== first) out.push('fam:' + last);
-    }
-  }
-  return out;
+/* v2.58.0 — ANTES ESTE MÓDULO TENÍA SU PROPIA COPIA, Y ERA LA PEOR DE TODAS:
+   _custGroupKey devolvía 'fam:' + APELLIDO SOLO, así que para el Invoice Tracker
+   TODOS los Miller eran un único cliente. Vive en un bloque de tipo module, así
+   que no contaminaba el global — pero sí mandaba dentro de la pestaña Invoices y
+   es la clave que se estampa en los cross_app_events que publica.
+   Ahora delega en la definición canónica de la app. El respaldo local es una
+   copia EXACTA de esa misma regla, no una variante: solo corre si el módulo se
+   cargara antes que el script principal, y da el mismo resultado. */
+function _aspIdNormM(s){
+  var l = String(s || '').toLowerCase();
+  if (l.normalize) l = l.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return l.replace(/['\u2018\u2019\-\u2010\u2011\u2013\u2014.]/g, '');
 }
 function _custGroupKey(s) {
+  if (typeof window !== 'undefined' && typeof window._custGroupKey === 'function'
+      && window._custGroupKey !== _custGroupKey) return window._custGroupKey(s);
   if (!s) return '';
-  const lower = String(s).toLowerCase();
+  const lower = _aspIdNormM(s);
   const clean = lower.replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (clean.indexOf(',') >= 0) {
-    const fam = clean.split(',')[0].trim().replace(/\s+/g, '');
-    if (fam.length >= 3) return 'fam:' + fam;
-  }
-  // No comma — pick longest word as family-name proxy
-  const words = clean.split(/\s+/).filter(w => w.length >= 3);
-  if (!words.length) return clean.replace(/\s+/g, '');
-  const longest = words.reduce((a, b) => b.length > a.length ? b : a);
-  return 'fam:' + longest;
+  if (!clean) return lower.replace(/[^a-z0-9]/g, '');
+  const sig = clean.replace(/,/g, ' ').split(/\s+/)
+    .filter(w => w.length >= 2 && w !== 'and' && w !== 'the');
+  if (!sig.length) return lower.replace(/[^a-z0-9]/g, '');
+  sig.sort();
+  return 'fam:' + sig.join('|');
+}
+function _custKeys(s) {
+  if (typeof window !== 'undefined' && typeof window._custKeys === 'function'
+      && window._custKeys !== _custKeys) return window._custKeys(s);
+  if (!s) return [];
+  const out = [];
+  const fullNorm = _aspIdNormM(s).replace(/[^a-z0-9]/g, '');
+  if (fullNorm) out.push(fullNorm);
+  const gk = _custGroupKey(s);
+  if (gk && out.indexOf(gk) < 0) out.push(gk);
+  return out;
 }
 
 // Firestore REST value wrapper — converts JS value to Firestore format
