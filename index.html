@@ -6797,8 +6797,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.50.0";
-var BUILD_DATE="2026-08-19";
+var APP_VERSION="2.56.0";
+var BUILD_DATE="2026-08-20";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -7446,7 +7446,17 @@ function _metricsRender(){
     completed.forEach(function(t){var dt=dOf(t);if(!dt)return;for(var j=0;j<weeks.length;j++){if(dt>=weeks[j].s&&dt<weeks[j].e){weeks[j].n++;break;}}});
     var maxW=Math.max(1,Math.max.apply(null,weeks.map(function(w){return w.n;})));
     // per tech this month
-    var tc={};monthT.forEach(function(t){(t.techs||[]).forEach(function(tech){if(tech)tc[tech]=(tc[tech]||0)+1;});});
+    /* v2.54.0 — antes contaba sobre `monthT`, que sale de una poblacion ANCHA
+       (status done O fieldReportSubmitted) e incluye DESPACHOS: huecos
+       agendados, no trabajo hecho. Por eso decia Jeremy 377 y el panel de
+       abajo 198. Ahora los dos cuentan lo mismo. */
+    var tc={};
+    if(typeof window._aspPorTecnico==="function" && typeof window._numerosOn==="function"
+       && window._numerosOn()){
+      tc=window._aspPorTecnico(mStart?fmtD(mStart):null);
+    }else{
+      monthT.forEach(function(t){(t.techs||[]).forEach(function(tech){if(tech)tc[tech]=(tc[tech]||0)+1;});});
+    }
     var techArr=Object.keys(tc).map(function(k){return{name:k,n:tc[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,8);
     var maxT=Math.max(1,(techArr[0]||{n:1}).n);
     var mName=(typeof _admEtiqueta==="function")?_admEtiqueta()
@@ -10605,14 +10615,22 @@ function rndrAdminFTF(){
   });
   var techs=Object.keys(byTech).sort(function(a,b2){var A=byTech[a],B=byTech[b2];var pa=A.jobs?1-A.bounces/A.jobs:0,pb=B.jobs?1-B.bounces/B.jobs:0;if(pb!==pa)return pb-pa;return B.jobs-A.jobs;});
   var tj=0,tb=0;techs.forEach(function(k){tj+=byTech[k].jobs;tb+=byTech[k].bounces;});
-  var teamR=tj?Math.round((1-tb/tj)*100):100;
+  /* v2.54.0 — sumar byTech cuenta DOS VECES los trabajos de dos tecnicos y se
+     come los de tecnicos ocultos o sin asignar: por eso este panel decia 88%
+     y Metricas 89%. Para el numero de EQUIPO la unidad es el TRABAJO, asi que
+     se lee del mismo motor que usa Metricas. La tabla por tecnico no cambia. */
+  var teamR, tjShow=tj, tbShow=tb, _eq=null;
+  try{ if(typeof window._numerosOn==="function" && window._numerosOn() &&
+          typeof _ftfTeamStats==="function") _eq=_ftfTeamStats(startDate||null,null); }catch(_e){}
+  if(_eq && _eq.jobs){ teamR=_eq.rate; tjShow=_eq.jobs; tbShow=_eq.bounces; }
+  else { teamR=tj?Math.round((1-tb/tj)*100):100; }
   var perLabel=_ftfPeriod==="month"?"This month":_ftfPeriod==="week"?"This week":"All time";
   function pillBtn(val,label){var on=_ftfPeriod===val;return '<button onclick="setFtfPeriod(\''+val+'\')" style="padding:4px 12px;border:1px solid '+(on?"var(--br)":"var(--ln)")+';border-radius:8px;background:'+(on?"var(--br)":"var(--bg)")+';color:'+(on?"#fff":"var(--i2)")+';font-weight:700;font-size:var(--fs-sm);cursor:pointer">'+label+'</button>';}
   var h='<div class="card" style="padding:14px">';
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="font-weight:800;color:var(--br)">🎯 First-time fix</span><span style="margin-left:auto;font-size:var(--fs-xs);color:var(--i3);font-weight:800;text-transform:uppercase;letter-spacing:.4px">'+perLabel+'</span></div>';
   h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:10px">Un trabajo cuenta como resuelto a la 1ª SOLO si no hubo 2nd Visit ni Repeat del mismo cliente en 45 días · el rebote se atribuye al técnico de la visita original</div>';
   var tc=teamR>=90?"var(--c-success-strong)":(teamR>=75?"var(--c-warning-strong)":"var(--c-danger-fg)");
-  h+='<div style="background:var(--c-ash-2);border-radius:10px;padding:10px 13px;display:flex;align-items:baseline;gap:10px;margin-bottom:12px"><span style="font-weight:800">EQUIPO · '+perLabel+'</span><span style="margin-left:auto;font-size:20px;font-weight:800;color:'+tc+'">'+teamR+'%</span><span style="font-size:var(--fs-sm);color:var(--i3)">('+(tj-tb)+' ok / '+tb+' rebotes)</span></div>';
+  h+='<div style="background:var(--c-ash-2);border-radius:10px;padding:10px 13px;display:flex;align-items:baseline;gap:10px;margin-bottom:12px"><span style="font-weight:800">EQUIPO · '+perLabel+'</span><span style="margin-left:auto;font-size:20px;font-weight:800;color:'+tc+'">'+teamR+'%</span><span style="font-size:var(--fs-sm);color:var(--i3)">('+(tjShow-tbShow)+' ok / '+tbShow+' rebotes)</span></div>';
   techs.forEach(function(k){var d2=byTech[k];var r=d2.jobs?Math.round((1-d2.bounces/d2.jobs)*100):100;var col=r>=90?"var(--c-success-strong)":(r>=75?"var(--c-warning-strong)":"var(--c-danger-fg)");
     h+='<div style="margin-bottom:10px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:800">'+esc(k)+'</span><span style="margin-left:auto;font-weight:800;color:'+col+'">'+r+'%</span></div>';
     h+='<div style="height:8px;background:var(--c-ash-2);border-radius:4px;overflow:hidden;margin:4px 0"><div style="width:'+r+'%;height:100%;background:'+col+'"></div></div>';
@@ -51277,6 +51295,672 @@ window.aspOrigenDeContinuacion=function(t){
       return false;
     }catch(_e){ return false; }
   };
+})();
+</script>
+
+<style id="aspenLlamadaPasosSkin">
+/* ══ NUEVA LLAMADA EN TRES PASOS (v2.51.0) ═══════════════════════
+   Antes el contenedor era width:100%;max-width:100% en modo "nueva llamada",
+   asi que un campo de telefono ocupaba ~1.750 px y todo caia en una columna.
+   Borrar este bloque y su gemelo devuelve el formulario de la v2.50.0.      */
+#pg5 .cal-wrap.slog-mode-new .cal-side{max-width:1120px!important;margin:0 auto!important}
+.slcf-head{font-size:var(--fs-xs);font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--i2);margin-bottom:12px}
+.slcf-paso{border:1px solid var(--ln);border-radius:13px;padding:13px 14px;margin-bottom:12px;
+  background:var(--bg)}
+.slcf-paso>.slcf-t{display:flex;align-items:center;gap:9px;margin-bottom:11px;
+  font-size:var(--fs-md);font-weight:800;color:var(--br)}
+.slcf-paso>.slcf-t .slcf-n{background:var(--ac);color:#fff;width:21px;height:21px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none}
+.slcf-dos{display:grid;grid-template-columns:1fr;gap:10px;align-items:start}
+@media(min-width:900px){.slcf-dos{grid-template-columns:1fr 1fr}}
+.slcf-cel{min-width:0;display:flex;flex-direction:column;gap:8px}
+.slcf-cel>*{margin:0!important}
+.slcf-full{grid-column:1/-1}
+.slcf-barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-top:4px}
+.slcf-barra .slcf-hint{font-size:var(--fs-xs);color:var(--i3)}
+/* dentro de los pasos, las tarjetas ya no necesitan su propio marco */
+.slcf-cel>.card,.slcf-cel>.form-section-card{background:var(--cd);margin:0!important}
+</style>
+
+<script id="aspenLlamadaPasosScript">
+/* NUEVA LLAMADA EN TRES PASOS (v2.51.0). Ver el bloque de estilo gemelo. */
+(function(){
+  "use strict";
+
+  /* interruptor: localStorage llamadaPasos="0" devuelve el formulario largo */
+  window._slPasosOn=function(){
+    try{ return localStorage.getItem("llamadaPasos")!=="0"; }catch(_e){ return true; }
+  };
+
+  /* El orden de la llamada. Cada "celda" es un grupo de bloques que van juntos;
+     `full` = ocupa las dos columnas. Los anclajes son ids que ya existen. */
+  var PASOS=[
+    {t:"\u00bfQui\u00e9n llama?", celdas:[
+      {ids:["slCustName"]},
+      {ids:["slCustPhone","slPhone2Wrap","slAddPhoneBtn"]},
+      {ids:["slCustAddr"], full:true},
+      {ids:["slCustCity","slZoneBadge"], full:true},
+      {ids:["slCustEmail"]}
+    ]},
+    {t:"\u00bfQu\u00e9 le pasa?", celdas:[
+      {ids:["slHistBox"], full:true},       /* la tarjeta de comentarios: reportado, atajos, notas, IA */
+      {ids:["slSpaDesc"], full:true},
+      {ids:["slMediaGrid"], full:true}
+    ]},
+    {t:"\u00bfCu\u00e1ndo vamos y c\u00f3mo se cobra?", celdas:[
+      {ids:["slDate"]},
+      {ids:["slVisitBtn1"], full:true},
+      {ids:["slWtRow"], full:true},
+      {ids:["slWarYes"]},
+      {ids:["slLastSvc"]},
+      {ids:["slCcFile"], full:true}
+    ]}
+  ];
+
+  var hecho=false;
+
+  function bloque(form, id){
+    var el=form.querySelector("#"+id);
+    if(!el) return null;
+    while(el && el.parentNode && el.parentNode!==form) el=el.parentNode;
+    return (el && el.parentNode===form) ? el : null;
+  }
+
+  function montar(){
+    if(hecho) return true;
+    if(!window._slPasosOn()) return false;
+    var form=document.querySelector("#pg5 .cal-call-form");
+    if(!form) return false;
+    if(form.querySelector(".slcf-paso")) { hecho=true; return true; }
+
+    var originales=Array.prototype.slice.call(form.children);
+    var usados=[];
+
+    /* el titulo del formulario */
+    var head=form.querySelector(":scope > .lbl") || originales[0];
+
+    /* los dos botones del final, por su onclick (no por su posicion) */
+    var btnCrear=null, btnLimpiar=null;
+    originales.forEach(function(ch){
+      var oc=(ch.getAttribute && ch.getAttribute("onclick")) || "";
+      if(/slCreateCall/.test(oc)) btnCrear=ch;
+      else if(/slClearForm/.test(oc)) btnLimpiar=ch;
+    });
+
+    var wrap=document.createDocumentFragment();
+    if(head){ head.classList.add("slcf-head"); wrap.appendChild(head); usados.push(head); }
+
+    PASOS.forEach(function(p,i){
+      var sec=document.createElement("div"); sec.className="slcf-paso";
+      sec.setAttribute("data-paso", String(i+1));
+      var t=document.createElement("div"); t.className="slcf-t";
+      var n=document.createElement("span"); n.className="slcf-n"; n.textContent=String(i+1);
+      t.appendChild(n); t.appendChild(document.createTextNode(p.t));
+      var dos=document.createElement("div"); dos.className="slcf-dos";
+      sec.appendChild(t); sec.appendChild(dos);
+
+      var puestos=0;
+      p.celdas.forEach(function(c){
+        var cel=document.createElement("div");
+        cel.className="slcf-cel"+(c.full?" slcf-full":"");
+        var dentro=0;
+        c.ids.forEach(function(id){
+          var b=bloque(form,id);
+          if(!b || usados.indexOf(b)>-1) return;
+          cel.appendChild(b); usados.push(b); dentro++; puestos++;
+        });
+        if(dentro) dos.appendChild(cel);
+      });
+      /* Regla 6: nada de fallar en silencio */
+      if(!puestos){
+        var av=document.createElement("div");
+        av.style.cssText="background:var(--c-warning-bg,#fdf3c0);border:1px solid var(--ln);"+
+          "border-radius:10px;padding:10px 12px;font-size:var(--fs-sm)";
+        av.textContent="Este paso no encontr\u00f3 sus campos. No se perdi\u00f3 nada: "+
+                       "est\u00e1n abajo, en \u00abOtros\u00bb.";
+        dos.appendChild(av);
+      }
+      wrap.appendChild(sec);
+    });
+
+    /* lo que no se reconocio NO se pierde: va al final, visible */
+    var sobras=originales.filter(function(ch){
+      return usados.indexOf(ch)<0 && ch!==btnCrear && ch!==btnLimpiar;
+    });
+    window._slPasosSobras=sobras.length;
+    if(sobras.length){
+      var sec=document.createElement("div"); sec.className="slcf-paso"; sec.setAttribute("data-paso","otros");
+      var t=document.createElement("div"); t.className="slcf-t";
+      t.appendChild(document.createTextNode("Otros"));
+      var dos=document.createElement("div"); dos.className="slcf-dos";
+      var cel=document.createElement("div"); cel.className="slcf-cel slcf-full";
+      sobras.forEach(function(ch){ cel.appendChild(ch); });
+      dos.appendChild(cel); sec.appendChild(t); sec.appendChild(dos);
+      wrap.appendChild(sec);
+    }
+
+    var barra=document.createElement("div"); barra.className="slcf-barra";
+    if(btnCrear) barra.appendChild(btnCrear);
+    if(btnLimpiar) barra.appendChild(btnLimpiar);
+    var hint=document.createElement("span"); hint.className="slcf-hint";
+    hint.textContent="S\u00f3lo hace falta el nombre del cliente.";
+    barra.appendChild(hint);
+    wrap.appendChild(barra);
+
+    form.appendChild(wrap);
+    hecho=true;
+    return true;
+  }
+
+  window._slPasos={ montar:montar, montado:function(){return hecho;}, PASOS:PASOS };
+
+  /* el formulario es markup estatico, asi que se puede reordenar en cuanto
+     el documento este listo; y por si acaso, tambien al abrir la pestana */
+  function intenta(){ try{ montar(); }catch(e){ console.warn("[slPasos]", e); } }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", intenta);
+  else intenta();
+  var _st=window.showTab;
+  if(typeof _st==="function"){
+    window.showTab=function(n){ var r=_st.apply(this,arguments); if(String(n)==="5") intenta(); return r; };
+  }
+})();
+</script>
+
+<style id="aspenPanelSkin">
+/* ══ DIRECCION PANEL (v2.52.0) ═══════════════════════════════
+   Todo cuelga de html.panel, que pone el script gemelo. Quitar la clase (o
+   borrar los dos bloques) devuelve el aspecto de la v2.51.0 sin tocar nada mas.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 1 · UNA SOLA ESCALA DE FORMA. Ademas de apretar los radios, esto ARREGLA
+   que --r-sm/--r-md/--r-lg estuvieran declarados tres veces cada uno con
+   valores distintos: a partir de aqui hay una sola verdad. */
+html.panel{
+  --r-xs:4px; --r-sm:5px; --r-md:6px; --r-lg:8px; --r-xl:10px; --r-2xl:12px;
+  --rad:8px;
+  --panel-ln:var(--ln,#EBE4DA);
+}
+
+/* 2 · LA FAMILIA DE SUPERFICIES: borde de 1px, sin sombra decorativa */
+html.panel .card,
+html.panel .form-section-card,
+html.panel .kpi-card,
+html.panel .dt-sec,
+html.panel .admBItem,
+html.panel .slcf-paso,
+html.panel #admBCola,
+html.panel .slc{
+  border-radius:6px;
+  box-shadow:none;
+}
+html.panel .kpi-card{border:1px solid var(--panel-ln)}
+
+/* 3 · LOS RADIOS EN CRUDO. 688 border-radius escritos a mano en el JS, pero
+   concentrados en pocos numeros: ocho reglas cubren ~88% de ellos. El 999px
+   NO se toca: son avatares y pastillas, y ahi la capsula es correcta. */
+html.panel [style*="border-radius:12px"]{border-radius:8px!important}
+html.panel [style*="border-radius:11px"]{border-radius:8px!important}
+html.panel [style*="border-radius:10px"]{border-radius:6px!important}
+html.panel [style*="border-radius:9px"] {border-radius:6px!important}
+html.panel [style*="border-radius:8px"] {border-radius:6px!important}
+html.panel [style*="border-radius:7px"] {border-radius:5px!important}
+html.panel [style*="border-radius:14px"]{border-radius:8px!important}
+html.panel [style*="border-radius:16px"]{border-radius:10px!important}
+
+/* 4 · LAS SOMBRAS DECORATIVAS SE VAN; las de verdad se quedan.
+   Se apagan solo las pequenas (0 1px / 0 2px 6px), que son las de tarjeta.
+   Las de 0 10px / 0 20px / 0 24px son modales y hojas: esas flotan de verdad. */
+html.panel [style*="box-shadow:0 1px"]{box-shadow:none!important}
+html.panel [style*="box-shadow:0 2px 6px"]{box-shadow:none!important}
+
+/* 5 · UN SOLO JUEGO DE BOTONES: misma forma, mismo peso, misma altura minima.
+   NO se tocan los colores: cada boton conserva su intencion. */
+html.panel button,
+html.panel .btn{
+  border-radius:5px;
+  font-weight:700;
+  letter-spacing:.1px;
+}
+html.panel button:focus-visible,
+html.panel .btn:focus-visible,
+html.panel a:focus-visible,
+html.panel input:focus-visible,
+html.panel select:focus-visible,
+html.panel textarea:focus-visible{
+  outline:2px solid var(--ac,#D4772C); outline-offset:1px; border-radius:5px;
+}
+
+/* 6 · NUMEROS TABULARES. En Panel las cifras se leen en columna, asi que
+   todas tienen que ocupar lo mismo. */
+html.panel .kpi-num,
+html.panel .admBFilaN,
+html.panel .admBItemCnt,
+html.panel td,
+html.panel th,
+html.panel .stat,
+html.panel .tile{
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
+
+/* 7 · CAMPOS: mismo borde y mismo radio en toda la app */
+html.panel input,
+html.panel select,
+html.panel textarea{
+  border-radius:5px;
+}
+
+/* 8 · DENSIDAD — SOLO ESCRITORIO.
+   Debajo de 1100px no se aprieta nada: ahi vive el telefono del tecnico y el
+   area de toque manda sobre la densidad. */
+@media(min-width:1100px){
+  html.panel .card,
+  html.panel .form-section-card{padding:10px 12px}
+  html.panel .dt-sec{padding:10px 12px}
+  html.panel .slcf-paso{padding:10px 12px}
+  html.panel .admBFila{padding:9px 14px}
+  html.panel .admBItemHd{padding:10px 13px}
+  html.panel .admBSecSub{margin-bottom:10px}
+  html.panel .admBCols{gap:10px}
+  html.panel .slcf-dos{gap:8px}
+  html.panel #admBCola{margin-bottom:12px}
+  html.panel .kpi-card{padding:10px 12px}
+}
+</style>
+
+<script id="aspenPanelScript">
+/* DIRECCION PANEL (v2.52.0) — solo pone la clase; todo el aspecto vive en el
+   bloque de estilo gemelo. Interruptor: localStorage panelSkin="0".        */
+(function(){
+  "use strict";
+  window._panelOn=function(){
+    try{ return localStorage.getItem("panelSkin")!=="0"; }catch(_e){ return true; }
+  };
+  function aplica(){
+    try{
+      var h=document.documentElement; if(!h) return;
+      if(window._panelOn()) h.classList.add("panel");
+      else h.classList.remove("panel");
+    }catch(_e){}
+  }
+  aplica();
+  window._panelAplica=aplica;
+})();
+</script>
+
+<script id="aspenIdioma">
+/* ══ UN SOLO IDIOMA EN LA INTERFAZ (v2.53.0) ══════════════════════
+   Anade frases al diccionario TR que ya existia y protege del traductor lo
+   que ve el cliente. Borrar este bloque devuelve el diccionario de la 2.52.0.
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+
+  window._idiomaOn=function(){
+    try{ return localStorage.getItem("idiomaCompleto")!=="0"; }catch(_e){ return true; }
+  };
+
+  /* ── 1 · lo que ve el CLIENTE no se traduce nunca ────────────────────
+     El reporte de servicio se le manda a clientes de Missouri: va en ingles
+     pase lo que pase. _i18nPass respeta [data-no-i18n] pero nadie lo usaba. */
+  var CLIENTE=["v8ReportOverlay","v8ReportPaper","v7OwnReport"];
+  function protege(){
+    var n=0;
+    CLIENTE.forEach(function(id){
+      try{
+        var el=document.getElementById(id);
+        if(el && !el.hasAttribute("data-no-i18n")){ el.setAttribute("data-no-i18n",""); n++; }
+      }catch(_e){}
+    });
+    return n;
+  }
+  window._idiomaProtege=protege;
+
+  /* ── 2 · las frases que faltaban, TODAS de la interfaz del personal ─────
+     Fuera a proposito: Labor, Parts, Total, Bill To, Customer Signature,
+     SERVICE REPORT y compania — salen en el papel del cliente.            */
+  var NUEVAS={
+    /* KPI y resumen */
+    "Today\u2019s Stops":"Paradas de hoy", "Today's Stops":"Paradas de hoy",
+    "Team Fix Rate":"Arreglo a la primera", "Reschedules":"Reagendadas",
+    "Avg Ticket":"Ticket promedio", "Receivable":"Por cobrar",
+    "Pending Dispatch":"Despacho pendiente", "Completed Today":"Completados hoy",
+    "First-time fix":"Resuelto a la primera", "All time":"Todo el historial",
+    "By tech":"Por t\u00e9cnico", "Scheduled for":"Agendado para",
+    "Awaiting scheduling":"Esperando agendar", "awaiting payment":"esperando pago",
+    /* Admin */
+    "Daily Capacity":"Capacidad del d\u00eda", "Orphan Dispatches":"Despachos hu\u00e9rfanos",
+    "Spa Data Worklist":"Spas sin datos", "Recently closed":"Cerrados hace poco",
+    "Restore":"Restaurar", "Audit log":"Registro de auditor\u00eda",
+    "Data Backup":"Respaldo de datos", "Billing Export":"Export a facturaci\u00f3n",
+    "AI Settings":"Ajustes de IA", "Rounding Rule":"Regla de redondeo",
+    "Warranty Override Log":"Registro de garant\u00eda",
+    /* Service Log */
+    "Service Log":"Registro de servicio", "New Service Call":"Nueva llamada de servicio",
+    "Map & Stats":"Mapa y estad\u00edsticas", "Program now":"Programar ahora",
+    "Needs new date":"Falta fecha nueva", "Create Ticket":"Crear ticket",
+    "Clear Form":"Limpiar formulario", "Add another phone":"Agregar otro tel\u00e9fono",
+    "Visit Type":"Tipo de visita", "Type of Work":"Tipo de trabajo",
+    "Spa description":"Descripci\u00f3n del spa", "Last service date":"\u00daltima fecha de servicio",
+    "Day slots":"Franjas del d\u00eda", "Needs 2nd tech":"Necesita 2do t\u00e9cnico",
+    /* Hoja del ticket */
+    "Assign Technician":"Asignar t\u00e9cnico", "Customer & Address":"Cliente y direcci\u00f3n",
+    "Flags & Payment":"Banderas y pago", "Spa Info":"Info del spa",
+    "Notes & Updates":"Notas y actualizaciones", "Visit & Warranty":"Visita y garant\u00eda",
+    "Call Customer":"Llamar al cliente", "Add to To-Do":"Agregar a pendientes",
+    "Cancel Visit":"Cancelar visita", "Under warranty":"En garant\u00eda",
+    "No warranty (N/W)":"Sin garant\u00eda", "Change":"Cambiar",
+    "Spa Move":"Mudanza de spa", "New Spa":"Spa nuevo",
+    "Where it shows":"D\u00f3nde aparece", "Customer reported":"Lo que report\u00f3 el cliente",
+    "Follow-up reminder":"Recordatorio de seguimiento",
+    /* estados y banderas */
+    "Check":"Cheque", "Credit":"Cr\u00e9dito", "CC on File":"Tarjeta en archivo",
+    "Request CC":"Pedir tarjeta", "Payment before service":"Pago antes del servicio",
+    "Unassigned":"Sin asignar", "No tickets":"Sin tickets",
+    "No tickets for this day":"Sin tickets este d\u00eda",
+    "No photos":"Sin fotos", "No date":"Sin fecha", "No phone on file":"Sin tel\u00e9fono",
+    "Ticket not found":"Ticket no encontrado", "Ticket not loaded":"Ticket sin cargar",
+    "Service History":"Historial de servicio", "Open ticket":"Abrir ticket",
+    "Schedule visit":"Agendar visita", "To schedule":"Por agendar",
+    "Group by":"Agrupar por", "Add call":"Agregar llamada",
+    "Coaching call":"Llamada de coaching", "Create link":"Crear enlace"
+  };
+  window._idiomaNuevas=NUEVAS;
+
+  function aplica(){
+    try{
+      protege();
+      if(!window._idiomaOn()) return false;
+      if(typeof TR!=="object" || !TR) return false;
+      var n=0;
+      Object.keys(NUEVAS).forEach(function(k){
+        if(TR[k]==null){ TR[k]=NUEVAS[k]; n++; }   /* nunca pisa una traduccion que ya existia */
+      });
+      window._idiomaAnadidas=n;
+      /* y que se note ya, sin tener que cambiar de idioma para ida y vuelta */
+      try{ if(typeof APP_LANG!=="undefined" && APP_LANG==="es" &&
+               typeof _i18nPass==="function") _i18nPass(document.body); }catch(_e){}
+      return true;
+    }catch(e){ console.warn("[idioma]", e); return false; }
+  }
+
+  window._idiomaAplica=aplica;
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", aplica);
+  else aplica();
+})();
+</script>
+
+<script id="aspenNumeros">
+/* \u2550\u2550 NUMEROS COHERENTES (v2.54.0) \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   Una sola definicion de "visita hecha" para los paneles que se miran juntos.
+   Borrar este bloque devuelve el comportamiento de la v2.53.0.             */
+(function(){
+  "use strict";
+  window._numerosOn=function(){
+    try{ return localStorage.getItem("numerosCoherentes")!=="0"; }catch(_e){ return true; }
+  };
+  /* La definicion canonica de VISITA HECHA, la misma que ya usaba el panel de
+     tickets por tecnico (la mas estricta de las dos): ni despachos, ni
+     canceladas, y cerrada de verdad. */
+  window._aspVisitasHechas=function(desde){
+    try{
+      var all=[].concat(window.active||[], window.done||[]);
+      return all.filter(function(t){
+        if(!t) return false;
+        if(t.source==="dispatch") return false;
+        if(t.status==="canceled") return false;
+        if(t.status!=="complete" && t.status!=="done") return false;
+        if(desde && (t.date||"") < desde) return false;
+        return true;
+      });
+    }catch(_e){ return []; }
+  };
+  /* Cuenta por tecnico sobre esa poblacion. Un trabajo con dos tecnicos suma a
+     los dos: eso es correcto AQUI, porque la pregunta es cuanto hizo cada uno.
+     Lo que no vale es usar esta suma como total del equipo. */
+  window._aspPorTecnico=function(desde){
+    var tc={};
+    window._aspVisitasHechas(desde).forEach(function(t){
+      (t.techs||[]).forEach(function(n){ if(n && n!=="\u2014") tc[n]=(tc[n]||0)+1; });
+    });
+    return tc;
+  };
+})();
+</script>
+
+<script id="aspenOscuro">
+/* \u2550\u2550 PARCHES DEL MODO OSCURO (v2.55.0) \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   MEDIDO: el tema vive en body.dark-mode y tiene 118 reglas, pero no alcanza a
+   los colores escritos A MANO en los estilos EN LINEA que genera el JS: 335
+   fondos y 831 textos en crudo. No estan repartidos al azar -- se concentran
+   en pocos valores, casi todos restos de codigo portado con paleta ajena:
+     fondos:  #fff (73) · #f8fafc (26) · #f1f5f9 (14)
+     textos:  #475569 (27) · #0f172a (18) · #94a3b8 (11) · #374151 (10)
+
+   POR QUE UNA PASADA Y NO CSS: el primer intento fueron 44 reglas
+   [style*="background:#fff;"]. El arnes demostro que el selector casa y que
+   el !important gana al estilo en linea, pero NO se podia comprobar el color
+   final porque jsdom no resuelve var(). Esto se puede verificar entero, y de
+   paso no depende de como se serialice el atributo style. Es la misma forma
+   que ya usa la app para traducir (_i18nPass): guarda el original y lo repone.
+
+   El mapa va por COLOR YA CALCULADO, no por texto, asi que #fffbeb o #fff4e0
+   ni se rozan: no estan en el mapa. Y color:#fff NO se mapea a proposito --
+   el texto blanco sobre un boton naranja esta bien en los dos temas.
+   El papel del reporte del cliente queda fuera: se imprime, va en blanco.
+   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+(function(){
+  "use strict";
+
+  window._oscuroOn=function(){
+    try{ return localStorage.getItem("oscuroParches")!=="0"; }catch(_e){ return true; }
+  };
+
+  var FONDO={
+    "rgb(255, 255, 255)":"--cd",       /* #fff  */
+    "rgb(248, 250, 252)":"--cd",       /* #f8fafc */
+    "rgb(241, 245, 249)":"--c-ash-2",  /* #f1f5f9 */
+    "rgb(248, 245, 240)":"--bg",       /* #F8F5F0 */
+    "rgb(250, 250, 250)":"--cd"        /* #fafafa */
+  };
+  var TEXTO={
+    "rgb(15, 23, 42)":"--ink",         /* #0f172a */
+    "rgb(30, 41, 59)":"--ink",         /* #1e293b */
+    "rgb(17, 24, 39)":"--ink",         /* #111827 */
+    "rgb(51, 65, 85)":"--i2",          /* #334155 */
+    "rgb(71, 85, 105)":"--i2",         /* #475569 */
+    "rgb(55, 65, 81)":"--i2",          /* #374151 */
+    "rgb(100, 116, 139)":"--i3",       /* #64748b */
+    "rgb(148, 163, 184)":"--i3"        /* #94a3b8 */
+  };
+  /* lo que se imprime o se le manda al cliente no se repinta */
+  var FUERA=["v8ReportOverlay","v8ReportPaper","v7OwnReport"];
+
+  function excluido(el){
+    try{
+      if(el.closest && el.closest("[data-no-osc]")) return true;
+      for(var i=0;i<FUERA.length;i++){
+        var h=document.getElementById(FUERA[i]);
+        if(h && (h===el || h.contains(el))) return true;
+      }
+    }catch(_e){}
+    return false;
+  }
+
+  function pasada(root){
+    try{
+      root=root||document.body; if(!root||!root.querySelectorAll) return 0;
+      var oscuro=false;
+      try{ oscuro=document.body.classList.contains("dark-mode") && window._oscuroOn(); }catch(_e){}
+      var els=root.querySelectorAll("[style]"), n=0;
+      for(var i=0;i<els.length;i++){
+        var el=els[i];
+        if(oscuro){
+          if(el.getAttribute("data-osc")!=null) continue;
+          if(excluido(el)) continue;
+          var bg=el.style.backgroundColor, fg=el.style.color, marca="";
+          if(bg && FONDO[bg]){
+            el.setAttribute("data-osc-b",bg);
+            el.style.setProperty("background-color","var("+FONDO[bg]+")","important");
+            marca+="b";
+          }
+          if(fg && TEXTO[fg]){
+            el.setAttribute("data-osc-f",fg);
+            el.style.setProperty("color","var("+TEXTO[fg]+")","important");
+            marca+="f";
+          }
+          if(marca){ el.setAttribute("data-osc",marca); n++; }
+        }else{
+          var m=el.getAttribute("data-osc");
+          if(m==null) continue;
+          if(m.indexOf("b")>=0){ el.style.setProperty("background-color", el.getAttribute("data-osc-b")||""); el.removeAttribute("data-osc-b"); }
+          if(m.indexOf("f")>=0){ el.style.setProperty("color", el.getAttribute("data-osc-f")||""); el.removeAttribute("data-osc-f"); }
+          el.removeAttribute("data-osc"); n++;
+        }
+      }
+      window._oscuroTocados=n;
+      return n;
+    }catch(e){ console.warn("[oscuro]", e); return 0; }
+  }
+  window._oscuroPasada=pasada;
+
+  /* engancharse a los dos momentos en que puede hacer falta: al cambiar de
+     tema y despues de cada repintado */
+  try{
+    var st=window._setTheme;
+    if(typeof st==="function"){
+      window._setTheme=function(){ var r=st.apply(this,arguments); pasada(document.body); return r; };
+    }
+    var rr=window._rerenderCurrentView;
+    if(typeof rr==="function"){
+      window._rerenderCurrentView=function(){ var r=rr.apply(this,arguments); pasada(document.body); return r; };
+    }
+  }catch(_e){}
+
+  function arranca(){ pasada(document.body); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", arranca);
+  else arranca();
+})();
+</script>
+
+
+<style id="aspenVaciosSkin">
+/* \u2550\u2550 ESTADOS VACIOS (v2.56.0) \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+.asp-vacio{display:flex;align-items:center;gap:11px;padding:14px 15px;
+  border:1px dashed var(--ln);border-radius:6px;background:transparent}
+.asp-vacio .asp-vacio-ico{font-size:17px;line-height:1;flex:none;opacity:.7}
+.asp-vacio .asp-vacio-txt{min-width:0}
+.asp-vacio .asp-vacio-txt b{display:block;font-size:var(--fs-md,14px);font-weight:700;color:var(--i2)}
+.asp-vacio .asp-vacio-txt span{display:block;font-size:var(--fs-xs,10px);color:var(--i3);margin-top:2px}
+@media(max-width:620px){.asp-vacio{padding:12px 13px}}
+</style>
+
+<script id="aspenVaciosScript">
+/* \u2550\u2550 ESTADOS VACIOS (v2.56.0) \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   76 sitios del codigo hacen innerHTML="" y se acabo: el hueco no distingue
+   "no hay nada" de "se rompio". Esta pasada mete un mensaje en los paneles
+   que se quedan vacios, y lo quita solo cuando llegan datos.
+   FUERA a proposito los que se cargan BAJO DEMANDA (feed del Cerebro,
+   registro de auditoria): decir "no hay nada" a algo que nadie ha pedido
+   todavia seria mentir.  Borrar los dos bloques revierte.
+   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+(function(){
+  "use strict";
+
+  window._vaciosOn=function(){
+    try{ return localStorage.getItem("vaciosDisenados")!=="0"; }catch(_e){ return true; }
+  };
+
+  /* Cada linea dice QUE SIGNIFICA estar vacio, no solo que lo esta. */
+  var PANELES=[
+    {id:"adminRepeatResched", ico:"\uD83D\uDD01", t:"Nadie ha vuelto dos veces",
+     s:"Ning\u00fan cliente con visitas repetidas en el periodo"},
+    {id:"adminFollowUps", ico:"\uD83D\uDCDE", t:"Sin seguimientos vencidos",
+     s:"Todo lo que ten\u00eda fecha de volver a llamar est\u00e1 al d\u00eda"},
+    {id:"adminSpaWorklist", ico:"\uD83D\uDEC1", t:"Todos los spas tienen sus datos",
+     s:"No falta ninguna serie ni fecha para calcular garant\u00eda"},
+    {id:"svcWarrantyPanel", ico:"\u2705", t:"Nadie dentro de los 90 d\u00edas",
+     s:"Ning\u00fan cliente con garant\u00eda de servicio viva ahora mismo"},
+    {id:"warByYearCard", ico:"\uD83D\uDEE1\uFE0F", t:"Sin garant\u00edas registradas",
+     s:"Ning\u00fan spa con a\u00f1o de garant\u00eda anotado"},
+    {id:"adminCapacity", ico:"\uD83D\uDCC5", t:"Nadie tiene paradas este d\u00eda",
+     s:"Ning\u00fan t\u00e9cnico con tickets asignados"},
+    {id:"adminStatVisits", ico:"\uD83D\uDCCB", t:"Sin visitas en este periodo",
+     s:"Prueba a cambiar Semana / Mes / Todo"},
+    {id:"adminStatTechs", ico:"\uD83D\uDC77", t:"Sin trabajo por t\u00e9cnico",
+     s:"Nadie cerr\u00f3 visitas en el periodo elegido"},
+    {id:"slHistBox", ico:"\uD83D\uDD52", t:"Cliente nuevo",
+     s:"No hay visitas anteriores a nombre de este cliente"},
+    {id:"slAccountStatusPanel", ico:"\uD83D\uDCB3", t:"Sin facturas abiertas",
+     s:"Este cliente no debe nada"},
+    {id:"slWarrantyPanel", ico:"\uD83D\uDD27", t:"Sin partes en garant\u00eda",
+     s:"No hay partes instaladas con garant\u00eda viva"}
+  ];
+  window._vaciosPaneles=PANELES;
+
+  var MARCA="asp-vacio";
+
+  function estaVacio(el){
+    try{
+      var hijos=el.children, i;
+      for(i=0;i<hijos.length;i++){
+        if(hijos[i].classList && hijos[i].classList.contains(MARCA)) continue;
+        return false;                    /* tiene contenido de verdad */
+      }
+      /* ni texto suelto que no sea el nuestro */
+      var txt=("").concat(el.textContent||"").trim();
+      var mio=el.querySelector("."+MARCA);
+      if(mio) txt=txt.replace((mio.textContent||"").trim(),"").trim();
+      return txt==="";
+    }catch(_e){ return false; }
+  }
+
+  function pinta(el, def){
+    var d=document.createElement("div");
+    d.className=MARCA; d.setAttribute("data-vacio", def.id);
+    var i=document.createElement("span"); i.className="asp-vacio-ico"; i.textContent=def.ico;
+    var w=document.createElement("div"); w.className="asp-vacio-txt";
+    var b=document.createElement("b"); b.textContent=def.t;
+    var s=document.createElement("span"); s.textContent=def.s;
+    w.appendChild(b); w.appendChild(s);
+    d.appendChild(i); d.appendChild(w);
+    el.appendChild(d);
+  }
+
+  function pasada(){
+    try{
+      var on=window._vaciosOn(), n=0;
+      PANELES.forEach(function(def){
+        var el=document.getElementById(def.id); if(!el) return;
+        var mio=el.querySelector(":scope > ."+MARCA);
+        if(on && estaVacio(el)){
+          if(!mio){ pinta(el, def); n++; }
+        }else if(mio){
+          mio.parentNode.removeChild(mio); n++;
+        }
+      });
+      window._vaciosTocados=n;
+      return n;
+    }catch(e){ console.warn("[vacios]", e); return 0; }
+  }
+  window._vaciosPasada=pasada;
+
+  /* se engancha a los mismos momentos que el resto: repintado general y Admin */
+  try{
+    var rr=window._rerenderCurrentView;
+    if(typeof rr==="function"){
+      window._rerenderCurrentView=function(){ var r=rr.apply(this,arguments); pasada(); return r; };
+    }
+    var ra=window.rndrAdmin;
+    if(typeof ra==="function"){
+      window.rndrAdmin=function(){ var r=ra.apply(this,arguments); pasada(); return r; };
+    }
+  }catch(_e){}
+
+  function arranca(){ pasada(); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", arranca);
+  else arranca();
 })();
 </script>
 
