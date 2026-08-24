@@ -2879,7 +2879,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<meta name="aspen-build" content="payment-followup-v33-pdf-parse-control">
+<meta name="aspen-build" content="payment-followup-v33-1-text-layer-wins">
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -6798,7 +6798,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.59.0";
+var APP_VERSION="2.59.1";
 var BUILD_DATE="2026-08-20";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -39861,10 +39861,12 @@ window.handlePdfUpload = async function(event) {
         showExtractedBanner(realFields.length, 'PDF reparado correctamente — los campos se recuperaron del documento reconstruido.');
       } else if (extracted._fallbackUsed) {
         showExtractedBanner(realFields.length, extracted._error || 'Se usó el parser de respaldo — verificá los campos detectados.', 'warn');
-      } else if (extracted._amountConfidence === 'low') {
-        showExtractedBanner(realFields.length, 'Sales Order de Aspen — el Total se tomó por posición (último valor en $). Confirmalo antes de guardar.', 'warn');
+      } else if (extracted._salesOrder) {
+        showExtractedBanner(realFields.length, extracted._amountConfidence === 'low'
+          ? 'Sales Order de Aspen — S.O. No. y descripciones parseados. El Total se tomó del último valor en $; confirmalo contra el papel.'
+          : 'Sales Order de Aspen detectado — S.O. No., Total y descripciones parseados.');
       } else {
-        showExtractedBanner(realFields.length, extracted._salesOrder ? 'Sales Order de Aspen detectado — S.O. No., Total y descripciones parseados.' : null);
+        showExtractedBanner(realFields.length, null);
       }
       // Safety net: also fire the token-based customer lookup (catches cases where the customer
       // is in TICKETS DB but not local, OR the PDF customer name format differs from the local DB)
@@ -40106,16 +40108,6 @@ function _pf31FallbackPdfFields(arrayBuffer,filename){
   return r;
 }
 
-// v33: one recovered field is not a successful parse. An invoice is only
-// actionable with a number AND an amount; anything less must keep falling
-// through to the repair tiers instead of being accepted as done.
-function _parseIsUsable(r){
-  return !!(r && r.invoiceNumber && Number(r.amount) > 0);
-}
-function _fieldCount(r){
-  return r ? Object.keys(r).filter(k => !k.startsWith('_')).length : 0;
-}
-
 async function extractPdfFields(arrayBuffer) {
   if (!window.pdfjsLib) {
     console.error('PDF.js did not load.');
@@ -40159,16 +40151,19 @@ async function extractPdfFields(arrayBuffer) {
     }
   }
 
-  // v33: keep the best partial result instead of returning the first one. The
-  // old code returned as soon as ANY field appeared — a lone email was enough
-  // to skip the PDF-Lib repair tier entirely, on exactly the damaged files that
-  // tier exists for.
-  let bestPartial=null;
+  // v33.1: if PDF.js could read the text layer at all, whatever it parsed WINS.
+  // v33.0 gated this on "invoiceNumber AND amount", which sent every parse with
+  // a missing amount down to the raw-byte scraper — and that scraper then beat
+  // the real text layer, wiping customerName, customerEmail, serviceDate,
+  // serviceDescription and the Auth.net paid/QB-pending flags. The repair tier
+  // exists for PDFs PDF.js cannot READ, not for documents that simply lack a
+  // field. A missing amount is flagged (_amountNeedsReview), never a reason to
+  // throw away a good parse.
   if(positionedText.length){
     const lines=buildLinesFromPositioned(positionedText);
     const result=parseInvoiceFromLines(lines,positionedText)||{};
-    if(_parseIsUsable(result))return result;
-    if(_fieldCount(result))bestPartial=result;
+    const fields=Object.keys(result).filter(k=>!k.startsWith('_'));
+    if(fields.length)return result;
   }
 
   // v32 — structural repair pass.
@@ -40201,24 +40196,19 @@ async function extractPdfFields(arrayBuffer) {
         if(repairedFields.length){
           repairedResult._pdfRepaired=true;
           repairedResult._fallbackUsed=false;
-          // v33: only a usable parse returns here; a partial one competes with
-          // whatever the standard read already produced.
-          if(!_parseIsUsable(repairedResult)&&repairedFields.length<=_fieldCount(bestPartial)){
-            console.warn('[PDF Parser] repair produced fewer fields than the standard read — keeping the standard result');
-          } else if(!_parseIsUsable(repairedResult)){
-            bestPartial=repairedResult;
-          } else {
-            // Persist the same repaired PDF that we successfully parsed.
-            try{
-              const cleanBuffer=repairedBytes.buffer.slice(
-                repairedBytes.byteOffset,
-                repairedBytes.byteOffset+repairedBytes.byteLength
-              );
-              currentPdfBase64=await arrayBufferToBase64(cleanBuffer);
-              currentPdfSize=repairedBytes.byteLength;
-            }catch(_saveRepairErr){console.warn('[PDF Parser] repaired bytes parsed but could not replace stored bytes',_saveRepairErr)}
-            return repairedResult;
-          }
+          // Persist the same repaired PDF that we successfully parsed. v33.1
+          // restores this to the v32 behaviour: if the repair recovered ANY
+          // field, the repaired bytes are what we keep — otherwise we would
+          // store and email a PDF that no reader in the chain could open.
+          try{
+            const cleanBuffer=repairedBytes.buffer.slice(
+              repairedBytes.byteOffset,
+              repairedBytes.byteOffset+repairedBytes.byteLength
+            );
+            currentPdfBase64=await arrayBufferToBase64(cleanBuffer);
+            currentPdfSize=repairedBytes.byteLength;
+          }catch(_saveRepairErr){console.warn('[PDF Parser] repaired bytes parsed but could not replace stored bytes',_saveRepairErr)}
+          return repairedResult;
         }
       }
     }catch(repairErr){
@@ -40233,14 +40223,7 @@ async function extractPdfFields(arrayBuffer) {
   if(fbFields.length){
     fb._fallbackUsed=true;
     if(firstError)fb._error='PDF.js could not read the internal structure; resilient fallback recovered '+fbFields.length+' field(s).';
-    // v33: a usable raw-byte parse beats a partial text-layer one. Otherwise
-    // the real text layer is the more trustworthy source and wins.
-    if(_parseIsUsable(fb)||!bestPartial)return fb;
-  }
-  if(bestPartial){
-    bestPartial._partial=true;
-    bestPartial._error='Partial parse — repair and fallback recovered nothing better. Verify every field before saving.';
-    return bestPartial;
+    return fb;
   }
   return {_error:'PDF attached, but its text layer is not readable by the browser parser. Remove it and re-upload, or complete the missing fields manually.',_fallbackUsed:true};
 }
@@ -40330,7 +40313,9 @@ function _parseAspenSalesOrder(lines, joinedIn){
         for(let j=i+1;j<Math.min(i+4,texts.length);j++){
           // v33: the value row is often "<date> <number>", not a bare number.
           const n=texts[j].match(/^\s*(?:\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+)?(\d{4,10})\s*$/);
-          if(n){result.invoiceNumber=n[1];break;}
+          // v33.1: same year guard _parseQbInvoice already had — "01/01/2020 2020"
+          // must not hand back 2020 as the S.O. number.
+          if(n&&!(n[1].length===4&&+n[1]>=1990&&+n[1]<=2100)){result.invoiceNumber=n[1];break;}
         }
       }
       if(result.invoiceNumber)break;
@@ -40585,6 +40570,9 @@ function _parseQbInvoice(lines, allItems, joinedIn) {
     const line = lineTexts[i].trim();
     // "Total $158.72" en una línea
     let m = line.match(/(?:^|\s)Total\s+\$?\s*([\d,]+\.\d{2})\s*$/i);
+    // v33.1: same anchor, but the amount no longer has to END the line.
+    // Real QB rows look like "Total 158.72 Balance Due 158.72".
+    if (!m) m = line.match(/(?:^|\s)Total\s*:?\s+\$?\s*([\d,]+\.\d{2})/i);
     if (m && !/Subtotal/i.test(line)) {
       totalAmt = parseFloat(m[1].replace(/,/g, ''));
       break;
