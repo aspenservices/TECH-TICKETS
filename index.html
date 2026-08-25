@@ -2879,7 +2879,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<meta name="aspen-build" content="payment-followup-v33-1-text-layer-wins">
+<meta name="aspen-build" content="payment-followup-v33-2-reject-non-pdf">
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -6798,7 +6798,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.59.1";
+var APP_VERSION="2.59.2";
 var BUILD_DATE="2026-08-20";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -39811,7 +39811,37 @@ window.handlePdfUpload = async function(event) {
   
   try {
     const arrayBuffer = await file.arrayBuffer();
-    
+
+    // v33.2: a real PDF starts with the bytes "%PDF-". Anything else cannot be
+    // parsed, cannot be opened by the customer, and must never be stored or
+    // emailed. Check this BEFORE touching any state.
+    if (!_pf25PdfHeaderOk(new Uint8Array(arrayBuffer.slice(0, 8)))) {
+      const probe = new Uint8Array(arrayBuffer.slice(0, Math.min(8192, arrayBuffer.byteLength)));
+      let empty = true;
+      for (let i = 0; i < probe.length; i++) { if (probe[i] !== 0) { empty = false; break; } }
+      const en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+      const why = empty
+        ? (en ? `<b>"${escapeHtml(file.name)}" is empty.</b> It is ${Math.round(file.size/1024)} KB of nothing — every byte is zero. This is what a cloud file (iCloud Drive, Dropbox, OneDrive) looks like when it was never actually downloaded, or an export that was interrupted. Open the folder, make sure the file downloads for real, or re-export the invoice from QuickBooks — then upload it again.`
+              : `<b>"${escapeHtml(file.name)}" está vacío.</b> Son ${Math.round(file.size/1024)} KB de nada: todos sus bytes son cero. Así se ve un archivo de la nube (iCloud Drive, Dropbox, OneDrive) que nunca se descargó de verdad, o una exportación que se cortó a mitad. Abrí la carpeta y asegurate de que el archivo se baje completo, o volvé a exportar la factura desde QuickBooks, y subilo de nuevo.`)
+        : (en ? `<b>"${escapeHtml(file.name)}" is not a PDF.</b> It has a .pdf name but its contents are something else, so no reader can open it. Re-export it from QuickBooks and upload it again.`
+              : `<b>"${escapeHtml(file.name)}" no es un PDF.</b> Tiene nombre .pdf pero adentro hay otra cosa, así que ningún lector puede abrirlo. Volvé a exportarlo desde QuickBooks y subilo de nuevo.`);
+
+      const banner = document.getElementById('extractedBanner');
+      if (banner) {
+        banner.className = 'alert-row red';
+        banner.style.marginBottom = '14px';
+        banner.innerHTML = `<span class="alert-icon">⚠</span><div>${why}</div>`;
+        banner.style.display = 'flex';
+      }
+      toast(en ? 'That file is not a readable PDF — nothing was attached' : 'Ese archivo no es un PDF legible — no se adjuntó nada', 'error');
+      console.warn('[PDF Parser] rejected "' + file.name + '" — no %PDF- header (' + file.size + ' bytes, all-zero: ' + empty + ')');
+      dropZone.classList.remove('processing');
+      const ttl0 = dropZone.querySelector('.pdf-upload-title');
+      if (ttl0) ttl0.textContent = 'Subir PDF · QuickBooks o PayTrace';
+      const inp0 = document.getElementById('pdfFileInput'); if (inp0) inp0.value = '';
+      return;
+    }
+
     // Convertir a base64 para guardar
     currentPdfBase64 = await arrayBufferToBase64(arrayBuffer);
     currentPdfFilename = file.name;
