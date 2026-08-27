@@ -2897,7 +2897,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<meta name="aspen-build" content="v260-typography-and-daily-payment-fixes">
+<meta name="aspen-build" content="v261-bulk-outreach-trail-and-net-amounts">
 </head>
 <body>
 <!-- Offline status indicator (shown only when device is offline) -->
@@ -6816,7 +6816,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.60.0";
+var APP_VERSION="2.61.0";
 var BUILD_DATE="2026-08-20";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -41427,6 +41427,16 @@ window.confirmSmsYes = async function(invoiceId, historyIndex) {
 window.generateEmlAndDownload = function() {
   const inv = allInvoices.find(i => i.id === sendingId);
   if (!inv) return;
+
+  /* v2.61.0 — este email le dice un numero al cliente. Si ese numero nunca se
+     verifico contra el papel, se pregunta antes de mandarlo, no despues. */
+  const _why = window.itkMontoSinVerificar && window.itkMontoSinVerificar(inv);
+  if (_why) {
+    const _en = currentLang === 'en';
+    if (!confirm(_en
+      ? `The amount on invoice #${inv.invoiceNumber} ($${Number(inv.amount||0).toFixed(2)}) was never verified — ${_why}.\n\nThis email quotes that figure to the customer. Send anyway?`
+      : `El monto de la factura #${inv.invoiceNumber} ($${Number(inv.amount||0).toFixed(2)}) nunca se verificó — ${_why}.\n\nEste email le cotiza esa cifra al cliente. ¿Mandarlo igual?`)) return;
+  }
   
   const pdfBase64 = inv.pdfBase64 || null;
   const pdfFilename = inv.pdfFilename || `Invoice_${inv.invoiceNumber}.pdf`;
@@ -47716,21 +47726,35 @@ function updateBulkBar() {
     <button onclick="toggleBulkMode()" style="background:#475569;color:white;border:0;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;">${en ? 'Cancel' : 'Cancelar'}</button>`;
 }
 
+/* v2.61.0 — EL LOTE AHORA DEJA RASTRO.
+   Antes generaba y descargaba y nada mas: no escribia historial, no marcaba
+   sentAt y no avanzaba la etapa. La tarjeta seguia diciendo "No outreach
+   recorded" y, como la etapa nunca subia, al cliente le llegaba LA MISMA carta
+   cordial de primer aviso semana tras semana.
+   El envio individual pregunta despues "¿le diste Send en Outlook?" y solo
+   entonces registra. Para un lote no se pueden abrir N modales, asi que se
+   pregunta UNA vez al final — y si la respuesta es "todavia no", se registra el
+   INTENTO (sin sentAt, sin subir de etapa) en vez de mentir diciendo enviado. */
 window.bulkGenerateEml = function() {
   if (bulkSelectedIds.size === 0) return;
   const en = currentLang === 'en';
   const ids = Array.from(bulkSelectedIds);
   if (!confirm(en
-    ? `Generate ${ids.length} .eml files? They will all download to your Downloads folder.`
-    : `¿Generar ${ids.length} archivos .eml? Se descargarán a Downloads.`)) return;
-  
+    ? `Generate ${ids.length} .eml files?\n\nThey download to your Downloads folder. Chrome asks permission the first time several files download at once — allow it, or only the first one arrives.`
+    : `¿Generar ${ids.length} archivos .eml?\n\nSe descargan a Downloads. Chrome pide permiso la primera vez que bajan varios archivos juntos — aceptalo, o solo llega el primero.`)) return;
+
+  const hechos = [];
   let i = 0;
   const interval = setInterval(() => {
     if (i >= ids.length) {
       clearInterval(interval);
-      toast(en ? `✓ ${ids.length} .eml files generated` : `✓ ${ids.length} archivos .eml generados`, 'success');
       bulkSelectedIds.clear();
       toggleBulkMode();
+      if (hechos.length) {
+        window.askConfirmBulkSend(hechos);
+      } else {
+        toast(en ? 'No file could be generated' : 'No se pudo generar ningún archivo', 'error');
+      }
       return;
     }
     const inv = allInvoices.find(x => x.id === ids[i]);
@@ -47749,10 +47773,79 @@ window.bulkGenerateEml = function() {
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      hechos.push({ id: inv.id, stage: stage, name: inv.customerName || '', num: inv.invoiceNumber || '' });
     }
     i++;
   }, 400);
 };
+
+/* v2.61.0 — una sola pregunta para todo el lote. */
+window.askConfirmBulkSend = function(hechos) {
+  const en = currentLang === 'en';
+  const lista = hechos.slice(0, 8).map(h => '#' + escapeHtml(String(h.num)) + ' · ' + escapeHtml(h.name)).join('<br>')
+    + (hechos.length > 8 ? '<br>' + (en ? `…and ${hechos.length - 8} more` : `…y ${hechos.length - 8} más`) : '');
+  const ov = document.createElement('div');
+  ov.id = 'confirmBulkOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `
+    <div style="background:white;border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
+      <div style="font-size:36px;text-align:center;margin-bottom:8px">📦</div>
+      <h3 style="margin:0 0 12px;text-align:center;font-size:18px;color:#134A63">${en ? `${hechos.length} emails generated` : `${hechos.length} emails generados`}</h3>
+      <div style="font-size:12.5px;color:#475569;background:#F1F5F9;border-radius:8px;padding:10px 12px;margin-bottom:16px;max-height:150px;overflow:auto;line-height:1.6">${lista}</div>
+      <p style="margin:0 0 18px;text-align:center;font-size:14px;color:#475569;line-height:1.5">
+        ${en ? 'In Outlook, did you click <strong>Send</strong> on all of them?' : 'En Outlook, ¿le diste <strong>Send</strong> a todos?'}
+      </p>
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <button onclick="window.confirmBulkSendYes()" style="background:#2E8B57;color:#fff;border:0;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+          ✅ ${en ? 'Yes — mark all as sent' : 'Sí — marcar todas como enviadas'}
+        </button>
+        <button onclick="window.confirmBulkSendNo()" style="background:#F1F5F9;color:#475569;border:0;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer">
+          ⏰ ${en ? "Not yet — just record the attempt" : 'Todavía no — registrar solo el intento'}
+        </button>
+      </div>
+      <p style="font-size:11px;color:#94A3B8;text-align:center;margin:14px 0 0;font-style:italic">
+        ${en ? 'If some file did not download, select those cases again.' : 'Si algún archivo no bajó, volvé a seleccionar esos casos.'}
+      </p>
+    </div>`;
+  ov._hechos = hechos;
+  document.body.appendChild(ov);
+};
+
+async function _bulkRecord(confirmado) {
+  const ov = document.getElementById('confirmBulkOverlay');
+  const hechos = (ov && ov._hechos) || [];
+  if (ov) ov.remove();
+  const en = currentLang === 'en';
+  let ok = 0;
+  for (const h of hechos) {
+    try {
+      const inv = allInvoices.find(x => x.id === h.id);
+      if (!inv) continue;
+      const now = Date.now();
+      if (confirmado) {
+        const history = [...(inv.history || []), { ts: now, action: 'sent', stage: h.stage, confirmed: true, bulk: true }];
+        const updates = inv.status === 'paid'
+          ? { history, lastEmailStage: h.stage }
+          : { status: 'sent', sentAt: now, history, lastEmailStage: h.stage };
+        await updateInvoiceData(h.id, updates);
+      } else {
+        /* Se registra el intento y NADA MAS: sin sentAt y sin subir de etapa,
+           porque nadie confirmo que el email saliera. */
+        const history = [...(inv.history || []), { ts: now, action: 'eml_generated', stage: h.stage, confirmed: false, bulk: true }];
+        await updateInvoiceData(h.id, { history });
+      }
+      ok++;
+    } catch (e) { console.warn('[bulk] no se pudo registrar', h.id, e); }
+  }
+  const falta = hechos.length - ok;
+  toast(confirmado
+    ? (en ? `✓ ${ok} marked as sent` : `✓ ${ok} marcadas como enviadas`)
+    : (en ? `${ok} attempts recorded — not marked as sent` : `${ok} intentos registrados — no se marcaron como enviadas`),
+    falta ? 'warn' : 'success');
+  if (falta) toast(en ? `${falta} could not be recorded — check the connection` : `${falta} no se pudieron registrar — revisá la conexión`, 'error');
+}
+window.confirmBulkSendYes = () => _bulkRecord(true);
+window.confirmBulkSendNo  = () => _bulkRecord(false);
 
 // ════════════════════════════════════════════════════════════
 // WEEKLY REPORT — Multi-section CSV for Tom & Sam
@@ -53042,7 +53135,10 @@ function money(v){return Number(v||0).toLocaleString('en-US',{style:'currency',c
 function ageDays(ts){if(!ts)return 0;var d=ts&&typeof ts.toDate==='function'?ts.toDate():new Date(Number(ts)||ts);return isNaN(d)?0:Math.max(0,Math.floor((Date.now()-d.getTime())/86400000))}
 function fmtDate(v){if(!v)return'—';var d=/^\d{4}-\d{2}-\d{2}/.test(String(v))?new Date(String(v).slice(0,10)+'T12:00:00'):new Date(Number(v)||v);return isNaN(d)?String(v):d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
 function amountAlert(e){try{return typeof _alertAmount==='function'?_alertAmount(e):Number((e.payload||{}).amount||e.amount||0)}catch(x){return Number((e.payload||{}).amount||e.amount||0)}}
+/* v2.61.0 — expuesto porque el tablero visible (pfv20, otro IIFE) necesita
+   netear los pagos parciales y no puede ver las funciones de este bloque. */
 function invAmount(i){var a=Number(i.amount||i.total||0),p=Number(i.paidAmount||i.amountPaid||0);if(derive(i)==='paid')return 0;if((i.paymentReason==='partial'||i.paymentReason==='partial_payment')&&p>0)return Math.max(0,a-p);return Number(i.balanceDue!=null?i.balanceDue:a)}
+try{ window.itkInvAmountNeto=invAmount }catch(_e){}
 function reasonKey(obj){var p=obj&&obj.payload||{};return String((obj&&obj.paymentReason)||p.reason||(obj&&obj.reason)||'').toLowerCase()}
 function reasonMeta(r){
   r=String(r||'').toLowerCase();
@@ -53798,6 +53894,7 @@ setInterval(function(){autoClosePaid();},30000); // v26: maintenance only; no DO
 window.__PF20_CANONICAL__=true;
 var q='';
 
+try{ window.itkReasonKey20=function(e){try{return String(reason20(e).key||'').toLowerCase()}catch(_e){return ''}} }catch(_e){}
 function esc20(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
 function money20(v){return Number(v||0).toLocaleString('en-US',{style:'currency',currency:'USD'})}
 function alerts20(){
@@ -53828,7 +53925,21 @@ function alerts20(){
 }
 window.pf20DataSource=alerts20;
 function invoices20(){try{return typeof window.itkGetAllInvoices==='function'?(window.itkGetAllInvoices()||[]):[]}catch(e){return[]}}
-function amount20(e){try{return typeof window._alertAmount==='function'?window._alertAmount(e):Number((e.payload||{}).amount||e.amount||0)}catch(x){return Number((e.payload||{}).amount||e.amount||0)}}
+/* v2.61.0 — devolvia la factura ENTERA: una tarjeta rotulada PARTIAL PAYMENT
+   mostraba el monto completo, y a un cliente que pago $400 de $850 le salia un
+   aviso de mora por $850. invAmount ya sabia netear (descuenta paidAmount y
+   devuelve 0 si esta pagada) pero era codigo muerto en la capa huerfana. */
+function amount20(e){
+  try{
+    var i=inv20(e);
+    if(i&&typeof window.itkInvAmountNeto==='function'){
+      var neto=Number(window.itkInvAmountNeto(i));
+      if(isFinite(neto))return neto;
+    }
+  }catch(_e){}
+  return _amount20Bruto(e);
+}
+function _amount20Bruto(e){try{return typeof window._alertAmount==='function'?window._alertAmount(e):Number((e.payload||{}).amount||e.amount||0)}catch(x){return Number((e.payload||{}).amount||e.amount||0)}}
 function age20(e){try{return typeof window._alertAgeDays==='function'?window._alertAgeDays(e):0}catch(x){return 0}}
 function reason20(e){
   var p=e.payload||{},r=String(p.reason||e.reason||'other').toLowerCase();
@@ -53857,6 +53968,21 @@ function active20(){
     return [e.customerName,p.customerName,p.invoiceNumber,p.invoiceNum,p.reason,p.reasonLabel,e.reason].join(' ').toLowerCase().indexOf(q.toLowerCase())>=0;
   });
 }
+/* v2.61.0 — vive en pfv20TrelloPlanner a proposito: cada bloque <script> de
+   este tablero es un IIFE con 'use strict', asi que una funcion declarada en
+   pfv25 NO existe aca. Definirla en el bloque equivocado tiraba ReferenceError
+   en cada repintado de la tarjeta. */
+function _chipSinVerificar(e){
+  try{
+    var i=inv20(e);
+    var why=window.itkMontoSinVerificar&&window.itkMontoSinVerificar(i);
+    if(!why)return '';
+    return '<span title="Monto '+esc20(why)+'. Verificalo contra la factura antes de cobrarlo." '
+      +'style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;'
+      +'background:#FEF3C7;color:#92400E;font-size:9.5px;font-weight:800;letter-spacing:.04em;'
+      +'vertical-align:middle;white-space:nowrap">⚠ SIN VERIFICAR</span>';
+  }catch(_e){return ''}
+}
 function inv20(e){
   if(e&&e._invoice)return e._invoice;
   var all=invoices20(),p=e.payload||{},n=String(p.invoiceNumber||p.invoiceNum||'').replace(/^#/,'');
@@ -53883,6 +54009,7 @@ function attempts20(e){
     (i.history||[]).forEach(function(x){
       var a=String(x.action||'').toLowerCase(),c=String(x.channel||'').toLowerCase(),lab='';
       if(c==='sms'||a.indexOf('sms')>=0)lab='SMS';
+      else if(a==='eml_generated')lab=(x.confirmed?'Email':'Email s/confirmar');
       else if(c==='email'||a.indexOf('email')>=0||a==='sent'||a.indexOf('resent')>=0)lab='Email';
       else if(a.indexOf('reminder')>=0)lab='Reminder';
       else if(a.indexOf('call')>=0||a.indexOf('contact')>=0)lab='Call';
@@ -54028,7 +54155,7 @@ function card20(e){
   var r=reason20(e),id=eventId20(e),i=inv20(e),stale=stale20(e),ci=custInfo20(e);
   return '<article class="pf20-card" style="--rail:'+(e.collectionStage==='proceso'?'#2C8FA3':r.color)+'">'
     +'<div class="pf20-cardtop"><div><button class="pf20-name" onclick="pf20OpenCustomer(\''+id+'\')" title="Open Customer 360">'+esc20(customer20(e))+'</button>'
-    +'<div class="pf20-inv">#'+esc20(invNo20(e))+' · '+age20(e)+'d</div></div><div class="pf20-amt">'+money20(amount20(e))+'</div></div>'
+    +'<div class="pf20-inv">#'+esc20(invNo20(e))+' · '+age20(e)+'d</div></div><div class="pf20-amt">'+money20(amount20(e))+_chipSinVerificar(e)+'</div></div>'
     +'<div class="pf20-chips">'+(e.collectionStage==='proceso'?'<span class="pf20-chip ticket">📌 IN COLLECTION PROCESS</span>':'<span class="pf20-chip '+r.cls+'">'+esc20(r.icon+' '+r.label)+'</span>')+'</div>'
     +tech20(e)
     +(ci?'<div class="pf20-context"><b>Customer</b> · '+esc20(ci)+'</div>':'')
@@ -54224,11 +54351,41 @@ function latest(e){
 }
 function isStale(e){if(e.collectionStage!=='proceso')return false;var t=latest(e);return !t||((Date.now()-t)/86400000>=7)}
 function amount(e){var p=e.payload||{};return Number(p.amount||e.amount||0)}
+/* v2.61.0 — _parseMeta ya se guardaba desde la v2.59 pero no lo leia NADIE.
+   Un monto que el parser recupero raspando bytes crudos —o que nunca encontro
+   un renglon "Total"— se avisaba UNA vez en el banner de carga y despues se
+   mostraba en el tablero como una cifra dura y se le cotizaba al cliente en el
+   .eml. Estas dos funciones son las que hacen que esa etiqueta signifique algo. */
+window.itkMontoSinVerificar=function(inv){
+  try{
+    var m=inv&&inv._parseMeta; if(!m)return null;
+    if(m.amountConfidence==='guess')return 'adivinado de los bytes del PDF';
+    if(m.amountNeedsReview)return (m.amountReason==='no_total_anchor')
+      ? 'el PDF no tenía un renglón "Total" reconocible'
+      : 'sin verificar';
+    if(m.amountConfidence==='low')return 'tomado por posición (último valor en $)';
+    return null;
+  }catch(_e){return null}
+};
+function _viewKey(e){
+  /* reason20 vive en pfv20TrelloPlanner, otro IIFE — hay que leerlo de window. */
+  try{
+    if(typeof window.itkReasonKey20==='function'){
+      var k=window.itkReasonKey20(e);
+      if(k)return k;
+    }
+  }catch(_e){}
+  return reasonKey(e);
+}
 function matchesView(e){
   if(activeView==='all')return true;
   if(activeView==='collections')return e.collectionStage==='proceso';
-  if(activeView==='no_cc')return reasonKey(e)==='no_cc';
-  if(activeView==='declined')return reasonKey(e)==='declined';
+  /* v2.61.0 — comparaban contra la clave NORMALIZADA mientras reasonKey()
+     devuelve el valor CRUDO: los motivos reales son cc_needed / no_cc_on_file /
+     cc_declined, asi que "No CC" y "Declined" no matcheaban nunca y las dos
+     vistas salian siempre vacias. reason20() es quien normaliza. */
+  if(activeView==='no_cc')return _viewKey(e)==='no_cc';
+  if(activeView==='declined')return _viewKey(e)==='declined';
   if(activeView==='due')return isStale(e)||reasonKey(e)==='no_response';
   if(activeView==='high')return amount(e)>=1000;
   if(activeView==='needs_update')return isStale(e);
