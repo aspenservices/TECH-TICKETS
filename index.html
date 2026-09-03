@@ -522,6 +522,8 @@ input[type="date"],input[type="time"]{min-height:44px}.g2{display:grid;grid-temp
 .series-tag.es{background:var(--series-es-bg);color:var(--series-es-fg);border-color:var(--series-es-bd)}
 .series-tag.ss{background:var(--series-ss-bg);color:var(--series-ss-fg);border-color:var(--series-ss-bd)}
 .w-yr{width:48px;height:44px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center}
+/* v2.63.1 — el ultimo boton de "Estimated Repair Time" es "Custom"/"Personalizado": no cabe en los 48px pensados para "1h".."5h" y se montaba sobre el "5h" en español. Se mide por su texto. */
+#eHrsRow .w-yr:last-child{width:auto;min-width:48px;padding:0 14px}
 .w-result{margin-top:10px;padding:10px 14px;border-radius:var(--r-lg);font-size:var(--fs-base);line-height:1.5;font-weight:500}
 .w-result.full-cov{background:var(--c-info-bg);color:var(--c-info-fg);border:1px solid #bfdbfe}.w-result.half-cov{background:var(--acl);color:var(--acd);border:1px solid #f0c68a}.w-result.no-cov{background:var(--c-danger-bg);color:var(--c-danger-fg);border:1px solid #fecaca}.w-result.rda-cov{background:var(--c-ash);color:var(--i2);border:1px solid var(--ln)}
 
@@ -6751,7 +6753,6 @@ function _autoSyncPart90(){
     if(typeof upWR==="function")upWR();
   }catch(e){console.warn("[_autoSyncPart90]",e)}
 }
-function _needOtherTechToggle(){var c=document.getElementById("needOtherTech"),s=document.getElementById("needOtherTechSub");if(c&&s)s.style.display=c.checked?"block":"none"}
 function setMod(m){wMod=m;wYr=0;document.querySelectorAll(".w-model").forEach(b=>b.className=b.className.replace(/ on-m/g,""));document.querySelectorAll(".w-model").forEach(b=>{if(b.querySelector("b").textContent.toLowerCase()===m)b.classList.add("on-m")});document.getElementById("wS3").classList.add("show");document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));_fldYearVis();upWR();rndr()}
 function setYr(y){wYr=y;document.querySelectorAll(".w-yr").forEach(b=>b.className=b.className.replace(/ on-yr/g,""));document.querySelectorAll("#wS3 .w-yr").forEach(b=>{const tt=(b.textContent||"").trim();const v=(tt==="5+"||tt==="4+")?6:+tt;if(v===y)b.classList.add("on-yr")});upWR();rndr()}
 // Field-report year buttons adapt like the Service Log: SS & VS = 3-yr (1·2·3·4+).
@@ -6816,8 +6817,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.61.0";
-var BUILD_DATE="2026-08-20";
+var APP_VERSION="2.63.1";
+var BUILD_DATE="2026-09-03";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -7517,11 +7518,6 @@ function _adminGroup(key,title,openDef,ids){
   g.appendChild(hd);g.appendChild(bd);pg.appendChild(g);
   (ids||[]).forEach(function(id){var el=document.getElementById(id);if(!el)return;var card=el.closest(".card")||el;bd.appendChild(card);card.style.marginBottom="12px";});
   return bd;
-}
-async function _brainMapRender(){
-  // Retired (Jul 2026, Alberto): the animated 3D canvas made the app feel heavy.
-  try{if(window._brainRAF)cancelAnimationFrame(window._brainRAF);}catch(_e){}
-  var box=document.getElementById("brainMapBox");if(box)box.innerHTML="";
 }
 var BRAIN_MANIFEST={version:"v1 · Jul 2026",caps:[
   ["🪪","Identidad compartida","Reconoce al mismo cliente en las 3 apps"],
@@ -11859,6 +11855,7 @@ function _paymentAlertBannerHTML(t){
 // Resolve ONE specific invoice alert as paid (precise per-invoice) and sync to Invoice Tracker
 async function _payAlertMarkPaid(eventId){
   if(!db||!eventId)return;
+  if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can mark invoices paid","err");return}  // v2.63.0: same guard as togglePaid
   var user=(currentUser&&currentUser.name)||"tech-tickets";
   try{
     await db.collection("cross_app_events").doc(eventId).update({
@@ -22398,7 +22395,6 @@ async function calDropOnTech(e,techName,ds){
     setTimeout(refreshAll,400);
   }catch(er){toast("Error: "+er.message,"err")}
 }
-async function calCreateCall(){if(!db){toast("Firebase not configured","err");return}const cu=document.getElementById("calCustName").value.trim();const ph=_normalizePhone(document.getElementById("calCustPhone").value);const addr=document.getElementById("calCustAddr").value.trim();const city=document.getElementById("calCustCity").value.trim();const zip=document.getElementById("calCustZip").value.trim();const dt=document.getElementById("calDate").value;const notes=document.getElementById("calNotes").value.trim();var zone=ZIP_ZONES[zip]||customZips[zip+"_zone"]||"";var manZ=document.getElementById("calManualZone");if(manZ&&manZ.value.trim())zone=manZ.value.trim();if(zip&&city&&!ZIP_CITIES[zip]){customZips[zip+"_city"]=city;if(zone)customZips[zip+"_zone"]=zone;saveCustomZips()}const ccFile=document.getElementById("calCcFile").checked;const ccReq=document.getElementById("calCcReq").checked;if(!cu){toast("Enter customer name","warn");return}try{await db.collection("tickets").add({customer:cu,date:dt||"",techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,spaDesc:(document.getElementById("calSpaDesc")||{}).value||"",notes:notes,phone:ph,address:addr,city:city,zip:zip,zone:zone,ccOnFile:ccFile,ccRequested:ccReq,isRepeat:document.getElementById("calRepeat").checked,payCheck:document.getElementById("calCheck").checked,payCredit:document.getElementById("calCredit").checked,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});toast("Ticket created ✓");document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";var _sd2=document.getElementById("calSpaDesc");if(_sd2)_sd2.value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;rndrCal()}catch(e){console.error(e);toast("Error: "+e.message,"err")}}
 
 // ═══ TICKET DETAIL MODAL ═══
 // Tracks which ticket is currently visible in the detail modal (used by features
@@ -24128,7 +24124,7 @@ async function saveDetailEdits(id){
       upd.customer=_cuVal;
     }
     // Collect all phones from the dynamic list — normalize each so the saved
-    // form matches what slCreateCall/calCreateCall produce (was previously
+    // form matches what slCreateCall produces (was previously
     // saved raw, leading to mixed formats in the same DB).
     var _phs=[];
     document.querySelectorAll("#dtPhWrap .dt-ph").forEach(function(inp){
@@ -24991,6 +24987,9 @@ function startEstimateFrom(id){
     _fill("eCustAddr",t.address);
     _fill("eCustCity",t.city);
     _fill("eCustZip",t.zip);
+    /* v2.63.0: el ticket ya trae su tecnico asignado; se precarga como el cliente. Solo si el
+       estimado no tiene ninguno elegido, para no pisar lo que el tecnico ya marco. */
+    if(!eTechs.length&&Array.isArray(t.techs)&&t.techs.length){eTechs=t.techs.filter(function(n){return visibleTechs().includes(n)});buildETechPills();}
     // Show back button
     let bb=document.getElementById("backToEstBtn");
     if(!bb){bb=document.createElement("button");bb.id="backToEstBtn";bb.style.cssText="margin-bottom:14px;padding:10px 18px;background:none;border:1.5px solid var(--ac);border-radius:10px;font-size:var(--fs-base);font-weight:600;color:var(--ac);width:100%";document.getElementById("estMode").prepend(bb)}
@@ -25034,7 +25033,7 @@ var _MN_ICO={tab0:"📝",tab1:"📋",tab2:"✅",tab3:"👑",tab4:"📅",tab5:"�
 var _MN_LBL={tab0:["Reporte","Report"],tab1:["Daily","Daily"],tab2:["Listos","Done"],tab3:["Admin","Admin"],tab4:["Agenda","Calendar"],tab5:["Registro","Log"],tab6:["Clientes","Customers"],tab7:["Mapas","Maps"],tab8:["Alertas","Alerts"],tab9:["Apps","My Apps"],tab10:["Tools","Tools"],tab12:["Coach","Coaching"],tab13:["Chat","Chat"],tab14:["Intake","Intake"]};
 /* Una sola fuente de verdad para las etiquetas: respeta el idioma de la app y
    evita el emoji duplicado (varios tabs ya traen el emoji en su texto). */
-function _mnLbl(id){var pr=_MN_LBL[id];if(!pr)return String(id);try{return TT(pr[0],pr[1]);}catch(_e){return pr[1];}}
+function _mnLbl(id){var pr=_MN_LBL[id];if(!pr)return String(id);try{return L2(pr[0],pr[1]);}catch(_e){return pr[1];}}
 var _MN_PIN=["tab0","tab1","tab4","tab5","tab6","tab8","tab3","tab13","tab7","tab10","tab9","tab12","tab2"];
 function _mobNavBuild(){
   try{
@@ -25066,7 +25065,7 @@ function _mobNavBuild(){
     });
     if(rest.length){
       var restActive=rest.some(function(id){return Number(id.replace("tab",""))===cur;});
-      h+='<button class="mnItem'+(restActive?" on":"")+'" onclick="_mobSheetShow()"><span class="mnIco">•••</span><span>'+TT("Más","More")+'</span></button>';
+      h+='<button class="mnItem'+(restActive?" on":"")+'" onclick="_mobSheetShow()"><span class="mnIco">•••</span><span>'+L2("Más","More")+'</span></button>';
     }
     bar.innerHTML=h;bar.style.display="flex";
     window._mnRest=rest;
@@ -25913,7 +25912,6 @@ async function custCreateTicket(){
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
 function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;if(typeof slSetSlots==="function")try{slSetSlots(1)}catch(_e){}var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();if(typeof _slResetPresets==="function")_slResetPresets();slClearMedia();toast("Form cleared")}
-function calClearForm(){document.getElementById("calCustName").value="";document.getElementById("calCustPhone").value="";document.getElementById("calCustAddr").value="";document.getElementById("calCustCity").value="";document.getElementById("calCustZip").value="";document.getElementById("calNotes").value="";document.getElementById("calZoneBadge").style.display="none";document.getElementById("calCcFile").checked=false;document.getElementById("calCcReq").checked=false;document.getElementById("calRepeat").checked=false;document.getElementById("calCheck").checked=false;document.getElementById("calCredit").checked=false;var sd=document.getElementById("calSpaDesc");if(sd)sd.value="";toast("Form cleared")}
 function showCustSuggest(prefix){
   var input=document.getElementById(prefix+"CustName");
   var dd=document.getElementById(prefix+"CustSuggest");
@@ -26558,7 +26556,6 @@ function _slLoadWarranties(tickets){
   panel.innerHTML=html;
   panel.style.display="block";
 }
-function calAutoFillCust(){var name=document.getElementById("calCustName").value.trim();var c=getCustData(name);if(!c)return;if(c.phone&&!document.getElementById("calCustPhone").value)document.getElementById("calCustPhone").value=c.phone;if(c.address&&!document.getElementById("calCustAddr").value)document.getElementById("calCustAddr").value=c.address;if(c.city&&!document.getElementById("calCustCity").value)document.getElementById("calCustCity").value=c.city;if(c.zip&&!document.getElementById("calCustZip").value){document.getElementById("calCustZip").value=c.zip;calAutoZone()}if(c.spaDesc&&document.getElementById("calSpaDesc"))document.getElementById("calSpaDesc").value=c.spaDesc;if(c.notes&&document.getElementById("calNotes")&&!document.getElementById("calNotes").value)document.getElementById("calNotes").value=c.notes}
 function refreshAll(){
   // PERF móvil (Jul 2026): coalescer ráfagas — muchos eventos de Firestore en
   // 250ms producen UN solo repintado en vez de N (gran alivio en teléfonos).
@@ -28023,61 +28020,6 @@ async function _revGeocode(lat,lng){
   return lat.toFixed(4)+", "+lng.toFixed(4);
 }
 
-// ─── Stop detection: cluster nearby pings into "stops" of >=10 minutes ───
-// GPS data is noisy. A phone reporting from a customer's driveway can
-// occasionally spike 100-200m off due to multipath / weak signal, then
-// snap back. A naive algorithm would close the cluster on that single
-// noisy ping and never accumulate the 10 min needed to count as a stop —
-// which is why "0 stops detected" was so common before. We allow a
-// short tolerance buffer (TOL_OUT consecutive outsiders) before closing.
-function _detectStops(positions){
-  if(!positions||positions.length<2)return[];
-  const TOL_OUT=2; // tolerate up to 2 consecutive "outside" pings (likely GPS noise)
-  const stops=[];
-  let cluster=[positions[0]];
-  let outsideCount=0;
-  function _closeAndCheck(){
-    if(cluster.length<2)return;
-    const t0=new Date(cluster[0].deviceTime||cluster[0].fixTime||cluster[0].serverTime).getTime();
-    const t1=new Date(cluster[cluster.length-1].deviceTime||cluster[cluster.length-1].fixTime||cluster[cluster.length-1].serverTime).getTime();
-    const minutes=(t1-t0)/60000;
-    if(minutes>=STOP_MIN_MINUTES){
-      let sumLat=0,sumLng=0;
-      cluster.forEach(function(pp){sumLat+=pp.latitude;sumLng+=pp.longitude});
-      stops.push({
-        lat:sumLat/cluster.length,
-        lng:sumLng/cluster.length,
-        start:new Date(t0),
-        end:new Date(t1),
-        durationMin:Math.round(minutes),
-        pingCount:cluster.length
-      });
-    }
-  }
-  for(let i=1;i<positions.length;i++){
-    const p=positions[i];
-    const ref=cluster[0];
-    const d=_haversineMi(ref.latitude,ref.longitude,p.latitude,p.longitude);
-    if(d<=STOP_RADIUS_MILES){
-      cluster.push(p);
-      outsideCount=0; // reset — we're back inside
-    }else{
-      outsideCount++;
-      if(outsideCount<=TOL_OUT){
-        // Treat as transient noise, don't close yet. The point itself is
-        // not added to the cluster (so the centroid isn't pulled toward it).
-        continue;
-      }
-      // Confirmed departure — close the cluster, start new one with this point.
-      _closeAndCheck();
-      cluster=[p];
-      outsideCount=0;
-    }
-  }
-  // Final cluster
-  _closeAndCheck();
-  return stops;
-}
 
 function _fmtTime(d){
   if(!d)return"";
@@ -30656,6 +30598,9 @@ async function _copyPlain(txt,msg){
   try{await navigator.clipboard.writeText(txt);}catch(e){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e2){}document.body.removeChild(ta);}
   try{toast(msg);}catch(e){}
 }
+/* v2.63.0 — el boton del resumen semanal la llama desde un onclick INLINE, que corre en
+   ambito global: sin esto era ReferenceError y el resumen nunca se copiaba. */
+window._copyPlain=_copyPlain;
 window.bsCopyName=function(){
   var t=Q[idx];if(!t)return;
   _copyPlain(t.customer||"",TT("Nombre copiado: ","Name copied: ")+(t.customer||"")+" ✓");
@@ -32263,7 +32208,7 @@ window.wkOpen=function(){
     +row(TT("Cubierto por garantía","Warranty covered"),"$"+Math.round(a.covSum).toLocaleString("en-US"),"")
     +row("Repeats",a.repN+(a.topRep?" · "+esc3(a.topRep):""),"")
     +row("⏳ Waiting parts",wpD.length+" · $"+Math.round(wpT).toLocaleString("en-US"),"")
-    +'<button onclick="_copyPlain('+JSON.stringify(txt).replace(/"/g,"&quot;")+',TT(\'Resumen semanal copiado ✓ — pégalo en Outlook para Tom\',\'Weekly summary copied ✓ — paste into Outlook for Tom\'))" style="width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit">'+bico("clipboard",14)+' '+TT("Copiar para email","Copy for email")+'</button>'
+    +'<button onclick="_copyPlain('+JSON.stringify(txt).replace(/"/g,"&quot;")+',L2(\'Resumen semanal copiado ✓ — pégalo en Outlook para Tom\',\'Weekly summary copied ✓ — paste into Outlook for Tom\'))" style="width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;background:var(--br,#3D2B1F);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit">'+bico("clipboard",14)+' '+TT("Copiar para email","Copy for email")+'</button>'
     +'<div style="font-size:10px;color:var(--i3,#8a8073);font-weight:600;text-align:center;margin-top:6px">'+TT("montos pre-tax · datos en vivo de la app","pre-tax amounts · live app data")+'</div></div>';
   ov.style.display="flex";
 };
@@ -33162,7 +33107,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   var _v7Busy=false,_v7Sig='';
   function _v7Pause(){try{if(window.__v7Observer)window.__v7Observer.disconnect()}catch(_){}}
   function _v7Resume(){try{var r=document.getElementById('pg6');if(window.__v7Observer&&r)window.__v7Observer.observe(r,{childList:true,subtree:true})}catch(_){}}
-  function render(){if(_v7Busy)return;if(typeof qbCustTab!=='undefined'&&qbCustTab!=='info')return;var tb=document.querySelector('#pg6 .qb-cust-tab-body');if(!tb)return;tabs();var tkts=selectedTickets().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))}),ns=notes(tkts);_v7Pool=ns||[];vis=_v7Dedup(tkts.filter(isVisit));var _sig=String((typeof selectedCustKey!=='undefined'?selectedCustKey:(window.selectedCustKey||'')))+'|'+vis.length+'|'+((ns||[]).length)+'|'+tkts.length;if(_sig===_v7Sig&&document.getElementById('v7GeneralInfo'))return;_v7Busy=true;_v7Sig=_sig;_v7Pause();cleanup(tb);var h='<div id="v7GeneralInfo" class="v7-customer-grid"><section class="v7-panel"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Notes & Scheduling</div><div class="v7-sub">Read-only customer communication and administrative history</div></div><span class="v7-count">'+ns.length+'</span></div><div class="v7-panel-body">'+(ns.length?ns.map(noteHTML).join(''):'<div class="v7-empty">No administrative notes were found for this customer.</div>')+'</div></section><section class="v7-panel visits\'+(v7SPOnly()?\' v7-sp-only\':\'\')+\'"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Technician Visits</div><div class="v7-sub">Completed field reports with customer-ready proof of work</div></div><span class="v7-count">'+vis.length+'</span></div><div class="v7-panel-body">'+(vis.length?'<div class="v7-visit-list">'+vis.map(visitHTML).join('')+'</div>':'<div class="v7-empty">No visits recorded for this customer.<br><button class="v7-find" onclick="v7FindReportCustomer()">Open a customer with a completed report</button></div>')+'</div></section></div>';tb.insertAdjacentHTML('afterbegin',h);try{_v7Wire(tb)}catch(_){}setTimeout(function(){try{_v7Wire(document)}catch(_){}_v7Resume();_v7Busy=false},120)}
+  function render(){if(_v7Busy)return;if(typeof qbCustTab!=='undefined'&&qbCustTab!=='info')return;var tb=document.querySelector('#pg6 .qb-cust-tab-body');if(!tb)return;tabs();var tkts=selectedTickets().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))}),ns=notes(tkts);_v7Pool=ns||[];var vis=_v7Dedup(tkts.filter(isVisit));var _sig=String((typeof selectedCustKey!=='undefined'?selectedCustKey:(window.selectedCustKey||'')))+'|'+vis.length+'|'+((ns||[]).length)+'|'+tkts.length;if(_sig===_v7Sig&&document.getElementById('v7GeneralInfo'))return;_v7Busy=true;_v7Sig=_sig;_v7Pause();cleanup(tb);var h='<div id="v7GeneralInfo" class="v7-customer-grid"><section class="v7-panel"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Notes & Scheduling</div><div class="v7-sub">Read-only customer communication and administrative history</div></div><span class="v7-count">'+ns.length+'</span></div><div class="v7-panel-body">'+(ns.length?ns.map(noteHTML).join(''):'<div class="v7-empty">No administrative notes were found for this customer.</div>')+'</div></section><section class="v7-panel visits\'+(v7SPOnly()?\' v7-sp-only\':\'\')+\'"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Technician Visits</div><div class="v7-sub">Completed field reports with customer-ready proof of work</div></div><span class="v7-count">'+vis.length+'</span></div><div class="v7-panel-body">'+(vis.length?'<div class="v7-visit-list">'+vis.map(visitHTML).join('')+'</div>':'<div class="v7-empty">No visits recorded for this customer.<br><button class="v7-find" onclick="v7FindReportCustomer()">Open a customer with a completed report</button></div>')+'</div></section></div>';tb.insertAdjacentHTML('afterbegin',h);try{_v7Wire(tb)}catch(_){}setTimeout(function(){try{_v7Wire(document)}catch(_){}_v7Resume();_v7Busy=false},120)}
   window.v7RenderCustomer=render;
   function wrap(name){var f=window[name];if(typeof f!=='function'||f._v7)return;window[name]=function(){var r=f.apply(this,arguments);clearTimeout(window.__v7Timer2);window.__v7Timer2=setTimeout(render,120);return r};window[name]._v7=1}
   wrap('rndrCust');wrap('qbCustSelect');wrap('qbCustSetTab');
@@ -46277,6 +46222,7 @@ window.openNotifPanel = function() {
   document.getElementById('notifModal').classList.add('open');
 };
 
+window.renderNotifPanel=renderNotifPanel; // v2.63.0: the toggle button calls it from an inline onclick (global scope)
 function renderNotifPanel() {
   const body = document.getElementById('notifPanelBody');
   if (!body) return;
@@ -48596,6 +48542,14 @@ var PARTS_NATIVE=(function(){
   +'#ptApp .pt-th{width:56px;height:56px;border-radius:9px;flex:none;background:var(--c-ash-2,#F2ECE3);'
   +'background-size:cover;background-position:center;position:relative;display:grid;place-items:center;font-size:20px;border:1px solid var(--ln)}'
   +'#ptApp .pt-th.vacio span{opacity:.35}'
+  /* v2.62.0 — LA FOTO GIGANTE DEL IPHONE. En v2.42.3 la miniatura paso de
+     background-image a <img> aqui Y en Admin partes, pero solo Admin recibio
+     la regla de tamaño (#pg17 .pa-th img{width:100%;height:100%...}). Sin
+     ella el <img> se pinta a su tamaño natural (900px, lo que produce
+     compressPhoto) centrado en una caja de 56px y se desborda por toda la
+     pantalla. Se dimensiona el <img>, NO se pone overflow:hidden en .pt-th:
+     el boton de subir (.pt-up) vive fuera de la caja a proposito. */
+  +'#ptApp .pt-th img{width:100%;height:100%;object-fit:cover;display:block;border-radius:8px}'
   +'#ptApp .pt-up{position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;border-radius:50%;'
   +'border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:800;cursor:pointer;line-height:1;padding:0}'
   +'#ptApp .pt-up:hover{background:var(--acd)}'
@@ -48617,7 +48571,7 @@ var PARTS_NATIVE=(function(){
   var HTML=''
   +'<div id="ptApp">'
   +'<div class="pt-top">'
-    +'<input id="ptQ" class="pt-search" type="search" placeholder="Buscar por nombre, codigo o descripcion..." autocomplete="off">'
+    +'<input id="ptQ" class="pt-search" type="search" placeholder="" autocomplete="off">'
     +'<span class="pt-count" id="ptCount"></span>'
   +'</div>'
   +'<div class="pt-cats" id="ptCats"></div>'
@@ -48739,20 +48693,20 @@ var PARTS_NATIVE=(function(){
         +(x.d?'<div class="pt-d">'+esc2(x.d)+'</div>':'')
         +'<span class="pt-c">'+esc2(cat_(x))+'</span>'
         +'</div><div class="pt-p"><b>'+money(retail||costo)+'</b>'
-        +(admin?'<small>costo '+money(costo)+(mg!==null?' &middot; <span class="pt-mg">'+mg+'%</span>':'')+'</small>':'')
-        +'<button type="button" class="pt-cp" data-cp="'+esc2(x.n)+'">copiar nombre</button>'
+        +(admin?'<small>'+L2("costo ","cost ")+money(costo)+(mg!==null?' &middot; <span class="pt-mg">'+mg+'%</span>':'')+'</small>':'')
+        +'<button type="button" class="pt-cp" data-cp="'+esc2(x.n)+'">'+L2("Copiar nombre","Copy name")+'</button>'
         +'</div></div>';
     }
     var _qw=null;
     function render(){
       _qw=q?q.split(/\s+/).filter(Boolean):[];
       var res=ALL.filter(match),box=document.getElementById("ptList"),cn=document.getElementById("ptCount");
-      if(cn)cn.textContent=res.length+" de "+ALL.length;
+      if(cn)cn.textContent=res.length+L2(" de "," of ")+ALL.length;
       if(!box)return;
-      if(!res.length){box.innerHTML='<div class="pt-none">Nada con esa busqueda. Prueba con menos palabras o con el codigo.</div>';return}
+      if(!res.length){box.innerHTML='<div class="pt-none">'+L2("Nada con esa b\u00fasqueda. Prueba con menos palabras o con el c\u00f3digo.","Nothing matches. Try fewer words, or the part code.")+'</div>';return}
       var trozo=res.slice(0,shown);
       box.innerHTML=trozo.map(rowHTML).join("")
-        +(res.length>shown?'<button type="button" class="pt-more" id="ptMore">Ver '+Math.min(60,res.length-shown)+' mas &middot; quedan '+(res.length-shown)+'</button>':"");
+        +(res.length>shown?'<button type="button" class="pt-more" id="ptMore">'+L2("Ver ","Show ")+Math.min(60,res.length-shown)+L2(" m\u00e1s &middot; quedan "," more &middot; ")+(res.length-shown)+'</button>':"");
       var mb=document.getElementById("ptMore");
       if(mb)mb.onclick=function(){shown+=60;render()};
       /* Subir: comprimir -> Storage -> documento. Cada paso avisa si falla,
@@ -48788,18 +48742,18 @@ var PARTS_NATIVE=(function(){
       });
       Array.prototype.forEach.call(box.querySelectorAll("[data-cp]"),function(b){
         b.onclick=function(){
-          var t=b.getAttribute("data-cp")||"";
+          var t=b.getAttribute("data-cp")||"", ask=L2("Copia el nombre:","Copy the name:");
           try{
             if(navigator.clipboard&&navigator.clipboard.writeText){
-              navigator.clipboard.writeText(t).then(function(){b.textContent="copiado"},function(){window.prompt("Copia el nombre:",t)});
-            }else{window.prompt("Copia el nombre:",t)}
-          }catch(_e){window.prompt("Copia el nombre:",t)}
+              navigator.clipboard.writeText(t).then(function(){b.textContent=L2("Copiado \u2713","Copied \u2713")},function(){window.prompt(ask,t)});
+            }else{window.prompt(ask,t)}
+          }catch(_e){window.prompt(ask,t)}
         };
       });
     }
     function pintaCats(){
       var box=document.getElementById("ptCats");if(!box)return;
-      box.innerHTML='<button type="button" class="pt-cat" data-c="" aria-pressed="true">Todas <span style="opacity:.6">'+ALL.length+'</span></button>'
+      box.innerHTML='<button type="button" class="pt-cat" data-c="" aria-pressed="true">'+L2("Todas","All")+' <span style="opacity:.6">'+ALL.length+'</span></button>'
         +cats.map(function(k){return '<button type="button" class="pt-cat" data-c="'+esc2(k)+'" aria-pressed="false">'+esc2(k)+' <span style="opacity:.6">'+cnt[k]+'</span></button>'}).join("");
       Array.prototype.forEach.call(box.querySelectorAll("[data-c]"),function(b){
         b.onclick=function(){
@@ -48810,7 +48764,11 @@ var PARTS_NATIVE=(function(){
       });
     }
     var qi=document.getElementById("ptQ");
-    if(qi){var t=null;qi.oninput=function(){clearTimeout(t);t=setTimeout(function(){q=qi.value.trim().toLowerCase();shown=60;render()},120)}}
+    if(qi){
+      /* v2.62.0 — el placeholder se pone al montar, con el idioma vigente */
+      qi.placeholder=L2("Buscar por nombre, c\u00f3digo o descripci\u00f3n\u2026","Search by name, code or description\u2026");
+      var t=null;qi.oninput=function(){clearTimeout(t);t=setTimeout(function(){q=qi.value.trim().toLowerCase();shown=60;render()},120)}
+    }
     pintaCats();render();
     if(!FOTOS_OK)cargaFotos(function(){ render() });
   }
@@ -54743,5 +54701,185 @@ document.addEventListener('DOMContentLoaded',function(){setTimeout(decorate,700)
 }
 .pf20-card.pf25-selected{padding-right:10px!important}
 </style>
+
+<style id="aspenPartsFotoSkin">
+/* ═══════════════════════════════════════════════════════════════════════
+   LA FOTO DE LA PARTE, DONDE EL TECNICO LA ELIGE  (v2.62.0, 2 sep 2026)
+
+   Las fotos que Admin partes va subiendo solo se veian en el Catalogo de 🧰.
+   El tecnico elige las partes en OTRO sitio: el modal "Select Part" del
+   Field Report (el Estimate usa el mismo modal) y la lista "Parts used".
+   Este bloque pone la miniatura ahi y la abre en grande con el visor de
+   fotos que la app ya tiene (previewAttachment: pellizco para zoom, × para
+   cerrar, y el modal sigue abierto tal como estaba).
+
+   Cero datos nuevos y cero logica duplicada: el slug, el mapa de fotos y la
+   lectura son los del propio Catalogo (window._aspPartes). ADITIVO Y
+   REVERSIBLE: borrar este bloque y el de abajo (aspenPartsFotoScript)
+   devuelve el picker a como estaba.
+   ═══════════════════════════════════════════════════════════════════════ */
+.pf-th{width:48px;height:48px;border-radius:10px;flex:none;position:relative;overflow:hidden;
+  border:1px solid var(--ln);background:var(--c-ash,#F4F1EC);display:grid;place-items:center;
+  -webkit-tap-highlight-color:transparent}
+.pf-th img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .18s ease}
+.pf-th.vacia span{font-size:18px;line-height:1;opacity:.32;user-select:none;-webkit-user-select:none}
+.pf-th.con{cursor:zoom-in}
+/* la señal de "se puede agrandar": un aro blanco con la lupa, chico y discreto */
+.pf-th.con::after{content:"";position:absolute;right:3px;bottom:3px;width:16px;height:16px;border-radius:50%;
+  background:rgba(255,255,255,.94) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D2B1F' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5L20.5 20.5'/%3E%3C/svg%3E") center/9px 9px no-repeat;
+  box-shadow:0 1px 2px rgba(0,0,0,.28);pointer-events:none}
+.pf-th.con:hover img{transform:scale(1.06)}
+.pf-th.con:active img{transform:scale(.97)}
+.pf-th:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+/* en las listas de "Parts used" la fila es mas baja: miniatura un punto menor */
+#pL .pf-th,#ePL .pf-th{width:44px;height:44px;border-radius:9px}
+#pL .pf-th.con::after,#ePL .pf-th.con::after{width:14px;height:14px;background-size:8px 8px}
+/* En el telefono la fila de "Parts used" ya iba justa: cantidad (114px) +
+   precio + × dejan ~70px para el nombre, y con la miniatura quedaria en
+   nada ("g…"). Se parte en dos lineas: arriba miniatura + nombre completo,
+   abajo cantidad · precio · quitar, alineados bajo el texto. */
+@media(max-width:640px){
+  #pL .pi,#ePL .pi{flex-wrap:wrap;row-gap:6px}
+  #pL .pi .pi-info,#ePL .pi .pi-info{flex:1 1 calc(100% - 52px);min-width:0}
+  #pL .pi .pi-n,#ePL .pi .pi-n{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+  #pL .pi .qw,#ePL .pi .qw{margin-left:52px}
+  #pL .pi .pp,#ePL .pi .pp{flex:1}
+}
+/* el Catalogo de 🧰 y Admin partes tambien abren en grande al tocar la foto */
+#ptApp .pt-th img,#pg17 .pa-th img{cursor:zoom-in}
+</style>
+
+<script id="aspenPartsFotoScript">
+/* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
+(function(){
+"use strict";
+if(window.__aspPartsFoto)return; window.__aspPartsFoto=true;
+
+var CAJA='<span>\uD83D\uDCE6</span>';
+function api(){ return window._aspPartes||null }
+function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
+function L(es,en){ try{ return L2(es,en) }catch(_e){ return en } }
+
+/* La foto de un nombre de parte: el MISMO slug y el MISMO mapa que usan el
+   Catalogo y Admin partes. El Field Report guarda NOMBRES (no ids), asi que
+   el nombre es la unica llave posible — igual que en los otros dos sitios. */
+function fotoDe(nombre){
+  var A=api(); if(!A||!nombre)return "";
+  try{ return (A.fotos()||{})[A.slug(nombre)]||"" }catch(_e){ return "" }
+}
+function miniatura(nombre){
+  var url=fotoDe(nombre);
+  if(!url)return '<span class="pf-th vacia" aria-hidden="true">'+CAJA+'</span>';
+  return '<span class="pf-th con" role="button" tabindex="0" data-pf="'+esc2(url)+'" data-pfn="'+esc2(nombre)+'"'
+    +' aria-label="'+esc2(L("Ver la foto de ","See the photo of ")+nombre)+'"'
+    +' title="'+esc2(L("Toca para verla en grande","Tap to see it large"))+'">'
+    +'<img src="'+esc2(url)+'" alt="" loading="lazy" onerror="_pfFotoRota(this)"></span>';
+}
+/* Una miniatura que no carga vuelve a ser la caja vacia: nada de cuadros
+   rotos en la lista del tecnico. La URL queda en la consola, una sola vez. */
+window._pfFotoRota=function(img){
+  try{
+    var b=img&&img.parentNode; if(!b)return;
+    if(!window.__pfAvisoFoto){ window.__pfAvisoFoto=true;
+      console.warn("[parts photo] photo failed to load:",img.getAttribute("src")) }
+    b.className="pf-th vacia";
+    ["data-pf","data-pfn","role","tabindex","aria-label","title"].forEach(function(a){ b.removeAttribute(a) });
+    b.setAttribute("aria-hidden","true");
+    b.innerHTML=CAJA;
+  }catch(_e){}
+};
+
+/* Decora las filas YA pintadas por el renderizador de siempre: pone la
+   miniatura al principio. Si la fila ya la tiene y es la misma, no toca nada;
+   si tenia la caja vacia y ahora hay foto (acaban de llegar), la cambia. */
+var SITIOS=[
+  {cont:"rB",  fila:".rb", nombre:".rn"},    /* Select Part — Field Report y Estimate */
+  {cont:"pL",  fila:".pi", nombre:".pi-n"},  /* Parts used — Field Report */
+  {cont:"ePL", fila:".pi", nombre:".pi-n"}   /* Parts — Estimate */
+];
+function decora(s){
+  var box=document.getElementById(s.cont); if(!box)return 0;
+  var filas=box.querySelectorAll(s.fila);
+  for(var i=0;i<filas.length;i++){
+    var f=filas[i], n=f.querySelector(s.nombre), nombre=n?n.textContent.trim():"";
+    var url=fotoDe(nombre), ya=f.firstElementChild;
+    if(ya&&ya.classList.contains("pf-th")){
+      if((ya.getAttribute("data-pf")||"")===url)continue;
+      ya.outerHTML=miniatura(nombre);
+    }else f.insertAdjacentHTML("afterbegin",miniatura(nombre));
+  }
+  return filas.length;
+}
+function decoraTodo(){ SITIOS.forEach(function(s){ try{ decora(s) }catch(_e){} }) }
+
+/* El mapa de fotos se pide UNA vez por sesion (una lectura de la coleccion)
+   y solo cuando hace falta: al abrir el picker o al pintar una lista que
+   tiene partes. Si el Catalogo o Admin partes ya lo cargaron, se reusa tal
+   cual. Si la lectura falla (sin red, permisos) no se martilla: un intento
+   por minuto como mucho. */
+var _pidiendo=false, _ultimo=0;
+function carga(){
+  var A=api(); if(!A)return;
+  try{ if(A.cargadas())return }catch(_e){ return }
+  if(_pidiendo||(Date.now()-_ultimo)<60000)return;
+  _pidiendo=true; _ultimo=Date.now();
+  try{ A.cargaFotos(function(){ _pidiendo=false; decoraTodo() }) }
+  catch(_e){ _pidiendo=false }
+}
+function envuelve(nombre,despues){
+  var orig=window[nombre]; if(typeof orig!=="function")return false;
+  window[nombre]=function(){
+    var r=orig.apply(this,arguments);
+    try{ despues() }catch(e){ console.warn("[parts photo]",nombre,e) }
+    return r;
+  };
+  return true;
+}
+envuelve("openPk",function(){ carga() });                                   /* abre el modal: pide las fotos */
+envuelve("doFlt", function(){ decora(SITIOS[0]) });                          /* cada busqueda repinta las filas */
+envuelve("rndr",  function(){ if(decora(SITIOS[1]))carga() });               /* Parts used con partes: pide las fotos */
+envuelve("eRndr", function(){ if(decora(SITIOS[2]))carga() });
+
+/* Tocar la miniatura abre la foto en grande. Va en fase de CAPTURA porque en
+   el picker la miniatura vive DENTRO del boton que agrega la parte: si el
+   clic llegara al boton, agregaria la parte en vez de mostrar la foto.
+   Tocar el resto de la fila sigue agregando la parte, como siempre. */
+function abre(url,nombre){
+  if(!url)return;
+  if(typeof previewAttachment==="function"){
+    previewAttachment(url,"photo",nombre||L("Foto de la parte","Part photo"),null);
+    return;
+  }
+  try{ window.open(url,"_blank","noopener") }catch(_e){}
+}
+function desde(t){
+  if(!t||!t.closest)return null;
+  var th=t.closest(".pf-th[data-pf]");
+  if(th)return {url:th.getAttribute("data-pf"),nombre:th.getAttribute("data-pfn")||""};
+  /* Catalogo de 🧰 y Admin partes: la propia foto es el boton; el "+"/"↻" de
+     subir del catalogo (.pt-up) sigue siendo suyo */
+  if(t.closest(".pt-up"))return null;
+  var img=t.closest("#ptApp .pt-th img,#pg17 .pa-th img");
+  if(img&&img.getAttribute("src")){
+    var fila=img.closest(".pt-row,.pa-row"), n=fila?fila.querySelector(".pt-nm,.pa-nm"):null;
+    return {url:img.getAttribute("src"),nombre:n?n.textContent.trim():""};
+  }
+  return null;
+}
+document.addEventListener("click",function(ev){
+  var d=desde(ev.target); if(!d)return;
+  ev.preventDefault(); ev.stopPropagation();
+  abre(d.url,d.nombre);
+},true);
+document.addEventListener("keydown",function(ev){
+  if(ev.key!=="Enter"&&ev.key!==" ")return;
+  var t=ev.target;
+  if(!t||!t.classList||!t.classList.contains("pf-th")||!t.getAttribute("data-pf"))return;
+  ev.preventDefault(); ev.stopPropagation();
+  abre(t.getAttribute("data-pf"),t.getAttribute("data-pfn")||"");
+},true);
+})();
+</script>
+
 </body>
 </html>
