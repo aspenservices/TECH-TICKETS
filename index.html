@@ -6812,8 +6812,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.64.0";
-var BUILD_DATE="2026-09-03";
+var APP_VERSION="2.65.0";
+var BUILD_DATE="2026-09-04";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -16118,6 +16118,12 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
   try{
     var cust=srcData.customer;
     var stamp=new Date().toLocaleString(), stampMs=Date.now();
+    /* v2.65.0 — SEGUIMIENTO: la visita original quedo COMPLETA y hace falta otra. Misma
+       creacion (un documento = una visita, todo arrastrado), pero la declaracion cambia:
+       la nota dice FOLLOW-UP, la visita nueva lleva autoFromFollowUp, y en la original /
+       en su dispatch se escribe followUpDispatchId en vez de reschedDispatchId — asi
+       aspEsVisitaReagendada y el Billing Sprint la siguen viendo como lo que fue. */
+    var sig=!!(srcData&&srcData._seguimiento);
 
     // ── (0) ¿de que visita venimos? La cadena esta REGISTRADA, no se busca.
     //    El reporte de campo nace con id determinista rep_<dispatch>, y si no,
@@ -16134,7 +16140,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       if(_f.exists){
         var _fd=_f.data()||{};
         if(_fd.status!=="canceled"){
-          try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:newId})}catch(_e){}
+          try{await db.collection("tickets").doc(srcDocId).update(sig?{followUpDispatchId:newId}:{reschedDispatchId:newId})}catch(_e){}
           return; // ya existe la cita de vuelta — no se duplica
         }
       }
@@ -16147,7 +16153,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     var reasonNote=(srcData.reschedNote||"").trim();
     var _rsD=new Date();
     var _rsMDY=("0"+(_rsD.getMonth()+1)).slice(-2)+"/"+("0"+_rsD.getDate()).slice(-2)+"/"+_rsD.getFullYear();
-    var noteHead=_rsMDY+" \u21BB RESCHEDULE \u2014 "+(techStr?("Tech "+techStr+" "):"")+"could not complete the visit"
+    var noteHead=_rsMDY+(sig?" \u2795 FOLLOW-UP \u2014 ":" \u21BB RESCHEDULE \u2014 ")+(techStr?("Tech "+techStr+" "):"")+(sig?"completed the visit":"could not complete the visit")
       +(origDate?(" scheduled for "+origDate):"")+". Needs a new appointment date.";
     if(reason)noteHead+="\nReason: "+reason+(reasonNote?(" \u2014 "+reasonNote):"");
     var _blkTxt=(typeof _reschedBlockerLabel==="function")?_reschedBlockerLabel(srcData):"";
@@ -16194,7 +16200,7 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       date:"",techs:[],                       // la oficina pone fecha y asigna
       workTypes:wt,
       // ── la cadena, ESCRITA. Nada de esto se vuelve a deducir nunca.
-      autoFromResched:true,
+      autoFromResched:true,autoFromFollowUp:sig,
       reschedOfTicketId:oldTktId||"",          // la visita que continua
       reschedReportId:srcDocId,                // el reporte que la declaro
       reschedFromId:srcDocId,                  // (nombre historico, mismo valor)
@@ -16258,12 +16264,12 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
           fieldReportSubmitted:true,
           fieldReportId:srcDocId,
           fieldReportSubmittedAt:new Date().toISOString(),
-          reschedDispatchId:newId,
+          [sig?"followUpDispatchId":"reschedDispatchId"]:newId,
           cleanedUpBy:firebase.firestore.FieldValue.delete()
         });
       }catch(_oe){console.warn("[resched cerrar visita vieja]",_oe)}
     }
-    try{await db.collection("tickets").doc(srcDocId).update({reschedDispatchId:newId,dispatchId:oldTktId||""})}catch(_e){}
+    try{await db.collection("tickets").doc(srcDocId).update({[sig?"followUpDispatchId":"reschedDispatchId"]:newId,dispatchId:oldTktId||""})}catch(_e){}
     try{if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent)AspenBrain.logEvent({customer:cust,app:"tickets",type:"ticket.rescheduled",title:"\u21BB Rescheduled"+(reason?" \u2014 "+reason:""),actor:techStr||""});}catch(_be){}
     try{_audit("resched-new-visit",{ticketId:newId,customer:cust,note:"visita nueva creada desde el reporte "+srcDocId+(oldTktId?(" (continua "+oldTktId+")"):"")});}catch(_a){}
   }catch(e){console.warn("[_autoCreateReschedDispatch]",e)}
@@ -23100,7 +23106,7 @@ function _reschedBannerHTML(t){
     if(sug)    rows.push(["\uD83D\uDC64", L2("T\u00e9cnico sugerido","Suggested tech"), sug]);
     if(!rows.length && !urgent) return "";
 
-    var head = isBack ? L2("LLAMADA DE VUELTA \u2014 falta fecha","RETURN CALL \u2014 needs a date")
+    var head = (isBack&&t&&t.autoFromFollowUp) ? L2("VISITA DE SEGUIMIENTO \u2014 falta fecha","FOLLOW-UP VISIT \u2014 needs a date") : isBack ? L2("LLAMADA DE VUELTA \u2014 falta fecha","RETURN CALL \u2014 needs a date")
                       : L2("ESTE TICKET SE REAGEND\u00d3","THIS TICKET WAS RESCHEDULED");
 
     var h = '<div class="dt-sec" style="border:1px solid var(--ac);background:var(--acl);'
@@ -54557,6 +54563,7 @@ document.addEventListener("keydown",function(ev){
 .asp-dlg-b{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
 .asp-dlg-b button{min-height:44px;padding:10px 18px;border-radius:12px;font-weight:700;font-size:var(--fs-md,15px);cursor:pointer;border:1.5px solid var(--ln,#EBE4DA);background:var(--cd,#fff);color:var(--i2,#574E45)}
 .asp-dlg-b button.ok{background:var(--ac,#D4772C);border-color:var(--ac,#D4772C);color:#fff}
+.asp-dlg-b button.tercero{border-color:var(--acd,#A85C1F);color:var(--acd,#A85C1F)}
 .asp-dlg-b button.ok.peligro{background:var(--r,#B42318);border-color:var(--r,#B42318)}
 .asp-dlg-b button:focus-visible{outline:2px solid var(--ac,#D4772C);outline-offset:2px}
 @media(max-width:520px){#aspDlgBg{align-items:flex-end;padding:0}.asp-dlg{width:100%;border-radius:18px 18px 0 0;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.asp-dlg-b button{flex:1}}
@@ -54641,6 +54648,7 @@ function abreDlg(opts){
     var activo=document.activeElement;
     function cierra(v){ try{ document.removeEventListener("keydown",onKey,true); bg.remove(); if(activo&&activo.focus)activo.focus() }catch(_e){} res(v) }
     if(opts.confirm){ var c=document.createElement("button"); c.type="button"; c.textContent=opts.cancelar||L("Cancelar","Cancel"); c.onclick=function(){cierra(false)}; b.appendChild(c) }
+    if(opts.confirm&&opts.tercero){ var t3=document.createElement("button"); t3.type="button"; t3.className="tercero"; t3.textContent=opts.tercero; t3.onclick=function(){cierra("tercero")}; b.appendChild(t3) }  /* v2.65.0 */
     var ok=document.createElement("button"); ok.type="button"; ok.className="ok"+(opts.peligro?" peligro":""); ok.textContent=opts.ok||(opts.confirm?L("S\u00ed","Yes"):"OK"); ok.onclick=function(){cierra(true)}; b.appendChild(ok);
     box.appendChild(b); bg.appendChild(box);
     bg.addEventListener("click",function(ev){ if(ev.target===bg)cierra(opts.confirm?false:true) });
@@ -54652,7 +54660,7 @@ function abreDlg(opts){
 }
 var _alertNativo=window.alert;
 window.aspAlert=function(msg,opts){ opts=opts||{}; if(!dlgOn()){ try{ _alertNativo.call(window,msg) }catch(_e){} return Promise.resolve(true) } return abreDlg({msg:msg,titulo:opts.titulo,ok:opts.ok}) };
-window.aspConfirm=function(msg,opts){ opts=opts||{}; if(!dlgOn()){ var r=false; try{ r=window.confirm(msg) }catch(_e){} return Promise.resolve(!!r) } return abreDlg({msg:msg,confirm:true,titulo:opts.titulo,ok:opts.ok,cancelar:opts.cancelar,peligro:opts.peligro!=null?opts.peligro:esPeligro(msg)}) };
+window.aspConfirm=function(msg,opts){ opts=opts||{}; if(!dlgOn()){ var r=false; try{ r=window.confirm(msg) }catch(_e){} return Promise.resolve(!!r) } return abreDlg({msg:msg,confirm:true,titulo:opts.titulo,ok:opts.ok,cancelar:opts.cancelar,tercero:opts.tercero,peligro:opts.peligro!=null?opts.peligro:esPeligro(msg)}) };
 window.alert=function(msg){ if(!dlgOn())return _alertNativo.call(window,msg); window.aspAlert(msg) };
 
 /* ───────────────────────── 6 · ESQUELETO MIENTRAS CARGA ─────────────────
@@ -54700,6 +54708,143 @@ function esTecnico(){ try{ return !!(currentUser&&currentUser.role==="tech") }ca
   var f=window.initFirebase; if(typeof f==="function"){ window.initFirebase=function(){ var r=f.apply(this,arguments); if(!esTecnico())window._invoiceModuleCargar(); return r } }
   var st=window.showTab; if(typeof st==="function"){ window.showTab=function(n){ var r=st.apply(this,arguments); try{ esqueleto() }catch(_e){} if(String(n)==="15"&&!esTecnico())window._invoiceModuleCargar(); return r } }
 })();
+})();
+</script>
+
+<style id="aspenOtraVisitaSkin">
+/* ═══ AGENDAR OTRA VISITA (v2.65.0, 4 sep 2026) — ver aspenOtraVisitaScript ═══ */
+.asp-otra{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:10px 16px;border-radius:12px;
+  border:1.5px dashed var(--ac,#D4772C);background:var(--acl,#FDF0E3);color:var(--acd,#A85C1F);font-weight:700;font-size:var(--fs-sm,13px);cursor:pointer}
+.asp-otra:hover{background:var(--ac,#D4772C);color:#fff;border-style:solid}
+.asp-otra svg{width:15px;height:15px}
+.v7-actions .asp-otra{min-height:0;padding:8px 12px;border-radius:9px}
+/* el dialogo de 3 opciones se apila (principal arriba, cancelar abajo) */
+.asp-dlg-b:has(.tercero){flex-direction:column-reverse;align-items:stretch}
+.asp-dlg-b:has(.tercero) button{width:100%;text-align:center}
+</style>
+
+<script id="aspenOtraVisitaScript">
+/* ═══════════════════════════════════════════════════════════════════════
+   AGENDAR OTRA VISITA  (v2.65.0, 4 sep 2026)
+
+   Problema: en Daily se toca "Completed" y despues hace falta otra visita,
+   pero la fila de botones ya desaparecio y ni la hoja del ticket ni la vista
+   Customer tenian forma de agendarla sin perder la informacion.
+
+   Un boton — "Schedule another visit" — con DOS salidas, elegidas en un
+   dialogo que ya viene contestado segun lo que dice el ticket:
+   · SEGUIMIENTO: la visita queda completa (se factura como esta) y nace una
+     visita nueva con todo arrastrado (reporte, fotos, partes, spa, notas).
+     No escribe status ni sellos resched* en la visita original: para los
+     predicados y el Billing Sprint sigue siendo una visita completa.
+   · REAGENDO: fue un error — es el markResched de siempre (marca la visita
+     como reagendada y crea la cita de vuelta).
+   Las dos salidas usan el MISMO motor (_autoCreateReschedDispatch, id
+   determinista: tocarlo dos veces no duplica) y la cita nueva cae en la
+   bandeja "necesita fecha" como hoy. ADITIVO Y REVERSIBLE: borrar este
+   bloque y el de estilos; en el motor queda solo la rama `sig` (inerte).
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+if(window.__aspOtraVisita)return; window.__aspOtraVisita=true;
+function L(es,en){ try{ return L2(es,en) }catch(_e){ return en } }
+function esOficina(){ try{ return !!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")) }catch(_e){ return false } }
+function ic(n){ try{ return typeof icon==="function"?icon(n,14):"" }catch(_e){ return "" } }
+function etiqueta(){ return L("Agendar otra visita","Schedule another visit") }
+function esc2(s){ try{ return esc(String(s==null?"":s)) }catch(_e){ return "" } }
+
+async function buscaTicket(docId){
+  var t=null;
+  try{ t=[].concat(window.active||[],window.done||[]).find(function(x){return x&&x.id===docId})||null }catch(_e){}
+  if(!t){ try{ var d=await db.collection("tickets").doc(docId).get(); if(d&&d.exists)t=Object.assign({id:d.id},d.data()) }catch(_e){} }
+  return t;
+}
+function estaCompleta(t){ return !!(t&&(t.status==="done"||t.status==="complete"||t.fieldReportSubmitted)) }
+
+window.aspOtraVisita=async function(docId){
+  if(!docId)return;
+  if(!esOficina()){ toast(L("Solo la oficina agenda visitas","Only the office schedules visits"),"warn"); return }
+  var t=await buscaTicket(docId);
+  if(!t){ toast(L("No encontr\u00e9 el ticket","Ticket not found"),"err"); return }
+  var completa=estaCompleta(t), nombre=t.customer||"";
+  var msg=completa
+    ? L("Esta visita de "+nombre+" est\u00e1 COMPLETA. \u00bfQu\u00e9 hace falta?","This visit for "+nombre+" is COMPLETED. What do you need?")
+    : L("Esta visita de "+nombre+" NO est\u00e1 completa. \u00bfQu\u00e9 hace falta?","This visit for "+nombre+" is NOT completed. What do you need?");
+  var okSeg=L("Seguimiento \u2014 la visita queda completa y nace otra","Follow-up \u2014 this visit stays completed, a new one is born");
+  var okRea=L("Reagendar \u2014 no se complet\u00f3, es una cita de vuelta","Reschedule \u2014 it wasn't completed, it's a return call");
+  var r=await aspConfirm(msg,{titulo:etiqueta(),ok:completa?okSeg:okRea,tercero:completa?okRea:okSeg,cancelar:L("Cancelar","Cancel"),peligro:false});
+  if(r===false||r==null)return;
+  var seguimiento = completa ? (r===true) : (r==="tercero");
+  if(!seguimiento){ return markResched(docId) }                       /* el flujo de siempre */
+
+  /* ── SEGUIMIENTO ── el mismo formulario de motivo que el reagendo */
+  var info=null; try{ info=await _askReschedReason() }catch(_e){ info=null }
+  if(!info)return;
+  var stamp=new Date().toLocaleString(), ms=Date.now();
+  var src=Object.assign({},t,{
+    reschedReason:info.reason||"",reschedNote:info.note||"",
+    needsOtherTech:!!info.needsOtherTech,needsOtherTechReason:info.needsOtherTech?(info.note||""):"",
+    reschedBlocker:info.blocker||"",reschedBlockerPart:info.blockerPart||"",reschedNotBefore:info.notBefore||"",
+    reschedAvailability:info.availability||"",reschedUrgent:!!info.urgent,
+    _seguimiento:true
+  });
+  try{
+    /* en la visita original SOLO se anota que pidio seguimiento — sin status ni resched* */
+    await db.collection("tickets").doc(docId).update({followUpRequestedAt:stamp,followUpRequestedAtMs:ms,followUpReason:info.reason||"",followUpNote:info.note||"",followUpBy:(currentUser&&currentUser.name)||""});
+  }catch(e){ console.warn("[otra visita] no pude anotar el seguimiento en la visita original:",e) }
+  try{
+    await _autoCreateReschedDispatch(docId,src);
+    toast(L("Visita de seguimiento creada \u2014 est\u00e1 en la bandeja de \u00abnecesita fecha\u00bb","Follow-up visit created \u2014 it's in the \u201cneeds a date\u201d tray"));
+  }catch(e){ console.error("[otra visita]",e); toast(L("No pude crear la visita de seguimiento","Could not create the follow-up visit"),"err") }
+};
+
+/* ── 1 · hoja del ticket: el boton entra en la fila de acciones ── */
+function botonHTML(id,extra){ return '<button type="button" class="asp-otra'+(extra||"")+'" onclick="aspOtraVisita(\''+esc2(id)+'\')">'+ic("calendar-plus")+esc2(etiqueta())+'</button>' }
+(function(){
+  var f=window.openTktDetail; if(typeof f!=="function")return;
+  window.openTktDetail=function(id){
+    var r=f.apply(this,arguments);
+    try{
+      if(!esOficina())return r;
+      var body=document.getElementById("tktDetailBody"); if(!body||body.querySelector(".asp-otra"))return r;
+      var acts=body.querySelector(".dtv2-acts");
+      var wrap=document.createElement("div"); wrap.className="asp-otra-wrap"; wrap.style.cssText="margin:10px 0"; wrap.innerHTML=botonHTML(id," dtv2-core");
+      if(acts)acts.appendChild(wrap); else body.appendChild(wrap);
+    }catch(e){ console.warn("[otra visita] hoja:",e) }
+    return r;
+  };
+})();
+
+/* ── 2 · cajon de Daily: cuando el ticket ya esta done, la fila de acciones no existe.
+        Se envuelve tktHTML (el que arma el cajon) y se agrega el boton dentro de la tarjeta. */
+(function(){
+  var f=window.tktHTML; if(typeof f!=="function")return;
+  window.tktHTML=function(list,i,isDone){
+    var h=f.apply(this,arguments);
+    try{
+      if(!isDone||!esOficina())return h;
+      var t=list&&list[i]; if(!t||!t.id||h.indexOf("aspOtraVisita(")>=0)return h;
+      var btn='<div class="asp-otra-wrap" style="margin:10px 0 4px">'+botonHTML(t.id)+'</div>';
+      var k=h.lastIndexOf("</div></div>");
+      h=(k>0)?(h.slice(0,k)+btn+h.slice(k)):(h+btn);
+    }catch(e){ console.warn("[otra visita] cajon:",e) }
+    return h;
+  };
+})();
+
+/* ── 3 · vista Customer 360: junto a "Full Report / PDF" en cada visita ── */
+function decoraV7(){
+  var pg=document.getElementById("pg6"); if(!pg||!esOficina())return;
+  var bs=pg.querySelectorAll('.v7-actions [data-v7act="report"]');
+  for(var i=0;i<bs.length;i++){
+    var b=bs[i], row=b.parentNode; if(!row||row.querySelector(".asp-otra"))continue;
+    var id=b.getAttribute("data-v7id"); if(!id)continue;
+    b.insertAdjacentHTML("afterend",botonHTML(id));
+  }
+}
+var _v7T=null;
+try{ new MutationObserver(function(){ clearTimeout(_v7T); _v7T=setTimeout(decoraV7,150) }).observe(document.body,{childList:true,subtree:true}) }catch(_e){}
+decoraV7();
 })();
 </script>
 
