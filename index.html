@@ -6812,8 +6812,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.67.0";
-var BUILD_DATE="2026-09-11";
+var APP_VERSION="2.67.1";
+var BUILD_DATE="2026-09-14";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -33939,10 +33939,14 @@ function _itkPh(n){return n+(n===1?" photo":" photos")}
 
 /* ── Los textos que se le mandan al cliente ──────────────────────────────── */
 function _itkSmsBody(it){
-  return "Hi "+_itkFirst(it.customer)+", this is Aspen Spas Service. To get you scheduled faster, "
-    +"please open this link and tell us what's happening with your spa \u2014 it takes about two "
-    +"minutes and you can add photos:\n\n"+_itkLink(it.token)
-    +"\n\nOnce we have it, we'll call you back with next steps. Thank you!";
+  /* v2.67.1 — EL LINK VA AL FINAL, solo, sin texto despues. Un URL en medio de un
+     SMS largo (varios segmentos) muchas veces NO se vuelve clickeable, sobre todo
+     en Android/SMS verde: los clientes se quejaban de que no podian tocarlo. Al
+     dejarlo como ultima cosa del mensaje, el telefono lo detecta como enlace de
+     forma confiable (iMessage hasta arma tarjeta). Intro mas corto tambien ayuda. */
+  return "Hi "+_itkFirst(it.customer)+", this is Aspen Spas Service. Please tell us what's happening "
+    +"with your spa so we can schedule you faster \u2014 it takes about 2 minutes and you can add "
+    +"photos. We'll call you right back with next steps. Tap here:\n\n"+_itkLink(it.token);
 }
 function _itkEmailText(it){
   return "Hi "+_itkFirst(it.customer)+",\n\n"
