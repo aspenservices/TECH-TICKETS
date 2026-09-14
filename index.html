@@ -6812,8 +6812,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.66.0";
-var BUILD_DATE="2026-09-04";
+var APP_VERSION="2.67.0";
+var BUILD_DATE="2026-09-11";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -6854,6 +6854,7 @@ async function _staffSignIn(name,pin){
     var j=await r.json();
     if(!j||!j.token)return {ok:false,unavailable:true};
     await firebase.auth().signInWithCustomToken(j.token);   // reemplaza a la anónima
+    try{_clearSessionDead()}catch(_e){}   // v2.67.0 — sesión fresca: quitar el aviso rojo si estaba
     console.log("\u2713 Staff session ("+name+")");
     return {ok:true,role:j.role||""};
   }catch(e){
@@ -15061,6 +15062,20 @@ async function submitTkt(st){
     if(!_reschedInfo)return; // tech canceled the reschedule
   }
 
+  /* v2.67.0 — PUERTA DE SESIÓN HONESTA. Antes de tocar nada: si estamos ONLINE y la
+     sesión no tiene token vivo, la escritura se guardaría solo en la caché del
+     teléfono y jamás subiría — el técnico veía "Ticket sent ✓" y la oficina no
+     recibía nada. Se rechaza con aviso claro y SIN borrar el formulario, para que no
+     pierda su trabajo. Offline SÍ se permite: Firestore encola y sincroniza al volver. */
+  try{
+    if(!(await _writeSessionOK())){
+      try{_flagSessionDead()}catch(_e){}
+      try{_frLogFailure("session_dead",new Error("sin token valido para escribir el reporte"),{ticketId:editingDocId||"(nuevo)",customer:cu||"",status:st||""})}catch(_x){}
+      try{var _enS=(typeof currentLang!=="undefined"&&currentLang==="en");toast(_enS?"\u26A0 NOT saved \u2014 your session expired. Tap the red banner above, sign in again, and resend.":"\u26A0 NO se guard\u00f3 \u2014 tu sesi\u00f3n caduc\u00f3. Toca el aviso rojo de arriba, vuelve a entrar y reenv\u00eda.","err")}catch(_e){}
+      return;
+    }
+  }catch(_wse){ console.warn("[submitTkt session check]",_wse); }
+
   /* Candado de envio en curso: el boton se re-habilita al final, asi que sin
      esto un segundo toque puede disparar una escritura extra. */
   if(window.__frSubmitting){try{toast("Ya se est\u00e1 guardando\u2026","warn")}catch(_e){}return}
@@ -16434,6 +16449,15 @@ async function markResched(docId){
   var _info=null;
   try{_info=await _askReschedReason()}catch(_e){_info=null}
   if(!_info)return; // canceled — leave the ticket as-is
+  /* v2.67.0 — puerta de sesión honesta: online sin token vivo = el reagendo se
+     perdería en silencio. Avisar y salir sin fingir "added to Service Log". */
+  try{
+    if(!(await _writeSessionOK())){
+      try{_flagSessionDead()}catch(_e){}
+      try{var _enR=(typeof currentLang!=="undefined"&&currentLang==="en");toast(_enR?"\u26A0 Couldn't reschedule \u2014 your session expired. Tap the red banner above and sign in again.":"\u26A0 No se pudo reagendar \u2014 tu sesi\u00f3n caduc\u00f3. Toca el aviso rojo de arriba y vuelve a entrar.","err")}catch(_e){}
+      return;
+    }
+  }catch(_wse){}
   try{
     await db.collection("tickets").doc(docId).update({status:"reschedule",reschedReason:_info.reason||"",reschedNote:_info.note||"",needsOtherTech:!!_info.needsOtherTech,needsOtherTechReason:_info.needsOtherTech?(_info.note||""):"",reschedBlocker:_info.blocker||"",reschedBlockerPart:_info.blockerPart||"",reschedNotBefore:_info.notBefore||"",reschedAvailability:_info.availability||"",reschedUrgent:!!_info.urgent,reschedAt:new Date().toLocaleString(),reschedAtMs:Date.now()});
     // Auto-create / resurface a Service Log call so the reschedule isn't forgotten.
@@ -20408,10 +20432,131 @@ function _authSignInWithFallback(){
     try{unsub=auth.onAuthStateChanged(function(u){fin(u)});}catch(_e){fin(auth.currentUser);}
     setTimeout(function(){fin(auth.currentUser)},3500);
   }).then(function(u){
-    if(u)return "KEPT-"+(u.isAnonymous?"anon":"staff");   // conservar la sesión existente
+    if(u)return _validateRestoredSession(u,step);   // v2.67.0 — validar antes de confiar (bloque aspenSessionHealth)
     return step(0);
   });
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   aspenSessionHealth (v2.67.0) — LA SESIÓN NUNCA SE QUEDA MUERTA EN SILENCIO
+   ─────────────────────────────────────────────────────────────────────────
+   El bug de fondo: _authSignInWithFallback conservaba CUALQUIER sesión restaurada
+   de IndexedDB sin comprobar que su token siguiera vivo. Si estaba muerto (caducó,
+   se revocó, o la PWA de iOS revivió sobre una sesión vieja), la app se quedaba
+   sentada sobre una sesión zombi y TODA escritura se perdía en silencio: el técnico
+   veía "Ticket sent ✓" pero el reporte nunca llegaba al servidor. Mismo síntoma que
+   el "insufficient permissions" de la consola.
+   REGLA DE ORO: NUNCA tocar la sesión de alguien SIN CONEXIÓN. Offline, Firestore
+   encola y sincroniza solo al volver; desloguear a un técnico en campo sería peor
+   que el bug. Solo se re-firma o se avisa cuando estamos ONLINE y el token murió
+   de verdad. ══════════════════════════════════════════════════════════════════ */
+window._sessionDead=false;
+
+/* Arranque: valida la sesión restaurada ANTES de confiar en ella. */
+function _validateRestoredSession(u,step){
+  try{
+    if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false){
+      return Promise.resolve("KEPT-offline-"+(u.isAnonymous?"anon":"staff")); // offline: se conserva
+    }
+  }catch(_e){}
+  return u.getIdToken(true).then(function(){
+    try{_clearSessionDead()}catch(_e){}
+    return "KEPT-valid-"+(u.isAnonymous?"anon":"staff");
+  }).catch(function(e){
+    // Fallo de RED aunque navigator diga online (conexión intermitente) → tratar
+    // como offline: NO tocar la sesión.
+    if((e&&e.code==="auth/network-request-failed")||(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)){
+      return "KEPT-netfail-"+(u.isAnonymous?"anon":"staff");
+    }
+    // Token muerto de verdad estando online.
+    if(u.isAnonymous){
+      // Anónima: se re-firma sola sin molestar a nadie.
+      return firebase.auth().signOut().catch(function(){}).then(function(){
+        return step?step(0):firebase.auth().signInAnonymously().then(function(){return "RESIGNED-anon"});
+      });
+    }
+    // Personal muerta: NO se puede re-emitir sin el PIN. Aviso rojo + seguir; la
+    // puerta de escritura (Parte 2) evita cantar falso éxito hasta que re-entren.
+    try{_flagSessionDead()}catch(_e){}
+    return "DEAD-staff-needs-relogin";
+  });
+}
+
+/* Re-chequeo en caliente: al volver la app al frente (iOS revive la PWA sobre una
+   sesión posiblemente vencida) y al recuperar conexión. */
+async function _sessionHealthCheck(){
+  try{
+    if(typeof document!=="undefined"&&document.hidden)return;
+    if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return; // offline: no tocar
+    var u=firebase.auth().currentUser;
+    if(!u){ try{_flagSessionDead()}catch(_e){} return; }
+    try{
+      await u.getIdToken(true);
+      try{_clearSessionDead()}catch(_e){}
+    }catch(e){
+      if(e&&e.code==="auth/network-request-failed")return; // intermitente: ignorar
+      if(u.isAnonymous){
+        try{ await firebase.auth().signOut(); }catch(_e){}
+        try{ await firebase.auth().signInAnonymously(); try{_clearSessionDead()}catch(_e2){} }
+        catch(_e){ try{_flagSessionDead()}catch(_e3){} }
+      }else{
+        try{_flagSessionDead()}catch(_e){}
+      }
+    }
+  }catch(_e){}
+}
+
+/* PUERTA DE ESCRITURA HONESTA. true solo si la escritura va a poder llegar al
+   servidor. Offline devuelve true a propósito (Firestore encola y sincroniza al
+   volver — eso SÍ es honesto). Online exige token vivo; si no, la escritura se
+   perdería en silencio → false. */
+async function _writeSessionOK(){
+  try{
+    if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return true; // offline: encola
+    var u=firebase.auth().currentUser;
+    if(!u)return false;
+    await u.getIdToken(true);   // fuerza refresh: prueba que la sesión vive AHORA
+    try{_clearSessionDead()}catch(_e){}
+    return true;
+  }catch(e){
+    if(e&&e.code==="auth/network-request-failed")return true; // intermitente: que se encole, no bloquear
+    return false;
+  }
+}
+
+function _flagSessionDead(){
+  try{ if(window._sessionDead)return; window._sessionDead=true; _showReauthBanner(); }catch(_e){}
+}
+function _clearSessionDead(){
+  try{
+    if(!window._sessionDead)return; window._sessionDead=false;
+    var b=document.getElementById("reauthBanner"); if(b&&b.parentNode)b.parentNode.removeChild(b);
+  }catch(_e){}
+}
+function _showReauthBanner(){
+  try{
+    if(document.getElementById("reauthBanner"))return;
+    var en=(typeof currentLang!=="undefined"&&currentLang==="en");
+    var b=document.createElement("div");
+    b.id="reauthBanner"; b.setAttribute("role","alert");
+    b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#C0492F;color:#fff;"
+      +"padding:calc(10px + env(safe-area-inset-top)) 16px 10px;font-size:14px;font-weight:700;text-align:center;"
+      +"line-height:1.4;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);font-family:inherit";
+    b.textContent=en
+      ? "\u26A0 Your session expired \u2014 your changes are NOT being saved. Tap here to sign in again."
+      : "\u26A0 Tu sesi\u00f3n caduc\u00f3 \u2014 tus cambios NO se est\u00e1n guardando. Toca aqu\u00ed para volver a entrar.";
+    b.onclick=function(){ _goReauth(); };
+    document.body.appendChild(b);
+  }catch(_e){}
+}
+function _goReauth(){
+  try{ if(typeof logout==="function"){ logout(); return; } }catch(_e){}
+  try{ location.reload(); }catch(_e){}
+}
+try{
+  window.addEventListener("online", function(){ try{_sessionHealthCheck()}catch(_e){} });
+  document.addEventListener("visibilitychange", function(){ if(typeof document!=="undefined"&&!document.hidden){ try{_sessionHealthCheck()}catch(_e){} } });
+}catch(_e){}
 
 /* PLAN B (v1.9.3): si NINGÚN modo de sesión funciona en ese navegador, la firma se
    manda a una Cloud Function que escribe con credenciales de admin. El Admin SDK NO
@@ -45445,8 +45590,12 @@ async function pollCrossAppResolves() {
             matchedInv.history = paidHist;
             await updateInvoiceData(matchedInv.id, { status: 'paid', paidAt: now, history: paidHist });
             markedPaidThisPoll = true;
+            // v2.66.1 — la ESCRITURA de PAGADA (arriba) siempre ocurre para ponerse
+            // al dia; el TOAST solo en incremental, mismo criterio que el aviso de
+            // resoluciones: en la carga inicial, ponerse al dia con un backlog de
+            // facturas no debe soltar una rafaga de "💵 marcada PAGADA".
             const _enPaid = currentLang === 'en';
-            toast(_enPaid
+            if (incremental) toast(_enPaid
               ? `💵 Invoice #${matchedInv.invoiceNumber} marked PAID (by ${flds.resolvedBy || 'Tech team'})`
               : `💵 Factura #${matchedInv.invoiceNumber} marcada PAGADA (por ${flds.resolvedBy || 'Equipo Tech'})`,
               'success');
@@ -45483,25 +45632,39 @@ async function pollCrossAppResolves() {
 
     if (newlyStamped.length > 0) {
       console.info('[CrossAppPoll]', newlyStamped.length, 'NEW resolution(s)');
-      if (newlyStamped.length <= 3) {
-        newlyStamped.forEach(({ ev }) => {
-          const who = ev.resolvedBy || (en ? 'Tech team' : 'Equipo Tech');
-          const customer = (ev.customerName || '').trim() || (en ? 'a customer' : 'un cliente');
-          const invNumPart = ev.invoiceNumber ? ` (#${ev.invoiceNumber})` : '';
-          const msg = en
-            ? `✓ ${who} resolved alert for ${customer}${invNumPart}`
-            : `✓ ${who} resolvió la alerta de ${customer}${invNumPart}`;
-          toast(msg, 'success');
-          _crossAppShowPushNotif({
-            customerName: customer,
-            resolvedBy: who,
-            invoiceNumber: ev.invoiceNumber,
-            resolutionNote: ev.resolutionNote,
-            resolutionMethod: ev.resolutionMethod
+      /* v2.66.1 — SILENCIO EN LA CARGA INICIAL. La PRIMERA vuelta (no incremental)
+         trae TODO el historial de resoluciones para poblar el 📬 inbox. En un
+         arranque limpio previouslyKnownIds esta vacio (vive solo en memoria y se
+         borra en cada recarga), asi que esas ~100 caian en newlyStamped y se
+         anunciaban como si acabaran de pasar: el toast "N tech alert(s) resolved"
+         salia en CADA recarga — y sin parar en el iPhone, porque iOS mata y revive
+         la PWA de cero una y otra vez. Ahora SOLO avisamos de resoluciones que
+         llegan de verdad nuevas MIENTRAS la app esta abierta (incremental===true).
+         El historial sigue apareciendo en el inbox con su insignia; ya no grita al
+         arrancar. El badge y el render se hacen igual, para que el inbox se llene. */
+      if (incremental) {
+        if (newlyStamped.length <= 3) {
+          newlyStamped.forEach(({ ev }) => {
+            const who = ev.resolvedBy || (en ? 'Tech team' : 'Equipo Tech');
+            const customer = (ev.customerName || '').trim() || (en ? 'a customer' : 'un cliente');
+            const invNumPart = ev.invoiceNumber ? ` (#${ev.invoiceNumber})` : '';
+            const msg = en
+              ? `✓ ${who} resolved alert for ${customer}${invNumPart}`
+              : `✓ ${who} resolvió la alerta de ${customer}${invNumPart}`;
+            toast(msg, 'success');
+            _crossAppShowPushNotif({
+              customerName: customer,
+              resolvedBy: who,
+              invoiceNumber: ev.invoiceNumber,
+              resolutionNote: ev.resolutionNote,
+              resolutionMethod: ev.resolutionMethod
+            });
           });
-        });
+        } else {
+          toast((en ? `✓ ${newlyStamped.length} tech alert(s) resolved — see 📬 inbox` : `✓ ${newlyStamped.length} alertas resueltas — ver 📬 inbox`), 'success');
+        }
       } else {
-        toast((en ? `✓ ${newlyStamped.length} tech alert(s) resolved — see 📬 inbox` : `✓ ${newlyStamped.length} alertas resueltas — ver 📬 inbox`), 'success');
+        console.info('[CrossAppPoll] carga inicial silenciosa —', newlyStamped.length, 'resoluciones al inbox, sin toast/push');
       }
       updateCrossAppInboxBadge();
       computeAndRender();
