@@ -5991,7 +5991,27 @@ function _partTypeFromWarranty(w){
 // Combines the tub warranty (series + year) with the replacement-part warranty
 // (1-yr part / 90-day labor on out-of-warranty tubs). Returns clear labels +
 // a one-line bottom line so the office never has to deduce from notes.
+/* v2.70.0 — THE 2nd-VISIT RULE REACHES THE VERDICT. _billingFor is the single source of
+   truth for "what do I charge?" but it never read visitNum, so a return visit without
+   warranty was told "CHARGE: TC $150 + $100/hr" right next to "2nd Visit — $100/hr only
+   (no TC)", and the reschedule dialog's second-visit verdict showed the generic line.
+   The dollar engine (calcLabor) always applied the rule; now the words say what the
+   dollars already do. Same object, same contract: only the labor wording changes. */
 function _billingFor(t){
+  var b=_billingForBase(t);
+  try{
+    if(b&&t&&Number(t.visitNum)===2){
+      if(b.labor==="CHARGE: TC $150 + $100/hr"){
+        b.labor="2nd visit: $100/hr \u2014 no TC";
+        b.bottom=(b.bottom?b.bottom+" \u00b7 ":"")+"2nd visit: $100/hr, no TC";
+      }else if(b.labor==="TC only (extra hrs covered)"){
+        b.labor="FREE \u2014 no TC on 2nd visit"; b.laborFree=true;
+      }
+    }
+  }catch(_e){}
+  return b;
+}
+function _billingForBase(t){
   if(!t)return null;
   var w=t.warranty||{};
   // ── Out-of-warranty tub ──
@@ -6882,7 +6902,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.68.0";
+var APP_VERSION="2.70.0";
 var BUILD_DATE="2026-09-14";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -15245,7 +15265,10 @@ async function submitTkt(st){
       // Uses the strict _custSameHousehold matcher (group-key equality) so that the set of dispatches
       // we CLOSE here is identical to the set the visibility/cleanup layer would HIDE — closed <=> hidden,
       // preventing the ghost-close bug where a lenient match silently buried an unrelated real visit.
-      if(st==="complete"){
+      // v2.69.0 — same as the create path: a reschedule report that does not live in the
+      // rep_<visit> slot identifies that day's visit with the same identity rule.
+      var _reschedSueltoE=(st==="reschedule"&&String(editingDocId||"").indexOf("rep_")!==0);
+      if(st==="complete"||_reschedSueltoE){
         try{
           const targetDateE=(cleanData.date||"").trim();
           if(cleanData.customer&&targetDateE){
@@ -15282,6 +15305,7 @@ async function submitTkt(st){
             // varias, el reporte se queda suelto y la visita abierta — que es la
             // verdad, no un atajo.
             for(const dt of (matchesE.length===1?matchesE:[])){
+              if(_reschedSueltoE){cleanData.dispatchId=dt.id;continue}
               try{
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
@@ -15368,7 +15392,15 @@ async function submitTkt(st){
       // when any of them fills the report, even if the visit happened on a different day than scheduled.
       // Uses the strict _custSameHousehold matcher (group-key equality) — same set the
       // visibility layer hides, so a submitted report never buries an unrelated visit.
-      if(st==="complete"){
+      /* v2.69.0 — A RESCHEDULE REPORT ALSO IDENTIFIES ITS VISIT. This block used to run
+         only for "complete". That was right BEFORE v2.1.0, when a reschedule RECYCLED the
+         appointment (closing it would have been a lie). Since v2.1.0 the appointment is
+         closed for what it was, so a reschedule report filed from the blank form has to be
+         tied to that day's visit exactly like a completed one. Same identity rule as
+         v2.1.0: ONE single visit for that customer ON THAT SAME DAY. Two or more: nothing
+         is touched (the report stays loose and the visit stays open — the truth). */
+      var _reschedSuelto=(st==="reschedule"&&String(newRef.id).indexOf("rep_")!==0);
+      if(st==="complete"||_reschedSuelto){
         try{
           const targetDate=(cleanData.date||"").trim();
           if(cleanData.customer&&targetDate){
@@ -15404,6 +15436,9 @@ async function submitTkt(st){
             // varias, el reporte se queda suelto y la visita abierta — que es la
             // verdad, no un atajo.
             for(const dt of (matches.length===1?matches:[])){
+              // v2.69.0: on a reschedule nothing is closed here — the engine is TOLD which
+              // visit it came from and it closes it for what it was (one single place).
+              if(_reschedSuelto){cleanData.dispatchId=dt.id;continue}
               try{
                 await db.collection("tickets").doc(dt.id).update({
                   fieldReportSubmitted:true,
@@ -15416,7 +15451,7 @@ async function submitTkt(st){
         }catch(autoErr){console.warn("Auto-match dispatch error:",autoErr)}
         // Also force a global cleanup pass — catches any other unmatched dispatches
         // for this customer/date that the targeted match might have missed.
-        try{_runDispatchCleanup({silent:true,force:true})}catch(_e){}
+        if(st==="complete"){try{_runDispatchCleanup({silent:true,force:true})}catch(_e){}}
       }
       // RESCHEDULE on a brand-new report → ensure a Service Log call exists so
       // the customer is re-booked and nothing slips through the cracks.
@@ -16215,6 +16250,13 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
     //    lleva dispatchId. Si no hay ninguno, el reporte era suelto: no habia
     //    visita agendada, asi que no hay nada que cerrar.
     var oldTktId=(String(srcDocId).indexOf("rep_")===0)?String(srcDocId).slice(4):(srcData.dispatchId||"");
+    /* v2.69.0 — THIRD RECORDED LINK. The two above cover a report born in the rep_<visit>
+       slot and a report that already stores its dispatchId. A reschedule fired from Daily
+       has neither: its report was tied to the visit the other way round, by the
+       appointment's own fieldReportId — the link v2.0.0 made authoritative. Without
+       reading it the new visit was born with no office notes and no chain back to the
+       visit it continues. Still reading a written fact, never guessing. */
+    if(!oldTktId){try{oldTktId=((_linkIndex()||{}).claimedBy||{})[srcDocId]||""}catch(_e){}}
     var _pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
     var oldTkt=oldTktId?_pool.find(function(x){return x&&x.id===oldTktId}):null;
 
@@ -16290,7 +16332,12 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       reschedReportId:srcDocId,                // el reporte que la declaro
       reschedFromId:srcDocId,                  // (nombre historico, mismo valor)
       reschedAt:stamp,reschedAtMs:stampMs,
-      visitNum:(Number(base.visitNum)||Number(srcData.visitNum)||1)+1,
+      visitNum:(function(){var _v=Number(base.visitNum)||Number(srcData.visitNum)||1;
+      /* v2.70.0 — visitNum is the visit TYPE (1st, 2nd, CM, Repeat, Delivery, Spa Move), not a
+         counter: "+1" turned a rescheduled 2nd visit into CM ("no labor charge") and a
+         rescheduled CM into Repeat ("don't bill"). A return call is billed as a 2nd visit
+         however many times it is rescheduled; every other type keeps its own. */
+      return (_v===1||_v===2)?2:_v;})(),
       // ── lo que el tecnico informo, estructurado
       reschedReason:reason||"",reschedNote:reasonNote||"",
       reschedBlocker:srcData.reschedBlocker||"",
@@ -21254,6 +21301,7 @@ function _isVisibleDispatch(t,idx,today,isTech){
   if(!t)return false;
   if(t.source!=="dispatch")return false;
   if(t.status==="canceled")return false;
+  if(aspCitaMovida(t))return false; // v2.70.0 — moved before the visit: not on any route
   // v2.0.0: el booleano ya no decide. Si dice "reportado" pero no hay vinculo
   // valido, la visita SIGUE PENDIENTE y tiene que verse. Ese era exactamente
   // el caso del ticket de manana con la insignia verde.
@@ -21286,20 +21334,33 @@ const _fri=_buildFieldReportIndex();
 const fieldReportKeys=_fri.fieldReportKeys;
 const customerHasCompletedReport=_fri.customerHasCompletedReport;
 const customerReports=_fri.customerReports;
+/* ONE VISIT = ONE CARD (v2.69.0). Since v2.1.0 a reschedule no longer RECYCLES the
+   appointment: it closes it for what it was (keeping its date and its report link) and
+   creates a separate dateless document for the re-booking call. The CONTROL rule below
+   was written when the appointment DID get recycled and vanished from its day, so the
+   report card was the only trace left. Today the appointment is still there (OPTION A)
+   and the report came in on top of it: two cards for one visit. The report only earns
+   its own card when NO appointment on this calendar already stands for that visit. */
+const _lnkCal=_linkIndex();
+/* v2.70.0 — OPTION A reads the LINK (what v2.0.0 made the truth), not the loose
+   fieldReportSubmitted flag: the ✕ "Remove from calendar" sets that flag with no link,
+   and OPTION A kept putting the card back, now badge-less, looking like an open visit.
+   And an appointment moved before the visit stays for the office as a closed record. */
+const _citaEnCal=t=>!!(_isVisibleDispatch(t,_fri,today,isTech)||(!isTech&&t.source==="dispatch"&&t.status!=="canceled"&&(t.date||"").trim()&&(_isDispatchServed(t,_lnkCal)||aspCitaMovida(t))));
+const _repConCita=new Set();
+[...active,...done].forEach(t=>{if(t&&t.source==="dispatch"&&_citaEnCal(t)){const _r=_lnkCal.servedBy[t.id];if(_r)_repConCita.add(_r)}});
 const allTkts=[...active,...done].filter(t=>{
-  if(_isVisibleDispatch(t,_fri,today,isTech))return true; // open/pending dispatches, as before
-  // OPTION A (Jun 2026, requested by Alberto): keep COMPLETED visits visible in
-  // the calendar as green "✓ Reported" cards instead of vanishing the moment the
-  // field report is filed. Admin/organizer only — techs keep a clean forward
-  // schedule. Maps "Today's Routes" is UNAFFECTED: it calls _isVisibleDispatch
+  // Appointments: open/pending as before, plus OPTION A (Jun 2026, requested by
+  // Alberto): completed visits stay as green "✓ Reported" cards instead of vanishing
+  // the moment the field report is filed. Admin/organizer only — techs keep a clean
+  // forward schedule. Maps "Today's Routes" is UNAFFECTED: it calls _isVisibleDispatch
   // directly (not this pool), so finished stops still drop off the route.
-  if(!isTech&&t.source==="dispatch"&&t.fieldReportSubmitted===true&&t.status!=="canceled"&&(t.date||"").trim())return true;
-  // CONTROL (Jun 2026, Alberto): keep RESCHEDULED visits visible on their original
-  // day too. A reschedule field report (status "reschedule", source≠dispatch) means
-  // the tech DID go and report — show it as a "↻ Reported · Rescheduled" card so the
-  // daily control reflects what was reported. The re-booking call (the reused parent,
-  // now dateless) still lives in the Service Log "needs a date" queue, unaffected.
-  if(!isTech&&t.source!=="dispatch"&&t.status==="reschedule"&&(t.date||"").trim())return true;
+  if(t.source==="dispatch")return _citaEnCal(t);
+  // CONTROL (Jun 2026, Alberto): a reschedule field report means the tech DID go and
+  // report, so the day has to show it. Since v2.69.0 that is painted ON the card of its
+  // own appointment (the "↻ Reported · Rescheduled" badge); the report only gets a card
+  // of its own when no appointment stands for that visit (unscheduled walk-in).
+  if(!isTech&&t.status==="reschedule"&&(t.date||"").trim()&&!_repConCita.has(t.id))return true;
   return false;
 });
 // Helper used by tech-side filters below: does this ticket's `techs` array
@@ -22034,7 +22095,28 @@ function _callbackBannerHTML(t){
   }catch(_e){return""}
 }
 function statusBadge(t){var s=t.status||"pending";if(s==="pending"||!s)return "";if(s==="complete")return '<span class="st-badge st-complete">Submitted</span>';if(s==="done")return '<span class="st-badge st-done">'+icon("check",10,{color:"#047857"})+'Done</span>';if(s==="canceled")return '<span class="st-badge st-canceled">Canceled</span>';if(s==="reschedule")return '<span class="st-badge st-reschedule">Reschedule</span>';return ""}
-function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted;const _isTechView=currentUser&&currentUser.role==="tech";
+/* v2.70.0 — AN APPOINTMENT MOVED BEFORE THE VISIT. The office rescheduled it before anyone
+   went: the engine created the return call (reschedDispatchId) and no report ever closed
+   it. It is not a stop anymore — it leaves the tech's route, Today and Maps (the story
+   lives in the new visit) — and the office calendar keeps it as a closed
+   "↻ RESCHEDULED" record of that day. O(1): reads fields, never builds an index. */
+function aspCitaMovida(t){
+  return !!(t&&t.source==="dispatch"&&t.status==="reschedule"&&t.reschedDispatchId&&!t.fieldReportSubmitted);
+}
+/* v2.69.0 — did the visit of THIS appointment end in a reschedule? Read what the engine
+   already wrote: the appointment itself (reschedDispatchId, written by
+   _autoCreateReschedDispatch when it closes the old visit) or the report that serves it
+   (its status and its reschedDispatchId). reschedAtMs is deliberately NOT used: the
+   re-booking call carries it too and that one is not a rescheduled visit. */
+function _calVisitaReagendada(t,lnk){
+  if(!t||t.source!=="dispatch"||t.status==="canceled")return false;
+  var lk=lnk||_linkIndex();
+  var rid=lk.servedBy[t.id]; if(!rid)return false;
+  if(t.reschedDispatchId)return true;
+  var r=lk.byId[rid];
+  return !!(r&&(r.status==="reschedule"||r.reschedDispatchId));
+}
+function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted&&!aspCitaMovida(t);const _isTechView=currentUser&&currentUser.role==="tech";
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
   // Highlights the card in amber so it doesn't get lost in the calendar.
   // v2.2.0: solo cuenta la evidencia de ESTA visita, no la heredada de otra.
@@ -22043,13 +22125,17 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // Stays in the calendar as a green "✓ Reported" card instead of disappearing.
   // v2.0.0: la insignia verde sale del VINCULO, no del booleano. Si el dato
   // dice "reportada" pero no hay reporte real ligado, la tarjeta no lo afirma.
-  const reported=t.source==="dispatch"&&t.status!=="canceled"&&_isDispatchServed(t);
-  const reschedReport=t.source!=="dispatch"&&t.status==="reschedule"; // a filed reschedule report — tech went & reported; visit still needs re-booking
+  const _lnkC=_linkIndex();
+  const reported=t.source==="dispatch"&&t.status!=="canceled"&&_isDispatchServed(t,_lnkC);
+  // v2.69.0: a reported visit that ended in a reschedule is painted HERE, on its own
+  // appointment card, reading the link that is already written (_calVisitaReagendada).
+  const visitResched=reported&&_calVisitaReagendada(t,_lnkC);
+  const reschedReport=(t.source!=="dispatch"&&t.status==="reschedule")||visitResched; // tech went & reported; visit still needs re-booking
   let cardEdge="";
   if(t.isUrgent)cardEdge=";border-left:3px solid var(--c-danger-strong);background:var(--c-danger-bg)";
   else if(t.isNewSpa)cardEdge=";border-left:3px solid var(--c-purple-strong);background:var(--c-purple-bg)";
   else if(needsReport)cardEdge=";border-left:3px solid var(--c-warning-strong);background:var(--c-warning-bg)";
-  else if(reported)cardEdge=";border-left:3px solid var(--c-success-strong);background:var(--c-success-bg)";
+  else if(reported&&!visitResched)cardEdge=";border-left:3px solid var(--c-success-strong);background:var(--c-success-bg)";
   else if(t.paid)cardEdge=";border-left:3px solid var(--c-success-strong);background:var(--c-paid-tint)";
   const _slots=_tSlots(t);
   let h=`<div class="cal-tkt-mini${stRowClass}${_slots>1?" cal-slots-"+_slots:""}"${dragAttr} onclick="openTktDetail('${t.id}')" style="cursor:pointer;position:relative;${isDone?"opacity:.5":""}${cardEdge}">`;
@@ -22058,7 +22144,7 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // visually reads as occupied (4 = whole day).
   if(_slots>1)h+=`<div class="cal-allday-banner">${icon("clock",11,{style:"vertical-align:-1px"})} ${_slots>=4?"ALL DAY — takes the whole day":"TAKES "+_slots+" OF 4 SLOTS"}</div>`;
   
-  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">${icon("triangle-alert",10,{color:"#fff"})} NEEDS REPORT</span> `;if(reported)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-success-strong);color:#fff;display:inline-block;margin-right:4px">✓ REPORTED</span> `;if(reschedReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">↻ REPORTED · RESCHEDULED</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;{var _wc=_warrantyMiniChip(t);if(_wc)h+=_wc+' ';}{var _cm=_chemChip(t,true);if(_cm)h+=_cm+' ';}if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">${icon("flame",10,{color:"#fff"})} URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">${icon("sparkles",10,{color:"#fff"})} NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
+  if(canDismiss)h+=`<button onclick="calDismissTicket('${t.id}',${JSON.stringify(t.customer||"this ticket")},event)" title="Remove from calendar (mark as resolved without field report)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;background:rgba(220,38,38,.08);color:var(--c-danger-strong);border-radius:6px;cursor:pointer;font-size:var(--fs-md);line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2" onmouseover="this.style.background='var(--c-danger-strong)';this.style.color='#fff'" onmouseout="this.style.background='rgba(220,38,38,.08)';this.style.color='var(--c-danger-strong)'">✕</button>`;h+=`<h5${canDismiss?' style="padding-right:26px"':""}>${esc(t.customer||"—")}${_stb?' '+_stb:''}</h5><p class="tkt-techline">${_techAvatars(t,16)}<span class="tkt-techtxt">${(t.techs||[]).join(", ")||"Unassigned"}${t.arrival?" · "+t.arrival:""}</span></p>`;if(needsReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">${icon("triangle-alert",10,{color:"#fff"})} NEEDS REPORT</span> `;if(reported&&!visitResched)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-success-strong);color:#fff;display:inline-block;margin-right:4px">✓ REPORTED</span> `;if(aspCitaMovida(t))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">↻ RESCHEDULED</span> `;if(reschedReport)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-warning-strong);color:#fff;display:inline-block;margin-right:4px">↻ REPORTED · RESCHEDULED</span> `;if(zone)h+=`<span style="padding:2px 8px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:${zc.bg};color:${zc.text};margin-right:4px">${zone}</span>`;{var _wc=_warrantyMiniChip(t);if(_wc)h+=_wc+' ';}{var _cm=_chemChip(t,true);if(_cm)h+=_cm+' ';}if(t.paid&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:700;background:var(--c-success-strong);color:#fff;display:inline-flex;align-items:center;gap:3px">${icon("check",10,{color:"#fff"})}PAID</span> `;if(t.ccOnFile)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">CC ✓</span> `;if(t.ccRequested&&!_isTechView)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg)">Need CC</span> `;if(t.isRepeat)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-danger-bg);color:var(--c-danger-fg)">Repeat</span> `;if(t.isUrgent)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-danger-strong);color:#fff">${icon("flame",10,{color:"#fff"})} URGENT</span> `;if(t.isNewSpa)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:800;background:var(--c-purple-strong);color:#fff">${icon("sparkles",10,{color:"#fff"})} NEW SPA</span> `;if(ticketHasOpenTodo(t.id))h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-warning-bg);color:var(--c-warning-fg);display:inline-flex;align-items:center;gap:3px">${icon("list-todo",10,{color:"var(--c-warning-fg)"})}To Do</span> `;if(t.payCheck)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-info-bg);color:var(--c-info-fg)">Check</span> `;if(t.payCredit)h+=`<span style="padding:2px 6px;border-radius:4px;font-size:var(--fs-xs);font-weight:600;background:var(--c-money-bg);color:var(--c-money-fg)">Credit</span> `;if(fullAddr)h+=`<p style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px"><a href="https://maps.apple.com/?q=${encodeURIComponent(fullAddr)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("map-pin",10,{color:"var(--ac)"})}${esc(fullAddr)}</a></p>`;if(t.phone)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone)}</a></p>`;if(t.phone2)h+=`<p style="font-size:var(--fs-xs);color:var(--i3)"><a href="tel:${t.phone2}" onclick="event.stopPropagation()" style="color:var(--ac);text-decoration:underline;display:inline-flex;align-items:center;gap:3px">${icon("phone",10,{color:"var(--ac)"})}${esc(t.phone2)}</a></p>`;
 h+=`</div>`;return h}
 // Toggle paid status of a ticket — admin/organizer only (the UI also hides
 // the toggle from techs, but defense in depth prevents console-side bypass).
@@ -22408,6 +22494,20 @@ async function calDropOnTech(e,techName,ds){
 // that need to refresh it in place, like ZIP override saves).
 var _curOpenTktId=null;
 // Quick info chips for the ticket detail modal: # visits, last visit, zone, warranty.
+/* v2.70.0 — ONE visit = ONE count. The ticket chip and the customer list counted every
+   document of the household (the appointment, its field report and the return call that
+   has not happened yet), so one visit read "3 visits". A visit is what a tech did: a
+   field report (complete or rescheduled), or a legacy closed appointment that never got
+   a report document. */
+function _aspVisitasDe(arr){
+  var n=0;
+  (arr||[]).forEach(function(x){
+    if(!x||x.status==="canceled")return;
+    if(x.source!=="dispatch"){ if(x.status==="complete"||x.status==="done"||x.status==="reschedule")n++; }
+    else if((x.status==="done"||x.status==="complete")&&!x.fieldReportId)n++;
+  });
+  return n;
+}
 function _dtSummaryChips(t){
   try{
     var chips=[];
@@ -22415,7 +22515,7 @@ function _dtSummaryChips(t){
     var all=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
     var mine=all.filter(function(x){return((typeof _custGroupKey==="function")?_custGroupKey(x.customer):x.customer)===k});
     var doneCt=mine.filter(function(x){return x.status==="complete"||x.status==="done"}).length;
-    chips.push({ic:"🧾",label:mine.length+" visit"+(mine.length===1?"":"s")+(doneCt?" ("+doneCt+" done)":"")});
+    chips.push({ic:"🧾",label:_aspVisitasDe(mine)+" visit"+(_aspVisitasDe(mine)===1?"":"s")});
     var dates=mine.filter(function(x){return x.id!==t.id&&x.date}).map(function(x){return x.date}).sort();
     if(dates.length)chips.push({ic:"📅",label:"Last: "+dates[dates.length-1]});
     var doneTkts=mine.filter(function(x){return(x.status==="complete"||x.status==="done")&&x.date}).sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
@@ -23125,6 +23225,10 @@ function _dtLayoutV2(){
     else if(oc.indexOf("dtPickSuggested")>-1)dest=V;                         // sugerencia de t\u00E9cnico
     else if(el.querySelector&&el.querySelector("#dtCust,#dtAddr,#dtCcFile")){dest=C;more=true;seenCust=true;} // editor cliente+flags
     else if(/Spa Info|Notes|Historial del spa|Spa history/i.test(sect))dest=V; // esenciales de la visita
+    // v2.69.0: the reschedule/follow-up banner IS a banner, not a section — it belongs in
+    // the full-width top strip with the other banners, never folded behind "More options":
+    // on a return call it is the whole story of where this visit comes from.
+    else if(el.classList&&el.classList.contains("dt-resched-banner"))dest=top;
     else if(el.classList&&el.classList.contains("dt-sec")){dest=W;more=true;}  // reported/warranty/billing/report/charge log
     else if(seenCust&&(el.tagName==="DETAILS"||el.tagName==="A")){dest=C;more=true;} // review link + more messages
     else if(seenCust&&el.querySelector&&(el.querySelector('a[href^="tel:"]')||el.querySelector('a[href^="sms:"]'))){
@@ -23290,6 +23394,10 @@ function _reschedBannerHTML(t){
     if(!isSrc && !isBack && !t.reschedAt) return "";
 
     var when = String(t.reschedAt||"").trim();
+    /* v2.70.0 — the time reads like the rest of the app ("Tue Sep 22 · 3:50 PM"), taken
+       from reschedAtMs, the number the engine stores next to the locale text. */
+    try{ if(t.reschedAtMs){ var _wd=new Date(Number(t.reschedAtMs)), _lc=(typeof APP_LANG!=="undefined"&&APP_LANG==="es")?"es-US":"en-US";
+      if(!isNaN(_wd.getTime())) when=_wd.toLocaleDateString(_lc,{weekday:"short",month:"short",day:"numeric"}).replace(",","")+" \u00b7 "+_wd.toLocaleTimeString(_lc,{hour:"numeric",minute:"2-digit"}); } }catch(_e){}
     var reason = String(t.reschedReason||"").trim();
     var rnote  = String(t.reschedNote||"").trim();
     var blk="", av="";
@@ -23324,7 +23432,7 @@ function _reschedBannerHTML(t){
     var head = (isBack&&t&&t.autoFromFollowUp) ? L2("VISITA DE SEGUIMIENTO \u2014 falta fecha","FOLLOW-UP VISIT \u2014 needs a date") : isBack ? L2("LLAMADA DE VUELTA \u2014 falta fecha","RETURN CALL \u2014 needs a date")
                       : L2("ESTE TICKET SE REAGEND\u00d3","THIS TICKET WAS RESCHEDULED");
 
-    var h = '<div class="dt-sec" style="border:1px solid var(--ac);background:var(--acl);'
+    var h = '<div class="dt-sec dt-resched-banner" style="border:1px solid var(--ac);background:var(--acl);'
           + 'border-radius:12px;padding:13px 15px;margin:0 0 14px">'
           + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(rows.length?'10px':'0')+'">'
           + '<span style="font-size:15px">\u21BB</span>'
@@ -23585,7 +23693,7 @@ function openTktDetail(id){
         Object.keys(_srLoad).forEach(function(tn){if(_srLoad[tn]<_srLtN){_srLtN=_srLoad[tn];_srLt=tn;}});
         if(_srLt!==null){_srPick=_srLt;_srTxt='<b>'+esc(_srLt)+'</b> — lightest load that day ('+_srLtN+' stop'+(_srLtN===1?'':'s')+')';}
       }
-      if(_srTxt){
+      if(_srTxt&&_srDate){ /* v2.70.0 — with no date there is no 'that day' to weigh */
         h+='<button type="button" onclick="dtPickSuggested(\''+_srPick+'\')" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:9px 11px;background:var(--c-info-bg);border:1px solid var(--c-info-border);border-radius:9px;font-size:var(--fs-sm);color:var(--c-info-fg);line-height:1.4;cursor:pointer;font-family:inherit">\uD83D\uDCA1 <b style="font-weight:800">Suggested:</b> '+_srTxt+'<div style="font-size:var(--fs-xs);opacity:.85;margin-top:3px">Tap to assign \u2192</div></button>';
       }
     }
@@ -24172,6 +24280,13 @@ let _routeMapStops=[]; // [{tkt, lat, lng, address}]
 // Geocoding cache (query → {lat, lng} or "MISS"). Persisted in localStorage so we don't re-geocode the same address.
 // v3: bumped key to invalidate stale "MISS" entries from the narrower bbox era — addresses like
 // Rolla 65401 and Festus 63028 were marked MISS but are now valid service-area locations.
+/* v2.70.0 — a network failure is not "this address does not exist". The geocoders
+   returned null both for "no results" and for "no signal / rate-limited", and the caller
+   stored both as a permanent MISS: a phone that opened the app without signal lost those
+   map pins for good. _geoNetFail marks a failed call; MISS is written only when the
+   services actually answered. One-time purge of the MISS entries already poisoned. */
+var _geoNetFail=false;
+(function(){try{if(localStorage.getItem("aspen_geo_missfix_v1"))return;var c=JSON.parse(localStorage.getItem("aspen_geo_cache_v3")||"{}");Object.keys(c).forEach(function(k){if(c[k]==="MISS")delete c[k]});localStorage.setItem("aspen_geo_cache_v3",JSON.stringify(c));localStorage.setItem("aspen_geo_missfix_v1","1");}catch(_e){}})();
 function _getGeoCache(){try{return JSON.parse(localStorage.getItem("aspen_geo_cache_v3")||"{}")}catch(e){return{}}}
 function _setGeoCache(c){try{localStorage.setItem("aspen_geo_cache_v3",JSON.stringify(c))}catch(e){}}
 // Invalidate ALL cache entries that contain the old address fragment. Called
@@ -24297,7 +24412,7 @@ async function _geocodePhoton(q){
               "&lat="+STL_CENTER.lat+"&lon="+STL_CENTER.lng+
               "&q="+encodeURIComponent(q);
     const resp=await fetch(url);
-    if(!resp.ok)return null;
+    if(!resp.ok){_geoNetFail=true;return null;}
     const data=await resp.json();
     if(data&&data.features&&data.features.length){
       // Return the first result that's actually in the STL metro area
@@ -24309,7 +24424,7 @@ async function _geocodePhoton(q){
         }
       }
     }
-  }catch(e){console.warn("Photon error:",e)}
+  }catch(e){_geoNetFail=true;console.warn("Photon error:",e)}
   return null;
 }
 
@@ -24320,7 +24435,7 @@ async function _geocodeNominatim(q){
               "&viewbox="+STL_VIEWBOX_NOMINATIM+"&bounded=1"+
               "&q="+encodeURIComponent(q);
     const resp=await fetch(url,{headers:{"Accept":"application/json"}});
-    if(!resp.ok)return null;
+    if(!resp.ok){_geoNetFail=true;return null;}
     const data=await resp.json();
     if(data&&data.length){
       // Return the first result that's actually in the STL metro area
@@ -24329,7 +24444,7 @@ async function _geocodeNominatim(q){
         if(_isInSTL(result))return result;
       }
     }
-  }catch(e){console.warn("Nominatim error:",e)}
+  }catch(e){_geoNetFail=true;console.warn("Nominatim error:",e)}
   return null;
 }
 
@@ -24371,6 +24486,7 @@ async function geocodeTicket(t){
       return cache[key];
     }
     // Try Photon first (better for messy US addresses, no rate limit)
+    _geoNetFail=false;
     let result=await _geocodePhoton(q);
     // Fallback to Nominatim if Photon misses
     if(!result){
@@ -24382,8 +24498,7 @@ async function geocodeTicket(t){
       _setGeoCache(cache);
       return result;
     }
-    cache[key]="MISS";
-    _setGeoCache(cache);
+    if(!_geoNetFail){cache[key]="MISS";_setGeoCache(cache);} // v2.70.0 — only a real "not found"
     // Small pause between candidates to be polite to the geocoders
     if(i<queries.length-1)await new Promise(function(r){setTimeout(r,400)});
   }
@@ -25316,7 +25431,7 @@ function rndrCust(){
   let customers=Object.entries(custMap).map(([k,v])=>({key:k,...v}));
   if(q){const s=q.toLowerCase();customers=customers.filter(c=>c.name.toLowerCase().includes(s)||c.phone.includes(s)||(c.address||"").toLowerCase().includes(s)||(c.zone||"").toLowerCase().includes(s)||(c.city||"").toLowerCase().includes(s)||(c.zip||"").includes(s))}
   // sort
-  if(sortMode==="visits")customers.sort((a,b)=>b.tickets.length-a.tickets.length||a.name.localeCompare(b.name));
+  if(sortMode==="visits")customers.sort((a,b)=>_aspVisitasDe(b.tickets)-_aspVisitasDe(a.tickets)||a.name.localeCompare(b.name));
   else if(sortMode==="recent")customers.sort((a,b)=>(b.lastDate||"").localeCompare(a.lastDate||"")||a.name.localeCompare(b.name));
   else customers.sort((a,b)=>a.name.localeCompare(b.name));
 
@@ -25340,7 +25455,7 @@ function rndrCust(){
       return '<div class="qb-cust-row'+(isActive?" active":"")+'" onclick="qbCustSelect(\''+keyEsc+'\')">'+
              _avatarHTML(c.name,30)+
              '<span class="qb-cust-row-name"><span class="qb-cust-row-nm">'+alertBadge+esc(c.name)+'</span>'+sub+'</span>'+
-             '<span class="qb-cust-row-visits">'+c.tickets.length+'</span>'+
+             '<span class="qb-cust-row-visits">'+_aspVisitasDe(c.tickets)+'</span>'+
              zoneTag+
              '</div>';
     }).join("");
@@ -25608,7 +25723,7 @@ function qbCustRenderDetail(customers){
          '</div>'+
        '</div>'+
        '<div class="qb-cust-hero-stats">'+
-         '<div class="qb-cust-stat"><div class="v">'+c.tickets.length+'</div><div class="l">Visit'+(c.tickets.length!==1?'s':'')+'</div></div>'+
+         '<div class="qb-cust-stat"><div class="v">'+_aspVisitasDe(c.tickets)+'</div><div class="l">Visit'+(_aspVisitasDe(c.tickets)!==1?'s':'')+'</div></div>'+
          '<div class="qb-cust-stat"><div class="v" title="'+esc(c.zone||'')+'">'+esc(c.zone||'\u2014')+'</div><div class="l">Zone</div></div>'+
          '<div class="qb-cust-stat"><div class="v">'+_lastTxt+'</div><div class="l">Last service</div></div>'+
        '</div>'+
@@ -49061,6 +49176,9 @@ function clase(t){
   var s=String(t.status||"");
   if(s==="canceled"||s==="cancelled")return "asp-st-canc";
   if(s==="reschedule")return "asp-st-resch";
+  /* v2.69.0: an appointment whose visit ended in a reschedule wears the reschedule
+     rail, not the green "reported" one — same truth calTktCard paints. */
+  if(typeof _calVisitaReagendada==="function"&&_calVisitaReagendada(t))return "asp-st-resch";
   if(t.fieldReportSubmitted||s==="complete"||s==="done")return "asp-st-rep";
   if(t.urgent||t.isUrgent)return "asp-st-urg";
   return "asp-st-pend";
@@ -49407,6 +49525,8 @@ function paradas(){
            indice; Today no lo hacia. */
         if(t.source==="dispatch" && _idxRep && _idxRep.servedDispatchIds &&
            _idxRep.servedDispatchIds.has(t.id))return;
+        // v2.70.0 — an appointment the office rescheduled before the visit is not a stop
+        if(typeof aspCitaMovida==="function" && aspCitaMovida(t))return;
         out.push(t);
       });
     }
@@ -49655,7 +49775,7 @@ function pinta(){
         +'<span>'+c.paradas.length+'</span></div>';
       c.paradas.forEach(function(t){
         var fin=cerrada(t), esSig=(sig&&t===sig), m=monto(t), md=tina(t);
-        var estado = fin ? '<span class="tdy-p hecha">'+L2("Hecha","Done")+'</span>'
+        var estado = fin ? ((t&&t.source!=="dispatch"&&t.status==="reschedule") ? '<span class="tdy-p hecha">\u21BB '+L2("Reagendada","Rescheduled")+'</span>' : '<span class="tdy-p hecha">'+L2("Hecha","Done")+'</span>')
                  : esSig? '<span class="tdy-p now">'+L2("Ahora","Now")+'</span>' : '';
         if(garantia(t))estado+='<span class="tdy-p gar">'+L2("Gar.","Wty")+'</span>';
         /* v2.60.0 — el campo que se escribe es isUrgent; preguntar solo por
@@ -51238,12 +51358,25 @@ window.aspSeCerroEl=function(t,ds){
 /* ¿esta cerrada, sea como sea que se cerro? */
 window.aspEstaCerrada=function(t){
   if(!t)return false;
+  if(t.source!=="dispatch"&&t.status==="reschedule")return true; // v2.70.0 — the tech went, worked and left
   if(t.fieldReportSubmitted)return true;
   if(t.status==="done"||t.status==="complete")return true;
   try{ return (typeof done!=="undefined"&&Array.isArray(done)&&done.indexOf(t)>=0) }catch(_e){ return false }
 };
 /* ¿el tecnico mando su reporte? */
-window.aspTieneReporte=function(t){ return !!(t&&t.fieldReportSubmitted) };
+window.aspTieneReporte=function(t){
+  if(!t)return false;
+  /* v2.70.0 — a field report IS the report. Since v2.60 Today lists the report in place
+     of its served appointment, and asking the report for fieldReportSubmitted (a flag
+     only the appointment carries) always said "no": REPORTS read 0/N and the "closed,
+     no report" alarm fired once per report filed. An appointment has a report when its
+     link is written. The link index is reused for a second, never rebuilt per ticket. */
+  if(t.source!=="dispatch")return true;
+  try{ if(typeof _isDispatchServed==="function"&&typeof _linkIndex==="function"){
+    var _k=Date.now()>>10; if(window.__aspLkK!==_k){ window.__aspLk=_linkIndex(); window.__aspLkK=_k; }
+    return !!_isDispatchServed(t,window.__aspLk); } }catch(_e){}
+  return !!t.fieldReportSubmitted;
+};
 /* cerradas SIN reporte: el aviso accionable que sale de cruzar las dos */
 window.aspCerradaSinReporte=function(t){ return aspEstaCerrada(t)&&!aspTieneReporte(t) };
 })();
@@ -51756,7 +51889,8 @@ window.aspOrigenDeContinuacion=function(t){
     /* 2 · despachos sin agendar: mismo predicado que el KPI Pending Dispatch */
     var pend=0;
     try{ pend=(active||[]).filter(function(t){
-      return t && t.source==="dispatch" && t.status==="pending" && !t.fieldReportSubmitted;
+      return t && t.source==="dispatch" && t.status==="pending" && !t.fieldReportSubmitted
+        && (!String(t.date||"").trim() || !(t.techs||[]).length); // v2.70.0 — "waiting on day and tech" means exactly that
     }).length; }catch(_e){}
     if(pend>0) A.push({n:pend,sev:"urg",t:"Unscheduled dispatches",
       s:"Waiting on day and tech",
@@ -51766,7 +51900,9 @@ window.aspOrigenDeContinuacion=function(t){
     var corte=_diaCorte(30), sinRep=0;
     try{ sinRep=pool.filter(function(t){
       if(!t || !t.date || String(t.date).slice(0,10) < corte) return false;
-      if(t.source==="dispatch") return false;
+      // v2.70.0 — the question is about APPOINTMENTS closed with no report link (a report is
+      // its own report); canceled ones are not "closed without a report".
+      if(t.source!=="dispatch" || t.status==="canceled") return false;
       return (typeof aspCerradaSinReporte==="function") ? aspCerradaSinReporte(t) : false;
     }).length; }catch(_e){}
     if(sinRep>0) A.push({n:sinRep,sev:"warn",t:"Closed without a report",
@@ -55250,5 +55386,162 @@ window.v8EmailCurrentReport=async function(){
 })();
 </script>
 
+
+<style id="aspenPulidoRouteStyle">
+/* v2.70.0 — Route & return-call polish (V1–V7, V9, V10). Reversible: delete this block and
+   aspenPulidoRouteScript, or set localStorage pulidoRoute="0". Everything is scoped to
+   body.asp-pulido, which only the script adds. */
+body.asp-pulido #calGrid .ctl-now{z-index:0!important;opacity:.5}
+body.asp-pulido #calGrid .ctl-slot{z-index:3}
+body.asp-pulido .asp-nowpill{position:absolute;left:0;right:4px;transform:translateY(-50%);background:#E0463A;color:#fff;font:700 10px/1 "DM Sans",system-ui,sans-serif;padding:3px 4px;border-radius:5px;text-align:center;z-index:5;pointer-events:none}
+body.asp-pulido #calGrid .asp-hr{font:800 12px/1 "DM Sans",system-ui,sans-serif;background:var(--br);color:#fff;padding:3px 7px;border-radius:5px;letter-spacing:.02em}
+body.asp-pulido #calGrid .asp-with{font-size:var(--fs-xs,11px);color:var(--i2);margin-left:6px}
+body.asp-pulido #calGrid .asp-addr1{white-space:nowrap;overflow:hidden;display:flex!important;align-items:center;gap:6px}
+body.asp-pulido #calGrid .asp-addr1a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block!important;max-width:78%;text-decoration:none!important}
+body.asp-pulido #calGrid .asp-tel{text-decoration:none;font-size:12px;margin-left:auto;background:var(--acl);border-radius:6px;padding:1px 6px}
+body.asp-pulido #calGrid .asp-nowar{display:none!important}
+body.asp-pulido #calGrid .cal-tkt-mini [onclick*="calDismissTicket"]{background:transparent!important;color:var(--i3)!important;border:1px solid var(--ln)!important;opacity:.55;transform:scale(.85)}
+body.asp-pulido #calGrid .cal-tkt-mini:hover [onclick*="calDismissTicket"]{opacity:1}
+body.asp-pulido #calGrid .cal-cmd-stat.asp-kzero{opacity:.42;filter:grayscale(1)}
+body.asp-pulido #calGrid .cal-cmd-stat.asp-kwarn{box-shadow:inset 3px 0 0 #E0463A}
+body.asp-pulido .asp-needdate{background:var(--acl);border:1.5px dashed var(--ac);border-radius:12px;padding:12px 14px;margin:6px 0 10px}
+body.asp-pulido .asp-nd-t{font:800 13px/1.3 "DM Sans",system-ui,sans-serif;color:var(--acd)}
+body.asp-pulido .asp-nd-s{font-size:12.5px;color:var(--i2);margin-top:4px}
+body.asp-pulido .asp-ndfield{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(212,119,44,.18)!important}
+body.asp-pulido .asp-tl{margin:0 0 10px;border-left:2px solid var(--ln);padding-left:14px}
+body.asp-pulido .asp-tl-i{position:relative;margin:0 0 10px}
+body.asp-pulido .asp-tl-dot{position:absolute;left:-20px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--i3)}
+body.asp-pulido .asp-tl-i.r .asp-tl-dot{background:var(--ac)}
+body.asp-pulido .asp-tl-h{font:700 11px/1.2 "DM Sans",system-ui,sans-serif;color:var(--i2);text-transform:uppercase;letter-spacing:.04em}
+body.asp-pulido .asp-tl-i.r .asp-tl-h{color:var(--acd)}
+body.asp-pulido .asp-tl-x{font-size:13px;color:var(--ink);margin-top:3px;white-space:pre-wrap}
+body.asp-pulido .asp-tl-edit{background:var(--cd);border:1px dashed var(--ln);border-radius:10px;padding:9px 12px;width:100%;text-align:left;color:var(--i2);font:600 13px/1.2 "DM Sans",system-ui,sans-serif;cursor:pointer}
+@media(min-width:1100px){
+ body.asp-pulido #tktDetailActionsWrap .asp-act-neutral{background:var(--cd)!important;color:var(--ink)!important;border:1px solid var(--ln)!important;box-shadow:none!important}
+ body.asp-pulido #tktDetailActionsWrap .asp-act-danger{background:transparent!important;color:#B42318!important;border:1px solid #F1C7C2!important;box-shadow:none!important}
+}
+</style>
+<script id="aspenPulidoRouteScript">
+(function(){
+  "use strict";
+  try{ if(localStorage.getItem("pulidoRoute")==="0")return; }catch(_e){}
+  if(document.body)document.body.classList.add("asp-pulido");
+  var L=function(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } };
+  try{ if(typeof TR==="object"&&TR){ TR["\u21BB RESCHEDULED"]=TR["\u21BB RESCHEDULED"]||"\u21BB REAGENDADA"; } }catch(_e){}
+  function pool(){ return [].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]); }
+  function esc3(x){ return String(x==null?"":x).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]}) }
+
+  /* ── Route view: V1 now pill · V2 time first · V3 warranty only when covered ·
+        V4 one-line address + phone icon · V5 quiet zeros · (V6 is CSS only) */
+  function route(){
+    var grid=document.getElementById("calGrid"); if(!grid||!grid.querySelector(".ctl-body"))return;
+    var byId={}; pool().forEach(function(t){ if(t&&t.id)byId[t.id]=t });
+    grid.querySelectorAll(".asp-nowpill").forEach(function(x){x.remove()});
+    var hrs=grid.querySelector(".ctl-hours"), now=grid.querySelector(".ctl-now");
+    if(hrs&&now&&now.style.top){
+      var p=document.createElement("div"); p.className="asp-nowpill"; p.style.top=now.style.top;
+      try{ p.textContent=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M$/i,""); }catch(_e){ p.textContent="now" }
+      if(getComputedStyle(hrs).position==="static")hrs.style.position="relative";
+      hrs.appendChild(p);
+    }
+    var heads=grid.querySelectorAll(".ctl-head .ctl-tcol");
+    grid.querySelectorAll(".ctl-body .ctl-lane").forEach(function(lane,i){
+      var tech=heads[i]?String(heads[i].textContent||"").split("(")[0].trim().toLowerCase():"";
+      lane.querySelectorAll(".cal-tkt-mini").forEach(function(c){
+        if(c.getAttribute("data-asp-pul")==="1")return; c.setAttribute("data-asp-pul","1");
+        var sl=c.closest(".ctl-slot"), t=sl&&byId[sl.getAttribute("data-id")];
+        var line=c.querySelector(".tkt-techline"), tx=line&&line.querySelector(".tkt-techtxt");
+        if(tx){
+          var parts=String(tx.textContent||"").split("\u00b7"), hr=(parts[1]||"").trim();
+          var names=(parts[0]||"").split(",").map(function(x){return x.trim()}).filter(Boolean);
+          if(hr&&tech&&names.length&&names[0].toLowerCase()===tech){
+            var rest=names.slice(1);
+            line.innerHTML='<span class="asp-hr">'+esc3(hr)+'</span>'+(rest.length?'<span class="asp-with">+ '+esc3(rest.join(", "))+'</span>':'');
+          }
+        }
+        if(t&&!(t.warranty&&t.warranty.has===true)){
+          c.querySelectorAll("span").forEach(function(sp){ if(String(sp.textContent||"").indexOf("\uD83D\uDCB2")===0)sp.classList.add("asp-nowar") });
+        }
+        var map=c.querySelector('a[href*="maps"]'), tel=c.querySelector('a[href^="tel:"]');
+        var mp=map&&map.closest("p");
+        if(mp){
+          mp.classList.add("asp-addr1"); map.classList.add("asp-addr1a");
+          if(tel){
+            var tp=tel.closest("p"), ic=document.createElement("a");
+            ic.href=tel.getAttribute("href"); ic.className="asp-tel"; ic.textContent="\uD83D\uDCDE";
+            ic.title=tel.textContent||""; ic.setAttribute("onclick","event.stopPropagation()");
+            mp.appendChild(ic); if(tp&&tp!==mp)tp.style.display="none";
+          }
+        }
+      });
+    });
+    grid.querySelectorAll(".cal-cmd .cal-cmd-stat").forEach(function(st){
+      var tx=String(st.innerText||""), v=(tx.match(/\d+/)||["0"])[0];
+      st.classList.toggle("asp-kzero",v==="0");
+      st.classList.toggle("asp-kwarn",v!=="0"&&/URGENT|UNASSIGNED|URGENTE|SIN ASIGNAR/i.test(tx));
+    });
+  }
+
+  /* ── Return-call sheet: V7 history as a timeline (the notes box keeps its full text —
+        it auto-saves, so it is hidden behind "Edit notes", never emptied) · V9 needs a
+        date · V10 action hierarchy (desktop CSS) */
+  function sheet(){
+    var body=document.getElementById("tktDetailBody"); if(!body)return;
+    var id=(typeof _curOpenTktId!=="undefined")?_curOpenTktId:null, t=null;
+    pool().forEach(function(x){ if(x&&x.id===id)t=x });
+    if(!t)return;
+    var back=(typeof aspEsContinuacion==="function")?aspEsContinuacion(t):!!t.autoFromResched;
+    if(back&&!String(t.date||"").trim()&&!body.querySelector(".asp-needdate")){
+      var d=document.getElementById("dtDate"), box=d&&d.closest("div"), host=box&&box.parentNode;
+      if(host&&host.parentNode){
+        var why=[t.reschedReason,t.reschedNote].filter(Boolean).join(" \u2014 ");
+        var cta=document.createElement("div"); cta.className="asp-needdate";
+        cta.innerHTML='<div class="asp-nd-t">\uD83D\uDCC5 '+esc3(L("Esta visita de vuelta necesita fecha","This return call needs a date"))+'</div>'+(why?'<div class="asp-nd-s">'+esc3(why)+'</div>':'');
+        host.parentNode.insertBefore(cta,host);
+        ["dtDate","dtArrival"].forEach(function(k){ var x=document.getElementById(k); if(x)x.classList.add("asp-ndfield") });
+      }
+    }
+    var ta=document.getElementById("tktDetailNotes");
+    if(back&&ta&&!body.querySelector(".asp-tl")&&/\n\s*\n/.test(ta.value||"")){
+      var blocks=String(ta.value).split(/\n\s*\n/).map(function(b){return b.trim()}).filter(Boolean);
+      var H='<div class="asp-tl">';
+      blocks.forEach(function(b){
+        var lines=b.split("\n"), head=lines[0]||"", rest=lines.slice(1).join("\n");
+        var isR=/RESCHEDULE|FOLLOW-UP|REAGEND|SEGUIMIENTO|\u21BB/i.test(head);
+        var isO=/Previous call|OFFICE|oficina/i.test(head), isT=/Tech notes|t[e\u00e9]cnico/i.test(head);
+        var tag=isR?"\u21BB "+L("Reagendo","Rescheduled"):isO?"\uD83C\uDFE2 "+L("Nota de oficina","Office note"):isT?"\uD83D\uDD27 "+L("Nota del t\u00e9cnico","Tech note"):"\uD83D\uDCDD "+L("Nota","Note");
+        var m=b.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/), when="";
+        if(m){ try{ when=new Date(+m[3],+m[2]-1,+m[1]).toLocaleDateString((typeof APP_LANG!=="undefined"&&APP_LANG==="es")?"es-US":"en-US",{weekday:"short",month:"short",day:"numeric"}) }catch(_e){} }
+        var txt=isR?b.replace(/^[^\u2014]*\u2014\s*/,""):(rest||head);
+        if(!isR&&m)txt=txt.replace(/^\s*\d{2}\/\d{2}\/\d{4}\s*/,"");
+        H+='<div class="asp-tl-i'+(isR?' r':'')+'"><span class="asp-tl-dot"></span><div class="asp-tl-h">'+esc3(tag)+(when?' \u00b7 '+esc3(when):'')+'</div><div class="asp-tl-x">'+esc3(txt)+'</div></div>';
+      });
+      H+='</div>';
+      ta.insertAdjacentHTML("beforebegin",H);
+      var btn=document.createElement("button"); btn.type="button"; btn.className="asp-tl-edit";
+      btn.textContent="\u270F\uFE0F "+L("Editar o agregar notas","Edit or add notes");
+      ta.parentNode.insertBefore(btn,ta);
+      var hid=[].slice.call(ta.parentNode.children).filter(function(x){ return x!==ta&&x!==btn&&x.tagName==="BUTTON" });
+      ta.style.display="none"; hid.forEach(function(x){ x.style.display="none" });
+      btn.onclick=function(){ ta.style.display=""; hid.forEach(function(x){ x.style.display="" }); btn.remove();
+        try{ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); ta.scrollTop=ta.scrollHeight; }catch(_e){} };
+    }
+    var aw=document.getElementById("tktDetailActionsWrap");
+    if(aw&&!aw.classList.contains("asp-acts")){
+      aw.classList.add("asp-acts");
+      [].slice.call(aw.querySelectorAll("button")).forEach(function(b){
+        var tx=String(b.innerText||"");
+        if(/Cancel Visit|Cancelar visita|Delete|Eliminar|Borrar/i.test(tx))b.classList.add("asp-act-danger");
+        else if(!/Save|Guardar/i.test(tx))b.classList.add("asp-act-neutral");
+      });
+    }
+  }
+
+  if(typeof window.rndrCal==="function"){ var _or=window.rndrCal; window.rndrCal=function(){ var r=_or.apply(this,arguments); try{ route() }catch(_e){} return r }; }
+  if(typeof window.openTktDetail==="function"){ var _oo=window.openTktDetail; window.openTktDetail=function(){ var r=_oo.apply(this,arguments); setTimeout(function(){ try{ sheet() }catch(_e){} },60); setTimeout(function(){ try{ sheet() }catch(_e){} },450); return r }; }
+  setTimeout(function(){ try{ route() }catch(_e){} },1600);
+  window._aspPulidoRoute={route:route,sheet:sheet};
+})();
+</script>
 </body>
 </html>
