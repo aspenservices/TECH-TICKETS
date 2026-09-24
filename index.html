@@ -6902,7 +6902,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.70.0";
+var APP_VERSION="2.71.0";
 var BUILD_DATE="2026-09-14";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -18172,9 +18172,9 @@ function openReportModal(isDone,i){
   // Action buttons
   // Two-birds AI: one short line for QuickBooks + one polished paragraph for the invoice.
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
-  h+='<button id="qbShortBtn" onclick="copyQBShort()" style="flex:1;min-width:180px;padding:13px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">📋 AI · Copy for QuickBooks</button>';
-  h+='<button id="invBtn" onclick="copyInvoiceDetailed()" style="flex:1;min-width:180px;padding:13px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">📄 AI · Copy for Invoice</button>';
+  h+='<button id="aiBothBtn" onclick="copyAIBoth()" style="flex:1;min-width:220px;padding:13px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">✨ AI · QuickBooks + Invoice</button>';
   h+='</div>';
+  h+='<div id="aiBothOut"></div>'; // v2.71.0 — both AI texts appear here, inside this window
   h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-bottom:10px;text-align:center">Both start with the technician\'s name. QuickBooks = short line · Invoice = polished paragraph.</div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
   h+='<button onclick="sendReportEmail()" style="flex:1;min-width:160px;padding:12px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer">📧 Email (.eml)</button>';
@@ -18361,10 +18361,19 @@ async function _aiSummarize(sysPrompt,rawText){
 }
 
 // A tiny copyable result popup (shared by both buttons).
+/* v2.71.0 — THE RESULT WAS OPENING BEHIND THE REPORT WINDOW. This popup was hard-coded at
+   z-index 10001; "Send Customer Report" is a .mbg modal on --z-modal (1000000 since v2.40.0),
+   so from that day on the result sat under the window that opened it. It now lives on the
+   dialog layer (--z-dialog, above modals, below toasts). */
+async function _aiCopyMark(v,taEl){
+    try{await navigator.clipboard.writeText(v);}catch(_e){var ta=taEl||document.getElementById("aiCopyText");ta.select();document.execCommand("copy");}
+    toast("Copied ✓");
+    try{if(db&&_repCurrentTicket&&_repCurrentTicket.id){db.collection("tickets").doc(_repCurrentTicket.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()});_repCurrentTicket.qbCopied=true;if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();}}catch(_qe){}
+  }
 function _showCopyResult(title,text,accent){
   var ov=document.getElementById("aiCopyOv");
   if(!ov){ov=document.createElement("div");ov.id="aiCopyOv";
-    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10001;padding:16px";
+    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:var(--z-dialog,1000005);padding:16px";
     ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;max-height:88dvh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 id="aiCopyTitle" style="font-size:16px;font-weight:800;margin:0"></h3><button onclick="document.getElementById(\'aiCopyOv\').style.display=\'none\'" style="border:none;background:transparent;font-size:22px;cursor:pointer;color:#888">×</button></div>'
       +'<textarea id="aiCopyText" style="width:100%;min-height:130px;padding:12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;font-family:inherit;line-height:1.5;box-sizing:border-box;resize:vertical"></textarea>'
@@ -18379,19 +18388,19 @@ function _showCopyResult(title,text,accent){
   btn.style.background=accent||"var(--br)";
   btn.onclick=async function(){
     var v=document.getElementById("aiCopyText").value;
-    try{await navigator.clipboard.writeText(v);}catch(_e){var ta=document.getElementById("aiCopyText");ta.select();document.execCommand("copy");}
-    toast("Copied ✓");
-    try{if(db&&_repCurrentTicket&&_repCurrentTicket.id){db.collection("tickets").doc(_repCurrentTicket.id).update({qbCopied:true,qbCopiedAt:new Date().toLocaleString()});_repCurrentTicket.qbCopied=true;if(typeof _bumpQbCopyCount==="function")_bumpQbCopyCount();}}catch(_qe){}
+    await _aiCopyMark(v,document.getElementById("aiCopyText"));
   };
 }
 
+/* v2.71.0 — prompt moved here unchanged so the single AI button reuses it word for word */
+function _repPromptQB(t){return "You condense a spa technician's field notes into a SHORT QuickBooks line item. Rules: Write in English. 1 to 2 lines, maximum ~30 words. Third person, past tense. START with the technician name followed by an em dash, e.g. \""+(_repTechName(t)||"Technician")+" — \". State only the concrete work done and the outcome. No greetings, no emojis, no bullet points, no customer name, no filler like 'I' or 'we'. Output ONLY the finished line, nothing else. Technician name to use: "+(_repTechName(t)||"Technician")+".";}
 async function copyQBShort(){
   const t=_repCurrentTicket;if(!t)return;
   const raw=((document.getElementById("repNotesEdit")||{}).value||"").trim();
   if(!raw){toast("Nothing to summarize — notes are empty","warn");return;}
   const btn=document.getElementById("qbShortBtn");const o=btn?btn.innerHTML:"";
   if(btn){btn.disabled=true;btn.style.opacity=".7";btn.innerHTML="⏳ Summarizing…";}
-  const sys="You condense a spa technician's field notes into a SHORT QuickBooks line item. Rules: Write in English. 1 to 2 lines, maximum ~30 words. Third person, past tense. START with the technician name followed by an em dash, e.g. \""+(_repTechName(t)||"Technician")+" — \". State only the concrete work done and the outcome. No greetings, no emojis, no bullet points, no customer name, no filler like 'I' or 'we'. Output ONLY the finished line, nothing else. Technician name to use: "+(_repTechName(t)||"Technician")+".";
+  const sys=_repPromptQB(t);
   try{
     const out=await _aiSummarize(sys,raw);
     _showCopyResult("📋 QuickBooks summary (short)",out,"linear-gradient(135deg,#7c3aed,#c2410c)");
@@ -18399,19 +18408,50 @@ async function copyQBShort(){
   finally{if(btn){btn.disabled=false;btn.style.opacity="1";btn.innerHTML=o;}}
 }
 
+/* v2.71.0 — prompt moved here unchanged so the single AI button reuses it word for word */
+function _repPromptInv(t){return "You rewrite a spa technician's field notes into a polished, professional paragraph for a customer invoice. Rules: Write in English. Well-written, clear, courteous, third person, past tense. START by naming the technician who performed the visit, e.g. \"Service performed by "+(_repTechName(t)||"our technician")+". \" Describe what was inspected, found, and repaired, and the final result, in complete sentences. Keep it concise (2 to 4 sentences). No emojis, no greeting line, no signature, no bullet points. Output ONLY the paragraph. Technician name to use: "+(_repTechName(t)||"our technician")+".";}
 async function copyInvoiceDetailed(){
   const t=_repCurrentTicket;if(!t)return;
   const raw=((document.getElementById("repNotesEdit")||{}).value||"").trim();
   if(!raw){toast("Nothing to summarize — notes are empty","warn");return;}
   const btn=document.getElementById("invBtn");const o=btn?btn.innerHTML:"";
   if(btn){btn.disabled=true;btn.style.opacity=".7";btn.innerHTML="⏳ Writing…";}
-  const sys="You rewrite a spa technician's field notes into a polished, professional paragraph for a customer invoice. Rules: Write in English. Well-written, clear, courteous, third person, past tense. START by naming the technician who performed the visit, e.g. \"Service performed by "+(_repTechName(t)||"our technician")+". \" Describe what was inspected, found, and repaired, and the final result, in complete sentences. Keep it concise (2 to 4 sentences). No emojis, no greeting line, no signature, no bullet points. Output ONLY the paragraph. Technician name to use: "+(_repTechName(t)||"our technician")+".";
+  const sys=_repPromptInv(t);
   try{
     const out=await _aiSummarize(sys,raw);
     _showCopyResult("📄 Invoice description (detailed)",out,"var(--br)");
   }catch(e){toast((e&&e.message)||"AI request failed","err");}
   finally{if(btn){btn.disabled=false;btn.style.opacity="1";btn.innerHTML=o;}}
 }
+
+/* v2.71.0 — ONE AI BUTTON FOR BOTH TEXTS. It asks for the QuickBooks line and the invoice
+   paragraph at the same time, with the SAME two prompts the old buttons used, and shows both
+   INSIDE the report window, each with its own Copy — no second window that can end up behind.
+   Copying either one marks the ticket as copied to QuickBooks, exactly as before. */
+async function copyAIBoth(){
+  const t=_repCurrentTicket;if(!t)return;
+  const raw=((document.getElementById("repNotesEdit")||{}).value||"").trim();
+  if(!raw){toast("Nothing to summarize — notes are empty","warn");return;}
+  const btn=document.getElementById("aiBothBtn"),out=document.getElementById("aiBothOut");const o=btn?btn.innerHTML:"";
+  if(btn){btn.disabled=true;btn.style.opacity=".7";btn.innerHTML="⏳ Writing both…";}
+  try{
+    const r=await Promise.allSettled([_aiSummarize(_repPromptQB(t),raw),_aiSummarize(_repPromptInv(t),raw)]);
+    const card=function(k,title,accent,res){
+      if(res.status!=="fulfilled")return '<div style="margin-top:10px;padding:12px;border-radius:10px;background:#FEF2F2;color:#991B1B;font-size:var(--fs-sm)"><b>'+esc(title)+'</b> — '+esc((res.reason&&res.reason.message)||"AI request failed")+'</div>';
+      return '<div style="margin-top:10px;border:1.5px solid var(--ln);border-radius:12px;padding:12px;background:var(--cd)">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><b style="font-size:var(--fs-md)">'+esc(title)+'</b>'
+        +'<button onclick="_aiBothCopy(\''+k+'\')" style="padding:8px 14px;border:none;border-radius:9px;color:#fff;font-weight:800;cursor:pointer;background:'+accent+'">📋 Copy</button></div>'
+        +'<textarea id="aiBothTxt_'+k+'" style="width:100%;min-height:'+(k==="qb"?70:120)+'px;padding:10px;border:1.5px solid var(--ln);border-radius:10px;font-size:var(--fs-sm);font-family:inherit;line-height:1.5;box-sizing:border-box;resize:vertical;background:var(--cd);color:var(--ink)">'+esc(res.value||"")+'</textarea></div>';
+    };
+    if(out){
+      out.innerHTML=card("qb","📋 QuickBooks (short)","linear-gradient(135deg,#7c3aed,#c2410c)",r[0])+card("inv","📄 Invoice (detailed)","var(--br)",r[1])
+        +'<div style="font-size:11px;color:var(--i3);margin:6px 0 2px;text-align:center">You can edit either text before copying.</div>';
+      try{out.scrollIntoView({block:"nearest",behavior:"smooth"})}catch(_e){}
+    }
+  }catch(e){toast((e&&e.message)||"AI request failed","err");}
+  finally{if(btn){btn.disabled=false;btn.style.opacity="1";btn.innerHTML=o;}}
+}
+function _aiBothCopy(k){var ta=document.getElementById("aiBothTxt_"+k);if(ta)_aiCopyMark(ta.value,ta);}
 
 // ── One-shot: Improve with AI, then copy QB text, in a single click (Feature 2)
 
@@ -54137,6 +54177,7 @@ function openMenu20(ev,id){
   var e=alerts20().find(function(x){return String(x.id)===String(id)}),i=e&&inv20(e),el=menuEl20();
   if(!e)return;
   var h='<button onclick="pf20OpenCustomer(\''+eventId20(e)+'\')">👤 Customer 360 · payment history</button>';
+  h+='<button onclick="pf20AddNote(\''+eventId20(e)+'\')">📝 Add follow-up note</button>';
   if(i){
     h+='<button onclick="pf20Contact(\''+eventId20(e)+'\')">✉ Send payment request</button>'
       +'<button onclick="pf20Payment(\''+eventId20(e)+'\')">💳 Update payment</button>'
@@ -54155,6 +54196,46 @@ function openMenu20(ev,id){
   el.style.left=left+'px';el.style.top=top+'px';el.classList.add('on');
 }
 
+/* v2.71.0 — FOLLOW-UP NOTES ON EVERY PENDING INVOICE. The notes already existed: userNotes
+   ({name,text,date}) on the cross_app_events case, shown by the old vertical Alerts list that
+   was hidden in August. The Payment Follow-up board never showed them. They live on the case
+   itself, so they survive "Move to Collection Process" and "Resolve". */
+var notesOpen20={};
+function evDoc20(id){try{var a=(typeof crossAppEvents!=="undefined"&&Array.isArray(crossAppEvents))?crossAppEvents:[];for(var k=0;k<a.length;k++)if(String(a[k].id)===String(id))return a[k]}catch(_e){}return null}
+function notes20(e){var d=evDoc20(e.id);return (d&&Array.isArray(d.userNotes))?d.userNotes:(Array.isArray(e.userNotes)?e.userNotes:[])}
+function noteDate20(iso){try{var d=new Date(iso);return isNaN(d.getTime())?"":d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}catch(_e){return ""}}
+function notesHtml20(e){
+  var ns=notes20(e),id=eventId20(e),open=!!notesOpen20[String(e.id)],show=open?ns.slice().reverse():ns.slice(-2).reverse();
+  var me=(typeof currentUser!=="undefined"&&currentUser)?currentUser:null;
+  var h='<div class="pf20-notes'+(ns.length?'':' empty')+'">';
+  show.forEach(function(n){var ix=ns.indexOf(n),del=open&&me&&(n.name===me.name||me.role==="admin");
+    h+='<div class="pf20-note"><div class="pf20-note-h"><b>'+esc20(n.name||"User")+'</b> · '+esc20(noteDate20(n.date))+(del?'<button class="pf20-note-x" title="Delete note" onclick="pf20DelNote(\''+id+'\','+ix+')">✕</button>':'')+'</div><div class="pf20-note-t">'+esc20(n.text||"")+'</div></div>';});
+  h+='<div class="pf20-note-bar">'+((ns.length>2||(open&&ns.length))?'<button class="pf20-note-more" onclick="pf20ToggleNotes(\''+id+'\')">'+(open?'Show less':'All '+ns.length+' notes')+'</button>':'')
+    +'<button class="pf20-note-add" onclick="pf20AddNote(\''+id+'\')">📝 '+(ns.length?'Add note':'Add follow-up note')+'</button></div></div>';
+  return h;
+}
+window.pf20ToggleNotes=function(id){notesOpen20[String(id)]=!notesOpen20[String(id)];render20()};
+window.pf20AddNote=async function(id){
+  try{var mm=menuEl20();if(mm)mm.classList.remove('on')}catch(_e){}
+  if(typeof currentUser==="undefined"||!currentUser){toast("Login first","err");return}
+  var e=alerts20().find(function(x){return String(x.id)===String(id)});if(!e){toast("Case not found","err");return}
+  var txt=await promptDialog("Follow-up note — "+customer20(e)+"\n\nWhat happened or what comes next: a call, a promise to pay, a card updated… Saved with this invoice until the payment is resolved.","");
+  txt=String(txt||"").trim();if(!txt)return;
+  var d=evDoc20(id)||e,ns=Array.isArray(d.userNotes)?d.userNotes.slice():[];
+  ns.push({name:currentUser.name||"User",text:txt,date:new Date().toISOString()});
+  try{await db.collection("cross_app_events").doc(String(id)).update({userNotes:ns});d.userNotes=ns;e.userNotes=ns;toast("Note added ✓");render20()}
+  catch(err){console.warn("[pf20AddNote]",err);toast("Could not save the note","err")}
+};
+window.pf20DelNote=async function(id,ix){
+  var d=evDoc20(id),e=alerts20().find(function(x){return String(x.id)===String(id)})||d;if(!e)return;
+  var ns=(d&&Array.isArray(d.userNotes))?d.userNotes.slice():(Array.isArray(e.userNotes)?e.userNotes.slice():[]),n=ns[ix];if(!n)return;
+  if(n.name!==currentUser.name&&currentUser.role!=="admin"){toast("Only the author or an admin can delete this note","warn");return}
+  if(!(await confirmDialog("Delete this note?\n\n\""+String(n.text||"").slice(0,80)+"\"")))return;
+  ns.splice(ix,1);
+  try{await db.collection("cross_app_events").doc(String(id)).update({userNotes:ns});if(d)d.userNotes=ns;e.userNotes=ns;toast("Note deleted");render20()}
+  catch(err){console.warn("[pf20DelNote]",err);toast("Could not delete","err")}
+};
+window.pf20Card=function(e){return card20(e)};
 function card20(e){
   var r=reason20(e),id=eventId20(e),i=inv20(e),stale=stale20(e),ci=custInfo20(e);
   return '<article class="pf20-card" style="--rail:'+(e.collectionStage==='proceso'?'#2C8FA3':r.color)+'">'
@@ -54164,6 +54245,7 @@ function card20(e){
     +tech20(e)
     +(ci?'<div class="pf20-context"><b>Customer</b> · '+esc20(ci)+'</div>':'')
     +'<div class="pf20-attempts" title="'+esc20(attempts20(e))+'"><b>Attempts</b> · '+esc20(attempts20(e))+'</div>'
+    +notesHtml20(e)
     +'<div class="pf20-next"><b>Next Best Action</b>'+esc20(next20(e))+'</div>'
     +(stale?'<div class="pf20-stale">⚠ '+esc20(stale)+'</div>':'')
     +'<div class="pf20-actions"><button class="contact" onclick="pf20Contact(\''+id+'\')">Send request</button><button class="pay" onclick="pf20Payment(\''+id+'\')">Payment</button><button class="more" onclick="pf20Menu(event,\''+id+'\')">•••</button></div>'
@@ -55543,5 +55625,21 @@ body.asp-pulido .asp-tl-edit{background:var(--cd);border:1px dashed var(--ln);bo
   window._aspPulidoRoute={route:route,sheet:sheet};
 })();
 </script>
+
+<style id="aspenNotasCobroStyle">
+/* v2.71.0 — follow-up notes on the Payment Follow-up board. Delete to hide them (data stays). */
+.pf20-notes{margin:8px 0 2px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:7px 10px}
+.pf20-notes.empty{background:transparent;border:1px dashed var(--ln,#EBE4DA);padding:2px 10px}
+.pf20-note{font-size:12.5px;line-height:1.4;padding:4px 0;border-bottom:1px dashed #FDE68A}
+.pf20-note-h{font-size:11px;color:#92400E;display:flex;align-items:center;gap:4px}
+.pf20-note-t{color:var(--ink,#1f1a15);white-space:pre-wrap;word-break:break-word}
+.pf20-note-x{margin-left:auto;border:0;background:transparent;color:#B45309;cursor:pointer;font-size:11px}
+.pf20-note-bar{display:flex;gap:8px;align-items:center}
+.pf20-note-add,.pf20-note-more{border:0;background:transparent;color:#B45309;font-weight:700;font-size:12px;cursor:pointer;padding:4px 0}
+.pf20-note-add{margin-left:auto}
+body.dark-mode .pf20-notes{background:rgba(250,204,21,.08);border-color:rgba(250,204,21,.25)}
+body.dark-mode .pf20-note{border-color:rgba(250,204,21,.2)}
+body.dark-mode .pf20-note-h{color:#FCD34D}
+</style>
 </body>
 </html>
