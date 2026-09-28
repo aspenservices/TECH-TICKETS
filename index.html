@@ -6902,8 +6902,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.72.0";
-var BUILD_DATE="2026-09-24";
+var APP_VERSION="2.72.1";
+var BUILD_DATE="2026-09-28";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -23461,7 +23461,7 @@ function _reschedBannerHTML(t){
           +(quien?(" \u00b7 "+quien):"")]);
       }
     }
-    if(when)   rows.push(["\uD83D\uDD52", L2("Se reagend\u00f3","Rescheduled"), when]);
+    if(when)   rows.push(["\uD83D\uDD52", L2("Registrado","Entered"), when]);
     if(reason) rows.push(["\u2753", L2("Motivo","Reason"), reason + (rnote?(" \u2014 "+rnote):"")]);
     else if(rnote) rows.push(["\u2753", L2("Motivo","Reason"), rnote]);
     if(blk)    rows.push(["\u26A0\uFE0F", L2("Para volver","Blocked on"), blk]);
@@ -55609,8 +55609,21 @@ body.asp-pulido .asp-tl-edit{background:var(--cd);border:1px dashed var(--ln);bo
         var isR=/RESCHEDULE|FOLLOW-UP|REAGEND|SEGUIMIENTO|\u21BB/i.test(head);
         var isO=/Previous call|OFFICE|oficina/i.test(head), isT=/Tech notes|t[e\u00e9]cnico/i.test(head);
         var tag=isR?"\u21BB "+L("Reagendo","Rescheduled"):isO?"\uD83C\uDFE2 "+L("Nota de oficina","Office note"):isT?"\uD83D\uDD27 "+L("Nota del t\u00e9cnico","Tech note"):"\uD83D\uDCDD "+L("Nota","Note");
-        var m=b.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/), when="";
-        if(m){ try{ when=new Date(+m[3],+m[2]-1,+m[1]).toLocaleDateString((typeof APP_LANG!=="undefined"&&APP_LANG==="es")?"es-US":"en-US",{weekday:"short",month:"short",day:"numeric"}) }catch(_e){} }
+        /* v2.72.1 — THE APP WRITES THESE STAMPS AS MM/DD/YYYY. v2.70.0 read them as DD/MM and
+           JavaScript silently rolled "month 23" into the next year: 09/23/2026 showed as
+           "Tue, Nov 9" (2027) and 09/27/2026 as "Thu, Mar 9" (2028). Now month first; an
+           impossible date is rejected (no date beats a wrong date); the year shows when it is
+           not this year. A reschedule / follow-up block takes the date of the VISIT it comes
+           from, read from the recorded chain (aspOrigenDeContinuacion), not from the text. */
+        var m=b.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/), when="", fd=null;
+        if(isR){ try{ var og=(typeof aspOrigenDeContinuacion==="function")?aspOrigenDeContinuacion(t):null;
+          if(og&&og.fecha){ var op=String(og.fecha).slice(0,10).split("-"); if(op.length===3)fd=new Date(+op[0],+op[1]-1,+op[2]); }
+          if(!fd&&og){ var pl=pool(), rd=""; for(var q=0;q<pl.length;q++){ var x=pl[q]; if(x&&x.date&&(x.id===og.reporteId||x.id===og.ticketId)){ rd=x.date; if(x.id===og.reporteId)break; } }
+            if(rd){ var rp=String(rd).slice(0,10).split("-"); if(rp.length===3)fd=new Date(+rp[0],+rp[1]-1,+rp[2]); } } }catch(_e){} }
+        if(!fd&&m){ var mo=+m[1], dd=+m[2], yy=+m[3], cd=new Date(yy,mo-1,dd);
+          if(mo>=1&&mo<=12&&cd.getMonth()===mo-1&&cd.getDate()===dd&&cd.getTime()<=Date.now()+86400000)fd=cd; }
+        if(fd&&!isNaN(fd.getTime())){ try{ var lc=(typeof APP_LANG!=="undefined"&&APP_LANG==="es")?"es-US":"en-US", fo={weekday:"short",month:"short",day:"numeric"};
+          if(fd.getFullYear()!==new Date().getFullYear())fo.year="numeric"; when=fd.toLocaleDateString(lc,fo).replace(",",""); }catch(_e){} }
         var txt=isR?b.replace(/^[^\u2014]*\u2014\s*/,""):(rest||head);
         if(!isR&&m)txt=txt.replace(/^\s*\d{2}\/\d{2}\/\d{4}\s*/,"");
         H+='<div class="asp-tl-i'+(isR?' r':'')+'"><span class="asp-tl-dot"></span><div class="asp-tl-h">'+esc3(tag)+(when?' \u00b7 '+esc3(when):'')+'</div><div class="asp-tl-x">'+esc3(txt)+'</div></div>';
