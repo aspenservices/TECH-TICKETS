@@ -6902,7 +6902,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.72.3";
+var APP_VERSION="2.72.4";
 var BUILD_DATE="2026-09-30";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -16516,6 +16516,31 @@ async function _dedupReschedFollowups(){
     var arr=groups[sid];
     if(arr.length<2)continue;
     var placeholders=arr.filter(function(x){return (x.date||"").trim()==="";});
+    /* v2.72.4 — ONE RESCHEDULE, ONE RETURN CALL. If a member of this group (same source
+       reschedule) is already SCHEDULED, every undated copy is a leftover: it is retired into
+       the scheduled one, notes merged, never lost. Before, the group was skipped the moment
+       one member had a date ("only placeholders are safe to merge"), so the copy stayed in
+       "needs a date" forever next to its own scheduled visit (Mills: scheduled Oct 7, still
+       waiting in the tray on Sep 30). */
+    var sched=arr.filter(function(x){return (x.date||"").trim()!==""&&x.status!=="reschedule";});
+    if(sched.length&&placeholders.length){
+      sched.sort(function(a,b){var ca=(a.id==="resched_"+sid)?0:1, cb=(b.id==="resched_"+sid)?0:1; if(ca!==cb)return ca-cb; return String(a.date).localeCompare(String(b.date));});
+      var keepS=sched[0];
+      for(var q=0;q<placeholders.length;q++){
+        var lp=placeholders[q];
+        try{
+          var kn2=(keepS.notes||""), ln2=(lp.notes||"").trim(), upK={};
+          if(ln2&&kn2.indexOf(ln2)<0){ upK.notes=kn2+"\n\n\u2014 Merged from duplicate follow-up \u2014\n"+ln2; }
+          if(Number(lp.visitNum)===2&&(Number(keepS.visitNum)||1)===1)upK.visitNum=2; // a return visit bills as a 2nd visit
+          if(Object.keys(upK).length){ await db.collection("tickets").doc(keepS.id).update(upK); Object.assign(keepS,upK); }
+          await db.collection("tickets").doc(lp.id).update({status:"canceled",reschedDupOf:keepS.id,
+            canceledReason:"duplicate reschedule follow-up — its return visit is already scheduled ("+keepS.date+")"});
+          lp.status="canceled";
+        }catch(_e){ console.warn("[dedup follow-up scheduled]",_e); }
+      }
+      try{ await db.collection("tickets").doc(sid).update({reschedDispatchId:keepS.id}); }catch(_e){}
+      continue;
+    }
     if(placeholders.length<2)continue; // only placeholder follow-ups are safe to merge
     placeholders.sort(function(a,b){
       var ca=(a.id==="resched_"+sid)?0:1, cb=(b.id==="resched_"+sid)?0:1; // prefer deterministic doc
@@ -19004,10 +19029,23 @@ function rndrSlog(){
         else{sev='background:var(--c-success-bg);color:var(--c-success-fg)';_agIc='';}
         ageHtml='<span style="font-size:var(--fs-xs);font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;'+sev+'">'+_agIc+'waiting '+ageTxt+'</span>';
       }
+      /* v2.72.4 — if this household already has a SCHEDULED visit that is not this call, say so
+         on the card and let the office decide: the app cannot know whether it is the same job
+         (a visit made from New Service Call or the calendar) or another one. */
+      var _otras=[...active,...done].filter(function(x){return x&&x.id!==t.id&&x.source==="dispatch"&&(x.date||"").trim()&&x.status!=="canceled"&&x.status!=="done"&&x.status!=="reschedule"&&!x.fieldReportSubmitted&&!(Array.isArray(t.notSameJobAs)&&t.notSameJobAs.indexOf(x.id)>=0)&&_custSameHousehold(x.customer,t.customer);}).sort(function(a,b){return String(a.date).localeCompare(String(b.date))});
+      var sameHtml='';
+      if(_otras.length&&currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")){
+        var _o=_otras[0], _ow='';
+        try{_ow=new Date(_o.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}).replace(",","")}catch(_e){_ow=_o.date}
+        _ow+=(_o.arrival?' · '+_o.arrival:'')+((_o.techs||[]).length?' · '+_o.techs.join(', '):'');
+        sameHtml='<div class="sl-same" onclick="event.stopPropagation()" style="margin:6px 0 2px;padding:7px 8px;border-radius:8px;background:var(--acl);border:1px solid var(--ln);font-size:var(--fs-xs);color:var(--acd)"><b>\uD83D\uDCC5 Already scheduled:</b> '+esc(_ow)
+          +'<div style="display:flex;gap:6px;margin-top:6px"><button onclick="event.stopPropagation();slSameJob(\''+t.id+'\',\''+_o.id+'\')" style="flex:1;padding:5px 6px;border-radius:7px;border:0;background:var(--ac);color:#fff;font-weight:800;font-size:var(--fs-xs);cursor:pointer">Same job — use it</button>'
+          +'<button onclick="event.stopPropagation();slDifferentJob(\''+t.id+'\',\''+_o.id+'\')" style="flex:1;padding:5px 6px;border-radius:7px;border:1px solid var(--ln);background:var(--cd);color:var(--ink);font-weight:700;font-size:var(--fs-xs);cursor:pointer">Different job</button></div></div>';
+      }
       var reasonHtml=t.reschedReason?'<div style="font-size:var(--fs-sm);color:var(--c-warning-fg);margin-bottom:4px;font-style:italic">'+esc(t.reschedReason)+'</div>':'';
       h+='<div class="slc" style="background:#fff;border:1px solid var(--c-warning-bg);border-left:3px solid var(--c-warning-fg);border-radius:10px;padding:9px 10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:transform .1s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="openTktDetail(\''+t.id+'\')">'+
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px"><span style="font-weight:800;font-size:var(--fs-md);color:var(--ink);line-height:1.25">'+esc(t.customer)+'</span>'+ageHtml+'</div>'+
-        reasonHtml+
+        reasonHtml+sameHtml+
         (_sc.phone?'<div style="font-size:var(--fs-sm);color:var(--ac);margin-bottom:3px;display:flex;align-items:center;gap:4px">'+icon("phone",11,{color:"var(--ac)"})+esc(_sc.phone)+'</div>':'')+
         (addrLine?'<div style="font-size:var(--fs-sm);color:var(--i3);line-height:1.3;display:flex;align-items:center;gap:4px">'+icon("map-pin",11,{color:"var(--i3)"})+addrLine+'</div>':'')+
         ((currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))?'<button onclick="event.stopPropagation();slProgramNow(\''+t.id+'\')" class="slc-prog" style="margin-top:8px;width:100%;padding:7px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("calendar-days",14,{color:"#fff"})+'Program now</button>':'')+
@@ -19115,6 +19153,32 @@ function rndrSlog(){
 // write them to the dispatch in one update. The ticket keeps its reschedule
 // lineage (autoFromResched) but, now that it has a date, drops out of the
 // "needs new date" queue. Offers the appointment SMS like the Service Log does.
+/* v2.72.4 — "Same job": the visit scheduled elsewhere IS this return call. The return call
+   survives — it carries the story, the chain back to the visit and the 2nd-visit billing —
+   and takes that visit's date, time and techs; the other document is canceled with a note
+   pointing here. One job, one document. */
+async function slSameJob(contId,apptId){
+  if(!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))){toast("Only admins can do this","err");return}
+  var all=[...active,...done], c=all.find(function(x){return x.id===contId}), o=all.find(function(x){return x.id===apptId});
+  if(!c||!o){toast("Ticket not found","err");return}
+  var when=o.date+(o.arrival?" "+o.arrival:"")+((o.techs||[]).length?" · "+o.techs.join(", "):"");
+  if(!(await confirmDialog("Same job?\n\nThe return call for "+c.customer+" takes the visit already scheduled ("+when+") and that other visit is canceled. The history, photos and notes stay with the return call.")))return;
+  try{
+    var upd={date:o.date||"",arrival:o.arrival||"",techs:(o.techs||[]).slice(),status:"pending"};
+    var on=(o.notes||"").trim(), cn=c.notes||"";
+    if(on&&cn.indexOf(on)<0)upd.notes=cn+"\n\n\u2014 From the visit scheduled on "+o.date+" \u2014\n"+on;
+    if(o.ccOnFile&&!c.ccOnFile)upd.ccOnFile=true;
+    if(o.isUrgent&&!c.isUrgent)upd.isUrgent=true;
+    await db.collection("tickets").doc(contId).update(upd);
+    await db.collection("tickets").doc(apptId).update({status:"canceled",mergedInto:contId,canceledReason:"same job as return call "+contId+" (merged from the Service Log)"});
+    toast("\u2713 One visit: "+c.customer+" · "+when);
+    setTimeout(function(){try{refreshAll()}catch(_e){}},400);
+  }catch(e){toast("Error: "+e.message,"err")}
+}
+async function slDifferentJob(contId,apptId){
+  try{await db.collection("tickets").doc(contId).update({notSameJobAs:firebase.firestore.FieldValue.arrayUnion(apptId)});toast("Kept as separate jobs");setTimeout(function(){try{refreshAll()}catch(_e){}},300)}
+  catch(e){toast("Error: "+e.message,"err")}
+}
 function slProgramNow(docId){
   if(!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer"))){toast("Only admins can schedule","err");return}
   var t=[...active,...done].find(function(x){return x.id===docId});
@@ -19428,6 +19492,22 @@ async function slCreateCall(){
       var _dups=[...active,...done].filter(function(t){
         return t.source==="dispatch"&&!t.fieldReportSubmitted&&t.status!=="canceled"&&_custGroupKey(t.customer)===_dupKey;
       });
+      /* v2.72.4 — THE DUPLICATE IS BORN HERE. If one of those open calls is a return call still
+         waiting for a date, offer to schedule THAT one instead of creating a second document for
+         the same job (the return call carries the history and the 2nd-visit billing). */
+      var _rc=_dups.filter(function(t){return t.autoFromResched&&!(t.date||"").trim()&&t.status!=="reschedule";})[0];
+      if(_rc&&!(typeof slMediaFiles!=="undefined"&&slMediaFiles.length)){
+        var _useRc=await confirmDialog(esc(cu)+" has a return call waiting for a date"+(_rc.reschedReason?" ("+esc(_rc.reschedReason)+")":"")+".\n\nSchedule THAT return call"+(dt?" on "+dt:"")+" instead of creating a new visit? It keeps the history, the tech's notes and the 2nd-visit billing.");
+        if(_useRc){
+          var _u={status:"pending"}; if(dt)_u.date=dt;
+          var _nn=(notes||"").trim(); if(_nn&&(_rc.notes||"").indexOf(_nn)<0)_u.notes=(_rc.notes||"")+"\n\n\u2014 Office note \u2014\n"+_nn;
+          await db.collection("tickets").doc(_rc.id).update(_u);
+          toast("\u2713 Return call "+(dt?"scheduled for "+dt:"updated")+" — no duplicate created");
+          setTimeout(function(){try{refreshAll()}catch(_e){}},400);
+          return;
+        }
+        _dups=[]; // they chose a separate visit on purpose: do not ask twice
+      }
       if(_dups.length){
         var _d0=_dups[0];
         var _msg=esc(cu)+" already has "+(_dups.length===1?"an open call":_dups.length+" open calls")
