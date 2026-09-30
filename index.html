@@ -6902,8 +6902,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.72.1";
-var BUILD_DATE="2026-09-28";
+var APP_VERSION="2.72.2";
+var BUILD_DATE="2026-09-30";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
 // ¿La sesión de Firebase actual es de personal? (mira el claim, no la app)
@@ -16463,11 +16463,17 @@ function _reschedToHeal(){
          sale temprano si ese documento ya existe y no esta cancelado. La
          idempotencia la da la identidad del documento, no una suposicion
          sobre la agenda del cliente. */
-      // (b) admin already dealt with the auto-call (canceled/closed it) -> respect it
-      if(r.reschedDispatchId){
-        var pd=byId[r.reschedDispatchId];
-        if(pd&&(pd.status==="canceled"||pd.status==="done"||pd.fieldReportSubmitted))return false;
-      }
+      /* (b) v2.72.2 — THE CHAIN IS ALREADY WRITTEN: this reschedule already produced its
+         return call (the engine writes reschedDispatchId on the source only AFTER creating
+         it). Whatever happened to that call since — scheduled, served, canceled, or DELETED
+         by the office — it is not missing and must never be revived. Before, only
+         canceled/done/served were respected, and a call that lived under another id (the
+         pre-July model recycled the appointment itself) or that the office had deleted was
+         "missing" by NAME: the heal created resched_<report> again, put it back in the
+         "needs a date" tray and overwrote the link to the real appointment (Morris, 30 sep).
+         The heal is for what it was built for: a reschedule whose return call was never
+         created (e.g. the tech's phone failed mid-save) — those have no pointer. */
+      if(r.reschedDispatchId)return false;
       // (c) household was SERVED at/after the reschedule -> don't resurrect a finished job
       if(all.some(function(x){
         if(!x||x.id===r.id)return false;
