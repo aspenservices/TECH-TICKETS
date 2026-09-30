@@ -6902,7 +6902,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.72.2";
+var APP_VERSION="2.72.3";
 var BUILD_DATE="2026-09-30";
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
 
@@ -44878,6 +44878,12 @@ const CROSSAPP_INBOX_SEEN_KEY = 'aspenCrossAppInboxLastSeen';
 // show up even if they don't match an Invoice Tracker invoice — e.g. published
 // from a different device, eventId chain broke, legacy events, etc.
 let _allResolvedEvents = [];
+/* v2.72.3 — the moment THIS session started watching. A resolution is announced only if the
+   server resolved it after this (2 min of tolerance for a skewed clock). The first load seeds
+   the watermark at the OLDEST of 100 unordered resolutions and then walks forward 50 at a
+   time; everything in that walk that was not among the first 100 used to count as "new",
+   so every reload re-announced the history: "N tech alert(s) resolved" over and over. */
+const _crossAppSessionStartMs = Date.now();
 
 function _getCrossAppInboxLastSeen() {
   try { return Number(localStorage.getItem(CROSSAPP_INBOX_SEEN_KEY) || 0); }
@@ -45767,6 +45773,7 @@ async function pollCrossAppResolves() {
         if (incremental) { if (resolvedTs > _maxSeenTs) _maxSeenTs = resolvedTs; }
         else if (!_minSeenTs || resolvedTs < _minSeenTs) _minSeenTs = resolvedTs;
       }
+      const _tsServer = resolvedTs; // v2.72.3 — the server's own time, before any fallback
       if (!resolvedTs) resolvedTs = Date.now();
 
       // Try to match an invoice — primary by eventId, fallback by customer+invoice#
@@ -45852,7 +45859,7 @@ async function pollCrossAppResolves() {
             // resoluciones: en la carga inicial, ponerse al dia con un backlog de
             // facturas no debe soltar una rafaga de "💵 marcada PAGADA".
             const _enPaid = currentLang === 'en';
-            if (incremental) toast(_enPaid
+            if (incremental && _tsServer >= _crossAppSessionStartMs - 120000) toast(_enPaid
               ? `💵 Invoice #${matchedInv.invoiceNumber} marked PAID (by ${flds.resolvedBy || 'Tech team'})`
               : `💵 Factura #${matchedInv.invoiceNumber} marcada PAGADA (por ${flds.resolvedBy || 'Equipo Tech'})`,
               'success');
@@ -45864,7 +45871,7 @@ async function pollCrossAppResolves() {
 
       // If this event wasn't in our previous cache, it's "new" → toast + push
       if (!previouslyKnownIds.has(eventId)) {
-        newlyStamped.push({ ev: evRecord });
+        newlyStamped.push({ ev: evRecord, fresh: _tsServer >= _crossAppSessionStartMs - 120000 });
       }
     }
     /* v2.26.2 — FUSIONAR, no reconstruir. Con la consulta incremental cada
@@ -45900,8 +45907,13 @@ async function pollCrossAppResolves() {
          El historial sigue apareciendo en el inbox con su insignia; ya no grita al
          arrancar. El badge y el render se hacen igual, para que el inbox se llene. */
       if (incremental) {
-        if (newlyStamped.length <= 3) {
-          newlyStamped.forEach(({ ev }) => {
+        // v2.72.3 — announce only what was resolved during this session; the catch-up walk
+        // through older history still fills the inbox (render + badge below), silently.
+        const _nuevas = newlyStamped.filter(x => x.fresh);
+        if (!_nuevas.length) {
+          console.info('[CrossAppPoll] poniendose al dia —', newlyStamped.length, 'resoluciones anteriores a esta sesion, al inbox sin aviso');
+        } else if (_nuevas.length <= 3) {
+          _nuevas.forEach(({ ev }) => {
             const who = ev.resolvedBy || (en ? 'Tech team' : 'Equipo Tech');
             const customer = (ev.customerName || '').trim() || (en ? 'a customer' : 'un cliente');
             const invNumPart = ev.invoiceNumber ? ` (#${ev.invoiceNumber})` : '';
@@ -45918,7 +45930,7 @@ async function pollCrossAppResolves() {
             });
           });
         } else {
-          toast((en ? `✓ ${newlyStamped.length} tech alert(s) resolved — see 📬 inbox` : `✓ ${newlyStamped.length} alertas resueltas — ver 📬 inbox`), 'success');
+          toast((en ? `✓ ${_nuevas.length} tech alert(s) resolved — see 📬 inbox` : `✓ ${_nuevas.length} alertas resueltas — ver 📬 inbox`), 'success');
         }
       } else {
         console.info('[CrossAppPoll] carga inicial silenciosa —', newlyStamped.length, 'resoluciones al inbox, sin toast/push');
