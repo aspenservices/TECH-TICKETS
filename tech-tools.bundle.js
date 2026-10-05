@@ -1,6 +1,3 @@
-/* v2.78.0 — the app's language system (APP_LANG, L2, TR, applyAppLang, setAppLang, toggleAppLang,
-   _i18nStr, _i18nPass, _rerenderCurrentView) lives in index.html (aspenI18nCore): the whole app needs
-   it at startup, and v2.77 had moved it here with the tools, so the app could not load. */
 /* ══ TECH TOOLS HUB (Jun 2026) ════════════════════════════════════════════
    Each tool is a complete single-file HTML app stored as a string and opened
    in a sandboxed iframe via a Blob URL. Works offline once the PWA is cached,
@@ -84,13 +81,44 @@ var _ttMounted={};
 //   • Static text:  add  data-i18n-es="…" data-i18n-en="…"  to any element.
 //   • Dynamic text: wrap with  L2("texto es","text en").
 // Then call applyAppLang() (or setAppLang) to refresh the UI live.
-
-
-
-
-
-
-
+var APP_LANG=(function(){try{return localStorage.getItem("appLang")||"es"}catch(e){return "es"}})();
+function L2(es,en){return APP_LANG==="en"?en:es;}
+var _applyingLang=false, _curTab=0;
+function _rerenderCurrentView(){
+  var i=_curTab;
+  try{
+    if(i===1&&typeof rndrA==="function")rndrA();
+    else if(i===2&&typeof rndrD==="function")rndrD();
+    else if(i===3&&typeof rndrAdmin==="function")rndrAdmin();
+    else if(i===4&&typeof rndrCal==="function")rndrCal();
+    else if(i===5&&typeof rndrSlog==="function")rndrSlog();
+    else if(i===6&&typeof rndrCust==="function")rndrCust();
+    else if(i===8&&typeof rndrAlerts==="function")rndrAlerts();
+  }catch(_e){}
+}
+function applyAppLang(){
+  if(_applyingLang)return;
+  _applyingLang=true;
+  try{document.documentElement.lang=APP_LANG;}catch(e){}
+  try{var ns=document.querySelectorAll("[data-i18n-es]");for(var i=0;i<ns.length;i++){
+    var v=APP_LANG==="en"?ns[i].getAttribute("data-i18n-en"):ns[i].getAttribute("data-i18n-es");
+    if(v!=null)ns[i].textContent=v;
+  }}catch(e){}
+  try{var as=document.querySelectorAll("[data-i18n-aria-es]");for(var j=0;j<as.length;j++){
+    var av=APP_LANG==="en"?as[j].getAttribute("data-i18n-aria-en"):as[j].getAttribute("data-i18n-aria-es");
+    if(av!=null)as[j].setAttribute("aria-label",av);
+  }}catch(e){}
+  try{if(typeof buildBottomNav==="function")buildBottomNav();}catch(e){}
+  try{var sh=document.getElementById("moreSheet");if(sh&&sh.classList.contains("show")&&typeof openMoreSheet==="function")openMoreSheet();}catch(e){}
+  try{_rerenderCurrentView();}catch(e){}
+  try{if(typeof _i18nPass==="function")_i18nPass(document.body);}catch(e){}
+  try{_ttUpdateLangBtn();}catch(e){}
+  try{_ttSyncToolLang();}catch(e){}
+  try{_syncLangBtn();}catch(e){}
+  _applyingLang=false;
+}
+function setAppLang(l){APP_LANG=(l==="en")?"en":"es";try{localStorage.setItem("appLang",APP_LANG)}catch(e){}applyAppLang();}
+function toggleAppLang(){setAppLang(APP_LANG==="en"?"es":"en");}
 // ── Tech Tools language plumbing now reads the global APP_LANG ──
 var _ttHostKey=null, _ttCurKey=null, _ttShadowRoot=null;
 function _ttToolLangBtn(){
@@ -117,9 +145,176 @@ function ttToggleLang(){ toggleAppLang(); }
 // on each node so switching back restores it exactly. Unknown strings simply
 // stay English (graceful). Add any missing phrase here in one line. Put
 // data-no-i18n on an element to exclude its subtree.
-
-
-
+var TR={
+  // actions / buttons
+  "Save":"Guardar","Save Changes":"Guardar cambios","Send":"Enviar","Send ✓":"Enviar ✓",
+  "Cancel":"Cancelar","Add":"Agregar","Delete":"Eliminar","Edit":"Editar","Clear":"Limpiar",
+  "Close":"Cerrar","Back":"Atrás","Next":"Siguiente","Submit":"Enviar","Search":"Buscar",
+  "Export":"Exportar","Print":"Imprimir","Download":"Descargar","Upload":"Subir","Copy":"Copiar",
+  "Confirm":"Confirmar","Reset":"Reiniciar","Remove":"Quitar","View":"Ver","Open":"Abrir",
+  "Refresh":"Actualizar","Retry":"Reintentar","Continue":"Continuar","Reschedule":"Reprogramar",
+  "Approve":"Aprobar","Reject":"Rechazar","Yes":"Sí","Save & Close":"Guardar y cerrar",
+  "Generate Estimate":"Generar presupuesto","👁 Generate Estimate":"👁 Generar presupuesto",
+  "+ Add Part":"+ Agregar parte","+ Add Part / Service":"+ Agregar parte / servicio",
+  "+ Add Video Link":"+ Agregar enlace de video","🔄 Clear & Start Over":"🔄 Limpiar y empezar de nuevo",
+  "+ Add another phone":"+ Agregar otro teléfono","Add Photo":"Agregar foto","Add Photos":"Agregar fotos",
+  // statuses
+  "Completed":"Completado","Pending":"Pendiente","In Progress":"En progreso","Approved":"Aprobado",
+  "Closed":"Cerrado","Scheduled":"Programado","Active":"Activo","Inactive":"Inactivo",
+  "Under warranty":"En garantía","✓ Under warranty":"✓ En garantía","No warranty":"Sin garantía",
+  "✕ No warranty":"✕ Sin garantía","Out of warranty":"Fuera de garantía","Paid":"Pagado",
+  "Unpaid":"Sin pagar","Overdue":"Vencido","Draft":"Borrador","Sent":"Enviado","New":"Nuevo",
+  "Urgent":"Urgente","High":"Alta","Medium":"Media","Low":"Baja",
+  // labels
+  "Customer":"Cliente","Customer Name":"Nombre del cliente","Phone":"Teléfono","Email":"Correo",
+  "Address":"Dirección","City":"Ciudad","ZIP":"Código postal","Date":"Fecha","Time":"Hora",
+  "Notes":"Notas","Comments":"Comentarios","Photos":"Fotos","Parts":"Partes","Parts Used":"Partes usadas",
+  "Parts / Services":"Partes / Servicios","Service":"Servicio","Services":"Servicios","Warranty":"Garantía",
+  "Technician":"Técnico","Status":"Estado","Priority":"Prioridad","Quantity":"Cantidad","Price":"Precio",
+  "Amount":"Monto","Description":"Descripción","Title":"Título","Name":"Nombre","Type":"Tipo",
+  "Model":"Modelo","Year":"Año","Serial Number":"Número de serie","Spa Model":"Modelo de spa",
+  "Year of Spa":"Año del spa","Estimated Repair Time":"Tiempo estimado de reparación",
+  "Video Links":"Enlaces de video","Signature":"Firma","Required":"Requerido","Custom":"Personalizado",
+  // headers / sections
+  "Field Report":"Reporte de Campo","Service Log":"Registro de servicio","New Service Call":"Nueva llamada de servicio",
+  "Estimate":"Presupuesto","Work Order":"Orden de trabajo","My Tickets":"Mis Tickets","Daily":"Diario",
+  "Customers":"Clientes","Maps":"Mapas","Alerts":"Alertas","My Apps":"Mis Apps","Tech Tools":"Herramientas","Work":"Trabajo","Management":"Gesti\u00f3n","Tools":"Herramientas",
+  "Calendar":"Calendario","Completed Tickets":"Tickets completados",
+  // common toasts (exact, no dynamic part)
+  "Copied to clipboard ✓":"Copiado al portapapeles ✓","Copied ✓":"Copiado ✓",
+  "Copied for QuickBooks ✓":"Copiado para QuickBooks ✓","Deleted ✓":"Eliminado ✓",
+  "Draft restored ✓":"Borrador restaurado ✓","Added to To-Do ✓":"Agregado a pendientes ✓",
+  "Admin only":"Solo administrador","Already exists":"Ya existe","Form cleared":"Formulario limpiado",
+  "Estimate cleared":"Presupuesto limpiado","Enter a name":"Ingresa un nombre",
+  "Enter customer name":"Ingresa el nombre del cliente","Enter a valid email":"Ingresa un correo válido",
+  "Enter a valid phone":"Ingresa un teléfono válido","Customer signature required":"Se requiere la firma del cliente",
+  "Customer name cannot be empty":"El nombre del cliente no puede estar vacío",
+  "Customer name can't be empty":"El nombre del cliente no puede estar vacío",
+  "Add at least one part/service":"Agrega al menos una parte/servicio","Alert resolved ✓":"Alerta resuelta ✓",
+  "Alert not found":"Alerta no encontrada","Enter a valid 5-digit ZIP":"Ingresa un código postal válido de 5 dígitos",
+  "Enter arrival time":"Ingresa la hora de llegada",
+  // login / header
+  "Welcome":"Bienvenido","Logout":"Salir","Login":"Iniciar sesión",
+  // ── Field Report + forms (batch 2) ──
+  "🧰 Tech Tools":"🧰 Herramientas","💼 My Apps":"💼 Mis Apps",
+  "Actions":"Acciones","Arrival":"Llegada","Departure":"Salida","Customer Contact":"Contacto del cliente",
+  "Spa Warranty":"Garantía del spa","Type of Work":"Tipo de trabajo","Visit Type":"Tipo de visita",
+  "Work Done / Notes":"Trabajo realizado / Notas","Notes for Customer":"Notas para el cliente",
+  "📤 Billing Export":"📤 Exportar facturación","1st Visit":"1ra visita","2nd Visit":"2da visita",
+  "Add tech":"Agregar técnico","Add type":"Agregar tipo","Delivery":"Entrega","Editing Ticket":"Editando ticket",
+  "Export day":"Exportar día","Labor performed, photos & notes":"Mano de obra, fotos y notas","Note:":"Nota:",
+  "Photos / PDFs":"Fotos / PDFs","Quick preview to show the customer":"Vista rápida para mostrar al cliente",
+  "Repeat":"Repetir","Warranty not applicable":"Garantía no aplicable","Water Change Type":"Tipo de cambio de agua",
+  "1-yr part / 90-day labor warranty":"Garantía 1 año en partes / 90 días en mano de obra",
+  "labor 90 days":"mano de obra 90 días","part is covered 1 year":"la parte está cubierta 1 año",
+  // placeholders
+  "Add a task...":"Agregar tarea...","Customer name":"Nombre del cliente",
+  "Describe the work to be done...":"Describe el trabajo a realizar...","Email (optional)":"Correo (opcional)",
+  "Enter zone":"Ingresa la zona","Filter by ZIP or city...":"Filtrar por código postal o ciudad...",
+  "Hours":"Horas","New technician name":"Nombre del nuevo técnico","Phone number":"Número de teléfono",
+  "Search by ZIP code or city name...":"Buscar por código postal o ciudad...",
+  "Search by name, phone, address, ZIP, zone...":"Buscar por nombre, teléfono, dirección, código postal, zona...",
+  "Search completed tickets...":"Buscar tickets completados...","Search customers, pages…":"Buscar clientes, páginas…",
+  "Search customers...":"Buscar clientes...","Search parts...":"Buscar partes...","Search tickets...":"Buscar tickets...",
+  "Secondary phone":"Teléfono secundario","Street address":"Dirección","Tech name":"Nombre del técnico",
+  // ── Daily / Completed views + ticket cards (batch 3) ──
+  "All caught up":"Todo al día","No active tickets":"Sin tickets activos","No completed tickets":"Sin tickets completados",
+  "No tickets assigned to you right now. New work will show here when dispatch sends it.":"No tienes tickets asignados ahora. El trabajo nuevo aparecerá aquí cuando despacho lo envíe.",
+  "The team is all caught up. Field reports will appear here as techs submit them.":"El equipo está al día. Los reportes de campo aparecerán aquí cuando los técnicos los envíen.",
+  "Closed tickets will show up here. Use the search above to find one quickly.":"Los tickets cerrados aparecerán aquí. Usa la búsqueda de arriba para encontrar uno rápido.",
+  "Canceled Visits":"Visitas canceladas","CANCELED":"CANCELADO","Reason:":"Motivo:","Unassigned":"Sin asignar",
+  "No service calls waiting":"Sin llamadas de servicio en espera","Nothing in this zone":"Nada en esta zona",
+  "✨ New Spa":"✨ Spa nuevo","🔥 Urgent":"🔥 Urgente","Call":"Llamar",
+  "Customer must pay before service":"El cliente debe pagar antes del servicio","Paid before service ✓":"Pagado antes del servicio ✓",
+  "Parts subtotal":"Subtotal de partes","✨ AI ready":"✨ IA lista","✨ NEW SPA":"✨ SPA NUEVO",
+  "👥 Needs 2nd tech":"👥 Necesita 2do técnico","💳 PAY FIRST":"💳 PAGAR PRIMERO","💳 Paid 1st ✓":"💳 Pagó 1ro ✓",
+  "📋 Copy Text":"📋 Copiar texto","📤 Report sent":"📤 Reporte enviado","📹 Video Links":"📹 Enlaces de video",
+  "🔥 URGENT":"🔥 URGENTE","🧪 WC · Chem plan (no charge)":"🧪 WC · Plan químico (sin cargo)",
+  // ── Service Log view (batch 4) ──
+  "📋 Service Log":"📋 Registro de servicio","Service Log":"Registro de servicio",
+  "📞 New Service Call":"📞 Nueva llamada de servicio","New Service Call":"Nueva llamada de servicio",
+  "⚡ QUICK ADD — tap to insert:":"⚡ AGREGAR RÁPIDO — toca para insertar:","⚡ Won't turn on":"⚡ No enciende",
+  "🌀 Pump":"🌀 Bomba","🐕 Dog":"🐕 Perro","✓ Under warranty":"✓ En garantía","✕ No warranty":"✕ Sin garantía",
+  "✕ Clear":"✕ Limpiar","✨ Improve":"✨ Mejorar",
+  "— checks the 90-day service warranty":"— revisa la garantía de servicio de 90 días",
+  "— model, serial number, equipment":"— modelo, número de serie, equipo",
+  "— saved with today's date to the history":"— guardado con la fecha de hoy en el historial",
+  "No Zone":"Sin zona","No matches":"Sin coincidencias","Page":"Página",
+  // ── Customers view (batch 5) ──
+  "Customers & Jobs":"Clientes y trabajos","0 customers":"0 clientes","Select a customer":"Selecciona un cliente",
+  "No customers found":"No se encontraron clientes","Customer not found":"Cliente no encontrado",
+  "NAME":"NOMBRE","VISITS":"VISITAS","ZONE":"ZONA","Visits":"Visitas","Zone":"Zona",
+  "Name (A→Z)":"Nombre (A→Z)","Most visits":"Más visitas","Recently visited":"Visitados recientemente",
+  "‹ Back to list":"‹ Volver a la lista","Today's Route":"Ruta de hoy","Preview":"Vista previa",
+  "Loading…":"Cargando…","Loading map…":"Cargando mapa…",
+  "Main Phone":"Teléfono principal","Alt Phone":"Teléfono alt.","Email":"Correo","Bill To":"Facturar a",
+  "Last service":"Último servicio","Map · Directions":"Mapa · Cómo llegar",
+  // ── Calendar view (batch 6) ──
+  "Day":"Día","Week":"Semana","Month":"Mes","List":"Lista","Team":"Equipo","All":"Todos",
+  "To-Do":"Tareas","Open To-Do list":"Abrir lista de tareas","✓ To-Do":"✓ Tareas",
+  "Close":"Cerrar","Confirm":"Confirmar","Open":"Abrir","← Tech Tools":"← Herramientas",
+  "Today's Routes":"Rutas de hoy",
+  "Drop a ticket here to schedule it, or pick another day from the calendar.":"Suelta un ticket aquí para agendarlo, o elige otro día del calendario.",
+  "Drag a file here or click to select":"Arrastra un archivo aquí o haz clic para seleccionar",
+  // ── Admin view: config + stats + toasts (batch 7) ──
+  "AI Settings":"Configuración de IA","Add New User":"Agregar nuevo usuario","Add or Update ZIP":"Agregar o actualizar código postal",
+  "Admin only":"Solo admin","Application configuration · Admin only":"Configuración de la aplicación · Solo admin",
+  "All sources":"Todas las fuentes","All zones":"Todas las zonas","Auto-cleanup":"Limpieza automática","Backfill 14d":"Rellenar 14d",
+  "Billing — Rounding Rule":"Facturación — Regla de redondeo","Built-in only":"Solo integradas","Built-in zones take priority":"Las zonas integradas tienen prioridad",
+  "Check-in Verification":"Verificación de check-in","Clear Key":"Borrar clave","Custom only":"Solo personalizadas","Date:":"Fecha:",
+  "Excel (.xlsx / .xls) or CSV":"Excel (.xlsx / .xls) o CSV","Expected format:":"Formato esperado:","Export Excel":"Exportar Excel",
+  "Historical Records":"Registros históricos","Last 14 Days · Driving Time":"Últimos 14 días · Tiempo de manejo","Last 7 days":"Últimos 7 días",
+  "Maps & GPS":"Mapas y GPS","Maps":"Mapas","Planned Routes":"Rutas planificadas","Rain/Snow Radar":"Radar de lluvia/nieve","Range:":"Rango:",
+  "Refresh":"Actualizar","Routes, live tracking, and trip analysis ·":"Rutas, rastreo en vivo y análisis de viajes ·","Save":"Guardar","Save Key":"Guardar clave",
+  "Settings":"Configuración","Show Check-in Pins":"Mostrar pines de check-in","Single day":"Un día","Source":"Fuente",
+  "Technician:":"Técnico:","Technicians":"Técnicos","This month":"Este mes","This week":"Esta semana","Tickets per Technician":"Tickets por técnico",
+  "Total ZIPs":"Total de códigos postales","Users & PINs":"Usuarios y PINs","Visit Type Breakdown":"Desglose por tipo de visita",
+  "Warranty Override Log":"Registro de anulaciones de garantía","ZIP Codes & Zones":"Códigos postales y zonas","Zones":"Zonas",
+  "⬇ Export CSV":"⬇ Exportar CSV","🔒 Your key stays in this browser only.":"🔒 Tu clave se queda solo en este navegador.",
+  "Awaiting scheduling":"Esperando agendar","Clear":"Limpiar","Completed Today":"Completados hoy","Copied today":"Copiado hoy",
+  "First-Time Fix Rate":"Tasa de arreglo a la primera","First-time fix · this month":"Arreglo a la primera · este mes","Fill Field Report":"Llenar reporte de campo",
+  "Follow-ups due":"Seguimientos pendientes","Follow up: overdue":"Seguimiento: atrasado","Follow up: today":"Seguimiento: hoy",
+  "Former":"Anterior","Former technician — kept for history":"Técnico anterior — conservado para el historial",
+  "Hidden":"Oculto","Hidden from active assignment":"Oculto de asignación activa","Jobs finished":"Trabajos terminados",
+  "No Warranty (Billed)":"Sin garantía (Facturado)","No tickets in this period.":"Sin tickets en este período.","Pending Dispatch":"Despacho pendiente",
+  "Follow-up cleared":"Seguimiento eliminado","Follow-up set ✓":"Seguimiento guardado ✓","Could not save follow-up":"No se pudo guardar el seguimiento",
+  "Nothing to clean ✓":"Nada que limpiar ✓","Firebase not configured":"Firebase no configurado","Only admins can remove calendar tickets":"Solo los admins pueden quitar tickets del calendario",
+  // ── Admin: tech management + ZIP/zone editor + toasts (batch 8) ──
+  "Already exists":"Ya existe","Built-in":"Integrada","Built-in entries can\u2019t be edited":"Las entradas integradas no se pueden editar",
+  "Delete":"Eliminar","Duplicate":"Duplicar","Editing":"Editando","Enter a city, zone, or both":"Ingresa una ciudad, zona, o ambas",
+  "Enter a valid 5-digit ZIP":"Ingresa un código postal válido de 5 dígitos","Enter name":"Ingresa el nombre","File is empty":"El archivo está vacío",
+  "HIDDEN":"OCULTO","Hide from views":"Ocultar de las vistas","Invalid zone":"Zona inválida",
+  "No ZIPs match the current filters":"Ningún código postal coincide con los filtros","No zone":"Sin zona","Nothing to import":"Nada que importar",
+  "Override removed ✓":"Anulación eliminada ✓","Read-only":"Solo lectura","Rename technician:":"Renombrar técnico:","Show again":"Mostrar de nuevo","Status":"Estado",
+  "Submitted":"Enviado","Pending":"Pendiente","Edit Ticket":"Editar ticket"
+};
+function _i18nStr(s){ if(APP_LANG!=="es"||s==null) return s; var t=(""+s).trim(); return (t&&TR[t]!=null)?(""+s).replace(t,TR[t]):s; }
+function _i18nPass(root){
+  if(!root||!root.querySelectorAll) return;
+  try{
+    var es=(APP_LANG==="es"), nodes=[], w, tn;
+    try{ w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null,false); while((tn=w.nextNode()))nodes.push(tn); }catch(e){ return; }
+    for(var k=0;k<nodes.length;k++){
+      var node=nodes[k], raw=node.nodeValue; if(!raw) continue;
+      var t=raw.trim(); if(!t) continue;
+      var pe=node.parentElement;
+      if(pe){ var tag=pe.tagName; if(tag==="SCRIPT"||tag==="STYLE"||tag==="TEXTAREA") continue; if(pe.closest&&pe.closest("[data-no-i18n]")) continue; }
+      if(es){ if(node.__i18nEn==null&&TR[t]!=null){ node.__i18nEn=raw; node.nodeValue=raw.replace(t,TR[t]); } }
+      else { if(node.__i18nEn!=null){ node.nodeValue=node.__i18nEn; node.__i18nEn=null; } }
+    }
+    ["placeholder","title","aria-label"].forEach(function(attr){
+      var els; try{els=root.querySelectorAll("["+attr+"]");}catch(e){return;}
+      var bak="data-i18o-"+attr;
+      Array.prototype.forEach.call(els,function(el){
+        if(el.closest&&el.closest("[data-no-i18n]")) return;
+        var cur=el.getAttribute(attr); if(cur==null) return;
+        var t=(""+cur).trim(); if(!t) return;
+        if(es){ if(el.getAttribute(bak)==null&&TR[t]!=null){ el.setAttribute(bak,cur); el.setAttribute(attr,(""+cur).replace(t,TR[t])); } }
+        else { var o=el.getAttribute(bak); if(o!=null){ el.setAttribute(attr,o); el.removeAttribute(bak); } }
+      });
+    });
+  }catch(e){}
+}
 // ══ NATIVE MOUNT (Opción B — Jun 2026, picked by Alberto after the mobile
 //    iframe broke: iOS expanded the iframe past the screen, BF's bottom nav
 //    was unreachable, and double chrome ate ~38% of the phone). The tool's
