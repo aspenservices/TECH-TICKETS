@@ -11,3 +11,6 @@ Integrated build: index 2.73.0 + production changes from 2.74–2.79.2. Tech Too
 
 ## v2.81.0 — 6 oct 2026
 QB ✓ is marked automatically when the QB line AND the invoice text of the same ticket are copied (Service Review + Billing Sprint). Invoice copy card in the Billing review pane. Daily card tags use the full card width; Service Review buttons use one type scale (the inline `font:… inherit` was invalid). Generic "Error" toasts now name what failed.
+
+## v2.81.1 — 6 oct 2026 (URGENT)
+Dialogs were stuck: the Customer Deliverables block (v2.76.4) defined `window._cdClose`, the same global the confirm/prompt dialogs use to close. Every OK/Cancel ran the deliverables code instead ("Error · window._cdClose", TypeError n.indexOf) and the dialog never resolved — notes, reschedule and scheduling confirmations all stopped. Renamed to `_cdDeliverableDone`.
