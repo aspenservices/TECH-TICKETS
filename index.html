@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.80.0";
+var APP_VERSION="2.81.0";
 var BUILD_DATE="2026-10-06";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -13274,11 +13274,11 @@ async function toggleTodo(id,markDone){
     if(markDone)upd.doneAt=new Date().toLocaleString();
     else upd.doneAt=null;
     await db.collection("todos").doc(id).update(upd);
-  }catch(e){toast("Error","err")}
+  }catch(e){toast("Could not update the to-do · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");console.error("[Could not update the to-do]",e)}
 }
 async function deleteTodo(id){
   if(!db)return;
-  try{await db.collection("todos").doc(id).delete()}catch(e){toast("Error","err")}
+  try{await db.collection("todos").doc(id).delete()}catch(e){toast("Could not delete the to-do · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");console.error("[Could not delete the to-do]",e)}
 }
 
 // View Transitions: smooth native cross-fade between tabs. Progressive — falls
@@ -15897,7 +15897,7 @@ function resetForm(){
 
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function toast(m,t){const e=document.getElementById("toast");e.textContent=(typeof _i18nStr==="function")?_i18nStr(m):m;e.className="toast show"+(t==="warn"?" warn":t==="err"?" err":"");setTimeout(()=>e.classList.remove("show"),2500)}
+function toast(m,t){if(t==="err"&&/^\s*error\s*$/i.test(String(m))){try{var _st=String(new Error().stack||"").split("\n").filter(function(x){return /\S/.test(x)&&!/^Error$/.test(x.trim())});var _f=(_st[1]||_st[0]||"").trim().replace(/^at\s+/,"").split(/[\s@(]/)[0];console.error("[toast Error origin v2.81]",_st.slice(0,6).join(" | "));if(_f)m="Error · "+_f}catch(_x){}}const e=document.getElementById("toast");e.textContent=(typeof _i18nStr==="function")?_i18nStr(m):m;e.className="toast show"+(t==="warn"?" warn":t==="err"?" err":"");setTimeout(()=>e.classList.remove("show"),2500)}
 // ─── Top activity bar — premium loading sweep (shown during the initial data load) ───
 function _actBarEl(){var b=document.getElementById("actBar");if(!b){b=document.createElement("div");b.id="actBar";b.innerHTML='<div class="bar"></div>';(document.body||document.documentElement).appendChild(b)}return b}
 function _activityStart(){try{_actBarEl().classList.add("on")}catch(_e){}}
@@ -16259,7 +16259,7 @@ async function _brainAddNote(name){
     if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent){await AspenBrain.logEvent({customer:name,app:"tickets",type:"note",title:"📝 "+txt,actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||""});}
     if(typeof toast==="function")toast((typeof L2==="function"?L2("Nota guardada","Note saved"):"Note saved")+" ✓");
     setTimeout(function(){try{openCustomerTimeline(name);}catch(_e){}},450);
-  }catch(_e){if(typeof toast==="function")toast("Error","err");}
+  }catch(_e){if(typeof toast==="function")toast("Could not save the shared note · "+String((_e&&(_e.code||_e.message))||"error").slice(0,90),"err");console.error("[_brainAddNote]",_e);}
 }
 async function openCustomerTimeline(name){
   if(!name||!String(name).trim())return;
@@ -18328,7 +18328,8 @@ async function repCopyBilling(kind){
     if(db)await db.collection("tickets").doc(key).update(kind==="customer"?{qbCustomerDescription:txt}:{qbInternalNote:txt});
     if(kind==="customer")t.qbCustomerDescription=txt;else t.qbInternalNote=txt;
   }catch(_e){toast("Copied, but the draft could not be saved","warn")}
-  toast(kind==="customer"?"Customer copy copied ✓ — ticket was not marked billed":"Internal QB line copied ✓ — ticket was not marked billed");
+  try{if(typeof _qbAutoMark==="function"){await _qbAutoMark(t,kind==="customer"?"customer":"internal");return}}catch(_q){console.warn("[qb auto]",_q)}
+  toast(kind==="customer"?"Customer copy copied ✓":"Internal QB line copied ✓");
 }
 function _repParseBillingAI(txt){
   var out={internal:"",customer:"",review:""},a=String(txt||"").split(/===INTERNAL===/i)[1];
@@ -18375,8 +18376,8 @@ function _repBillingReviewHTML(t){
     +'<div class="rep-card rep-decision '+(hold?'hold':'')+'"><div style="min-width:0"><div class="rep-card-title" style="margin:0">Possible result</div><b id="repBillingState">'+(hold?'Review before billing':'Ready for human confirmation')+'</b><p id="repResultSummary">'+_repEsc(resultLine)+'</p></div>'
     +'<button type="button" class="rep-ai-btn" id="repBillingAIButton" onclick="repRunBillingAI()">✨ Ask AI · What is happening?</button></div>'
     +'<div class="rep-checks">'+check("Warranty",r.warranty)+check("Repeat",r.repeat)+check("Cover / SO",r.so)+check("Conflict",r.conflict)+'</div>'
-    +'<div class="rep-card"><div class="rep-card-title">Internal QuickBooks note · one line</div><div class="rep-copy-row"><textarea id="repQBInternal" oninput="repRememberBillingDrafts()" rows="2" style="font:12px/1.45 ui-monospace,monospace">'+_repEsc(d.internal)+'</textarea><button type="button" class="rep-copy-btn" onclick="repCopyBilling(\'internal\')">Copy QB</button></div><div class="rep-note">Short internal note only. Copying does not mark the ticket billed.</div></div>'
-    +(soNeeded?'<div class="rep-card"><div class="rep-card-title">Sales Order verification</div><div class="rep-copy-row"><input id="repSONumber" class="rep-field" placeholder="Enter QB Sales Order #"><button type="button" class="rep-copy-btn" onclick="repSaveSO()">Verify SO</button></div><div class="rep-note">Confirm whether the cover/accessory was already paid before charging it again.</div></div>':'')
+    +'<div class="rep-card"><div class="rep-card-title">Internal QuickBooks note · one line</div><div class="rep-copy-row"><textarea id="repQBInternal" oninput="repRememberBillingDrafts()" rows="2" style="font:12px/1.45 ui-monospace,monospace">'+_repEsc(d.internal)+'</textarea><button type="button" class="rep-copy-btn" onclick="repCopyBilling(\'internal\')">Copy QB</button></div><div class="rep-note">Step 1 of 2 · internal note. When you copy this AND the invoice text below, the ticket is marked QB ✓ automatically.</div></div>'
+    +(typeof _repInvoiceCopyCard==="function"?_repInvoiceCopyCard(t,d):"")+(soNeeded?'<div class="rep-card"><div class="rep-card-title">Sales Order verification</div><div class="rep-copy-row"><input id="repSONumber" class="rep-field" placeholder="Enter QB Sales Order #"><button type="button" class="rep-copy-btn" onclick="repSaveSO()">Verify SO</button></div><div class="rep-note">Confirm whether the cover/accessory was already paid before charging it again.</div></div>':'')
     +'<div class="rep-card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" onclick="repMarkRepeat()" style="border:1px solid var(--c-danger-fg);background:#fff;color:var(--c-danger-fg);border-radius:9px;padding:8px 11px;font:800 11px/1 inherit;cursor:pointer">↻ Mark Repeat · $0</button><span style="font-size:10px;color:var(--i3)">Only after confirming it is the same failed problem or repair.</span></div>'
     +'<details class="rep-details"><summary>Why did AI reach this result? ▾</summary><div id="repBillingAIResult" class="rep-ai-text">'+_repEsc(review)+'</div></details></div>'
     +'</div>';
@@ -19952,7 +19953,7 @@ async function slToggleTech(docId,techName){
     var techAdded=techs.length>origTechs.length;
     if(techAdded){_maybeOfferAppointmentSMS(d,upd)}
     setTimeout(refreshAll,500);
-  }catch(e){toast("Error","err")}
+  }catch(e){toast("Could not update the technician · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");console.error("[Could not update the technician]",e)}
 }
 async function slDeleteTkt(docId){
   // Admin/organizer only — defense in depth (UI also hides this from techs)
@@ -21134,7 +21135,7 @@ async function coachSchedule(id){
   try{await db.collection("tickets").doc(id).update({date:d,time:t,status:"scheduled"});toast("Scheduled ✓");setTimeout(refreshAll,400);}
   catch(e){console.error(e);toast("Could not schedule","err");}
 }
-async function coachUnschedule(id){try{await db.collection("tickets").doc(id).update({status:"pending"});toast("Moved back to To-Schedule");setTimeout(refreshAll,400);}catch(e){toast("Error","err");}}
+async function coachUnschedule(id){try{await db.collection("tickets").doc(id).update({status:"pending"});toast("Moved back to To-Schedule");setTimeout(refreshAll,400);}catch(e){toast("Could not move the call back · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");}}
 /* v2.9.0: reabrir SIN fecha mandaba la llamada a "Scheduled" con la fecha vacia,
    donde se quedaba atorada: la tarjeta de Scheduled no tiene forma de agendar. */
 async function coachReopen(id){
@@ -22750,7 +22751,7 @@ async function calSetDuration(id,durMin){
     if(_t){_t.durationMin=durMin;_t.allDay=upd.allDay;_t.daySlots=upd.daySlots;}
     toast("\u23F1 Duraci\u00f3n: "+_fmtDur(durMin)+(durMin>=whole?" \u2014 todo el d\u00eda":""));
     if(typeof rndrCal==="function")try{rndrCal()}catch(_e){}
-  }catch(e){toast("Error","err")}
+  }catch(e){toast("Could not change the duration · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");console.error("[Could not change the duration]",e)}
 }
 function calSelectDay(ds){
   // BUG FIX (Jul 2026): #calDate pertenecía a un modal viejo que ya no existe.
@@ -23656,7 +23657,7 @@ async function chgDelete(id,idx){
       t.charges.splice(idx,1); _chgRefresh(id,t);
       toast("Entry removed");
     })
-    .catch(function(e){console.warn("[chgDelete]",e);toast("Error","err");});
+    .catch(function(e){console.warn("[chgDelete]",e);toast("Could not remove the entry · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");});
 }
 function _chgRefresh(id,t){
   var sec=document.getElementById("chgSec_"+id);
@@ -26738,7 +26739,7 @@ async function custSaveSpaDesc(){
     var ref=db.collection("tickets").doc(t.id);
     batch.update(ref,{spaDesc:desc});count++;
   });
-  try{await batch.commit();toast("Spa description saved on "+count+" ticket"+(count!==1?"s":"")+" ✓");setTimeout(refreshAll,500)}catch(e){toast("Error","err")}
+  try{await batch.commit();toast("Spa description saved on "+count+" ticket"+(count!==1?"s":"")+" ✓");setTimeout(refreshAll,500)}catch(e){toast("Could not save the spa description · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");console.error("[Could not save the spa description]",e)}
 }
 
 async function saveCustomZips(){if(!db)return;try{await db.collection("config").doc("customZips").set(customZips)}catch(e){console.warn("[saveCustomZips]",e);if(typeof toast==="function")toast("Could not save ZIP overrides","err")}}
@@ -31458,13 +31459,15 @@ window.bsCopyShort=async function(){
   var t=Q[idx];
   bsRememberTexts();
   try{await navigator.clipboard.writeText(el.value);}catch(e){el.select();try{document.execCommand("copy");}catch(e2){}}
+  if(t&&typeof _qbAutoMark==="function"){try{await _qbAutoMark(t,"internal");return}catch(_q){console.warn("[qb auto]",_q)}}
   try{toast(TT("Nota de ","Note for ")+((t&&t.customer)||"")+TT(" copiada ✓ → NOTES"," copied ✓ → NOTES"));}catch(e){}
 };
 window.bsCopyCustomer=async function(){
   var el=document.getElementById("bsText");if(!el)return;
   var t=Q[idx];bsRememberTexts();
   try{await navigator.clipboard.writeText(el.value);}catch(e){el.select();try{document.execCommand("copy");}catch(e2){}}
-  try{toast(TT("Descripción del cliente copiada ✓ — no se marcó como facturada","Customer description copied ✓ — ticket was not marked billed")+" · "+((t&&t.customer)||""));}catch(e){}
+  if(t&&typeof _qbAutoMark==="function"){try{await _qbAutoMark(t,"customer");return}catch(_q){console.warn("[qb auto]",_q)}}
+  try{toast(TT("Descripción del cliente copiada ✓","Customer description copied ✓")+" · "+((t&&t.customer)||""));}catch(e){}
 };
 async function _copyPlain(txt,msg){
   try{await navigator.clipboard.writeText(txt);}catch(e){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e2){}document.body.removeChild(ta);}
@@ -58512,6 +58515,145 @@ if(_v2783Office){var _v2783Mo=new MutationObserver(function(){var b=document.que
 #ops275ActivityBg .ops275-drawer-b,#ops275SyncBg .ops275-drawer-b{padding-bottom:max(34px,env(safe-area-inset-bottom))!important}
 </style>
 
+
+<!-- ═══ v2.81.0 — QB auto-mark (both texts copied) + cleaner Daily cards + Service Review type scale ═══
+     Reversible: delete these two blocks. Kill switch for the look only: localStorage aspLook281="0". -->
+<style id="aspenV281Look">
+/* ── Daily ticket cards: tags use the whole card width instead of a 215px column ── */
+body:not(.asp-look281-off) #pg1 .tkt>.tkt-h{position:relative;align-items:flex-start}
+body:not(.asp-look281-off) #pg1 .tkt>.tkt-h>.tkt-left{flex:1 1 auto;min-width:0;width:100%}
+body:not(.asp-look281-off) #pg1 .tkt>.tkt-h>.tkt-status{position:absolute;top:1px;right:2px}
+body:not(.asp-look281-off) #pg1 .tkt>.tkt-h>.tkt-left>h4{padding-right:104px}
+body:not(.asp-look281-off) #pg1 .tkt-tiers{flex-direction:row!important;flex-wrap:wrap!important;align-items:center;gap:6px!important;margin-top:9px}
+body:not(.asp-look281-off) #pg1 .tkt-tiers>.tt-cov,
+body:not(.asp-look281-off) #pg1 .tkt-tiers>.tt-svc,
+body:not(.asp-look281-off) #pg1 .tkt-tiers>.tt-meta,
+body:not(.asp-look281-off) #pg1 .tkt-tiers>.tt-row{display:contents!important}
+body:not(.asp-look281-off) #pg1 .tkt-tiers>[id^="covd-"]{flex-basis:100%}
+body:not(.asp-look281-off) #pg1 .tkt-tiers .tkt-tag,
+body:not(.asp-look281-off) #pg1 .tkt-tiers .ops275-state,
+body:not(.asp-look281-off) #pg1 .tkt-tiers .ops276-closeout{display:inline-flex!important;align-items:center;width:auto!important;max-width:100%;flex:0 0 auto;margin:0!important;border-radius:999px!important;padding:4px 9px!important;font-size:11px!important;line-height:1.2!important;white-space:nowrap}
+body:not(.asp-look281-off) #pg1 .tkt-tiers .asp281-qb{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800;line-height:1.2;background:var(--c-warning-bg);color:var(--c-warning-fg);border:1px dashed var(--c-warning-strong,#d97706)}
+
+/* ── Service Review: one type scale. The inline "font:800 10px/1 inherit" on these buttons is an
+      INVALID declaration (inherit cannot sit inside the font shorthand), so the browser dropped it and
+      the buttons came out at 18–20px next to 11px labels. ── */
+#repMBg .rep-pane button,#repMBg .rep-hero button{font-family:inherit!important;font-size:12px!important;font-weight:800!important;line-height:1.2!important}
+#repMBg .rep-copy-btn{min-width:124px;padding:10px 14px!important;border-radius:10px!important}
+#repMBg .rep-ai-btn{padding:10px 14px!important;border-radius:10px!important}
+#repMBg .rep-copy-btn.asp281-done{background:var(--c-success-strong,#16a34a)!important;color:#fff!important}
+#repMBg .rep-qbflow{border-left:4px solid var(--ac,#D4772C)}
+#repMBg .rep-qbflow.done{border-left-color:var(--c-success-strong,#16a34a)}
+#repMBg .asp281-steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px}
+#repMBg .asp281-steps .s{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;border:1px solid var(--ln,#e5ddd4);background:var(--bg,#faf8f4);color:var(--i3,#80766c);font-size:11px;font-weight:800}
+#repMBg .asp281-steps .s.ok{background:var(--c-success-bg,#e6f4ea);color:var(--c-success-fg,#166534);border-color:var(--c-success-strong,#16a34a)}
+#repMBg .asp281-steps .arrow{color:var(--i3,#80766c);font-size:12px}
+#repMBg #repCustomerCopy{width:100%;box-sizing:border-box;border:1.5px solid var(--ln,#d8d0c6);border-radius:10px;background:var(--bg,#faf8f4);color:var(--ink,#26201b);padding:10px 11px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;min-height:96px}
+</style>
+<script id="aspenV281Script">
+(function(){
+'use strict';
+if(window.__aspenV281)return;window.__aspenV281=true;
+try{if(localStorage.getItem('aspLook281')==='0')document.body.classList.add('asp-look281-off')}catch(_e){}
+function esc(v){try{return typeof _repEsc==='function'?_repEsc(v):String(v==null?'':v)}catch(_e){return String(v==null?'':v)}}
+function who(){try{return (currentUser&&currentUser.name)||''}catch(_e){return ''}}
+function state(t){t=t||{};return{internal:!!t.qbInternalCopiedAt,customer:!!t.qbCustomerCopiedAt,done:!!t.qbCopied}}
+function stepsHTML(t){
+  var s=state(t);
+  return '<div class="asp281-steps" id="asp281Steps">'
+    +'<span class="s'+(s.internal||s.done?' ok':'')+'">'+(s.internal||s.done?'✓':'1')+' QB line</span>'
+    +'<span class="s'+(s.customer||s.done?' ok':'')+'">'+(s.customer||s.done?'✓':'2')+' Invoice text</span>'
+    +'<span class="arrow">→</span>'
+    +'<span class="s'+(s.done?' ok':'')+'">'+(s.done?'✓ QB marked':'QB ✓ marks itself')+'</span></div>';
+}
+/* Billing pane card: the invoice (customer) text, right under the QB line. Same draft as the
+   "Customer copy" tab — repRememberBillingDrafts() already prefers #repCustomerCopy. */
+window._repInvoiceCopyCard=function(t,d){
+  var s=state(t),txt=(d&&d.customer)||'';
+  return '<div class="rep-card rep-qbflow'+(s.done?' done':'')+'" id="asp281Flow">'
+    +stepsHTML(t)
+    +'<div class="rep-card-title">Invoice description · customer · step 2 of 2</div>'
+    +'<div class="rep-copy-row"><textarea id="repCustomerCopy" oninput="repSyncCustomerCopy()" rows="4">'+esc(txt)+'</textarea>'
+    +'<button type="button" class="rep-copy-btn'+(s.customer||s.done?' asp281-done':'')+'" id="asp281CopyInv" onclick="repCopyBilling(\'customer\')">'+(s.customer||s.done?'✓ Copied':'Copy invoice')+'</button></div>'
+    +'<div class="rep-note">Same text as the "Customer copy" tab — edit it in either place.</div></div>';
+};
+function paint(t){
+  try{
+    var cur=(typeof _repCurrentTicket!=='undefined')?_repCurrentTicket:null;
+    if(!cur||String(cur.id)!==String(t.id))return;
+    var st=document.getElementById('asp281Steps');if(st)st.outerHTML=stepsHTML(t);
+    var s=state(t),fl=document.getElementById('asp281Flow');if(fl)fl.classList.toggle('done',s.done);
+    var b=document.getElementById('asp281CopyInv');if(b&&(s.customer||s.done)){b.classList.add('asp281-done');b.textContent='✓ Copied'}
+    var q=document.querySelector('#repMBg .rep-copy-btn[onclick*="internal"]');if(q&&(s.internal||s.done)){q.classList.add('asp281-done');q.textContent='✓ Copied'}
+  }catch(_e){}
+}
+/* Rule (Alberto, 6 oct 2026): copying the QB line AND the invoice text of the same ticket marks it
+   QB ✓. One copy alone only records that step. The two steps are stored on the ticket, so they can
+   happen on different days or devices. */
+window._qbAutoMark=async function(t,kind){
+  if(!t||!t.id)return;
+  var name=t.customer||'ticket',now=new Date().toLocaleString();
+  var field=kind==='customer'?'qbCustomerCopiedAt':'qbInternalCopiedAt';
+  var was=state(t);t[field]=t[field]||now;
+  var s=state(t),upd={};upd[field]=t[field];
+  var mark=!was.done&&s.internal&&s.customer;
+  if(mark){upd.qbCopied=true;upd.qbCopiedAt=now;upd.qbCopiedBy=who();upd.qbCopiedVia='auto_both_copied';}
+  try{
+    if(typeof db!=='undefined'&&db)await db.collection('tickets').doc(String(t.id)).update(upd);
+  }catch(e){
+    console.error('[qb auto-mark]',e);
+    try{toast('Copied ✓ — but QB ✓ could not be saved · '+String((e&&(e.code||e.message))||'error').slice(0,80),'warn')}catch(_t){}
+    paint(t);return;
+  }
+  if(mark){
+    t.qbCopied=true;t.qbCopiedAt=now;
+    try{var all=[].concat(typeof active!=='undefined'?active:[],typeof done!=='undefined'?done:[]);all.forEach(function(x){if(x&&String(x.id)===String(t.id)){x.qbCopied=true;x.qbCopiedAt=now;x.qbInternalCopiedAt=t.qbInternalCopiedAt;x.qbCustomerCopiedAt=t.qbCustomerCopiedAt}})}catch(_e){}
+    try{if(typeof _bumpQbCopyCount==='function')_bumpQbCopyCount()}catch(_e){}
+    try{if(typeof rndrA==='function')rndrA()}catch(_e){}
+    try{toast('QB ✓ marked · both texts copied · '+name)}catch(_e){}
+  }else if(was.done){
+    try{toast((kind==='customer'?'Invoice text':'QB line')+' copied ✓ · '+name+' (already QB ✓)')}catch(_e){}
+  }else{
+    try{toast((kind==='customer'?'Invoice text copied ✓ · step 2 — now copy the QB line':'QB line copied ✓ · step 1 — now copy the invoice text')+' · '+name)}catch(_e){}
+  }
+  paint(t);
+};
+/* Keep the two editors of the customer text in step (billing card ⇄ Customer copy tab). */
+document.addEventListener('input',function(ev){
+  var el=ev.target;if(!el||el.id!=='repNotesEdit')return;
+  var c=document.getElementById('repCustomerCopy');if(c&&c.value!==el.value)c.value=el.value;
+},true);
+var _sw=window.repSwitchTab;
+if(typeof _sw==='function'&&!_sw.__v281){
+  window.repSwitchTab=function(name){
+    var r=_sw.apply(this,arguments);
+    try{if(name==='customer'){var c=document.getElementById('repCustomerCopy'),n=document.getElementById('repNotesEdit');if(c&&n&&n.value!==c.value){n.value=c.value;if(typeof repRefreshPreview==='function')repRefreshPreview()}}}catch(_e){}
+    return r;
+  };
+  window.repSwitchTab.__v281=true;
+}
+/* Daily card: show the half-way state so nobody wonders why QB ✓ is not on yet. */
+function decorate(){
+  try{
+    var list=[].concat(typeof active!=='undefined'?active:[],typeof done!=='undefined'?done:[]);
+    document.querySelectorAll('#pg1 .tkt').forEach(function(card){
+      var h4=card.querySelector('h4[data-cust]');var tiers=card.querySelector('.tkt-tiers');if(!h4||!tiers)return;
+      var old=tiers.querySelector('.asp281-qb');if(old)old.remove();
+      var body=card.querySelector('.tkt-body[id]');var t=null;
+      var nm=h4.getAttribute('data-cust');
+      var cands=list.filter(function(x){return x&&x.customer===nm&&!x.qbCopied&&(x.qbInternalCopiedAt||x.qbCustomerCopiedAt)});
+      if(cands.length!==1)return; /* never guess between two tickets of the same customer */
+      t=cands[0];var s=state(t);
+      var sp=document.createElement('span');sp.className='asp281-qb';sp.title='Copy the other text in Service Review to mark QB ✓';
+      sp.textContent='QB '+((s.internal?1:0)+(s.customer?1:0))+'/2 · '+(s.internal?'invoice text':'QB line')+' missing';
+      tiers.appendChild(sp);
+    });
+  }catch(_e){}
+}
+var _ra=window.rndrA;
+if(typeof _ra==='function'&&!_ra.__v281){window.rndrA=function(){var r=_ra.apply(this,arguments);setTimeout(decorate,0);return r};window.rndrA.__v281=true}
+})();
+</script>
 
 </body>
 </html>
