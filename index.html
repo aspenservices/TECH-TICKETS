@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.81.1";
+var APP_VERSION="2.82.0";
 var BUILD_DATE="2026-10-06";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -49858,7 +49858,7 @@ function movil(lista){
    el emoji de siempre queda de respaldo si la libreria no llego. */
 var ICONO_LUCIDE={tab16:"sun",tab0:"clipboard-check",tab4:"calendar",tab5:"clipboard-list",tab1:"list-checks",tab6:"users",
   tab13:"message-circle",tab8:"bell",tab10:"wrench",tab9:"briefcase",tab2:"package",tab12:"phone",tab3:"settings",tab7:"map",
-  tab14:"inbox",tab15:"banknote",tab17:"camera"};
+  tab14:"inbox",tab15:"banknote",tab17:"camera",tab18:"award"};
 function ico(id){
   try{ var n=ICONO_LUCIDE[id]; if(n&&typeof icon==="function"&&typeof lucide!=="undefined"&&lucide.icons){
     var pascal=n.split("-").map(function(w){return w.charAt(0).toUpperCase()+w.slice(1)}).join("");
@@ -49869,7 +49869,7 @@ function ico(id){
 var ICONO={tab0:"\uD83D\uDD27",tab4:"\uD83D\uDCC5",tab5:"\uD83D\uDCCB",tab1:"\u2705",tab6:"\uD83D\uDC65",
   tab13:"\uD83D\uDCAC",tab8:"\uD83D\uDD14",tab10:"\uD83E\uDDF0",tab9:"\uD83D\uDCBC",tab2:"\uD83D\uDCE6",
   tab12:"\uD83D\uDCDE",tab3:"\u2699\uFE0F",tab7:"\uD83D\uDDFA\uFE0F",
-  tab14:"\uD83D\uDCE8",tab15:"\uD83D\uDCB5",tab16:"\u2600\uFE0F",tab17:"\uD83D\uDCF7"};
+  tab14:"\uD83D\uDCE8",tab15:"\uD83D\uDCB5",tab16:"\u2600\uFE0F",tab17:"\uD83D\uDCF7",tab18:"\uD83C\uDFC5"};
 
 function limpio(t){
   /* el label del tab trae emoji y a veces el badge dentro: se saca solo el texto */
@@ -49891,7 +49891,7 @@ function tabs(){
    futura que no este aqui cae en "work", que es un degradado sano: sale en la
    barra igual, solo que en el primer grupo. */
 var GRUPO={tab0:"work",tab4:"work",tab5:"work",tab1:"work",tab2:"work",tab12:"work",
-           tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",tab17:"manage",
+           tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",tab17:"manage",tab18:"work",
            tab10:"tools",tab9:"tools",tab7:"tools",};
 function grupoDe(t){ return GRUPO[t.id]||"work" }
 var TITULO={work:"Work",manage:"Management",tools:"Tools"}; /* v2.64.0: en ingles, con su espanol en TR (el traductor solo va EN→ES) */
@@ -58655,5 +58655,843 @@ if(typeof _ra==='function'&&!_ra.__v281){window.rndrA=function(){var r=_ra.apply
 })();
 </script>
 
+
+<!-- ═══ TECH SCORECARD (v2.82.0, Oct 2026) — tab18/pg18. Delete these three blocks to revert. ═══ -->
+<style id="aspenScorecardSkin">
+/* TECH SCORECARD — styles for #pg18 (v2.82.0). Uses the index :root tokens.
+   Delete the three aspenScorecard* blocks to revert. */
+#pg18{padding-bottom:90px}
+#pg18 .sc-head{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:2px 0 14px}
+#pg18 .sc-head h1{margin:0;font-size:29px;font-weight:800;letter-spacing:-.02em;line-height:1}
+#pg18 .sc-sub{color:var(--i3);font-size:14px;padding-bottom:3px}
+#pg18 .sc-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px}
+#pg18 .sc-tabs button{border:1px solid var(--ln);background:var(--cd);color:var(--i2);padding:8px 16px;border-radius:999px;font:inherit;font-weight:600;white-space:nowrap;cursor:pointer}
+#pg18 .sc-tabs button.on{background:var(--br);border-color:var(--br);color:#F6EFE6}
+#pg18 .sc-n{display:inline-block;min-width:18px;margin-left:6px;padding:0 5px;border-radius:9px;background:var(--ac);color:#fff;font-size:11px;line-height:18px;text-align:center}
+#pg18 h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px;color:var(--ink)}
+#pg18 .sc-lead{color:var(--i2);margin:0 0 14px;max-width:72ch}
+#pg18 .sc-mut{color:var(--i3);font-size:13px}
+#pg18 .sc-mut.c{text-align:center;margin:4px 0 8px}
+#pg18 .sc-empty{padding:40px;text-align:center;color:var(--i3)}
+#pg18 .sc-card,.sc-drawer .sc-card{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:12px}
+#pg18 .sc-warn{background:var(--c-warning-bg);color:var(--c-warning-fg);border:1px solid var(--c-warning-border);border-radius:12px;padding:10px 14px;font-size:14px;margin:10px 0}
+#pg18 .sc-btn,.sc-drawer .sc-btn{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;background:var(--ac);color:#fff;cursor:pointer}
+#pg18 .sc-btn.sec,.sc-drawer .sc-btn.sec{background:var(--cd);color:var(--ink);border:1px solid var(--ln)}
+#pg18 .sc-btn:disabled{background:var(--ln);color:var(--i3);cursor:not-allowed}
+#pg18 .sc-link,.sc-drawer .sc-link{border:0;background:none;color:var(--acd);font:inherit;font-weight:700;padding:4px 0;cursor:pointer;text-decoration:underline}
+#pg18 .sc-acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+#pg18 .sc-acts.end{justify-content:flex-end}
+#pg18 .sc-prog{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:var(--i3);font-size:13px}
+#pg18 .sc-bar{flex:1;height:8px;border-radius:5px;background:var(--ln);overflow:hidden}
+#pg18 .sc-bar i{display:block;height:100%;background:var(--ac)}
+#pg18 .sc-list{display:grid;gap:10px}
+#pg18 .sc-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--ln);border-radius:14px;background:var(--cd)}
+#pg18 .sc-row.off{opacity:.55}
+#pg18 .sc-av{width:38px;height:38px;border-radius:11px;background:var(--br);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+#pg18 .sc-grow{flex:1;min-width:0}
+#pg18 .sc-nm{font-weight:700;color:var(--ink)}
+#pg18 .sc-yn{display:flex;gap:8px}
+#pg18 .sc-yn button{width:52px;height:44px;border-radius:12px;border:1px solid var(--ln);background:var(--cd);font-size:18px;font-weight:700;color:var(--i3);cursor:pointer}
+#pg18 .sc-yn .y.on{background:var(--c-success-bg);border-color:var(--c-success-border);color:var(--c-success-fg)}
+#pg18 .sc-yn .n.on{background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)}
+#pg18 .sc-miss{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+#pg18 .sc-miss input{flex:1;min-width:180px;padding:9px 11px;border:1px solid var(--c-danger-border);border-radius:10px;font:inherit;background:var(--cd);color:var(--ink)}
+#pg18 .sc-miss .sc-btn{padding:8px 14px}
+#pg18 .sc-form{display:grid;gap:10px;grid-template-columns:1fr 1fr;align-items:end}
+#pg18 .sc-form label{font-size:13px;font-weight:600;color:var(--i2);display:grid;gap:5px}
+#pg18 .sc-form select,#pg18 .sc-form input,#pg18 select{padding:10px;border:1px solid var(--ln);border-radius:11px;background:var(--cd);color:var(--ink);font:inherit}
+#pg18 .sc-form .full{grid-column:1/-1}
+#pg18 .sc-verdict{border-radius:12px;padding:10px 14px;font-size:14px;font-weight:600}
+#pg18 .sc-verdict.bad{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+#pg18 .sc-verdict.ok{background:var(--c-neutral-bg);color:var(--c-neutral-fg)}
+#pg18 .sc-tag,.sc-drawer .sc-tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:7px;background:var(--c-neutral-bg);color:var(--c-neutral-fg)}
+#pg18 .sc-tag.bad,.sc-drawer .sc-tag.bad{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+#pg18 .sc-ev,.sc-drawer .sc-ev{border-top:1px solid var(--ln);padding:10px 0;font-size:14px;color:var(--ink)}
+.sc-drawer .sc-ev.voided>div:first-child{text-decoration:line-through;color:var(--i3)}
+#pg18 .sc-ph{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+#pg18 .sc-ph figure{margin:0}
+#pg18 .sc-ph img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:1px solid var(--ln);display:block;background:var(--ln)}
+#pg18 .sc-ph figcaption{font-size:12px;color:var(--i3);margin-top:4px}
+#pg18 .sc-noph{aspect-ratio:4/3;border-radius:12px;border:1px dashed var(--ln);display:grid;place-items:center;color:var(--i3);font-size:13px;text-align:center;padding:10px}
+#pg18 .sc-mhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+#pg18 .sc-tot{margin-left:auto;text-align:right}
+#pg18 .sc-tot b{display:block;font-size:26px;letter-spacing:-.5px;color:var(--ink)}
+#pg18 .sc-gw{overflow-x:auto}
+#pg18 .sc-grid{width:100%;border-collapse:separate;border-spacing:0 8px;min-width:760px}
+#pg18 .sc-grid th{font-size:12px;color:var(--i3);font-weight:600;text-align:left;padding:0 10px}
+#pg18 .sc-grid th span{font-weight:400}
+#pg18 .sc-grid th.r{text-align:right}
+#pg18 .sc-grid td{background:var(--cd);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);padding:12px 10px;vertical-align:middle}
+#pg18 .sc-grid td:first-child{border-left:1px solid var(--ln);border-radius:14px 0 0 14px}
+#pg18 .sc-grid td:last-child{border-right:1px solid var(--ln);border-radius:0 14px 14px 0}
+#pg18 .sc-who{display:flex;gap:10px;align-items:center}
+#pg18 .sc-cell{width:100%;text-align:left;border:1px solid transparent;border-radius:11px;padding:8px 10px;background:var(--c-neutral-bg);color:var(--ink);font:inherit;cursor:pointer}
+#pg18 .sc-cell.pass{background:var(--c-success-bg);border-color:var(--c-success-border)}
+#pg18 .sc-cell.fail{background:var(--c-danger-bg);border-color:var(--c-danger-border)}
+#pg18 .sc-cell.wait{background:var(--c-warning-bg);border-color:var(--c-warning-border)}
+#pg18 .sc-cell b{display:block;font-size:13px}
+#pg18 .sc-cell span{font-size:12px;color:var(--i2)}
+#pg18 .sc-pips{display:flex;flex-wrap:wrap;gap:2px;margin-top:5px}
+#pg18 .sc-pips i{width:7px;height:7px;border-radius:2px;background:var(--c-success-border)}
+#pg18 .sc-pips i.x{background:var(--c-danger-strong)}
+#pg18 .sc-pay{font-size:22px;font-weight:800;letter-spacing:-.5px;text-align:right;white-space:nowrap;color:var(--ink)}
+#pg18 .sc-pay small{display:block;font-size:12px;font-weight:500;color:var(--i3);letter-spacing:0}
+#pg18 .sc-set{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+#pg18 .sc-card.wide{grid-column:1/-1}
+#pg18 .sc-srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--ln);color:var(--ink)}
+#pg18 .sc-srow span{flex:1}
+#pg18 .sc-srow input{width:80px;padding:8px;border:1px solid var(--ln);border-radius:9px;text-align:right;font:inherit;background:var(--cd);color:var(--ink)}
+#pg18 .sc-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;background:var(--c-neutral-bg);color:var(--ink);margin:0 6px 6px 0;font-size:14px}
+#pg18 .sc-chip button{border:0;background:none;color:var(--i3);padding:0;font-size:16px;cursor:pointer}
+.sc-scrim{position:fixed;inset:0;background:rgba(20,12,6,.45);display:none;z-index:4500}
+.sc-scrim.open{display:block}
+.sc-drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--cd);color:var(--ink);z-index:4501;transform:translateX(100%);visibility:hidden;transition:transform .22s;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(18px + env(safe-area-inset-bottom,0px));overflow-y:auto}
+.sc-drawer.open{transform:none;visibility:visible;box-shadow:-10px 0 30px rgba(0,0,0,.2)}
+.sc-drawer h2{font-size:20px;margin:0 0 4px}
+.sc-drawer .sc-mut{color:var(--i3);font-size:13px}
+.sc-drawer .sc-x{float:right;border:0;background:var(--c-neutral-bg);border-radius:10px;width:36px;height:36px;font-size:18px;color:var(--ink);cursor:pointer}
+.sc-drawer .sc-evimg{display:block;max-width:240px;width:100%;border-radius:10px;margin-top:6px;border:1px solid var(--ln)}
+.sc-drawer .sc-foot{margin-top:16px}
+#pg18 .sc-phone{max-width:440px;margin:0 auto;border:1px solid var(--ln);border-radius:24px;overflow:hidden;background:var(--bg)}
+#pg18 .sc-top{background:var(--hdr-bg,#211712);color:#fff;padding:18px 18px 22px}
+#pg18 .sc-mut2{color:#c9b8a8;font-size:13px}
+#pg18 .sc-earn{font-size:40px;font-weight:800;letter-spacing:-1px;margin-top:6px}
+#pg18 .sc-earn small{font-size:15px;font-weight:500;color:#c9b8a8;letter-spacing:0}
+#pg18 .sc-meter{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:12px}
+#pg18 .sc-meter i{height:8px;border-radius:5px;background:#4a3a2e}
+#pg18 .sc-meter i.on{background:var(--ac)}
+#pg18 .sc-meter i.risk{background:var(--c-warning-strong)}
+#pg18 .sc-meter i.lost{background:#7a2a2a}
+#pg18 .sc-pbody{padding:14px;display:grid;gap:10px}
+#pg18 .sc-crit{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:14px}
+#pg18 .sc-ch{display:flex;justify-content:space-between;gap:8px;font-weight:700;color:var(--ink)}
+#pg18 .sc-cs{font-size:13px;color:var(--i2);margin-top:3px}
+#pg18 .sc-st{font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;white-space:nowrap}
+#pg18 .sc-st.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
+#pg18 .sc-st.risk{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+#pg18 .sc-st.bad{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+#pg18 .sc-note{font-size:13px;color:var(--c-danger-fg);margin-top:6px}
+#pg18 .sc-cam{width:100%;margin-top:10px;padding:14px;border-radius:13px;border:2px dashed var(--ac);background:var(--acl);color:var(--acd);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+#pg18 .sc-sent{margin-top:10px;display:flex;gap:10px;align-items:center;font-size:14px;color:var(--i2)}
+#pg18 .sc-sent img{width:64px;height:48px;object-fit:cover;border-radius:9px}
+#pg18 .sc-parts{margin-top:8px;font-size:13px}
+#pg18 .sc-parts summary{cursor:pointer;color:var(--acd);font-weight:700;margin-bottom:6px}
+@media (max-width:600px){#pg18 .sc-form{grid-template-columns:1fr}#pg18 .sc-row{flex-wrap:wrap}#pg18 .sc-yn{width:100%}#pg18 .sc-yn button{flex:1}}
+@media (prefers-reduced-motion:reduce){.sc-drawer{transition:none}}
+</style>
+<script id="aspenScorecardCore">
+/* ═══════════════════════════════════════════════════════════════════════
+   TECH SCORECARD — CORE  (v2.82.0, Oct 2026)
+   Pure logic only: no DOM, no Firebase. Tested in Node (tests/scorecard.test.js).
+   Delete the three aspenScorecard* blocks to revert the whole feature.
+   Rules (spec): a criterion is met / missed per month; bonus = sum of the
+   amounts of the criteria met. Week = Mon–Sun, belongs to its Friday's month.
+   Nothing is edited or deleted: a correction is a "void" mark.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+if(window.aspScore)return;
+
+var CRITS=["uniform","vehicle","tickets","returns"];
+
+/* ---- day math on "YYYY-MM-DD" strings, timezone-proof (UTC noon) ---- */
+function toUTC(day){ var p=String(day).slice(0,10).split("-"); return Date.UTC(+p[0],+p[1]-1,+p[2],12); }
+function fromUTC(ms){ var d=new Date(ms); return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0"); }
+function addDays(day,n){ return fromUTC(toUTC(day)+n*86400000); }
+function localDay(ms){ var d=new Date(ms); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+function weekId(day){ var dow=new Date(toUTC(day)).getUTCDay(); return addDays(day,-((dow+6)%7)); }
+function monthOfWeek(wk){ return addDays(wk,4).slice(0,7); }
+function weeksOfMonth(month){
+  var out=[], first=month+"-01", wk=weekId(addDays(first,-6));
+  for(var i=0;i<7;i++){ if(monthOfWeek(wk)===month)out.push(wk); wk=addDays(wk,7); }
+  return out;
+}
+function offWeekFn(isOffDay){
+  return function(tech,wk){
+    for(var i=0;i<5;i++){ if(!isOffDay(tech,addDays(wk,i)))return false; }
+    return true;
+  };
+}
+
+/* ---- marks ---- */
+function effective(marks){
+  var voided={};
+  (marks||[]).forEach(function(m){ if(m&&m.type==="void"&&m.voids)voided[m.voids]=1; });
+  return (marks||[]).filter(function(m){ return m&&m.type!=="void"&&!voided[m.id]; });
+}
+function ofType(marks,type,tech){
+  return effective(marks).filter(function(m){ return m.type===type&&m.tech===tech; });
+}
+function latestBy(list,keyFn){
+  var best={};
+  list.forEach(function(m){ var k=keyFn(m); if(!best[k]||(+m.atMs||0)>=(+best[k].atMs||0))best[k]=m; });
+  return best;
+}
+
+function evalUniform(marks,tech,month,tol){
+  var mine=ofType(marks,"uniform",tech).filter(function(m){ return String(m.day).slice(0,7)===month; });
+  var perDay=latestBy(mine,function(m){ return m.day; });
+  var days=Object.keys(perDay).sort();
+  var items=days.map(function(d){ return perDay[d]; });
+  var misses=items.filter(function(m){ return m.ok===false; }).length;
+  return {pass:misses<=tol, misses:misses, days:days.length, items:items};
+}
+
+function evalVehicle(photos,marks,tech,month,tol,asOfDay,isOffWeek){
+  var reviews=ofType(marks,"photoReview",tech);
+  var weeks=weeksOfMonth(month).map(function(wk){
+    if(isOffWeek&&isOffWeek(tech,wk))return {weekId:wk,state:"off"};
+    var ph=null;
+    (photos||[]).forEach(function(p){ if(p&&p.tech===tech&&p.weekId===wk&&(!ph||(+p.takenAtMs||0)>=(+ph.takenAtMs||0)))ph=p; });
+    if(!ph)return {weekId:wk,state:(asOfDay&&asOfDay<=addDays(wk,6))?"open":"missing"};
+    var rv=null;
+    reviews.forEach(function(r){ if(r.photoId===ph.id&&(!rv||(+r.atMs||0)>=(+rv.atMs||0)))rv=r; });
+    if(!rv)return {weekId:wk,state:"pending",photoId:ph.id,photo:ph};
+    return {weekId:wk,state:rv.clean?"clean":"dirty",photoId:ph.id,photo:ph,review:rv};
+  });
+  var failed=weeks.filter(function(w){ return w.state==="missing"||w.state==="dirty"; }).length;
+  var pending=weeks.filter(function(w){ return w.state==="pending"; }).length;
+  var pass=failed<=tol;
+  return {pass:pass, wait:pass&&pending>0, failed:failed, pending:pending, weeks:weeks};
+}
+
+function evalTickets(facts,tol){
+  facts=facts||{visits:0,late:[],unreported:[]};
+  var late=(facts.late||[]).length, un=(facts.unreported||[]).length;
+  return {pass:un===0&&late<=tol, visits:facts.visits||0, late:facts.late||[], unreported:facts.unreported||[]};
+}
+
+function evalReturns(marks,tech,month,tol){
+  var items=ofType(marks,"return",tech).filter(function(m){ return String(m.day).slice(0,7)===month; });
+  var listed=items.filter(function(m){ return m.onList===true; }).length;
+  return {pass:listed<=tol, listed:listed, other:items.length-listed, items:items};
+}
+
+function payOf(row,amount){
+  var pay=0;
+  CRITS.forEach(function(k){ if(row[k]&&row[k].pass&&!row[k].wait)pay+=(+amount[k]||0); });
+  return pay;
+}
+
+function evalMonth(o){
+  var s=o.settings, rows={}, total=0, pendingReviews=0;
+  (o.techs||[]).forEach(function(tech){
+    var row={
+      uniform:evalUniform(o.marks,tech,o.month,s.tol.uniform),
+      vehicle:evalVehicle(o.photos,o.marks,tech,o.month,s.tol.vehicle,o.asOfDay,o.isOffWeek),
+      tickets:evalTickets((o.ticketFacts||{})[tech],s.tol.tickets),
+      returns:evalReturns(o.marks,tech,o.month,s.tol.returns)
+    };
+    row.pay=payOf(row,s.amount);
+    total+=row.pay; pendingReviews+=row.vehicle.pending;
+    rows[tech]=row;
+  });
+  return {month:o.month, rows:rows, total:total, pendingReviews:pendingReviews};
+}
+
+/* Corrections after a month is closed: an "adjust" mark overrides one
+   criterion's pass/fail. Returns a NEW result; the input is untouched. */
+function applyAdjust(result,marks,settings){
+  var out={month:result.month, rows:{}, total:0, pendingReviews:result.pendingReviews};
+  Object.keys(result.rows).forEach(function(tech){
+    var r={}; Object.keys(result.rows[tech]).forEach(function(k){ r[k]=result.rows[tech][k]; });
+    out.rows[tech]=r;
+  });
+  var adj=effective(marks).filter(function(m){ return m.type==="adjust"; });
+  adj.sort(function(a,b){ return (+a.atMs||0)-(+b.atMs||0); });
+  adj.forEach(function(m){
+    var r=out.rows[m.tech]; if(!r||CRITS.indexOf(m.crit)<0)return;
+    var c={}; Object.keys(r[m.crit]||{}).forEach(function(k){ c[k]=r[m.crit][k]; });
+    c.pass=!!m.pass; c.wait=false; c.adjusted=m; r[m.crit]=c;
+  });
+  Object.keys(out.rows).forEach(function(tech){ out.rows[tech].pay=payOf(out.rows[tech],settings.amount); out.total+=out.rows[tech].pay; });
+  return out;
+}
+
+/* ---- tickets: reuses the app's own link index (_linkIndex) and closing
+   rule (_dispatchClosed), passed in as lnk / isClosed ---- */
+function ticketFacts(tech,month,asOfDay,pool,lnk,isClosed,dayOfMs){
+  dayOfMs=dayOfMs||localDay;
+  var visits=0, late=[], unreported=[];
+  (pool||[]).forEach(function(t){
+    if(!t||t.source!=="dispatch")return;
+    var who=Array.isArray(t.techs)?t.techs:(t.tech?[t.tech]:[]);
+    if(who.indexOf(tech)<0)return;
+    var d=String(t.date||"").slice(0,10);
+    if(d.slice(0,7)!==month||!(d<asOfDay))return;
+    if(t.status==="canceled"||t.status==="cancelled")return;
+    visits++;
+    var rid=lnk&&lnk.servedBy?lnk.servedBy[t.id]:null;
+    var rep=rid&&lnk.byId?lnk.byId[rid]:null;
+    if(rep){
+      var ms=+rep.createdAtMs;
+      if(ms&&!isNaN(ms)&&!(lnk.legacy&&lnk.legacy[t.id])){
+        var rd=dayOfMs(ms);
+        if(rd>d)late.push({id:t.id,customer:t.customer||"",date:d,reportDay:rd});
+      }
+      return;
+    }
+    if(!isClosed(t))unreported.push({id:t.id,customer:t.customer||"",date:d,techs:who.slice()});
+  });
+  return {visits:visits, late:late, unreported:unreported};
+}
+
+window.aspScore={
+  CRITS:CRITS, weekId:weekId, monthOfWeek:monthOfWeek, weeksOfMonth:weeksOfMonth, addDays:addDays,
+  localDay:localDay, offWeekFn:offWeekFn, effective:effective,
+  evalUniform:evalUniform, evalVehicle:evalVehicle, evalTickets:evalTickets, evalReturns:evalReturns,
+  evalMonth:evalMonth, applyAdjust:applyAdjust, ticketFacts:ticketFacts
+};
+})();
+</script>
+<script id="aspenScorecardScript">
+/* ── TECH SCORECARD — DATA (v2.82.0) ─────────────────────────────────────
+   Firestore + Storage access for the Scorecard. Append-only: every office
+   action is a NEW document in scorecard_marks; nothing is updated/deleted.
+   Built by a factory so it can be tested with a fake db (tests/data.test.js). */
+(function(){
+"use strict";
+var TYPES={uniform:1,"return":1,photoReview:1,"void":1,adjust:1};
+var DEFAULTS={amount:{uniform:25,vehicle:25,tickets:25,returns:25},tol:{uniform:1,vehicle:0,tickets:2,returns:1},parts:[]};
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function blank(s){ return !String(s==null?"":s).trim(); }
+
+window.aspScoreDataFactory=function(env){
+  var db=env.db;
+  function me(){ return env.user()||{}; }
+  function isOffice(){ var r=me().role; return r==="admin"||r==="organizer"; }
+
+  function watchMonth(month,cb){
+    var u=me(), state={marks:[],photos:[]}, offs=[];
+    ["scorecard_marks","scorecard_photos"].forEach(function(name){
+      var q=db.collection(name).where("month","==",month);
+      if(u.role==="tech")q=q.where("tech","==",u.name);
+      offs.push(q.onSnapshot(function(snap){
+        state[name==="scorecard_marks"?"marks":"photos"]=snap.docs.map(function(d){ var v=d.data(); v.id=d.id; return v; });
+        cb({marks:state.marks,photos:state.photos});
+      },function(e){ console.warn("[scorecard] listener",name,e); }));
+    });
+    return function(){ offs.forEach(function(f){ try{f()}catch(_e){} }); offs=[]; };
+  }
+
+  async function loadSettings(){
+    var s=clone(DEFAULTS);
+    try{
+      var d=await db.collection("config").doc("scorecard").get();
+      if(d.exists){
+        var v=d.data()||{};
+        ["amount","tol"].forEach(function(k){ Object.keys(s[k]).forEach(function(c){ if(v[k]&&v[k][c]!=null&&!isNaN(+v[k][c]))s[k][c]=Math.max(0,+v[k][c]); }); });
+        if(Array.isArray(v.parts))s.parts=v.parts.filter(function(p){ return !blank(p); });
+      }
+    }catch(e){ console.warn("[scorecard] settings",e); }
+    return s;
+  }
+  async function saveSettings(s){
+    if(!isOffice())throw new Error("office only");
+    await db.collection("config").doc("scorecard").set({amount:s.amount,tol:s.tol,parts:s.parts,by:me().name,atMs:env.now()});
+  }
+
+  async function addMark(f){
+    if(!f||!TYPES[f.type])throw new Error("unknown mark type");
+    if(!isOffice())throw new Error("office only");
+    if(f.type==="uniform"&&f.ok===false&&blank(f.note))throw new Error("note required for a missed uniform");
+    if(f.type==="photoReview"&&f.clean===false&&blank(f.note))throw new Error("note required when not clean");
+    if((f.type==="void"||f.type==="adjust")&&blank(f.reason))throw new Error("reason required");
+    var doc=clone(f);
+    if(!doc.month)doc.month=String(doc.day||doc.weekMonth||"").slice(0,7)||doc.month;
+    doc.by=me().name; doc.atMs=env.now(); doc.at=env.serverTimestamp();
+    var r=await db.collection("scorecard_marks").add(doc);
+    return r.id;
+  }
+  function voidMark(markId,reason,month){
+    if(blank(reason))return Promise.reject(new Error("reason required"));
+    return addMark({type:"void",voids:markId,reason:String(reason).trim(),month:month||""});
+  }
+
+  async function addPhoto(p){
+    var u=me();
+    if(!isOffice()&&p.tech!==u.name)throw new Error("techs can only send their own photo");
+    var doc={tech:p.tech,weekId:p.weekId,month:p.month||"",url:p.url,path:p.path||"",takenAtMs:+p.takenAtMs,uploadedAtMs:env.now(),by:u.name,at:env.serverTimestamp()};
+    var r=await db.collection("scorecard_photos").add(doc);
+    return r.id;
+  }
+
+  async function getMonth(month){
+    var d=await db.collection("scorecard_months").doc(month).get();
+    return d.exists?d.data():null;
+  }
+  async function closeMonth(month,result,settings){
+    if(!isOffice())throw new Error("office only");
+    var ref=db.collection("scorecard_months").doc(month);
+    return db.runTransaction(async function(tx){
+      var cur=await tx.get(ref);
+      if(cur.exists)throw new Error("already closed");
+      var rows={};
+      Object.keys(result.rows).forEach(function(t){ rows[t]=result.rows[t]; });
+      tx.set(ref,{month:month,rows:clone(rows),total:result.total,settings:clone(settings),closedBy:me().name,closedAtMs:env.now()});
+      Object.keys(rows).forEach(function(t){
+        tx.set(ref.collection("techs").doc(t),{month:month,tech:t,row:clone(rows[t]),closedAtMs:env.now()});
+      });
+      return true;
+    });
+  }
+
+  return {watchMonth:watchMonth,loadSettings:loadSettings,saveSettings:saveSettings,addMark:addMark,voidMark:voidMark,
+          addPhoto:addPhoto,getMonth:getMonth,closeMonth:closeMonth,isOffice:isOffice,DEFAULTS:DEFAULTS};
+};
+})();
+
+/* ── TECH SCORECARD — SCREENS (v2.82.0) ──────────────────────────────────
+   tab18 / pg18. Office (admin, organizer): Today · Returns · Photos · Month ·
+   Settings. Technician: "My score" card only. Viewer: hidden.
+   Registered through aspRegistrarPantalla (no extra showTab wrapper).
+   Listeners run ONLY while pg18 is open: zero reads if nobody opens it. */
+(function(){
+"use strict";
+if(window.__aspScorecard)return; window.__aspScorecard=true;
+
+var IDX=18, S=window.aspScore;
+var st={view:"today",month:"",settings:null,marks:[],photos:[],unsub:null,closed:null,closedFor:"",pendingMiss:{},busy:false,flushT:null};
+
+/* ---------- small helpers ---------- */
+function L(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } }
+function h(s){ try{ return esc(s) }catch(_e){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]}) } }
+function say(m,t){ try{ toast(m,t) }catch(_e){ console.log("[scorecard]",m) } }
+function today(){ return (typeof fmtD==="function")?fmtD(new Date()):S.localDay(Date.now()) }
+function user(){ try{ return (typeof currentUser!=="undefined"&&currentUser)||null }catch(_e){ return null } }
+function office(){ var u=user(); return !!u&&(u.role==="admin"||u.role==="organizer") }
+function viewer(){ try{ return typeof _isViewer==="function"&&_isViewer() }catch(_e){ return false } }
+function techList(){ try{ return (typeof visibleTechs==="function")?visibleTechs():(typeof TECHS!=="undefined"?TECHS.slice():[]) }catch(_e){ return [] } }
+function isOff(t,d){ try{ return typeof _isTechOff==="function"&&_isTechOff(t,d) }catch(_e){ return false } }
+function pg(){ return document.getElementById("pg"+IDX) }
+function money(n){ return "$"+(Math.round((+n||0)*100)/100).toLocaleString("en-US") }
+function fmtDay(d){ try{ return new Date(String(d).slice(0,10)+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}) }catch(_e){ return d } }
+function fmtWhen(ms){ try{ return new Date(+ms).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) }catch(_e){ return "" } }
+function monthLabel(m){ try{ return new Date(m+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}) }catch(_e){ return m } }
+function slug(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"tech" }
+var CRIT_NAME={uniform:function(){return L("Uniforme","Uniform")},vehicle:function(){return L("Vehículo limpio","Clean vehicle")},
+  tickets:function(){return L("Tickets reportados","Tickets reported")},returns:function(){return L("Vueltas por partes","Trips for parts")}};
+
+var _D=null;
+function D(){
+  if(_D)return _D;
+  try{ if(typeof db==="undefined"||!db)return null }catch(_e){ return null }
+  _D=window.aspScoreDataFactory({db:db,serverTimestamp:function(){ return firebase.firestore.FieldValue.serverTimestamp() },user:user,now:function(){ return Date.now() }});
+  window.aspScoreData=_D;
+  return _D;
+}
+
+/* ---------- ticket facts from the app's own data ---------- */
+function pool(){ var a=[]; try{ a=a.concat(active||[]) }catch(_e){} try{ a=a.concat(done||[]) }catch(_e){} return a }
+function facts(techs,month){
+  var out={}, lnk=null, P=pool();
+  try{ lnk=(typeof _linkIndex==="function")?_linkIndex():{byId:{},servedBy:{},legacy:{}} }catch(_e){ lnk={byId:{},servedBy:{},legacy:{}} }
+  var closed=function(t){ try{ return typeof _dispatchClosed==="function"?_dispatchClosed(t,lnk):!!t.fieldReportSubmitted }catch(_e){ return false } };
+  techs.forEach(function(t){ out[t]=S.ticketFacts(t,month,today(),P,lnk,closed) });
+  return out;
+}
+function visitTechs(month){
+  var s={};
+  pool().forEach(function(t){ if(t&&t.source==="dispatch"&&String(t.date||"").slice(0,7)===month){ (Array.isArray(t.techs)?t.techs:(t.tech?[t.tech]:[])).forEach(function(x){ s[x]=1 }) } });
+  return Object.keys(s);
+}
+function monthTechs(month){
+  var s={}, add=function(x){ if(x)s[x]=1 };
+  if(month===today().slice(0,7))techList().forEach(add);
+  st.marks.forEach(function(m){ add(m.tech) }); st.photos.forEach(function(p){ add(p.tech) });
+  visitTechs(month).forEach(function(x){ if(techList().indexOf(x)>=0||s[x])add(x) });
+  return Object.keys(s).sort(function(a,b){ return a.localeCompare(b) });
+}
+function evalNow(techs){
+  return S.evalMonth({month:st.month,techs:techs,marks:st.marks,photos:st.photos,ticketFacts:facts(techs,st.month),
+    settings:st.settings,asOfDay:today(),isOffWeek:S.offWeekFn(isOff)});
+}
+
+/* ---------- lifecycle ---------- */
+function start(){
+  var d=D(); if(!d){ setTimeout(function(){ if(isOpen())start() },800); return }
+  if(!st.month)st.month=today().slice(0,7);
+  stop();
+  d.loadSettings().then(function(s){ st.settings=s; paint() });
+  st.unsub=d.watchMonth(st.month,function(snap){ st.marks=snap.marks; st.photos=snap.photos; paint() });
+  if(st.closedFor!==st.month){ st.closed=null; st.closedFor=st.month;
+    d.getMonth(st.month).then(function(c){ st.closed=c; paint() }).catch(function(){}) }
+  flushOutbox();
+  paint();
+}
+function stop(){ if(st.unsub){ try{st.unsub()}catch(_e){} st.unsub=null } }
+function isOpen(){ var p=pg(); return !!p&&p.classList.contains("show") }
+
+/* ---------- painting ---------- */
+function paint(){
+  var p=pg(); if(!p||!isOpen())return;
+  if(!st.settings){ p.innerHTML='<div class="sc-empty">'+L("Cargando…","Loading…")+'</div>'; return }
+  if(!office()){ p.innerHTML=techCard(); return }
+  var pend=pendingPhotos().length;
+  var tabs=[["today",L("Hoy","Today")],["returns",L("Vueltas","Returns")],["photos",L("Fotos","Photos")],["month",L("Mes","Month")],["settings",L("Ajustes","Settings")]];
+  var H='<div class="sc-head"><h1>'+L("Puntajes","Scorecard")+'</h1><div class="sc-sub">'+L("Bono mensual por técnico","Monthly bonus per technician")+'</div></div><nav class="sc-tabs">';
+  tabs.forEach(function(t){ H+='<button type="button" data-v="'+t[0]+'" class="'+(st.view===t[0]?"on":"")+'">'+t[1]+(t[0]==="photos"&&pend?'<span class="sc-n">'+pend+'</span>':"")+'</button>' });
+  H+='</nav><section class="sc-body">'+({today:vToday,returns:vReturns,photos:vPhotos,month:vMonth,settings:vSettings}[st.view])()+'</section>';
+  var keepFocus=document.activeElement&&p.contains(document.activeElement)?document.activeElement.getAttribute("data-k"):null;
+  p.innerHTML=H;
+  if(keepFocus){ try{ var el=null; Array.prototype.some.call(p.querySelectorAll("[data-k]"),function(x){ if(x.getAttribute("data-k")===keepFocus){ el=x; return true } return false });
+    if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length) } }catch(_e){} }
+}
+
+function latestUniform(tech,day){
+  var m=null; S.effective(st.marks).forEach(function(x){ if(x.type==="uniform"&&x.tech===tech&&x.day===day&&(!m||x.atMs>=m.atMs))m=x });
+  return m;
+}
+function vToday(){
+  var d=today(), list=techList(), on=list.filter(function(t){ return !isOff(t,d) });
+  if(d.slice(0,7)!==st.month)return '<p class="sc-lead">'+L("Las marcas de uniforme son del mes actual.","Uniform marks are for the current month.")+' <button type="button" class="sc-link" data-go-month="'+d.slice(0,7)+'">'+L("Ir al mes actual","Go to current month")+'</button></p>';
+  var marked=on.filter(function(t){ return latestUniform(t,d) }).length;
+  var H='<h2>'+L("Revisión de uniforme","Uniform check")+' · '+h(fmtDay(d))+'</h2><p class="sc-lead">'+L("Marca a cada técnico una vez en la mañana. La ✗ pide una nota corta: es lo que el técnico verá si pregunta por qué.","Mark each technician once in the morning. A ✗ asks for a short note — that is what the tech sees if he asks why.")+'</p>';
+  H+='<div class="sc-prog"><div class="sc-bar"><i style="width:'+(on.length?marked/on.length*100:0)+'%"></i></div><span>'+marked+' '+L("de","of")+' '+on.length+' '+L("marcados","marked")+'</span></div><div class="sc-list">';
+  list.forEach(function(t){
+    var off=isOff(t,d), m=latestUniform(t,d), miss=st.pendingMiss[t];
+    var sub=off?L("Día libre — no cuenta","Time off today — not counted"):m?((m.ok?L("Con uniforme","In uniform"):L("Sin uniforme","No uniform")+(m.note?" — "+h(m.note):""))+" · "+L("marcó","marked by")+" "+h(m.by)):L("Sin marcar","Not marked yet");
+    H+='<div class="sc-row'+(off?" off":"")+'"><div class="sc-av">'+h(t.charAt(0))+'</div><div class="sc-grow"><div class="sc-nm">'+h(t)+'</div><div class="sc-mut">'+sub+'</div>';
+    if(miss!=null)H+='<div class="sc-miss"><input data-k="miss-'+h(t)+'" data-miss="'+h(t)+'" placeholder="'+L("¿Qué le faltaba? (obligatorio)","What was missing? (required)")+'" value="'+h(miss)+'"><button type="button" class="sc-btn" data-savemiss="'+h(t)+'">'+L("Guardar","Save")+'</button><button type="button" class="sc-btn sec" data-cancelmiss="'+h(t)+'">'+L("Cancelar","Cancel")+'</button></div>';
+    H+='</div>';
+    if(!off)H+='<div class="sc-yn"><button type="button" class="y'+(m&&m.ok?" on":"")+'" data-uni="'+h(t)+'" data-ok="1" aria-label="'+L("Con uniforme","In uniform")+'">✓</button><button type="button" class="n'+((m&&!m.ok)||miss!=null?" on":"")+'" data-uni="'+h(t)+'" data-ok="0" aria-label="'+L("Sin uniforme","No uniform")+'">✗</button></div>';
+    H+='</div>';
+  });
+  return H+'</div>';
+}
+
+function vReturns(){
+  var parts=st.settings.parts||[];
+  var H='<h2>'+L("Vueltas por partes","Trips back for parts")+'</h2><p class="sc-lead">'+L("Regístrala cuando un técnico regresa al taller por una parte. Solo cuenta en contra si la parte está en la lista de la camioneta.","Log it when a tech comes back to the shop for a part. It only counts against him if the part is on the truck list.")+'</p>';
+  if(!parts.length)H+='<div class="sc-warn">'+L("La lista de partes de la camioneta está vacía: ninguna vuelta contará en contra hasta llenarla en Ajustes.","The truck parts list is empty: no trip will count until you fill it in Settings.")+'</div>';
+  H+='<div class="sc-card"><div class="sc-form"><label>'+L("Técnico","Technician")+'<select id="scRT">'+techList().map(function(t){ return '<option>'+h(t)+'</option>' }).join("")+'</select></label>';
+  H+='<label>'+L("Parte","Part")+'<select id="scRP">'+parts.map(function(p){ return '<option>'+h(p)+'</option>' }).join("")+'<option value="__other">'+L("Otra parte (no está en la lista)","Other part (not on the list)")+'</option></select></label>';
+  H+='<label class="full" id="scROw" hidden>'+L("¿Qué parte?","Which part?")+'<input id="scRO" data-k="ro" placeholder="e.g. Ozonator 110V"></label>';
+  H+='<label class="full">'+L("Nota","Note")+'<input id="scRN" data-k="rn" placeholder="'+L("Opcional — qué pasó","Optional — what happened")+'"></label>';
+  H+='<div class="full" id="scRV">'+verdict(parts.length?false:true)+'</div><div class="full"><button type="button" class="sc-btn" data-act="logret">'+L("Registrar vuelta","Log trip")+'</button></div></div></div>';
+  var items=S.effective(st.marks).filter(function(m){ return m.type==="return" }).sort(function(a,b){ return b.atMs-a.atMs });
+  H+='<div class="sc-card"><b>'+h(monthLabel(st.month))+'</b>';
+  if(!items.length)H+='<div class="sc-ev sc-mut">'+L("Sin vueltas registradas este mes.","No trips logged this month.")+'</div>';
+  items.forEach(function(r){ H+='<div class="sc-ev"><b>'+h(r.tech)+'</b> · '+h(r.part)+' <span class="sc-tag '+(r.onList?"bad":"")+'">'+(r.onList?L("Cuenta","Counts"):L("No cuenta","Does not count"))+'</span><div class="sc-mut">'+h(fmtDay(r.day))+' · '+L("registró","logged by")+' '+h(r.by)+(r.note?" · "+h(r.note):"")+'</div></div>' });
+  return H+'</div>';
+}
+function verdict(other){
+  return other?'<div class="sc-verdict ok">'+L("No está en la lista de la camioneta — se registra como dato, no cuenta en contra.","Not on the truck list — logged as information, does not count against him.")+'</div>'
+             :'<div class="sc-verdict bad">'+L("Está en la lista de la camioneta — cuenta como vuelta por una parte que debía traer.","On the truck list — this counts as a trip for a part he should carry.")+'</div>';
+}
+
+function reviewOf(photoId){ var r=null; S.effective(st.marks).forEach(function(m){ if(m.type==="photoReview"&&m.photoId===photoId&&(!r||m.atMs>=r.atMs))r=m }); return r }
+function latestPhotos(){
+  var best={};
+  st.photos.forEach(function(p){ var k=p.tech+"|"+p.weekId; if(!best[k]||p.takenAtMs>=best[k].takenAtMs)best[k]=p });
+  return Object.keys(best).map(function(k){ return best[k] });
+}
+function pendingPhotos(){ return latestPhotos().filter(function(p){ return !reviewOf(p.id) }).sort(function(a,b){ return a.takenAtMs-b.takenAtMs }) }
+function prevApproved(p){
+  var r=null;
+  st.photos.forEach(function(x){ if(x.tech===p.tech&&x.weekId<p.weekId){ var rv=reviewOf(x.id); if(rv&&rv.clean&&(!r||x.weekId>r.weekId))r=x } });
+  return r;
+}
+function vPhotos(){
+  var wk=S.weekId(today()), list=pendingPhotos();
+  var have={}; latestPhotos().forEach(function(p){ if(p.weekId===wk)have[p.tech]=1 });
+  var offW=S.offWeekFn(isOff);
+  var missing=(st.month===today().slice(0,7))?techList().filter(function(t){ return !have[t]&&!offW(t,wk) }):[]; /* only meaningful for the current month */
+  var H='<h2>'+L("Fotos semanales del vehículo","Weekly vehicle photos")+'</h2><p class="sc-lead">'+L("Semana del","Week of")+' '+h(fmtDay(wk))+'. '+L("La foto aprobada anterior aparece al lado, para que una foto repetida salte a la vista.","Last approved photo sits next to this one so a reused picture stands out.")+(missing.length?' '+L("Faltan esta semana:","Still missing this week:")+' '+h(missing.join(", "))+'.':"")+'</p>';
+  if(!list.length)H+='<div class="sc-card">'+L("Todas las fotos están revisadas.","All photos are reviewed.")+'</div>';
+  list.forEach(function(p){
+    var prev=prevApproved(p);
+    H+='<div class="sc-card"><b>'+h(p.tech)+'</b> <span class="sc-mut">· '+L("semana del","week of")+' '+h(fmtDay(p.weekId))+' · '+L("tomada","taken")+' '+h(fmtWhen(p.takenAtMs))+'</span><div class="sc-ph"><figure><img src="'+h(p.url)+'" alt="" loading="lazy"><figcaption>'+L("Esta semana","This week")+'</figcaption></figure><figure>'+(prev?'<img src="'+h(prev.url)+'" alt="" loading="lazy">':'<div class="sc-noph">'+L("Sin foto aprobada anterior","No earlier approved photo")+'</div>')+'<figcaption>'+L("Última aprobada","Last approved")+'</figcaption></figure></div>';
+    H+='<div class="sc-acts"><button type="button" class="sc-btn" data-rev="'+h(p.id)+'" data-clean="1">'+L("Aprobar — limpio","Approve — clean")+'</button><button type="button" class="sc-btn sec" data-rev="'+h(p.id)+'" data-clean="0">'+L("No está limpio…","Not clean…")+'</button></div></div>';
+  });
+  return H;
+}
+
+function monthOptions(){
+  var out=[], m=today().slice(0,7);
+  for(var i=0;i<13;i++){ out.push(m); var d=new Date(m+"-15T12:00:00"); d.setMonth(d.getMonth()-1); m=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0") }
+  return out;
+}
+function currentResult(){
+  if(st.closed){ var base={month:st.month,rows:st.closed.rows||{},total:st.closed.total||0,pendingReviews:0}; return {res:S.applyAdjust(base,st.marks,st.closed.settings||st.settings),closed:true} }
+  return {res:evalNow(monthTechs(st.month)),closed:false};
+}
+function cellLabel(k,x){
+  if(k==="uniform")return x.misses+" "+L("de","of")+" "+x.days+" "+L("días con falta","days missed");
+  if(k==="vehicle"){ var c=(x.weeks||[]).filter(function(w){ return w.state==="clean" }).length; return c+" "+L("limpias","clean")+" · "+(x.failed||0)+" "+L("fallas","failed")+(x.pending?" · "+x.pending+" "+L("por revisar","to review"):"") }
+  if(k==="tickets")return ((x.unreported||[]).length?(x.unreported.length+" "+L("sin reportar","never reported")+" · "):"")+(x.late||[]).length+" "+L("tarde de","late of")+" "+(x.visits||0);
+  return (x.listed||0)+" "+L("de la lista","for listed parts")+((x.other||0)?" · "+x.other+" "+L("otras","other"):"");
+}
+function pips(x){ var H='<div class="sc-pips">'; (x.items||[]).forEach(function(m){ H+='<i'+(m.ok===false?' class="x"':"")+'></i>' }); return H+'</div>' }
+function vMonth(){
+  var cr=currentResult(), r=cr.res, a=st.settings.amount, max=a.uniform+a.vehicle+a.tickets+a.returns, T=today();
+  var H='<div class="sc-mhead"><div><h2>'+h(monthLabel(st.month))+(cr.closed?' <span class="sc-tag">'+L("Cerrado","Closed")+'</span>':"")+'</h2><label class="sc-mut">'+L("Mes","Month")+' <select id="scMonth">'+monthOptions().map(function(m){ return '<option value="'+m+'"'+(m===st.month?" selected":"")+'>'+h(monthLabel(m))+'</option>' }).join("")+'</select></label></div><div class="sc-tot"><span class="sc-mut">'+L("Total de bonos","Bonus total")+'</span><b>'+money(r.total)+'</b></div></div>';
+  if(cr.closed)H+='<p class="sc-lead">'+L("Cerrado por","Closed by")+' '+h(st.closed.closedBy)+' · '+h(fmtWhen(st.closed.closedAtMs))+'. '+L("Las correcciones se agregan como ajustes registrados.","Corrections are added as logged adjustments.")+'</p>';
+  else H+='<p class="sc-lead">'+L("Toca cualquier cuadro para ver la evidencia.","Tap any box to see the evidence behind it.")+'</p>';
+  var why="";
+  if(!cr.closed){
+    if(T.slice(0,7)<=st.month)why=L("El mes se puede cerrar desde el día 1 del mes siguiente.","The month can be closed from the 1st of next month.");
+    else if(r.pendingReviews)why=r.pendingReviews+" "+L("foto(s) sin revisar. No se puede cerrar hasta revisarlas — una foto nunca se aprueba sola.","photo(s) still need review. The month can't be closed until every photo is reviewed — a photo is never approved automatically.");
+    if(why&&T.slice(0,7)>st.month)H+='<div class="sc-warn">'+why+'</div>';
+  }
+  var techs=Object.keys(r.rows);
+  if(!techs.length)return H+'<div class="sc-card">'+L("Sin datos para este mes.","No data for this month.")+'</div>';
+  H+='<div class="sc-gw"><table class="sc-grid"><thead><tr><th>'+L("Técnico","Technician")+'</th>'+S.CRITS.map(function(k){ return '<th>'+CRIT_NAME[k]()+' <span>('+L("permitido","allowed")+' '+((cr.closed&&st.closed.settings)||st.settings).tol[k]+')</span></th>' }).join("")+'<th class="r">'+L("Bono","Bonus")+'</th></tr></thead><tbody>';
+  techs.forEach(function(t){
+    var row=r.rows[t];
+    H+='<tr><td><div class="sc-who"><div class="sc-av">'+h(t.charAt(0))+'</div><b>'+h(t)+'</b></div></td>';
+    S.CRITS.forEach(function(k){
+      var x=row[k]||{}, cls=x.wait?"wait":x.pass?"pass":"fail", amt=((cr.closed&&st.closed.settings)||st.settings).amount[k];
+      H+='<td><button type="button" class="sc-cell '+cls+'" data-ev="'+h(t)+'|'+k+'"><b>'+(x.wait?L("Esperando revisión","Waiting on review"):x.pass?L("Cumplió","Met")+" · "+money(amt):L("No cumplió","Missed")+" · $0")+(x.adjusted?" ✎":"")+'</b><span>'+h(cellLabel(k,x))+'</span>'+(k==="uniform"&&!cr.closed?pips(x):"")+'</button></td>';
+    });
+    H+='<td class="sc-pay">'+money(row.pay)+'<small>'+L("de","of")+' '+money(max)+'</small></td></tr>';
+  });
+  H+='</tbody></table></div>';
+  if(!cr.closed)H+='<div class="sc-acts end"><button type="button" class="sc-btn" data-act="close"'+(why?" disabled":"")+'>'+L("Cerrar","Close")+' '+h(monthLabel(st.month))+'</button></div>';
+  return H;
+}
+
+function vSettings(){
+  var s=st.settings;
+  var H='<h2>'+L("Ajustes","Settings")+'</h2><p class="sc-lead">'+L("Los cambios aplican al mes abierto. Los meses cerrados conservan los valores con que se cerraron.","Changes apply to the open month. Closed months keep the values they were closed with.")+'</p><div class="sc-set"><div class="sc-card"><b>'+L("Monto por criterio","Amount per criterion")+'</b>';
+  S.CRITS.forEach(function(k){ H+='<div class="sc-srow"><span>'+CRIT_NAME[k]()+'</span>$<input type="number" min="0" step="1" data-k="am-'+k+'" data-am="'+k+'" value="'+(+s.amount[k])+'"></div>' });
+  H+='</div><div class="sc-card"><b>'+L("Fallas permitidas por mes","Misses allowed per month")+'</b>';
+  S.CRITS.forEach(function(k){ H+='<div class="sc-srow"><span>'+CRIT_NAME[k]()+'</span><input type="number" min="0" step="1" data-k="tl-'+k+'" data-tl="'+k+'" value="'+(+s.tol[k])+'"></div>' });
+  H+='</div><div class="sc-card wide"><b>'+L("Partes que toda camioneta debe traer","Parts every truck must carry")+'</b><p class="sc-mut">'+L("Publica esta lista a los técnicos antes de que el primer mes cuente.","Publish this list to the techs before the first month counts.")+'</p><div>';
+  (s.parts||[]).forEach(function(p,i){ H+='<span class="sc-chip">'+h(p)+'<button type="button" data-rmpart="'+i+'" aria-label="Remove">×</button></span>' });
+  H+='</div><div class="sc-form"><label>'+L("Agregar parte","Add a part")+'<input id="scNP" data-k="np" placeholder="e.g. Flow switch"></label><div><button type="button" class="sc-btn sec" data-act="addpart">'+L("Agregar","Add")+'</button></div></div></div></div><div class="sc-acts end"><button type="button" class="sc-btn" data-act="savesettings">'+L("Guardar ajustes","Save settings")+'</button></div>';
+  return H;
+}
+
+/* ---------- evidence drawer ---------- */
+function drawer(html){
+  var d=document.getElementById("scDrawer"), sc=document.getElementById("scScrim");
+  if(!d){ sc=document.createElement("div"); sc.id="scScrim"; sc.className="sc-scrim"; document.body.appendChild(sc);
+    d=document.createElement("aside"); d.id="scDrawer"; d.className="sc-drawer"; d.setAttribute("role","dialog"); document.body.appendChild(d);
+    sc.onclick=closeDrawer; d.addEventListener("click",onClick) }
+  if(html==null){ closeDrawer(); return }
+  d.innerHTML='<button type="button" class="sc-x" data-act="closedrawer" aria-label="Close">×</button>'+html;
+  d.classList.add("open"); sc.classList.add("open");
+  try{ d.querySelector(".sc-x").focus() }catch(_e){}
+}
+function closeDrawer(){ var d=document.getElementById("scDrawer"),sc=document.getElementById("scScrim"); if(d)d.classList.remove("open"); if(sc)sc.classList.remove("open") }
+function fixBtn(m){ return office()?'<button type="button" class="sc-link" data-fix="'+h(m.id)+'">'+L("Corregir","Correct")+'</button>':"" }
+function voidedSet(){ var v={}; st.marks.forEach(function(m){ if(m.type==="void")v[m.voids]=m }); return v }
+function openEvidence(tech,k){
+  var cr=currentResult(), x=(cr.res.rows[tech]||{})[k]||{}, V=voidedSet();
+  var H='<h2>'+h(tech)+'</h2><p class="sc-mut">'+CRIT_NAME[k]()+' · '+h(monthLabel(st.month))+'</p>';
+  var all=st.marks.filter(function(m){ return m.tech===tech });
+  function line(m,text){ var v=V[m.id]; return '<div class="sc-ev'+(v?" voided":"")+'"><div>'+text+'</div><div class="sc-mut">'+L("Marcó","By")+' '+h(m.by)+' · '+h(fmtWhen(m.atMs))+(v?' · '+L("anulada por","cancelled by")+' '+h(v.by)+': '+h(v.reason):"")+'</div>'+(v||cr.closed?"":fixBtn(m))+'</div>' }
+  if(k==="uniform"){
+    var u=all.filter(function(m){ return m.type==="uniform" }).sort(function(a,b){ return a.day<b.day?-1:1 });
+    if(!u.length)H+='<div class="sc-ev">'+L("Sin marcas este mes.","No marks this month.")+'</div>';
+    u.forEach(function(m){ H+=line(m,'<b>'+(m.ok?"✓":"✗")+' '+h(fmtDay(m.day))+'</b>'+(m.note?" — "+h(m.note):"")) });
+  }
+  if(k==="vehicle"){
+    (x.weeks||[]).forEach(function(w){
+      var lab={clean:"✓ "+L("Aprobada limpia","Approved clean"),dirty:"✗ "+L("No limpia","Not clean"),missing:"✗ "+L("Sin foto","No photo uploaded"),off:L("Time off — semana no cuenta","Time off — week not counted"),pending:L("Esperando revisión de oficina","Waiting on office review"),open:L("Semana en curso","Week still running")}[w.state]||w.state;
+      H+='<div class="sc-ev"><b>'+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+'</b> · '+lab+(w.review&&w.review.note?" — "+h(w.review.note):"")+(w.photo?'<img class="sc-evimg" src="'+h(w.photo.url)+'" alt="" loading="lazy">':"")+(w.review?'<div class="sc-mut">'+L("Revisó","Reviewed by")+' '+h(w.review.by)+' · '+h(fmtWhen(w.review.atMs))+'</div>'+(cr.closed||V[w.review.id]?"":fixBtn(w.review)):"")+'</div>';
+    });
+  }
+  if(k==="tickets"){
+    H+='<div class="sc-ev">'+(x.visits||0)+' '+L("visitas","visits")+' · '+(x.late||[]).length+' '+L("reportadas después del día de la visita","reported after the visit day")+'</div>';
+    (x.unreported||[]).forEach(function(u){ H+='<div class="sc-ev"><b>✗ '+h(fmtDay(u.date))+'</b> · '+h(u.customer)+' — '+L("nunca reportado","never reported")+((u.techs||[]).length>1?' ('+L("compartido con","shared with")+' '+h(u.techs.filter(function(z){ return z!==tech }).join(", "))+')':"")+'</div>' });
+    (x.late||[]).forEach(function(u){ H+='<div class="sc-ev">'+h(fmtDay(u.date))+' · '+h(u.customer)+' — '+L("reportado el","reported")+' '+h(fmtDay(u.reportDay))+'</div>' });
+    H+='<div class="sc-ev sc-mut">'+L("Calculado de los tickets mismos — nadie lo captura.","Calculated from the tickets themselves — nobody types this in.")+'</div>';
+  }
+  if(k==="returns"){
+    var rs=all.filter(function(m){ return m.type==="return" });
+    if(!rs.length)H+='<div class="sc-ev">'+L("Sin vueltas por partes.","No trips back for parts.")+'</div>';
+    rs.forEach(function(m){ H+=line(m,'<b>'+h(fmtDay(m.day))+'</b> · '+h(m.part)+' <span class="sc-tag '+(m.onList?"bad":"")+'">'+(m.onList?L("En la lista — cuenta","On truck list — counts"):L("Fuera de la lista — solo dato","Not on list — info only"))+'</span>'+(m.note?" — "+h(m.note):"")) });
+  }
+  if(x.adjusted)H+='<div class="sc-ev"><b>✎ '+L("Ajuste","Adjustment")+'</b>: '+(x.adjusted.pass?L("se da por cumplido","marked as met"):L("se da por no cumplido","marked as missed"))+' — '+h(x.adjusted.reason)+'<div class="sc-mut">'+h(x.adjusted.by)+' · '+h(fmtWhen(x.adjusted.atMs))+'</div></div>';
+  if(office())H+='<div class="sc-foot">'+(cr.closed?'<button type="button" class="sc-btn sec" data-adjust="'+h(tech)+'|'+k+'|'+(x.pass?0:1)+'">'+(x.pass?L("Ajustar a no cumplido…","Adjust to missed…"):L("Ajustar a cumplido…","Adjust to met…"))+'</button>':"")+'<p class="sc-mut">'+L("Una corrección nunca edita ni borra: agrega una entrada nueva con quién y por qué. La original queda visible.","A correction never edits or deletes: it adds a new entry with who and why. The original stays visible.")+'</p></div>';
+  drawer(H);
+}
+
+/* ---------- technician card ---------- */
+function techCard(){
+  var me=user(); if(!me)return "";
+  st.month=today().slice(0,7);
+  var r=evalNow([me.name]), row=r.rows[me.name], a=st.settings.amount, max=a.uniform+a.vehicle+a.tickets+a.returns;
+  var wk=S.weekId(today()), wkState=null;
+  (row.vehicle.weeks||[]).forEach(function(w){ if(w.weekId===wk)wkState=w });
+  var needPhoto=!wkState||wkState.state==="open"||wkState.state==="missing";
+  var segs=S.CRITS.map(function(k){ var x=row[k]; return x.pass&&!x.wait?(k==="vehicle"&&needPhoto?"risk":"on"):(x.wait?"risk":"lost") });
+  var H='<div class="sc-phone"><div class="sc-top"><div class="sc-mut2">'+L("Hola","Hi")+' '+h(me.name)+' · '+h(monthLabel(st.month))+'</div><div class="sc-earn">'+money(row.pay)+' <small>'+L("en camino de","on track of")+' '+money(max)+'</small></div><div class="sc-meter">'+segs.map(function(s){ return '<i class="'+s+'"></i>' }).join("")+'</div></div><div class="sc-pbody">';
+  function crit(k,status,text,extra){ return '<div class="sc-crit"><div class="sc-ch">'+CRIT_NAME[k]()+'<span class="sc-st '+status[0]+'">'+status[1]+'</span></div><div class="sc-cs">'+text+'</div>'+(extra||"")+'</div>' }
+  var u=row.uniform, tol=st.settings.tol;
+  var notes=u.items.filter(function(m){ return m.ok===false }).map(function(m){ return '<div class="sc-note">✗ '+h(fmtDay(m.day))+(m.note?" — "+h(m.note):"")+' · '+h(m.by)+'</div>' }).join("");
+  H+=crit("uniform",u.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],(u.days-u.misses)+" "+L("de","of")+" "+u.days+" "+L("días con uniforme. Puedes fallar","days in uniform. You can miss")+" "+tol.uniform+" "+L("este mes.","this month."),notes);
+  var v=row.vehicle, vtext, vstat;
+  if(!v.pass){ vstat=["bad",L("Perdido","Missed")]; vtext=v.failed+" "+L("semana(s) sin foto aprobada.","week(s) without an approved photo.") }
+  else if(needPhoto){ vstat=["risk",L("Falta foto","Photo due")]; vtext=L("Toma la foto de esta semana antes del domingo","Take this week's photo before Sunday")+" "+h(fmtDay(S.addDays(wk,6)))+"." }
+  else if(wkState.state==="pending"){ vstat=["risk",L("Enviada","Sent")]; vtext=L("La foto de esta semana está con la oficina para revisión.","This week's photo is with the office for review.") }
+  else { vstat=["ok",L("Vas bien","On track")]; vtext=L("La foto de esta semana ya fue aprobada.","This week's photo is approved.") }
+  var vnotes=(v.weeks||[]).filter(function(w){ return w.state==="dirty" }).map(function(w){ return '<div class="sc-note">✗ '+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+(w.review&&w.review.note?" — "+h(w.review.note):"")+'</div>' }).join("");
+  var q=outboxCount;
+  var cam=needPhoto?'<button type="button" class="sc-cam" data-act="cam">📷 '+L("Tomar la foto del vehículo de esta semana","Take this week\u2019s vehicle photo")+'</button>':(wkState&&wkState.photo?'<div class="sc-sent"><img src="'+h(wkState.photo.url)+'" alt=""><span>'+L("Enviada","Sent")+' '+h(fmtWhen(wkState.photo.takenAtMs))+'</span></div>':"");
+  if(q)cam+='<div class="sc-note">'+L("Foto guardada sin señal — se enviará sola al volver la conexión.","Photo saved without signal — it will send itself when you're back online.")+'</div>';
+  H+=crit("vehicle",vstat,vtext,vnotes+cam);
+  var t=row.tickets;
+  H+=crit("tickets",t.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],t.visits+" "+L("visitas","visits")+" · "+t.unreported.length+" "+L("sin reportar","not reported")+" · "+t.late.length+" "+L("tarde","late")+" ("+tol.tickets+" "+L("permitidas","allowed")+").",t.unreported.map(function(x){ return '<div class="sc-note">✗ '+h(fmtDay(x.date))+' · '+h(x.customer)+'</div>' }).join(""));
+  var rr=row.returns;
+  H+=crit("returns",rr.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],rr.listed+" "+L("vuelta(s) por partes de la lista. Puedes tener","trip(s) for listed parts. You can have")+" "+tol.returns+".",'<details class="sc-parts"><summary>'+L("Lista de partes de la camioneta","Truck parts list")+'</summary>'+(st.settings.parts.length?st.settings.parts.map(function(p){ return '<span class="sc-chip">'+h(p)+'</span>' }).join(""):'<span class="sc-mut">'+L("Aún no publicada.","Not published yet.")+'</span>')+'</details>');
+  H+='<p class="sc-mut c">'+L("Solo ves tu propio puntaje. ¿Dudas sobre una marca? Pregunta en la oficina — cada marca dice quién la hizo.","You only see your own score. Questions about a mark? Ask the office — every mark shows who made it.")+'</p></div></div>';
+  return H;
+}
+
+/* ---------- vehicle photo: capture, compress, upload, offline queue ---------- */
+var outboxCount=0;
+function idb(){ return new Promise(function(res,rej){ var rq=indexedDB.open("aspenScoreOutbox",1); rq.onupgradeneeded=function(){ var d=rq.result; if(!d.objectStoreNames.contains("photos"))d.createObjectStore("photos",{keyPath:"key",autoIncrement:true}) }; rq.onsuccess=function(){ res(rq.result) }; rq.onerror=function(){ rej(rq.error) } }) }
+function idbAll(){ return idb().then(function(d){ return new Promise(function(res){ var out=[], c=d.transaction("photos").objectStore("photos").openCursor(); c.onsuccess=function(){ var cur=c.result; if(cur){ out.push(cur.value); cur.continue() } else res(out) }; c.onerror=function(){ res(out) } }) }) }
+function idbPut(v){ return idb().then(function(d){ return new Promise(function(res,rej){ var tx=d.transaction("photos","readwrite"); tx.objectStore("photos").add(v); tx.oncomplete=res; tx.onerror=function(){ rej(tx.error) } }) }) }
+function idbDel(key){ return idb().then(function(d){ return new Promise(function(res){ var tx=d.transaction("photos","readwrite"); tx.objectStore("photos").delete(key); tx.oncomplete=res; tx.onerror=res }) }) }
+function upload(item){
+  var wk=S.weekId(S.localDay(item.takenAtMs)), path="scorecard/vehicles/"+slug(item.tech)+"/"+wk+"/"+item.takenAtMs+".jpg";
+  if(typeof storage==="undefined"||!storage)return Promise.reject(new Error("storage not ready"));
+  var ref=storage.ref(path);
+  return ref.put(item.blob,{contentType:"image/jpeg"}).then(function(){ return ref.getDownloadURL() }).then(function(url){
+    return D().addPhoto({tech:item.tech,weekId:wk,month:S.monthOfWeek(wk),url:url,path:path,takenAtMs:item.takenAtMs});
+  });
+}
+function takeVehiclePhoto(){
+  return new Promise(function(resolve){
+    var inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.setAttribute("capture","environment");
+    inp.onchange=function(){
+      var f=inp.files&&inp.files[0]; if(!f){ resolve(null); return }
+      var me=user(), takenAtMs=Date.now();
+      var comp=(typeof compressPhoto==="function")?compressPhoto(f,1200,0.7):Promise.resolve(f);
+      comp.then(function(r){
+        var blob=(r&&r.blob)||r; /* compressPhoto resolves {blob,dataUrl,type}, not a Blob */
+        var item={tech:me.name,blob:blob,takenAtMs:takenAtMs};
+        if(navigator.onLine===false)throw {queue:item};
+        return upload(item).then(function(){ say(L("Foto enviada ✓","Photo sent ✓")); resolve("sent") },function(e){ console.warn("[scorecard] upload",e); throw {queue:item} });
+      }).catch(function(e){
+        if(e&&e.queue)return idbPut(e.queue).then(function(){ outboxCount++; say(L("Sin señal: la foto se guardó y se enviará sola.","No signal: photo saved, it will send itself."),"warn"); armFlush(); paint(); resolve("queued") });
+        console.warn("[scorecard] photo",e); say(L("No se pudo procesar la foto","Could not process the photo"),"err"); resolve(null);
+      });
+    };
+    inp.click();
+  });
+}
+var _flushing=false;
+function flushOutbox(){
+  if(_flushing||typeof indexedDB==="undefined")return Promise.resolve();
+  _flushing=true;
+  return idbAll().then(function(items){
+    outboxCount=items.length;
+    if(!items.length||navigator.onLine===false||!D())return;
+    return items.reduce(function(p,it){ return p.then(function(){ return upload(it).then(function(){ outboxCount--; return idbDel(it.key) },function(e){ console.warn("[scorecard] retry later",e) }) }) },Promise.resolve());
+  }).catch(function(e){ console.warn("[scorecard] outbox",e) }).then(function(){ _flushing=false; if(outboxCount)armFlush(); else if(st.flushT){ clearInterval(st.flushT); st.flushT=null } paint() });
+}
+function armFlush(){ if(!st.flushT)st.flushT=setInterval(flushOutbox,30000) }
+window.addEventListener("online",function(){ flushOutbox() });
+
+/* ---------- events ---------- */
+function run(p,okMsg){ st.busy=true; return p.then(function(r){ if(okMsg)say(okMsg); return r },function(e){ console.warn("[scorecard]",e); say(L("No se pudo guardar: ","Could not save: ")+(e&&e.message||e),"err") }).then(function(r){ st.busy=false; return r }) }
+function onClick(ev){
+  var el=ev.target&&ev.target.closest?ev.target.closest("button,[data-v]"):null; if(!el||st.busy&&!el.hasAttribute("data-v"))return;
+  var d=D(), a=el.getAttribute("data-act");
+  if(el.hasAttribute("data-v")){ st.view=el.getAttribute("data-v"); paint(); return }
+  if(el.hasAttribute("data-go-month")){ st.month=el.getAttribute("data-go-month"); start(); return }
+  if(el.hasAttribute("data-uni")){
+    var t=el.getAttribute("data-uni");
+    if(el.getAttribute("data-ok")==="1"){ delete st.pendingMiss[t]; run(d.addMark({type:"uniform",tech:t,day:today(),ok:true})) }
+    else { st.pendingMiss[t]=st.pendingMiss[t]||""; paint() }
+    return;
+  }
+  if(el.hasAttribute("data-savemiss")){ var tm=el.getAttribute("data-savemiss"), note=(st.pendingMiss[tm]||"").trim();
+    if(!note){ say(L("Escribe qué le faltaba","Write what was missing"),"warn"); return }
+    run(d.addMark({type:"uniform",tech:tm,day:today(),ok:false,note:note})).then(function(id){ if(id){ delete st.pendingMiss[tm]; paint() } }); return }
+  if(el.hasAttribute("data-cancelmiss")){ delete st.pendingMiss[el.getAttribute("data-cancelmiss")]; paint(); return }
+  if(a==="logret"){
+    var other=document.getElementById("scRP").value==="__other", part=other?(document.getElementById("scRO").value.trim()):document.getElementById("scRP").value;
+    if(!part){ say(L("Escribe qué parte","Write which part"),"warn"); return }
+    run(d.addMark({type:"return",tech:document.getElementById("scRT").value,day:today(),part:part,onList:!other,note:document.getElementById("scRN").value.trim()}),L("Vuelta registrada","Trip logged")); return }
+  if(el.hasAttribute("data-rev")){
+    var pid=el.getAttribute("data-rev"), clean=el.getAttribute("data-clean")==="1", ph=null;
+    st.photos.forEach(function(x){ if(x.id===pid)ph=x });
+    if(!ph)return;
+    var n2="";
+    if(!clean){ n2=prompt(L("¿Qué no está limpio? El técnico verá esta nota.","What isn't clean? The tech will see this note."),"")||""; if(!n2.trim())return }
+    run(d.addMark({type:"photoReview",tech:ph.tech,photoId:pid,weekId:ph.weekId,month:ph.month,clean:clean,note:n2.trim()})); return }
+  if(el.hasAttribute("data-ev")){ var pr=el.getAttribute("data-ev").split("|"); openEvidence(pr[0],pr[1]); return }
+  if(a==="closedrawer"){ closeDrawer(); return }
+  if(el.hasAttribute("data-fix")){
+    var mid=el.getAttribute("data-fix"), reason=prompt(L("¿Por qué se anula esta marca? Queda registrado.","Why is this mark being cancelled? This is logged."),"");
+    if(!reason||!reason.trim())return;
+    run(d.voidMark(mid,reason,st.month),L("Marca anulada","Mark cancelled")).then(closeDrawer); return }
+  if(el.hasAttribute("data-adjust")){
+    var aj=el.getAttribute("data-adjust").split("|"), why=prompt(L("Motivo del ajuste (queda registrado):","Reason for the adjustment (logged):"),"");
+    if(!why||!why.trim())return;
+    run(d.addMark({type:"adjust",tech:aj[0],crit:aj[1],pass:aj[2]==="1",reason:why.trim(),month:st.month}),L("Ajuste registrado","Adjustment logged")).then(closeDrawer); return }
+  if(a==="close"){
+    var res=evalNow(monthTechs(st.month));
+    if(!confirm(L("¿Cerrar ","Close ")+monthLabel(st.month)+"? "+L("Total: ","Total: ")+money(res.total)+". "+L("El resultado queda congelado.","The result is frozen.")))return;
+    run(d.closeMonth(st.month,res,st.settings),L("Mes cerrado","Month closed")).then(function(){ st.closedFor=""; start() }); return }
+  if(a==="addpart"){ var np=document.getElementById("scNP"), v=np&&np.value.trim(); if(v&&st.settings.parts.indexOf(v)<0){ st.settings.parts.push(v); paint() } return }
+  if(el.hasAttribute("data-rmpart")){ st.settings.parts.splice(+el.getAttribute("data-rmpart"),1); paint(); return }
+  if(a==="savesettings"){ run(d.saveSettings(st.settings),L("Ajustes guardados","Settings saved")); return }
+  if(a==="cam"){ takeVehiclePhoto(); return }
+}
+function onChange(ev){
+  var el=ev.target;
+  if(el.id==="scRP"){ var o=el.value==="__other"; document.getElementById("scROw").hidden=!o; document.getElementById("scRV").innerHTML=verdict(o); return }
+  if(el.id==="scMonth"){ st.month=el.value; start(); return }
+  if(el.hasAttribute("data-am"))st.settings.amount[el.getAttribute("data-am")]=Math.max(0,+el.value||0);
+  if(el.hasAttribute("data-tl"))st.settings.tol[el.getAttribute("data-tl")]=Math.max(0,Math.floor(+el.value||0));
+}
+function onInput(ev){ var el=ev.target; if(el.hasAttribute("data-miss"))st.pendingMiss[el.getAttribute("data-miss")]=el.value }
+document.addEventListener("keydown",function(e){ if(e.key==="Escape")closeDrawer() });
+
+/* ---------- mount + register (same pattern as Parts admin, via the registry) ---------- */
+function monta(){
+  var bar=document.getElementById("tabBar");
+  if(!bar||document.getElementById("tab"+IDX))return;
+  var t=document.createElement("div");
+  t.className="tab hidden"; t.id="tab"+IDX;
+  t.setAttribute("data-i18n-es","Puntajes"); t.setAttribute("data-i18n-en","Scorecard");
+  t.textContent=L("Puntajes","Scorecard");
+  t.onclick=function(){ showTab(IDX) };
+  bar.appendChild(t);
+  var p=document.createElement("div"); p.className="wrap"; p.id="pg"+IDX;
+  var pg0=document.getElementById("pg0");
+  if(pg0&&pg0.parentNode)pg0.parentNode.insertBefore(p,pg0); else document.body.appendChild(p);
+  p.addEventListener("click",onClick); p.addEventListener("change",onChange); p.addEventListener("input",onInput);
+  new MutationObserver(function(){ if(!isOpen()){ stop(); closeDrawer() } }).observe(p,{attributes:true,attributeFilter:["class"]});
+  if(typeof window.aspRegistrarPantalla==="function")
+    window.aspRegistrarPantalla({idx:IDX,ver:function(){ return !!user()&&!viewer() },alEntrar:function(){ st.view=st.view||"today"; start() }});
+}
+if(typeof window.applyAppLang==="function"){
+  var _al=window.applyAppLang;
+  window.applyAppLang=function(){ var r=_al.apply(this,arguments); try{ var t=document.getElementById("tab"+IDX); if(t)t.textContent=L("Puntajes","Scorecard"); paint() }catch(_e){} return r };
+}
+/* Weekly nudge for techs: Thursday or later, no photo yet → one toast per day.
+   One small query per session; sessionStorage only (no localStorage key). */
+function nudge(){
+  try{
+    var me=user(); if(!me||me.role!=="tech"||!D())return;
+    var d=today(), dow=new Date(d+"T12:00:00").getDay(); if(dow<4&&dow!==0)return;
+    var key="aspScNudge"; if(sessionStorage.getItem(key)===d)return;
+    sessionStorage.setItem(key,d); /* claim the day BEFORE the query: updAdmin runs several times at login */
+    var wk=S.weekId(d);
+    db.collection("scorecard_photos").where("month","==",S.monthOfWeek(wk)).where("tech","==",me.name).get().then(function(s){
+      var has=s.docs.some(function(x){ return x.data().weekId===wk });
+      if(!has)say(L("Falta la foto del vehículo de esta semana — está en Puntajes.","This week's vehicle photo is still missing — it's in Scorecard."),"warn");
+    }).catch(function(){});
+  }catch(_e){}
+}
+if(typeof window.updAdmin==="function"){
+  var _ua=window.updAdmin;
+  var _nudgeT=null;
+  window.updAdmin=function(){ var r=_ua.apply(this,arguments); try{ monta(); clearTimeout(_nudgeT); _nudgeT=setTimeout(nudge,4000) }catch(_e){} return r };
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta); else monta();
+setTimeout(monta,1500);
+window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,flushOutbox:flushOutbox,_st:st};
+})();
+</script>
 </body>
 </html>
