@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.82.0";
+var APP_VERSION="2.83.0";
 var BUILD_DATE="2026-10-06";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -58656,7 +58656,7 @@ if(typeof _ra==='function'&&!_ra.__v281){window.rndrA=function(){var r=_ra.apply
 </script>
 
 
-<!-- ═══ TECH SCORECARD (v2.82.0, Oct 2026) — tab18/pg18. Delete these three blocks to revert. ═══ -->
+<!-- ═══ TECH SCORECARD (v2.82.0–2.83.0, Oct 2026) — tab18/pg18. Delete these three blocks to revert. ═══ -->
 <style id="aspenScorecardSkin">
 /* TECH SCORECARD — styles for #pg18 (v2.82.0). Uses the index :root tokens.
    Delete the three aspenScorecard* blocks to revert. */
@@ -58778,6 +58778,53 @@ if(typeof _ra==='function'&&!_ra.__v281){window.rndrA=function(){var r=_ra.apply
 #pg18 .sc-parts summary{cursor:pointer;color:var(--acd);font-weight:700;margin-bottom:6px}
 @media (max-width:600px){#pg18 .sc-form{grid-template-columns:1fr}#pg18 .sc-row{flex-wrap:wrap}#pg18 .sc-yn{width:100%}#pg18 .sc-yn button{flex:1}}
 @media (prefers-reduced-motion:reduce){.sc-drawer{transition:none}}
+/* v2.83.0 — 4-photo vehicle sets + guided capture */
+#pg18 .sc-setlab{font-size:12px;font-weight:700;color:var(--i3);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+#pg18 .sc-set,.sc-drawer .sc-set{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#pg18 .sc-set figure,.sc-drawer .sc-set figure{margin:0}
+#pg18 .sc-set img,.sc-drawer .sc-set img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;border:1px solid var(--ln);display:block;background:var(--ln)}
+#pg18 .sc-set figure.bad img,.sc-drawer .sc-set figure.bad img{outline:3px solid var(--c-danger-strong);outline-offset:-3px}
+#pg18 .sc-set figcaption,.sc-drawer .sc-set figcaption{font-size:11px;color:var(--i3);margin-top:3px}
+#pg18 .sc-set .sc-noph{aspect-ratio:4/3;padding:0}
+#pg18 .sc-noph.wide{aspect-ratio:auto;padding:14px}
+.sc-drawer .sc-set.ev{margin-top:8px}
+#pg18 .sc-rej{margin-top:12px;padding:12px;border:1px solid var(--c-danger-border);background:var(--c-danger-bg);border-radius:12px;color:var(--ink)}
+#pg18 .sc-rej-angles{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0}
+#pg18 .sc-rej-angles label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
+#pg18 .sc-rej input[data-rejnote]{width:100%;padding:9px 11px;border:1px solid var(--c-danger-border);border-radius:10px;font:inherit;background:var(--cd);color:var(--ink)}
+#pg18 .sc-sent{flex-wrap:wrap}
+#pg18 .sc-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%}
+#pg18 .sc-thumbs img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:8px}
+.sc-guide{position:fixed;inset:0;z-index:4600;background:var(--bg);color:var(--ink);display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);font-family:inherit}
+.sc-guide.open{display:flex}
+html.sc-guide-on,html.sc-guide-on body{overflow:hidden}
+.sc-g-top{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--hdr-bg,#211712);color:#fff}
+.sc-g-top .sc-g-sub{color:#c9b8a8}
+.sc-g-x{border:0;background:rgba(255,255,255,.12);color:#fff;width:40px;height:40px;border-radius:12px;font-size:22px;cursor:pointer}
+.sc-g-dots{margin-left:auto;display:flex;gap:6px}
+.sc-g-dots i{width:10px;height:10px;border-radius:50%;background:#5a483b}
+.sc-g-dots i.done{background:var(--ac)}
+.sc-g-dots i.now{box-shadow:0 0 0 3px rgba(212,119,44,.45);background:#fff}
+.sc-g-body{flex:1;overflow-y:auto;padding:18px 16px 24px;max-width:560px;width:100%;margin:0 auto;box-sizing:border-box}
+.sc-g-body h2{font-size:20px;margin:0 0 4px}
+.sc-g-sub{font-size:13px;color:var(--i3)}
+.sc-g-sub.c{text-align:center;margin:6px 0 12px}
+.sc-g-step{font-size:15px;color:var(--i2);margin-bottom:10px}
+.sc-g-step b{color:var(--ink);font-size:20px}
+.sc-g-art{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:10px}
+.sc-g-art svg{display:block;width:100%;height:auto}
+.sc-g-tips{margin:14px 0 18px;padding-left:20px;color:var(--i2);font-size:15px;line-height:1.7}
+.sc-g-main{width:100%;border:0;border-radius:14px;padding:16px;font:inherit;font-size:16px;font-weight:700;background:var(--ac);color:#fff;cursor:pointer}
+.sc-g-main:disabled{background:var(--ln);color:var(--i3)}
+.sc-g-sec{border:1px solid var(--ln);border-radius:14px;padding:16px;font:inherit;font-size:16px;font-weight:700;background:var(--cd);color:var(--ink);cursor:pointer}
+.sc-g-row{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.sc-g-shot img{width:100%;max-height:52vh;object-fit:contain;border-radius:14px;background:#000;display:block}
+.sc-g-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px}
+.sc-g-grid figure{margin:0}
+.sc-g-grid img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block}
+.sc-g-grid figcaption{font-size:12px;color:var(--i2);margin-top:4px}
+.sc-g-link{border:0;background:none;color:var(--acd);font:inherit;font-weight:700;padding:0 0 0 4px;cursor:pointer;text-decoration:underline}
+@media (max-width:600px){#pg18 .sc-set{grid-template-columns:repeat(2,1fr)}}
 </style>
 <script id="aspenScorecardCore">
 /* ═══════════════════════════════════════════════════════════════════════
@@ -59013,6 +59060,13 @@ window.aspScoreDataFactory=function(env){
     var u=me();
     if(!isOffice()&&p.tech!==u.name)throw new Error("techs can only send their own photo");
     var doc={tech:p.tech,weekId:p.weekId,month:p.month||"",url:p.url,path:p.path||"",takenAtMs:+p.takenAtMs,uploadedAtMs:env.now(),by:u.name,at:env.serverTimestamp()};
+    if(Array.isArray(p.photos)){ /* v2.83.0: weekly SET of angle photos; `url` stays = the front photo so rules and old readers keep working */
+      if(p.photos.length<1||p.photos.length>8)throw new Error("a photo set has 1 to 8 photos");
+      doc.photos=p.photos.map(function(x){
+        if(!x||typeof x.url!=="string"||!x.url)throw new Error("every photo in the set needs a url");
+        return {angle:String(x.angle||""),url:x.url,path:String(x.path||""),bytes:+x.bytes||0,takenAtMs:+x.takenAtMs||0};
+      });
+    }
     var r=await db.collection("scorecard_photos").add(doc);
     return r.id;
   }
@@ -59052,7 +59106,7 @@ window.aspScoreDataFactory=function(env){
 if(window.__aspScorecard)return; window.__aspScorecard=true;
 
 var IDX=18, S=window.aspScore;
-var st={view:"today",month:"",settings:null,marks:[],photos:[],unsub:null,closed:null,closedFor:"",pendingMiss:{},busy:false,flushT:null};
+var st={view:"today",month:"",settings:null,marks:[],photos:[],unsub:null,closed:null,closedFor:"",pendingMiss:{},busy:false,flushT:null,rejecting:null,rejAngles:{},rejNote:""};
 
 /* ---------- small helpers ---------- */
 function L(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } }
@@ -59193,17 +59247,33 @@ function prevApproved(p){
   st.photos.forEach(function(x){ if(x.tech===p.tech&&x.weekId<p.weekId){ var rv=reviewOf(x.id); if(rv&&rv.clean&&(!r||x.weekId>r.weekId))r=x } });
   return r;
 }
+function setRow(p,cls,bad){
+  var ph=photosOf(p), by={}; ph.forEach(function(x){ by[x.angle||"front"]=x });
+  bad=bad||[];
+  return '<div class="sc-set '+cls+'">'+ANG.map(function(a){ var x=by[a.k];
+    return '<figure class="'+(bad.indexOf(a.k)>=0?"bad":"")+'">'+(x?'<img src="'+h(x.url)+'" alt="'+h(angName(a.k))+'" loading="lazy">':'<div class="sc-noph">—</div>')+'<figcaption>'+h(angName(a.k))+'</figcaption></figure>' }).join("")+'</div>';
+}
 function vPhotos(){
   var wk=S.weekId(today()), list=pendingPhotos();
   var have={}; latestPhotos().forEach(function(p){ if(p.weekId===wk)have[p.tech]=1 });
   var offW=S.offWeekFn(isOff);
   var missing=(st.month===today().slice(0,7))?techList().filter(function(t){ return !have[t]&&!offW(t,wk) }):[]; /* only meaningful for the current month */
-  var H='<h2>'+L("Fotos semanales del vehículo","Weekly vehicle photos")+'</h2><p class="sc-lead">'+L("Semana del","Week of")+' '+h(fmtDay(wk))+'. '+L("La foto aprobada anterior aparece al lado, para que una foto repetida salte a la vista.","Last approved photo sits next to this one so a reused picture stands out.")+(missing.length?' '+L("Faltan esta semana:","Still missing this week:")+' '+h(missing.join(", "))+'.':"")+'</p>';
+  var H='<h2>'+L("Fotos semanales del vehículo","Weekly vehicle photos")+'</h2><p class="sc-lead">'+L("Semana del","Week of")+' '+h(fmtDay(wk))+'. '+L("Debajo de cada juego aparece el último aprobado, ángulo contra ángulo, para que una foto repetida salte a la vista.","Under each set you see the last approved one, angle against angle, so a reused picture stands out.")+(missing.length?' '+L("Faltan esta semana:","Still missing this week:")+' '+h(missing.join(", "))+'.':"")+'</p>';
   if(!list.length)H+='<div class="sc-card">'+L("Todas las fotos están revisadas.","All photos are reviewed.")+'</div>';
   list.forEach(function(p){
-    var prev=prevApproved(p);
-    H+='<div class="sc-card"><b>'+h(p.tech)+'</b> <span class="sc-mut">· '+L("semana del","week of")+' '+h(fmtDay(p.weekId))+' · '+L("tomada","taken")+' '+h(fmtWhen(p.takenAtMs))+'</span><div class="sc-ph"><figure><img src="'+h(p.url)+'" alt="" loading="lazy"><figcaption>'+L("Esta semana","This week")+'</figcaption></figure><figure>'+(prev?'<img src="'+h(prev.url)+'" alt="" loading="lazy">':'<div class="sc-noph">'+L("Sin foto aprobada anterior","No earlier approved photo")+'</div>')+'<figcaption>'+L("Última aprobada","Last approved")+'</figcaption></figure></div>';
-    H+='<div class="sc-acts"><button type="button" class="sc-btn" data-rev="'+h(p.id)+'" data-clean="1">'+L("Aprobar — limpio","Approve — clean")+'</button><button type="button" class="sc-btn sec" data-rev="'+h(p.id)+'" data-clean="0">'+L("No está limpio…","Not clean…")+'</button></div></div>';
+    var prev=prevApproved(p), rej=st.rejecting===p.id;
+    H+='<div class="sc-card"><b>'+h(p.tech)+'</b> <span class="sc-mut">· '+L("semana del","week of")+' '+h(fmtDay(p.weekId))+' · '+L("tomadas","taken")+' '+h(fmtWhen(p.takenAtMs))+'</span>';
+    H+='<div class="sc-setlab">'+L("Esta semana","This week")+'</div>'+setRow(p,"now");
+    H+='<div class="sc-setlab">'+L("Última aprobada","Last approved")+(prev?' · '+h(fmtDay(prev.weekId)):"")+'</div>'+(prev?setRow(prev,"prev"):'<div class="sc-noph wide">'+L("Sin juego aprobado anterior","No earlier approved set")+'</div>');
+    if(rej){
+      H+='<div class="sc-rej"><b>'+L("¿Qué foto muestra el problema?","Which photo shows the problem?")+'</b><div class="sc-rej-angles">';
+      photosOf(p).forEach(function(x){ var k=x.angle||"front"; H+='<label><input type="checkbox" data-badangle="'+h(k)+'"'+(st.rejAngles[k]?" checked":"")+'> '+h(angName(k))+'</label>' });
+      H+='</div><input data-k="rejnote" data-rejnote="1" placeholder="'+L("¿Qué no está limpio? El técnico verá esta nota.","What isn't clean? The tech will see this note.")+'" value="'+h(st.rejNote)+'">'+
+         '<div class="sc-acts"><button type="button" class="sc-btn" data-act="savereject" data-pid="'+h(p.id)+'">'+L("Guardar — no limpio","Save — not clean")+'</button><button type="button" class="sc-btn sec" data-act="cancelreject">'+L("Cancelar","Cancel")+'</button></div></div>';
+    } else {
+      H+='<div class="sc-acts"><button type="button" class="sc-btn" data-rev="'+h(p.id)+'" data-clean="1">'+L("Aprobar — limpio","Approve — clean")+'</button><button type="button" class="sc-btn sec" data-rev="'+h(p.id)+'" data-clean="0">'+L("No está limpio…","Not clean…")+'</button></div>';
+    }
+    H+='</div>';
   });
   return H;
 }
@@ -59291,7 +59361,7 @@ function openEvidence(tech,k){
   if(k==="vehicle"){
     (x.weeks||[]).forEach(function(w){
       var lab={clean:"✓ "+L("Aprobada limpia","Approved clean"),dirty:"✗ "+L("No limpia","Not clean"),missing:"✗ "+L("Sin foto","No photo uploaded"),off:L("Time off — semana no cuenta","Time off — week not counted"),pending:L("Esperando revisión de oficina","Waiting on office review"),open:L("Semana en curso","Week still running")}[w.state]||w.state;
-      H+='<div class="sc-ev"><b>'+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+'</b> · '+lab+(w.review&&w.review.note?" — "+h(w.review.note):"")+(w.photo?'<img class="sc-evimg" src="'+h(w.photo.url)+'" alt="" loading="lazy">':"")+(w.review?'<div class="sc-mut">'+L("Revisó","Reviewed by")+' '+h(w.review.by)+' · '+h(fmtWhen(w.review.atMs))+'</div>'+(cr.closed||V[w.review.id]?"":fixBtn(w.review)):"")+'</div>';
+      H+='<div class="sc-ev"><b>'+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+'</b> · '+lab+(w.review&&(w.review.badAngles||[]).length?" — "+h(w.review.badAngles.map(angName).join(", ")):"")+(w.review&&w.review.note?" — "+h(w.review.note):"")+(w.photo?setRow(w.photo,"ev",(w.review&&w.review.badAngles)||[]):"")+(w.review?'<div class="sc-mut">'+L("Revisó","Reviewed by")+' '+h(w.review.by)+' · '+h(fmtWhen(w.review.atMs))+'</div>'+(cr.closed||V[w.review.id]?"":fixBtn(w.review)):"")+'</div>';
     });
   }
   if(k==="tickets"){
@@ -59329,10 +59399,10 @@ function techCard(){
   else if(needPhoto){ vstat=["risk",L("Falta foto","Photo due")]; vtext=L("Toma la foto de esta semana antes del domingo","Take this week's photo before Sunday")+" "+h(fmtDay(S.addDays(wk,6)))+"." }
   else if(wkState.state==="pending"){ vstat=["risk",L("Enviada","Sent")]; vtext=L("La foto de esta semana está con la oficina para revisión.","This week's photo is with the office for review.") }
   else { vstat=["ok",L("Vas bien","On track")]; vtext=L("La foto de esta semana ya fue aprobada.","This week's photo is approved.") }
-  var vnotes=(v.weeks||[]).filter(function(w){ return w.state==="dirty" }).map(function(w){ return '<div class="sc-note">✗ '+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+(w.review&&w.review.note?" — "+h(w.review.note):"")+'</div>' }).join("");
+  var vnotes=(v.weeks||[]).filter(function(w){ return w.state==="dirty" }).map(function(w){ return '<div class="sc-note">✗ '+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+(w.review&&(w.review.badAngles||[]).length?" — "+h(w.review.badAngles.map(angName).join(", ")):"")+(w.review&&w.review.note?" — "+h(w.review.note):"")+'</div>' }).join("");
   var q=outboxCount;
-  var cam=needPhoto?'<button type="button" class="sc-cam" data-act="cam">📷 '+L("Tomar la foto del vehículo de esta semana","Take this week\u2019s vehicle photo")+'</button>':(wkState&&wkState.photo?'<div class="sc-sent"><img src="'+h(wkState.photo.url)+'" alt=""><span>'+L("Enviada","Sent")+' '+h(fmtWhen(wkState.photo.takenAtMs))+'</span></div>':"");
-  if(q)cam+='<div class="sc-note">'+L("Foto guardada sin señal — se enviará sola al volver la conexión.","Photo saved without signal — it will send itself when you're back online.")+'</div>';
+  var cam=needPhoto?'<button type="button" class="sc-cam" data-act="cam">📷 '+L("Tomar las 4 fotos del vehículo de esta semana","Take this week\u2019s 4 vehicle photos")+'</button>':(wkState&&wkState.photo?'<div class="sc-sent"><div class="sc-thumbs">'+photosOf(wkState.photo).map(function(x){ return '<img src="'+h(x.url)+'" alt="'+h(angName(x.angle||"front"))+'">' }).join("")+'</div><span>'+L("Enviadas","Sent")+' '+h(fmtWhen(wkState.photo.takenAtMs))+'</span></div>':"");
+  if(q)cam+='<div class="sc-note">'+L("Fotos guardadas sin señal — se enviarán solas al volver la conexión.","Photos saved without signal — they will send themselves when you're back online.")+'</div>';
   H+=crit("vehicle",vstat,vtext,vnotes+cam);
   var t=row.tickets;
   H+=crit("tickets",t.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],t.visits+" "+L("visitas","visits")+" · "+t.unreported.length+" "+L("sin reportar","not reported")+" · "+t.late.length+" "+L("tarde","late")+" ("+tol.tickets+" "+L("permitidas","allowed")+").",t.unreported.map(function(x){ return '<div class="sc-note">✗ '+h(fmtDay(x.date))+' · '+h(x.customer)+'</div>' }).join(""));
@@ -59342,48 +59412,158 @@ function techCard(){
   return H;
 }
 
-/* ---------- vehicle photo: capture, compress, upload, offline queue ---------- */
+/* ---------- vehicle photos (v2.83.0): guided SET of 4 angles, each capped at 200 KB ---------- */
+var ANG=[{k:"front",es:"Frente",en:"Front"},{k:"back",es:"Atrás",en:"Back"},{k:"left",es:"Lado izquierdo",en:"Left side"},{k:"right",es:"Lado derecho",en:"Right side"}];
+function angName(k){ for(var i=0;i<ANG.length;i++)if(ANG[i].k===k)return L(ANG[i].es,ANG[i].en); return k }
+function photosOf(p){ return (p&&Array.isArray(p.photos)&&p.photos.length)?p.photos:(p&&p.url?[{angle:"front",url:p.url}]:[]) }
+var LIMIT=200000; /* hard cap per photo, bytes */
+/* Compress, measure, repeat: lower quality first, then size, until it fits. Uses the app's compressPhoto. */
+function compress200(file){
+  if(typeof compressPhoto!=="function")return Promise.reject(new Error("compressPhoto missing"));
+  var maxW=1600,q=0.8;
+  function step(){
+    return compressPhoto(file,maxW,q).then(function(r){
+      var b=(r&&r.blob)||r;
+      if(b.size<=LIMIT)return b;
+      if(maxW<=320)throw new Error("photo could not be reduced under 200 KB");
+      if(q>0.55)q=Math.round((q-0.1)*100)/100; else { maxW=Math.round(maxW*0.8); q=0.75 }
+      return step();
+    });
+  }
+  return step();
+}
 var outboxCount=0;
-function idb(){ return new Promise(function(res,rej){ var rq=indexedDB.open("aspenScoreOutbox",1); rq.onupgradeneeded=function(){ var d=rq.result; if(!d.objectStoreNames.contains("photos"))d.createObjectStore("photos",{keyPath:"key",autoIncrement:true}) }; rq.onsuccess=function(){ res(rq.result) }; rq.onerror=function(){ rej(rq.error) } }) }
-function idbAll(){ return idb().then(function(d){ return new Promise(function(res){ var out=[], c=d.transaction("photos").objectStore("photos").openCursor(); c.onsuccess=function(){ var cur=c.result; if(cur){ out.push(cur.value); cur.continue() } else res(out) }; c.onerror=function(){ res(out) } }) }) }
-function idbPut(v){ return idb().then(function(d){ return new Promise(function(res,rej){ var tx=d.transaction("photos","readwrite"); tx.objectStore("photos").add(v); tx.oncomplete=res; tx.onerror=function(){ rej(tx.error) } }) }) }
-function idbDel(key){ return idb().then(function(d){ return new Promise(function(res){ var tx=d.transaction("photos","readwrite"); tx.objectStore("photos").delete(key); tx.oncomplete=res; tx.onerror=res }) }) }
-function upload(item){
-  var wk=S.weekId(S.localDay(item.takenAtMs)), path="scorecard/vehicles/"+slug(item.tech)+"/"+wk+"/"+item.takenAtMs+".jpg";
+function idb(){ return new Promise(function(res,rej){ var rq=indexedDB.open("aspenScoreOutbox",2);
+  rq.onupgradeneeded=function(){ var d=rq.result;
+    if(!d.objectStoreNames.contains("photos"))d.createObjectStore("photos",{keyPath:"key",autoIncrement:true});
+    if(!d.objectStoreNames.contains("drafts"))d.createObjectStore("drafts",{keyPath:"key"}) };
+  rq.onsuccess=function(){ res(rq.result) }; rq.onerror=function(){ rej(rq.error) } }) }
+function idbAll(store){ return idb().then(function(d){ return new Promise(function(res){ var out=[], c=d.transaction(store).objectStore(store).openCursor(); c.onsuccess=function(){ var cur=c.result; if(cur){ out.push(cur.value); cur.continue() } else res(out) }; c.onerror=function(){ res(out) } }) }) }
+function idbPut(store,v){ return idb().then(function(d){ return new Promise(function(res,rej){ var tx=d.transaction(store,"readwrite"), os=tx.objectStore(store); if(store==="photos")os.add(v); else os.put(v); tx.oncomplete=res; tx.onerror=function(){ rej(tx.error) } }) }) }
+function idbDel(store,key){ return idb().then(function(d){ return new Promise(function(res){ var tx=d.transaction(store,"readwrite"); tx.objectStore(store).delete(key); tx.oncomplete=res; tx.onerror=res }) }) }
+function putDraft(dr){ dr.key=dr.tech+"|"+dr.weekId; return idbPut("drafts",dr) }
+
+function uploadOne(tech,wk,angle,blob,takenAtMs){
+  var path="scorecard/vehicles/"+slug(tech)+"/"+wk+"/"+takenAtMs+(angle?"-"+angle:"")+".jpg";
   if(typeof storage==="undefined"||!storage)return Promise.reject(new Error("storage not ready"));
   var ref=storage.ref(path);
-  return ref.put(item.blob,{contentType:"image/jpeg"}).then(function(){ return ref.getDownloadURL() }).then(function(url){
-    return D().addPhoto({tech:item.tech,weekId:wk,month:S.monthOfWeek(wk),url:url,path:path,takenAtMs:item.takenAtMs});
+  return ref.put(blob,{contentType:"image/jpeg"}).then(function(){ return ref.getDownloadURL() }).then(function(url){
+    return {angle:angle||"front",url:url,path:path,bytes:blob.size||0,takenAtMs:takenAtMs};
   });
 }
-function takeVehiclePhoto(){
-  return new Promise(function(resolve){
-    var inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.setAttribute("capture","environment");
-    inp.onchange=function(){
-      var f=inp.files&&inp.files[0]; if(!f){ resolve(null); return }
-      var me=user(), takenAtMs=Date.now();
-      var comp=(typeof compressPhoto==="function")?compressPhoto(f,1200,0.7):Promise.resolve(f);
-      comp.then(function(r){
-        var blob=(r&&r.blob)||r; /* compressPhoto resolves {blob,dataUrl,type}, not a Blob */
-        var item={tech:me.name,blob:blob,takenAtMs:takenAtMs};
-        if(navigator.onLine===false)throw {queue:item};
-        return upload(item).then(function(){ say(L("Foto enviada ✓","Photo sent ✓")); resolve("sent") },function(e){ console.warn("[scorecard] upload",e); throw {queue:item} });
-      }).catch(function(e){
-        if(e&&e.queue)return idbPut(e.queue).then(function(){ outboxCount++; say(L("Sin señal: la foto se guardó y se enviará sola.","No signal: photo saved, it will send itself."),"warn"); armFlush(); paint(); resolve("queued") });
-        console.warn("[scorecard] photo",e); say(L("No se pudo procesar la foto","Could not process the photo"),"err"); resolve(null);
+function upload(item){
+  if(Array.isArray(item.shots)){ /* a weekly set */
+    var done=[];
+    return item.shots.reduce(function(p,sh){ return p.then(function(){ return uploadOne(item.tech,item.weekId,sh.angle,sh.blob,sh.takenAtMs).then(function(r){ done.push(r) }) }) },Promise.resolve())
+      .then(function(){
+        var last=Math.max.apply(null,done.map(function(x){ return x.takenAtMs }));
+        return D().addPhoto({tech:item.tech,weekId:item.weekId,month:S.monthOfWeek(item.weekId),url:done[0].url,path:done[0].path,takenAtMs:last,photos:done});
       });
-    };
-    inp.click();
+  }
+  /* legacy single-photo item queued by v2.82.0 */
+  var wk=S.weekId(S.localDay(item.takenAtMs));
+  return uploadOne(item.tech,wk,"",item.blob,item.takenAtMs).then(function(r){
+    return D().addPhoto({tech:item.tech,weekId:wk,month:S.monthOfWeek(wk),url:r.url,path:r.path,takenAtMs:item.takenAtMs});
   });
 }
+
+/* ---- the guide (full screen, step by step) ---- */
+var G={tech:"",wk:"",shots:{},step:0,mode:"shoot",busy:false,urls:[]};
+function vanSvg(a){
+  var ac="var(--ac)", body='fill="var(--cd)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"';
+  var frame='<rect x="8" y="8" width="304" height="184" rx="14" fill="none" stroke="'+ac+'" stroke-width="2.5" stroke-dasharray="10 7"/>';
+  var side='<path d="M40 128V78q0-10 10-10h132l44 30h40q10 0 10 10v20z" '+body+'/><path d="M190 74h28l30 22h-58z" fill="#bcd3e0" stroke="var(--ink)" stroke-width="2"/><rect x="40" y="108" width="236" height="8" fill="'+ac+'"/><text x="60" y="100" font-family="DM Sans,sans-serif" font-weight="800" font-size="17" fill="var(--br)">ASPEN</text><circle cx="88" cy="132" r="17" fill="#222"/><circle cx="88" cy="132" r="7" fill="#999"/><circle cx="232" cy="132" r="17" fill="#222"/><circle cx="232" cy="132" r="7" fill="#999"/><line x1="20" y1="150" x2="300" y2="150" stroke="var(--i3)" stroke-width="2"/>';
+  var front='<path d="M95 140V70q0-14 14-14h102q14 0 14 14v70z" '+body+'/><path d="M108 66h104l6 30H102z" fill="#bcd3e0" stroke="var(--ink)" stroke-width="2"/><rect x="128" y="108" width="64" height="16" rx="3" fill="var(--i3)"/><circle cx="110" cy="116" r="8" fill="#ffe08a" stroke="var(--ink)" stroke-width="2"/><circle cx="210" cy="116" r="8" fill="#ffe08a" stroke="var(--ink)" stroke-width="2"/><rect x="92" y="134" width="136" height="10" rx="3" fill="var(--i2)"/><rect x="102" y="144" width="20" height="14" rx="3" fill="#222"/><rect x="198" y="144" width="20" height="14" rx="3" fill="#222"/><line x1="20" y1="158" x2="300" y2="158" stroke="var(--i3)" stroke-width="2"/>';
+  var back='<path d="M95 140V64q0-12 12-12h106q12 0 12 12v76z" '+body+'/><line x1="160" y1="56" x2="160" y2="138" stroke="var(--ink)" stroke-width="2"/><rect x="112" y="64" width="40" height="26" rx="3" fill="#bcd3e0" stroke="var(--ink)" stroke-width="2"/><rect x="168" y="64" width="40" height="26" rx="3" fill="#bcd3e0" stroke="var(--ink)" stroke-width="2"/><rect x="97" y="96" width="9" height="22" rx="2" fill="#d33"/><rect x="214" y="96" width="9" height="22" rx="2" fill="#d33"/><rect x="95" y="104" width="130" height="7" fill="'+ac+'"/><rect x="92" y="134" width="136" height="10" rx="3" fill="var(--i2)"/><rect x="102" y="144" width="20" height="14" rx="3" fill="#222"/><rect x="198" y="144" width="20" height="14" rx="3" fill="#222"/><line x1="20" y1="158" x2="300" y2="158" stroke="var(--i3)" stroke-width="2"/>';
+  var art=a==="front"?front:a==="back"?back:(a==="left"?'<g transform="translate(320 0) scale(-1 1)">'+side+'</g>':side);
+  return '<svg viewBox="0 0 320 200" role="img" aria-label="'+h(angName(a))+'">'+frame+art+'</svg>';
+}
+function freeUrls(){ G.urls.forEach(function(u){ try{ URL.revokeObjectURL(u) }catch(_e){} }); G.urls=[] }
+function blobUrl(b){ var u=URL.createObjectURL(b); G.urls.push(u); return u }
+function kb(n){ return Math.round((+n||0)/1024)+" KB" }
+function guideEl(){
+  var g=document.getElementById("scGuide");
+  if(!g){ g=document.createElement("div"); g.id="scGuide"; g.className="sc-guide"; g.setAttribute("role","dialog"); g.setAttribute("aria-modal","true");
+    document.body.appendChild(g); g.addEventListener("click",onGuideClick) }
+  return g;
+}
+function firstMissing(){ for(var i=0;i<ANG.length;i++)if(!G.shots[ANG[i].k])return i; return ANG.length }
+function openGuide(){
+  var me=user(); if(!me)return Promise.resolve();
+  G.tech=me.name; G.wk=S.weekId(today()); G.shots={}; G.busy=false;
+  return idbAll("drafts").catch(function(){ return [] }).then(function(all){
+    var stale=all.filter(function(d){ return d.tech===G.tech&&d.weekId!==G.wk });
+    return Promise.all(stale.map(function(d){ return idbDel("drafts",d.key) })).then(function(){
+      all.forEach(function(d){ if(d.tech===G.tech&&d.weekId===G.wk)G.shots=d.shots||{} });
+      G.step=firstMissing(); G.mode=G.step<ANG.length?"shoot":"review";
+      guideEl().classList.add("open"); document.documentElement.classList.add("sc-guide-on"); renderGuide();
+    });
+  });
+}
+function closeGuide(){ var g=document.getElementById("scGuide"); if(g)g.classList.remove("open"); document.documentElement.classList.remove("sc-guide-on"); freeUrls(); paint() }
+function renderGuide(){
+  var g=guideEl(); freeUrls();
+  var dots=ANG.map(function(a,i){ return '<i class="'+(G.shots[a.k]?"done":"")+(G.mode!=="review"&&i===G.step?" now":"")+'"></i>' }).join("");
+  var H='<div class="sc-g-top"><button type="button" class="sc-g-x" data-g="close" aria-label="'+L("Cerrar","Close")+'">×</button><div><b>'+L("Fotos del vehículo","Vehicle photos")+'</b><div class="sc-g-sub">'+L("Semana del","Week of")+' '+h(fmtDay(G.wk))+'</div></div><div class="sc-g-dots">'+dots+'</div></div><div class="sc-g-body">';
+  if(G.mode==="review"){
+    H+='<h2>'+L("Revisa las 4 fotos","Check all 4 photos")+'</h2><p class="sc-g-sub">'+L("Toca Repetir en la que quieras cambiar. Al enviar, la oficina las revisa juntas.","Tap Retake on any you want to change. When you send, the office reviews them together.")+'</p><div class="sc-g-grid">';
+    ANG.forEach(function(a){ var s=G.shots[a.k]; H+='<figure><img src="'+blobUrl(s.blob)+'" alt="'+h(angName(a.k))+'"><figcaption>'+h(angName(a.k))+' · '+kb(s.bytes)+' <button type="button" class="sc-g-link" data-g="redo" data-a="'+a.k+'">'+L("Repetir","Retake")+'</button></figcaption></figure>' });
+    H+='</div><button type="button" class="sc-g-main" data-g="send"'+(G.busy?" disabled":"")+'>'+(G.busy?L("Enviando…","Sending…"):L("Enviar las 4 fotos","Send all 4 photos"))+'</button>';
+  } else {
+    var a=ANG[G.step], s=G.shots[a.k];
+    H+='<div class="sc-g-step">'+(G.step+1)+' '+L("de","of")+' 4 · <b>'+h(angName(a.k))+'</b></div>';
+    if(s){
+      H+='<div class="sc-g-shot"><img src="'+blobUrl(s.blob)+'" alt="'+h(angName(a.k))+'"></div><p class="sc-g-sub c">'+L("Lista","Ready")+' · '+kb(s.bytes)+'</p><div class="sc-g-row"><button type="button" class="sc-g-sec" data-g="retake">'+L("Repetir","Retake")+'</button>'+
+         (G.step<ANG.length-1?'<button type="button" class="sc-g-main" data-g="next">'+L("Siguiente","Next")+' →</button>':'<button type="button" class="sc-g-main" data-g="review">'+L("Ver las 4","See all 4")+' →</button>')+'</div>';
+    } else {
+      H+='<div class="sc-g-art">'+vanSvg(a.k)+'</div><ul class="sc-g-tips"><li>'+L("Todo el vehículo dentro del cuadro","Whole vehicle inside the frame")+'</li><li>'+L("De día o con buena luz","Daylight or good light")+'</li><li>'+L("Nada tapando el vehículo","Nothing blocking the vehicle")+'</li></ul>'+
+         '<button type="button" class="sc-g-main" data-g="shoot"'+(G.busy?" disabled":"")+'>'+(G.busy?L("Procesando…","Processing…"):"📷 "+L("Abrir cámara","Open camera"))+'</button>';
+    }
+  }
+  g.innerHTML=H+'</div>';
+}
+function shootNow(){
+  var a=ANG[G.step].k, inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.setAttribute("capture","environment");
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0]; if(!f)return;
+    var takenAtMs=Date.now(); G.busy=true; renderGuide();
+    compress200(f).then(function(blob){
+      G.shots[a]={blob:blob,takenAtMs:takenAtMs,bytes:blob.size};
+      return putDraft({tech:G.tech,weekId:G.wk,shots:G.shots}).catch(function(e){ console.warn("[scorecard] draft",e) });
+    }).catch(function(e){ console.warn("[scorecard] photo",e); say(L("No se pudo procesar la foto","Could not process the photo"),"err") })
+      .then(function(){ G.busy=false; renderGuide() });
+  };
+  inp.click();
+}
+function sendSet(){
+  var item={tech:G.tech,weekId:G.wk,shots:ANG.map(function(a){ var s=G.shots[a.k]; return {angle:a.k,blob:s.blob,takenAtMs:s.takenAtMs} })};
+  G.busy=true; renderGuide();
+  var finish=function(msg,type){ return idbDel("drafts",G.tech+"|"+G.wk).then(function(){ G.busy=false; G.shots={}; say(msg,type); closeGuide() }) };
+  var queue=function(){ return idbPut("photos",item).then(function(){ outboxCount++; armFlush(); return finish(L("Sin señal: las fotos se guardaron y se enviarán solas.","No signal: photos saved, they will send themselves."),"warn") }) };
+  if(navigator.onLine===false)return queue();
+  return upload(item).then(function(){ return finish(L("Fotos enviadas ✓","Photos sent ✓")) },function(e){ console.warn("[scorecard] upload",e); return queue() })
+    .catch(function(e){ console.warn("[scorecard] send",e); G.busy=false; renderGuide(); say(L("No se pudieron guardar las fotos","Could not save the photos"),"err") });
+}
+function onGuideClick(ev){
+  var el=ev.target&&ev.target.closest?ev.target.closest("[data-g]"):null; if(!el||G.busy)return;
+  var g=el.getAttribute("data-g");
+  if(g==="close")return closeGuide();
+  if(g==="shoot")return shootNow();
+  if(g==="retake"){ delete G.shots[ANG[G.step].k]; putDraft({tech:G.tech,weekId:G.wk,shots:G.shots}).catch(function(){}); return renderGuide() }
+  if(g==="next"){ G.step=Math.min(ANG.length-1,G.step+1); return renderGuide() }
+  if(g==="review"){ G.mode="review"; return renderGuide() }
+  if(g==="redo"){ var a=el.getAttribute("data-a"); delete G.shots[a]; G.step=ANG.map(function(x){ return x.k }).indexOf(a); G.mode="shoot"; putDraft({tech:G.tech,weekId:G.wk,shots:G.shots}).catch(function(){}); return renderGuide() }
+  if(g==="send")return sendSet();
+}
+function takeVehiclePhoto(){ return openGuide() }
 var _flushing=false;
 function flushOutbox(){
   if(_flushing||typeof indexedDB==="undefined")return Promise.resolve();
   _flushing=true;
-  return idbAll().then(function(items){
+  return idbAll("photos").then(function(items){
     outboxCount=items.length;
     if(!items.length||navigator.onLine===false||!D())return;
-    return items.reduce(function(p,it){ return p.then(function(){ return upload(it).then(function(){ outboxCount--; return idbDel(it.key) },function(e){ console.warn("[scorecard] retry later",e) }) }) },Promise.resolve());
+    return items.reduce(function(p,it){ return p.then(function(){ return upload(it).then(function(){ outboxCount--; return idbDel("photos",it.key) },function(e){ console.warn("[scorecard] retry later",e) }) }) },Promise.resolve());
   }).catch(function(e){ console.warn("[scorecard] outbox",e) }).then(function(){ _flushing=false; if(outboxCount)armFlush(); else if(st.flushT){ clearInterval(st.flushT); st.flushT=null } paint() });
 }
 function armFlush(){ if(!st.flushT)st.flushT=setInterval(flushOutbox,30000) }
@@ -59414,9 +59594,15 @@ function onClick(ev){
     var pid=el.getAttribute("data-rev"), clean=el.getAttribute("data-clean")==="1", ph=null;
     st.photos.forEach(function(x){ if(x.id===pid)ph=x });
     if(!ph)return;
-    var n2="";
-    if(!clean){ n2=prompt(L("¿Qué no está limpio? El técnico verá esta nota.","What isn't clean? The tech will see this note."),"")||""; if(!n2.trim())return }
-    run(d.addMark({type:"photoReview",tech:ph.tech,photoId:pid,weekId:ph.weekId,month:ph.month,clean:clean,note:n2.trim()})); return }
+    if(!clean){ st.rejecting=pid; st.rejAngles={}; st.rejNote=""; paint(); return }
+    run(d.addMark({type:"photoReview",tech:ph.tech,photoId:pid,weekId:ph.weekId,month:ph.month,clean:true,note:""})); return }
+  if(a==="cancelreject"){ st.rejecting=null; paint(); return }
+  if(a==="savereject"){
+    var rp=null, rid=el.getAttribute("data-pid"); st.photos.forEach(function(x){ if(x.id===rid)rp=x }); if(!rp)return;
+    var bad=ANG.map(function(x){ return x.k }).filter(function(k){ return st.rejAngles[k] });
+    if(!bad.length){ say(L("Marca cuál foto muestra el problema","Tick which photo shows the problem"),"warn"); return }
+    if(!st.rejNote.trim()){ say(L("Escribe qué no está limpio","Write what isn't clean"),"warn"); return }
+    run(d.addMark({type:"photoReview",tech:rp.tech,photoId:rid,weekId:rp.weekId,month:rp.month,clean:false,badAngles:bad,note:st.rejNote.trim()})).then(function(id){ if(id){ st.rejecting=null; paint() } }); return }
   if(el.hasAttribute("data-ev")){ var pr=el.getAttribute("data-ev").split("|"); openEvidence(pr[0],pr[1]); return }
   if(a==="closedrawer"){ closeDrawer(); return }
   if(el.hasAttribute("data-fix")){
@@ -59440,10 +59626,11 @@ function onChange(ev){
   var el=ev.target;
   if(el.id==="scRP"){ var o=el.value==="__other"; document.getElementById("scROw").hidden=!o; document.getElementById("scRV").innerHTML=verdict(o); return }
   if(el.id==="scMonth"){ st.month=el.value; start(); return }
+  if(el.hasAttribute("data-badangle")){ st.rejAngles[el.getAttribute("data-badangle")]=el.checked; return }
   if(el.hasAttribute("data-am"))st.settings.amount[el.getAttribute("data-am")]=Math.max(0,+el.value||0);
   if(el.hasAttribute("data-tl"))st.settings.tol[el.getAttribute("data-tl")]=Math.max(0,Math.floor(+el.value||0));
 }
-function onInput(ev){ var el=ev.target; if(el.hasAttribute("data-miss"))st.pendingMiss[el.getAttribute("data-miss")]=el.value }
+function onInput(ev){ var el=ev.target; if(el.hasAttribute("data-miss"))st.pendingMiss[el.getAttribute("data-miss")]=el.value; if(el.hasAttribute("data-rejnote"))st.rejNote=el.value }
 document.addEventListener("keydown",function(e){ if(e.key==="Escape")closeDrawer() });
 
 /* ---------- mount + register (same pattern as Parts admin, via the registry) ---------- */
@@ -59490,7 +59677,7 @@ if(typeof window.updAdmin==="function"){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta); else monta();
 setTimeout(monta,1500);
-window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,flushOutbox:flushOutbox,_st:st};
+window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,openGuide:openGuide,compress200:compress200,flushOutbox:flushOutbox,_putDraft:putDraft,_st:st};
 })();
 </script>
 </body>
