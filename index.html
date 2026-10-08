@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.84.1";
+var APP_VERSION="2.84.3";
 var BUILD_DATE="2026-10-06";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -17423,14 +17423,12 @@ function _dailyQuickRow(t,isDone,i){
     +'<span class="daily-office-entry-copy"><b>'+L2("Acciones de oficina","Office Actions")+'</b><small>'+L2("Facturación · cliente · seguimiento","Billing · customer · follow-up")+'</small></span>'
     +'<span class="daily-office-entry-go">›</span>'
     +'</button>'
-    /* v2.84.1 — vuelve el botón de un toque para las notas de QB + invoice con IA.
-       Se perdió en la v2.74.2, cuando la fila de botones de la tarjeta se volvió la
-       entrada compacta de Office Actions y el cajón nuevo no traía camino al
-       redactor del Billing Sprint. Solo oficina, solo tickets con reporte. */
+    /* v2.84.2 — acceso de un toque a los dos botones de IA (QB corto + invoice
+       pulido) del Service Review. Solo oficina, solo tickets con reporte. */
     +((t.source!=="dispatch"&&!(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"))
       ?'<button class="daily-office-launch daily-office-entry daily-ai-notes" onclick="event.stopPropagation();_dailyOfficeAiNotes(\''+id+'\')">'
         +'<span class="daily-office-entry-ico">\u2728</span>'
-        +'<span class="daily-office-entry-copy"><b>'+L2("Notas QB + Invoice (IA)","QB + Invoice notes (AI)")+'</b><small>'+L2("Resumen con IA para QB Notes y la factura","AI summary for QB Notes and the invoice")+'</small></span>'
+        +'<span class="daily-office-entry-copy"><b>'+L2("Notas QB + Invoice (IA)","QB + Invoice notes (AI)")+'</b><small>'+L2("Comentario para QB y para la factura con IA","AI comment for QB and for the invoice")+'</small></span>'
         +'<span class="daily-office-entry-go">›</span></button>'
       :'');
 }
@@ -18838,6 +18836,17 @@ function _openReportModalForTicket(t){
     customer+='<button type="button" id="repImproveBtn" onclick="improveNotesClick()" style="border:0;background:var(--br);color:#fff;border-radius:8px;padding:7px 10px;font:800 10px/1 inherit;cursor:pointer">✨ Improve / Translate</button></div></div>';
     customer+='<textarea id="repNotesEdit" oninput="repRememberBillingDrafts();repRefreshPreview()" rows="6" class="rep-field" style="line-height:1.5;resize:vertical">'+escH(customerText)+'</textarea>';
     customer+='<div class="rep-actions" style="margin-top:8px"><button onclick="repCopyBilling(\'customer\')" style="background:var(--br);color:#fff;border:0">Copy customer text</button><button onclick="repSwitchTab(\'billing\')" style="background:#fff;color:var(--i2);border:1px solid var(--ln)">Back to billing review</button></div><div class="rep-note">The technician\'s original notes remain unchanged on the ticket.</div></div>';
+    /* v2.84.2 — VUELVEN los dos botones "Two-Birds" (copyQBShort / copyInvoiceDetailed).
+       En la v2.74 este modal se rehízo con pestañas y su bloque termina en un return
+       incondicional: el diseño anterior, donde vivían estos botones, quedó como
+       código muerto. Las funciones nunca se borraron; solo se quedaron sin botón.
+       Leen las notas de #repNotesEdit (el campo de arriba), igual que antes. */
+    customer+='<div class="rep-card rep-twobirds"><div class="rep-card-title">QuickBooks + Invoice (AI)</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button id="qbShortBtn" onclick="copyQBShort()" style="flex:1;min-width:180px;padding:13px;background:linear-gradient(135deg,#7c3aed,#c2410c);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">📋 AI · Copy for QuickBooks</button>'
+      +'<button id="invBtn" onclick="copyInvoiceDetailed()" style="flex:1;min-width:180px;padding:13px;background:var(--br);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px">📄 AI · Copy for Invoice</button>'
+      +'</div><div style="font-size:var(--fs-xs);color:var(--i3);margin-top:8px;text-align:center">Both start with the technician\'s name. QuickBooks = short line · Invoice = polished paragraph.</div>'
+      +'<style>.rep-twobirds.rep-twobirds-flash{box-shadow:0 0 0 3px var(--ac);transition:box-shadow .3s}</style></div>';
     customer+='<div class="rep-card"><div class="rep-card-title">Send to customer</div><div class="rep-grid2"><div><label class="rep-label">Email</label><input type="email" id="repEmailInput" class="rep-field" value="'+escH(defaultEmail)+'" placeholder="customer@example.com"></div><div><label class="rep-label">Phone for text</label><input type="tel" id="repPhoneInput" class="rep-field" value="'+escH(defaultPhone)+'" placeholder="(555) 555-5555"></div></div>';
     if(!defaultEmail||!cust.email)customer+='<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--i2);cursor:pointer;margin-top:8px"><input type="checkbox" id="repSaveEmail" checked> Save this email to the customer record</label>';
     if(t.reportSent)customer+='<div style="margin-top:9px;background:var(--c-success-bg);color:var(--c-success-fg);padding:8px 10px;border-radius:8px;font-size:11px;font-weight:750">✓ Already sent '+escH(t.reportSentAt||"")+(t.reportMethod?' · '+escH(t.reportMethod):'')+'</div>';
@@ -40974,7 +40983,9 @@ window.removePdf = function(ev) {
     dropZone.classList.remove('processing','has-file');
     const ttl=dropZone.querySelector('.pdf-upload-title'); if(ttl)ttl.textContent='Subir PDF · QuickBooks o PayTrace';
   }
-  try{toast('PDF removed — you can upload it again','success')}catch(_e){}
+  /* v2.84.3 — only when the user tapped ✕ (ev). Opening a blank form also resets
+     the PDF through this function and was showing a misleading "PDF removed". */
+  if(ev){ try{toast('PDF removed — you can upload it again','success')}catch(_e){} }
 };;
 
 async function arrayBufferToBase64(buffer) {
@@ -57015,19 +57026,13 @@ function openReviewTab(id,tab,focusSO){_dailyOfficeClose();try{openReportModalBy
 window._dailyOfficeReview=function(id,tab){openReviewTab(id,tab,false)}
 window._dailyOfficeSO=function(id){openReviewTab(id,"billing",true)}
 window._dailyOfficeQB=function(id){_dailyOfficeClose();try{_dailyCopyQB(id)}catch(_e){}}
-/* v2.84.1 — abre el Billing Sprint en ESTE ticket y corre su redactor con IA
-   (bsAiDraft: línea corta de QB Notes + descripción del invoice). Solo dispara si
-   el Sprint quedó en el ticket correcto: nunca redacta las notas de otro cliente. */
 window._dailyOfficeAiNotes=function(id){
-  _dailyOfficeClose();
-  if(typeof bsOpen!=="function"||typeof window.bsAiDraft!=="function"){ try{toast(D("El Billing Sprint no está disponible","Billing Sprint is not available"),"err")}catch(_e){} return; }
-  try{ bsOpen(String(id)); }catch(e){ console.warn("[ai notes] bsOpen",e); return; }
+  openReviewTab(id,"customer",false);
   var tries=0;
   (function wait(){
-    var b=document.getElementById("bsAiBtn");
-    if(b&&String(b.getAttribute("data-ticket-id"))===String(id)){ if(!b.disabled){ try{ window.bsAiDraft(); }catch(e){ console.warn("[ai notes] draft",e); } } return; }
-    if(++tries<30){ setTimeout(wait,100); return; }
-    try{ toast(D("Abrí el Billing Sprint: toca \u201cRedactar textos\u201d en este ticket","Billing Sprint is open: tap \u201cDraft texts\u201d on this ticket"),"warn"); }catch(_e){}
+    var b=document.getElementById("qbShortBtn");
+    if(b&&b.offsetParent){ try{ b.scrollIntoView({block:"center",behavior:"smooth"}); b.closest(".rep-card").classList.add("rep-twobirds-flash"); setTimeout(function(){ try{b.closest(".rep-card").classList.remove("rep-twobirds-flash")}catch(_e){} },1600); }catch(_e){} return; }
+    if(++tries<30)setTimeout(wait,100);
   })();
 };
 window._dailyOffice360=function(id){_dailyOfficeClose();try{openCustomer360ByTicket(id)}catch(_e){}}
@@ -58236,7 +58241,11 @@ body.dark-mode .slcd-card.warn,body.dark-mode .slcd-card.late{background:var(--c
   .mbg,.modal-bg,.sheet-backdrop{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 }
 /* Browser may skip layout/paint for hidden heavy workspaces until displayed. */
-#pg3:not(.show),#pg6:not(.show),#pg8:not(.show),#pg10:not(.show),#pg12:not(.show),#pg14:not(.show),#pg15:not(.show){content-visibility:hidden}
+/* v2.84.3 — EXCEPT #pg15 in engine mode (.pf10-engine): the Payment Follow-up
+   Center opens the Invoice Tracker forms (New invoice, Send, Payment, Edit) ON TOP
+   while #pg15 is still not .show. content-visibility:hidden skipped painting them:
+   the form opened at 0 px wide — "New invoice does nothing". */
+#pg3:not(.show),#pg6:not(.show),#pg8:not(.show),#pg10:not(.show),#pg12:not(.show),#pg14:not(.show),#pg15:not(.show):not(.pf10-engine){content-visibility:hidden}
 </style>
 <script id="aspenReagendarScript">
 /* ═══════════════════════════════════════════════════════════════════════════
