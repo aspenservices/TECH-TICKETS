@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.84.0";
+var APP_VERSION="2.84.1";
 var BUILD_DATE="2026-10-06";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -17422,7 +17422,17 @@ function _dailyQuickRow(t,isDone,i){
     +'<span class="daily-office-entry-ico">🗂</span>'
     +'<span class="daily-office-entry-copy"><b>'+L2("Acciones de oficina","Office Actions")+'</b><small>'+L2("Facturación · cliente · seguimiento","Billing · customer · follow-up")+'</small></span>'
     +'<span class="daily-office-entry-go">›</span>'
-    +'</button>';
+    +'</button>'
+    /* v2.84.1 — vuelve el botón de un toque para las notas de QB + invoice con IA.
+       Se perdió en la v2.74.2, cuando la fila de botones de la tarjeta se volvió la
+       entrada compacta de Office Actions y el cajón nuevo no traía camino al
+       redactor del Billing Sprint. Solo oficina, solo tickets con reporte. */
+    +((t.source!=="dispatch"&&!(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"))
+      ?'<button class="daily-office-launch daily-office-entry daily-ai-notes" onclick="event.stopPropagation();_dailyOfficeAiNotes(\''+id+'\')">'
+        +'<span class="daily-office-entry-ico">\u2728</span>'
+        +'<span class="daily-office-entry-copy"><b>'+L2("Notas QB + Invoice (IA)","QB + Invoice notes (AI)")+'</b><small>'+L2("Resumen con IA para QB Notes y la factura","AI summary for QB Notes and the invoice")+'</small></span>'
+        +'<span class="daily-office-entry-go">›</span></button>'
+      :'');
 }
 
 
@@ -57005,6 +57015,21 @@ function openReviewTab(id,tab,focusSO){_dailyOfficeClose();try{openReportModalBy
 window._dailyOfficeReview=function(id,tab){openReviewTab(id,tab,false)}
 window._dailyOfficeSO=function(id){openReviewTab(id,"billing",true)}
 window._dailyOfficeQB=function(id){_dailyOfficeClose();try{_dailyCopyQB(id)}catch(_e){}}
+/* v2.84.1 — abre el Billing Sprint en ESTE ticket y corre su redactor con IA
+   (bsAiDraft: línea corta de QB Notes + descripción del invoice). Solo dispara si
+   el Sprint quedó en el ticket correcto: nunca redacta las notas de otro cliente. */
+window._dailyOfficeAiNotes=function(id){
+  _dailyOfficeClose();
+  if(typeof bsOpen!=="function"||typeof window.bsAiDraft!=="function"){ try{toast(D("El Billing Sprint no está disponible","Billing Sprint is not available"),"err")}catch(_e){} return; }
+  try{ bsOpen(String(id)); }catch(e){ console.warn("[ai notes] bsOpen",e); return; }
+  var tries=0;
+  (function wait(){
+    var b=document.getElementById("bsAiBtn");
+    if(b&&String(b.getAttribute("data-ticket-id"))===String(id)){ if(!b.disabled){ try{ window.bsAiDraft(); }catch(e){ console.warn("[ai notes] draft",e); } } return; }
+    if(++tries<30){ setTimeout(wait,100); return; }
+    try{ toast(D("Abrí el Billing Sprint: toca \u201cRedactar textos\u201d en este ticket","Billing Sprint is open: tap \u201cDraft texts\u201d on this ticket"),"warn"); }catch(_e){}
+  })();
+};
 window._dailyOffice360=function(id){_dailyOfficeClose();try{openCustomer360ByTicket(id)}catch(_e){}}
 window._dailyOfficeEdit=function(id){_dailyOfficeClose();try{editTkt(id)}catch(_e){}}
 function _dailyTicketPos(id){try{var ai=(Array.isArray(active)?active:[]).findIndex(function(x){return String(x&&x.id)===String(id)});if(ai>=0)return {done:0,i:ai};var di=(Array.isArray(done)?done:[]).findIndex(function(x){return String(x&&x.id)===String(id)});if(di>=0)return {done:1,i:di}}catch(_e){}return null}
