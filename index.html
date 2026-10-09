@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.84.3";
+var APP_VERSION="2.85.0";
 var BUILD_DATE="2026-10-06";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -58793,7 +58793,7 @@ if(typeof _ra==='function'&&!_ra.__v281){window.rndrA=function(){var r=_ra.apply
 </script>
 
 
-<!-- ═══ TECH SCORECARD (v2.82.0–2.83.0, Oct 2026) — tab18/pg18. Delete these three blocks to revert. ═══ -->
+<!-- ═══ TECH SCORECARD (v2.82.0–2.85.0, Oct 2026) — tab18/pg18. Delete these three blocks to revert. ═══ -->
 <style id="aspenScorecardSkin">
 /* TECH SCORECARD — styles for #pg18 (v2.82.0). Uses the index :root tokens.
    Delete the three aspenScorecard* blocks to revert. */
@@ -58873,7 +58873,7 @@ if(typeof _ra==='function'&&!_ra.__v281){window.rndrA=function(){var r=_ra.apply
 #pg18 .sc-pips i.x{background:var(--c-danger-strong)}
 #pg18 .sc-pay{font-size:22px;font-weight:800;letter-spacing:-.5px;text-align:right;white-space:nowrap;color:var(--ink)}
 #pg18 .sc-pay small{display:block;font-size:12px;font-weight:500;color:var(--i3);letter-spacing:0}
-#pg18 .sc-set{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+#pg18 .sc-setgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
 #pg18 .sc-card.wide{grid-column:1/-1}
 #pg18 .sc-srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--ln);color:var(--ink)}
 #pg18 .sc-srow span{flex:1}
@@ -58962,27 +58962,124 @@ html.sc-guide-on,html.sc-guide-on body{overflow:hidden}
 .sc-g-grid figcaption{font-size:12px;color:var(--i2);margin-top:4px}
 .sc-g-link{border:0;background:none;color:var(--acd);font:inherit;font-weight:700;padding:0 0 0 4px;cursor:pointer;text-decoration:underline}
 @media (max-width:600px){#pg18 .sc-set{grid-template-columns:repeat(2,1fr)}}
+/* v2.85.0 — control center (Panel), generic criteria, criteria editor, history */
+#pg18 .sc-phead,#pg18 .sc-mhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+#pg18 .sc-phead .sc-tot{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+#pg18 .sc-mpick{display:inline-flex;align-items:center;gap:6px;margin-top:4px}
+#pg18 .sc-mpick select{padding:6px 8px;font-size:14px}
+#pg18 .sc-ptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:4px 0 14px}
+#pg18 .sc-seg{display:inline-flex;border:1px solid var(--ln);border-radius:999px;padding:3px;background:var(--cd)}
+#pg18 .sc-seg button{border:0;background:none;color:var(--i2);font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;cursor:pointer}
+#pg18 .sc-seg button.on{background:var(--br);color:#F6EFE6}
+#pg18 .sc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+#pg18 .sc-tcard{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:14px;cursor:pointer;min-width:0;transition:border-color .15s,transform .15s}
+#pg18 .sc-tcard:hover{border-color:var(--ac)}
+#pg18 .sc-tcard:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+#pg18 .sc-tc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#pg18 .sc-tc-top .sc-bar{height:6px;margin-top:6px}
+#pg18 .sc-tc-pay{text-align:right;white-space:nowrap}
+#pg18 .sc-tc-pay b{display:block;font-size:20px;letter-spacing:-.4px;color:var(--ink);font-variant-numeric:tabular-nums}
+#pg18 .sc-tc-pay small{font-size:12px;color:var(--i3)}
+#pg18 .sc-pills{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+#pg18 .sc-pill{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;padding:7px 9px;border-radius:10px;border:1px solid transparent;background:var(--c-neutral-bg);min-width:0}
+#pg18 .sc-pill.ok{background:var(--c-success-bg);border-color:var(--c-success-border)}
+#pg18 .sc-pill.risk{background:var(--c-warning-bg);border-color:var(--c-warning-border)}
+#pg18 .sc-pill.bad{background:var(--c-danger-bg);border-color:var(--c-danger-border)}
+#pg18 .sc-pill.wait{background:var(--c-info-bg,var(--c-warning-bg));border-color:var(--c-info-border,var(--c-warning-border))}
+#pg18 .sc-pi{font-weight:800;text-align:center}
+#pg18 .sc-pill.ok .sc-pi,#pg18 .sc-pill.ok .sc-ps{color:var(--c-success-fg)}
+#pg18 .sc-pill.risk .sc-pi,#pg18 .sc-pill.risk .sc-ps{color:var(--c-warning-fg)}
+#pg18 .sc-pill.bad .sc-pi,#pg18 .sc-pill.bad .sc-ps{color:var(--c-danger-fg)}
+#pg18 .sc-pill.wait .sc-pi,#pg18 .sc-pill.wait .sc-ps{color:var(--c-info-fg,var(--c-warning-fg))}
+#pg18 .sc-pill.sc-okrow .sc-pn{font-weight:500;font-size:13px;line-height:1.35}
+#pg18 .sc-pn{font-size:13px;font-weight:700;color:var(--ink);min-width:0;overflow:hidden}
+#pg18 .sc-pn small{display:block;font-size:11.5px;font-weight:500;color:var(--i2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pg18 .sc-ps{font-size:11.5px;font-weight:700;white-space:nowrap}
+#pg18 .sc-pend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+#pg18 .sc-pend span{font-size:12px;font-weight:600;padding:4px 8px;border-radius:8px;background:var(--acl);color:var(--acd)}
+#pg18 .sc-dlist{display:grid;gap:8px;margin-top:6px}
+#pg18 .sc-dl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#pg18 .sc-dlt{flex:1;min-width:140px;display:flex;flex-direction:column}
+#pg18 .sc-dl .sc-miss{flex-basis:100%;margin-top:0}
+#pg18 .sc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+#pg18 .sc-chipbtn{border:1px solid var(--ln);background:var(--cd);color:var(--i2);border-radius:999px;padding:6px 12px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+#pg18 .sc-chipbtn.on{background:var(--br);border-color:var(--br);color:#F6EFE6}
+#pg18 .sc-set{grid-template-columns:repeat(var(--n,4),1fr)}
+#pg18 .sc-fl{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--i2);margin-top:10px}
+#pg18 .sc-fl input,#pg18 .sc-fl textarea,#pg18 .sc-fl select,#pg18 .sc-crow-f input{padding:9px 10px;border:1px solid var(--ln);border-radius:10px;background:var(--cd);color:var(--ink);font:inherit;font-weight:500;width:100%;box-sizing:border-box}
+#pg18 .sc-checks{display:flex;flex-wrap:wrap;gap:6px 14px;font-weight:500;color:var(--ink)}
+#pg18 .sc-checks label{display:flex;align-items:center;gap:6px;cursor:pointer}
+#pg18 .sc-crit-list{display:grid;gap:10px;margin-top:8px}
+#pg18 .sc-crow{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;background:var(--bg)}
+#pg18 .sc-crow.off{opacity:.6}
+#pg18 .sc-crow-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:var(--ink)}
+#pg18 .sc-sw{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--i2);cursor:pointer}
+#pg18 .sc-crow-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px}
+#pg18 .sc-crow-f label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--i2)}
+#pg18 .sc-add{margin-top:12px}
+#pg18 .sc-add summary{cursor:pointer;font-weight:700;color:var(--acd);padding:6px 0}
+#pg18 .sc-add .sc-form{margin-top:8px}
+#pg18 .sc-add textarea{padding:9px 10px;border:1px solid var(--ln);border-radius:10px;background:var(--cd);color:var(--ink);font:inherit;width:100%;box-sizing:border-box}
+#pg18 .sc-apply{margin-top:12px}
+.sc-drawer .sc-dtop{display:grid;gap:6px;margin-bottom:6px}
+.sc-drawer .sc-dpay{font-size:15px;color:var(--i2)}
+.sc-drawer .sc-dpay b{font-size:24px;color:var(--ink)}
+.sc-drawer .sc-dsec{border-top:1px solid var(--ln);padding:12px 0 6px}
+.sc-drawer .sc-dh{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--ink)}
+.sc-drawer .sc-st{font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;white-space:nowrap}
+.sc-drawer .sc-st.ok{background:var(--c-success-bg);color:var(--c-success-fg)}
+.sc-drawer .sc-st.risk,.sc-drawer .sc-st.wait{background:var(--c-warning-bg);color:var(--c-warning-fg)}
+.sc-drawer .sc-st.bad{background:var(--c-danger-bg);color:var(--c-danger-fg)}
+.sc-drawer .sc-btn{border:0;border-radius:12px;padding:10px 16px;font:inherit;font-weight:700;background:var(--ac);color:#fff;cursor:pointer}
+.sc-drawer .sc-dots{display:grid;grid-template-columns:repeat(auto-fill,26px);gap:4px;margin:8px 0 4px}
+.sc-drawer .sc-dots i,.sc-drawer .sc-legend i{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;font-style:normal;font-size:10.5px;font-weight:700;background:var(--c-neutral-bg);color:var(--i3)}
+.sc-drawer .sc-dots i.ok,.sc-drawer .sc-legend i.ok{background:var(--c-success-bg);color:var(--c-success-fg);box-shadow:inset 0 0 0 1px var(--c-success-border)}
+.sc-drawer .sc-dots i.x,.sc-drawer .sc-legend i.x{background:var(--c-danger-bg);color:var(--c-danger-fg);box-shadow:inset 0 0 0 1px var(--c-danger-border)}
+.sc-drawer .sc-dots i.none,.sc-drawer .sc-legend i.none{box-shadow:inset 0 0 0 1px var(--ln)}
+.sc-drawer .sc-dots i.off,.sc-drawer .sc-dots i.pre,.sc-drawer .sc-legend i.off{opacity:.45}
+.sc-drawer .sc-dots i.fut{background:none;box-shadow:inset 0 0 0 1px var(--ln);opacity:.5}
+.sc-drawer .sc-legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--i3);margin-bottom:6px}
+.sc-drawer .sc-legend span{display:flex;align-items:center;gap:5px}
+.sc-drawer .sc-legend i{width:12px;height:12px;border-radius:3px}
+.sc-drawer .sc-hist{width:100%;max-width:340px;height:auto;display:block;margin-top:6px}
+@media (max-width:600px){#pg18 .sc-phead .sc-tot{margin-left:0;align-items:flex-start;text-align:left}#pg18 .sc-ptools{flex-direction:column;align-items:stretch}#pg18 .sc-ptools .sc-btn{width:100%}#pg18 .sc-set{grid-template-columns:repeat(2,1fr)}}
+
+/* v2.85.0 phone fixes: Today keeps ✓/✗ beside each criterion; Month cells keep a readable width (the table scrolls inside its box) */
+#pg18 .sc-cell{min-width:112px}
+@media (max-width:600px){#pg18 .sc-dl .sc-yn{width:auto}#pg18 .sc-dl .sc-yn button{flex:0 0 auto;width:48px;height:42px}#pg18 .sc-dlt{min-width:0;flex:1 1 0}}
 </style>
 <script id="aspenScorecardCore">
 /* ═══════════════════════════════════════════════════════════════════════
-   TECH SCORECARD — CORE  (v2.82.0, Oct 2026)
+   TECH SCORECARD — CORE  (v2.82.0 · configurable criteria v2.85.0, Oct 2026)
    Pure logic only: no DOM, no Firebase. Tested in Node (tests/scorecard.test.js).
    Delete the three aspenScorecard* blocks to revert the whole feature.
    Rules (spec): a criterion is met / missed per month; bonus = sum of the
    amounts of the criteria met. Week = Mon–Sun, belongs to its Friday's month.
    Nothing is edited or deleted: a correction is a "void" mark.
+   v2.85.0 — criteria are DATA (settings.criteriaHistory), of four types:
+     daily   office ✓/✗ per workday (uniform, on time…)
+     photos  weekly photo set uploaded by the tech, reviewed by the office
+     events  counted events logged by the office, optional list (trips for parts…)
+     tickets automatic from the tickets (built-in only)
+   A change applies from the month it says (fromMonth); closed months keep
+   the rules they were closed with. Marks written before v2.85 (uniform,
+   return, photoReview / photos without crit) belong to the built-in ones.
    ═══════════════════════════════════════════════════════════════════════ */
 (function(){
 "use strict";
 if(window.aspScore)return;
 
-var CRITS=["uniform","vehicle","tickets","returns"];
+var CRITS=["uniform","vehicle","tickets","returns"];   /* the four built-ins (kept for older readers) */
+var TYPES=["daily","photos","events","tickets"];
+var VEHICLE_LABELS=["front","back","left","right"];
 
 /* ---- day math on "YYYY-MM-DD" strings, timezone-proof (UTC noon) ---- */
 function toUTC(day){ var p=String(day).slice(0,10).split("-"); return Date.UTC(+p[0],+p[1]-1,+p[2],12); }
 function fromUTC(ms){ var d=new Date(ms); return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0"); }
 function addDays(day,n){ return fromUTC(toUTC(day)+n*86400000); }
 function localDay(ms){ var d=new Date(ms); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function nextMonth(m){ var y=+m.slice(0,4), mo=+m.slice(5,7)+1; if(mo>12){mo=1;y++} return y+"-"+String(mo).padStart(2,"0"); }
+function prevMonth(m){ var y=+m.slice(0,4), mo=+m.slice(5,7)-1; if(mo<1){mo=12;y--} return y+"-"+String(mo).padStart(2,"0"); }
 
 function weekId(day){ var dow=new Date(toUTC(day)).getUTCDay(); return addDays(day,-((dow+6)%7)); }
 function monthOfWeek(wk){ return addDays(wk,4).slice(0,7); }
@@ -58997,6 +59094,51 @@ function offWeekFn(isOffDay){
     return true;
   };
 }
+function inProgram(day,start){ return !start||String(day).slice(0,10)>=start; }
+
+/* ---- criteria ---- */
+function num(v,d){ v=+v; return isNaN(v)?d:Math.max(0,v); }
+function defaultCriteria(s){
+  s=s||{}; var a=s.amount||{}, t=s.tol||{};
+  return [
+    {id:"uniform",name:"Uniform",nameEs:"Uniforme",type:"daily",amount:num(a.uniform,25),tol:num(t.uniform,1),active:true,builtin:true},
+    {id:"vehicle",name:"Clean vehicle",nameEs:"Vehículo limpio",type:"photos",amount:num(a.vehicle,25),tol:num(t.vehicle,0),labels:VEHICLE_LABELS.slice(),active:true,builtin:true},
+    {id:"tickets",name:"Tickets reported",nameEs:"Tickets reportados",type:"tickets",amount:num(a.tickets,25),tol:num(t.tickets,2),active:true,builtin:true},
+    {id:"returns",name:"Trips for parts",nameEs:"Vueltas por partes",type:"events",amount:num(a.returns,25),tol:num(t.returns,1),list:(s.parts||[]).slice(),active:true,builtin:true}
+  ];
+}
+function cleanCrit(c){
+  var o={id:String(c.id),name:String(c.name||c.id),nameEs:String(c.nameEs||c.name||c.id),type:TYPES.indexOf(c.type)>=0?c.type:"daily",
+         amount:num(c.amount,0),tol:Math.floor(num(c.tol,0)),active:c.active!==false,builtin:!!c.builtin};
+  if(o.type==="photos")o.labels=(Array.isArray(c.labels)&&c.labels.length?c.labels:["Photo"]).map(String);
+  if(o.type==="events")o.list=Array.isArray(c.list)?c.list.map(String).filter(function(x){return x.trim()}):[];
+  return o;
+}
+/* All criteria (active or not) in force for `month`. */
+function criteriaFor(s,month){
+  var h=(s&&Array.isArray(s.criteriaHistory))?s.criteriaHistory.filter(function(e){return e&&e.fromMonth&&Array.isArray(e.criteria)}):[];
+  if(!h.length)return defaultCriteria(s).map(cleanCrit);
+  h=h.slice().sort(function(a,b){return a.fromMonth<b.fromMonth?-1:1});
+  var pick=h[0];
+  h.forEach(function(e){ if(e.fromMonth<=month)pick=e; });
+  return pick.criteria.map(cleanCrit);
+}
+function activeCriteria(s,month){ return criteriaFor(s,month).filter(function(c){return c.active}); }
+/* Save a criteria change that applies from `fromMonth`: entries at or after it
+   are replaced (the newest edit wins from its month on); earlier months keep
+   theirs. The first save seeds the history with the rules in force before. */
+function withCriteria(s,fromMonth,criteria){
+  var out=JSON.parse(JSON.stringify(s||{}));
+  var h=Array.isArray(out.criteriaHistory)&&out.criteriaHistory.length?out.criteriaHistory:[{fromMonth:"2000-01",criteria:defaultCriteria(out)}];
+  h=h.filter(function(e){ return e.fromMonth<fromMonth; });
+  h.push({fromMonth:fromMonth,criteria:criteria.map(cleanCrit)});
+  out.criteriaHistory=h; return out;
+}
+function newCritId(name,list){
+  var base=String(name||"criterion").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"criterion";
+  var id=base,i=2; while(critOf(list,id)){ id=base+"-"+i; i++; } return id;
+}
+function critOf(list,id){ for(var i=0;i<(list||[]).length;i++)if(list[i].id===id)return list[i]; return null; }
 
 /* ---- marks ---- */
 function effective(marks){
@@ -59004,8 +59146,19 @@ function effective(marks){
   (marks||[]).forEach(function(m){ if(m&&m.type==="void"&&m.voids)voided[m.voids]=1; });
   return (marks||[]).filter(function(m){ return m&&m.type!=="void"&&!voided[m.id]; });
 }
-function ofType(marks,type,tech){
-  return effective(marks).filter(function(m){ return m.type===type&&m.tech===tech; });
+/* legacy → generic: uniform → daily/uniform; return → event/returns (item = part);
+   photoReview / photo without crit → vehicle. Never mutates the input. */
+function kindOf(m){
+  if(m.type==="uniform")return {kind:"daily",crit:"uniform"};
+  if(m.type==="return")return {kind:"event",crit:"returns"};
+  if(m.type==="daily")return {kind:"daily",crit:m.crit};
+  if(m.type==="event")return {kind:"event",crit:m.crit};
+  if(m.type==="photoReview")return {kind:"review",crit:m.crit||"vehicle"};
+  return {kind:m.type,crit:m.crit};
+}
+function photoCrit(p){ return (p&&p.crit)||"vehicle"; }
+function marksOf(marks,kind,crit,tech){
+  return effective(marks).filter(function(m){ var k=kindOf(m); return k.kind===kind&&k.crit===crit&&m.tech===tech; });
 }
 function latestBy(list,keyFn){
   var best={};
@@ -59013,21 +59166,23 @@ function latestBy(list,keyFn){
   return best;
 }
 
-function evalUniform(marks,tech,month,tol){
-  var mine=ofType(marks,"uniform",tech).filter(function(m){ return String(m.day).slice(0,7)===month; });
+/* ---- evaluators ---- */
+function evalDaily(marks,tech,month,tol,critId,start){
+  var mine=marksOf(marks,"daily",critId||"uniform",tech).filter(function(m){ return String(m.day).slice(0,7)===month&&inProgram(m.day,start); });
   var perDay=latestBy(mine,function(m){ return m.day; });
   var days=Object.keys(perDay).sort();
   var items=days.map(function(d){ return perDay[d]; });
   var misses=items.filter(function(m){ return m.ok===false; }).length;
   return {pass:misses<=tol, misses:misses, days:days.length, items:items};
 }
-
-function evalVehicle(photos,marks,tech,month,tol,asOfDay,isOffWeek){
-  var reviews=ofType(marks,"photoReview",tech);
+function evalPhotos(photos,marks,tech,month,tol,asOfDay,isOffWeek,critId,start){
+  critId=critId||"vehicle";
+  var reviews=marksOf(marks,"review",critId,tech);
   var weeks=weeksOfMonth(month).map(function(wk){
+    if(start&&wk<start)return {weekId:wk,state:"before"};
     if(isOffWeek&&isOffWeek(tech,wk))return {weekId:wk,state:"off"};
     var ph=null;
-    (photos||[]).forEach(function(p){ if(p&&p.tech===tech&&p.weekId===wk&&(!ph||(+p.takenAtMs||0)>=(+ph.takenAtMs||0)))ph=p; });
+    (photos||[]).forEach(function(p){ if(p&&p.tech===tech&&p.weekId===wk&&photoCrit(p)===critId&&(!ph||(+p.takenAtMs||0)>=(+ph.takenAtMs||0)))ph=p; });
     if(!ph)return {weekId:wk,state:(asOfDay&&asOfDay<=addDays(wk,6))?"open":"missing"};
     var rv=null;
     reviews.forEach(function(r){ if(r.photoId===ph.id&&(!rv||(+r.atMs||0)>=(+rv.atMs||0)))rv=r; });
@@ -59039,45 +59194,70 @@ function evalVehicle(photos,marks,tech,month,tol,asOfDay,isOffWeek){
   var pass=failed<=tol;
   return {pass:pass, wait:pass&&pending>0, failed:failed, pending:pending, weeks:weeks};
 }
-
+function evalEvents(marks,tech,month,tol,critId,start){
+  var items=marksOf(marks,"event",critId||"returns",tech).filter(function(m){ return String(m.day).slice(0,7)===month&&inProgram(m.day,start); })
+    .map(function(m){ return m.item==null&&m.part!=null?Object.assign({},m,{item:m.part}):m; });
+  var listed=items.filter(function(m){ return m.onList!==false; }).length;
+  return {pass:listed<=tol, listed:listed, other:items.length-listed, items:items};
+}
 function evalTickets(facts,tol){
   facts=facts||{visits:0,late:[],unreported:[]};
   var late=(facts.late||[]).length, un=(facts.unreported||[]).length;
   return {pass:un===0&&late<=tol, visits:facts.visits||0, late:facts.late||[], unreported:facts.unreported||[]};
 }
+/* one entry point for any criterion */
+function evalCrit(c,ctx){
+  var start=ctx.start||"";
+  if(c.type==="daily")return evalDaily(ctx.marks,ctx.tech,ctx.month,c.tol,c.id,start);
+  if(c.type==="photos")return evalPhotos(ctx.photos,ctx.marks,ctx.tech,ctx.month,c.tol,ctx.asOfDay,ctx.isOffWeek,c.id,start);
+  if(c.type==="events")return evalEvents(ctx.marks,ctx.tech,ctx.month,c.tol,c.id,start);
+  return evalTickets((ctx.ticketFacts||{})[ctx.tech],c.tol);
+}
+/* older names, same behaviour */
+function evalUniform(marks,tech,month,tol){ return evalDaily(marks,tech,month,tol,"uniform",""); }
+function evalVehicle(photos,marks,tech,month,tol,asOfDay,isOffWeek){ return evalPhotos(photos,marks,tech,month,tol,asOfDay,isOffWeek,"vehicle",""); }
+function evalReturns(marks,tech,month,tol){ return evalEvents(marks,tech,month,tol,"returns",""); }
 
-function evalReturns(marks,tech,month,tol){
-  var items=ofType(marks,"return",tech).filter(function(m){ return String(m.day).slice(0,7)===month; });
-  var listed=items.filter(function(m){ return m.onList===true; }).length;
-  return {pass:listed<=tol, listed:listed, other:items.length-listed, items:items};
+/* how much of the tolerance is used, and the status pill */
+function usedOf(r,c){
+  if(!r)return 0;
+  if(c.type==="daily")return r.misses||0;
+  if(c.type==="photos")return r.failed||0;
+  if(c.type==="events")return r.listed||0;
+  return (r.late||[]).length+(r.unreported||[]).length*1000;
+}
+function statusOf(r,c){
+  if(!r)return "none";
+  if(r.adjusted)return r.pass?"met":"lost";
+  if(!r.pass)return "lost";
+  if(r.wait)return "wait";
+  var used=usedOf(r,c);
+  if(used>0&&used>=c.tol)return "risk";
+  return "met";
 }
 
-function payOf(row,amount){
-  var pay=0;
-  CRITS.forEach(function(k){ if(row[k]&&row[k].pass&&!row[k].wait)pay+=(+amount[k]||0); });
-  return pay;
+function payRow(row,crits){
+  var pay=0,max=0;
+  crits.forEach(function(c){ max+=c.amount; var x=row[c.id]; if(x&&x.pass&&!x.wait)pay+=c.amount; });
+  row.pay=pay; row.max=max; return row;
 }
-
 function evalMonth(o){
-  var s=o.settings, rows={}, total=0, pendingReviews=0;
+  var s=o.settings||{}, crits=activeCriteria(s,o.month), rows={}, total=0, pendingReviews=0;
+  var ctx={marks:o.marks,photos:o.photos,month:o.month,asOfDay:o.asOfDay,isOffWeek:o.isOffWeek,ticketFacts:o.ticketFacts,start:s.programStart||""};
   (o.techs||[]).forEach(function(tech){
-    var row={
-      uniform:evalUniform(o.marks,tech,o.month,s.tol.uniform),
-      vehicle:evalVehicle(o.photos,o.marks,tech,o.month,s.tol.vehicle,o.asOfDay,o.isOffWeek),
-      tickets:evalTickets((o.ticketFacts||{})[tech],s.tol.tickets),
-      returns:evalReturns(o.marks,tech,o.month,s.tol.returns)
-    };
-    row.pay=payOf(row,s.amount);
-    total+=row.pay; pendingReviews+=row.vehicle.pending;
-    rows[tech]=row;
+    var row={}; ctx.tech=tech;
+    crits.forEach(function(c){ row[c.id]=evalCrit(c,ctx); if(c.type==="photos")pendingReviews+=row[c.id].pending||0; });
+    payRow(row,crits);
+    total+=row.pay; rows[tech]=row;
   });
-  return {month:o.month, rows:rows, total:total, pendingReviews:pendingReviews};
+  return {month:o.month, criteria:crits, rows:rows, total:total, pendingReviews:pendingReviews, programStart:s.programStart||""};
 }
 
 /* Corrections after a month is closed: an "adjust" mark overrides one
    criterion's pass/fail. Returns a NEW result; the input is untouched. */
-function applyAdjust(result,marks,settings){
-  var out={month:result.month, rows:{}, total:0, pendingReviews:result.pendingReviews};
+function applyAdjust(result,marks,legacySettings){
+  var crits=(result.criteria&&result.criteria.length)?result.criteria:activeCriteria(legacySettings||{},result.month);
+  var out={month:result.month, criteria:crits, rows:{}, total:0, pendingReviews:result.pendingReviews, programStart:result.programStart||""};
   Object.keys(result.rows).forEach(function(tech){
     var r={}; Object.keys(result.rows[tech]).forEach(function(k){ r[k]=result.rows[tech][k]; });
     out.rows[tech]=r;
@@ -59085,17 +59265,27 @@ function applyAdjust(result,marks,settings){
   var adj=effective(marks).filter(function(m){ return m.type==="adjust"; });
   adj.sort(function(a,b){ return (+a.atMs||0)-(+b.atMs||0); });
   adj.forEach(function(m){
-    var r=out.rows[m.tech]; if(!r||CRITS.indexOf(m.crit)<0)return;
+    var r=out.rows[m.tech]; if(!r||!critOf(crits,m.crit))return;
     var c={}; Object.keys(r[m.crit]||{}).forEach(function(k){ c[k]=r[m.crit][k]; });
     c.pass=!!m.pass; c.wait=false; c.adjusted=m; r[m.crit]=c;
   });
-  Object.keys(out.rows).forEach(function(tech){ out.rows[tech].pay=payOf(out.rows[tech],settings.amount); out.total+=out.rows[tech].pay; });
+  Object.keys(out.rows).forEach(function(tech){ payRow(out.rows[tech],crits); out.total+=out.rows[tech].pay; });
   return out;
+}
+
+/* Panel order: most at risk first (lost > no margin > waiting), then by name */
+function riskScore(row,crits){
+  var s=0;
+  crits.forEach(function(c){ var st=statusOf(row[c.id],c); if(st==="lost")s+=100; else if(st==="risk")s+=10; else if(st==="wait")s+=1; });
+  return s;
+}
+function rankByRisk(rows,crits){
+  return Object.keys(rows).sort(function(a,b){ var d=riskScore(rows[b],crits)-riskScore(rows[a],crits); return d||a.localeCompare(b); });
 }
 
 /* ---- tickets: reuses the app's own link index (_linkIndex) and closing
    rule (_dispatchClosed), passed in as lnk / isClosed ---- */
-function ticketFacts(tech,month,asOfDay,pool,lnk,isClosed,dayOfMs){
+function ticketFacts(tech,month,asOfDay,pool,lnk,isClosed,dayOfMs,startDay){
   dayOfMs=dayOfMs||localDay;
   var visits=0, late=[], unreported=[];
   (pool||[]).forEach(function(t){
@@ -59104,6 +59294,7 @@ function ticketFacts(tech,month,asOfDay,pool,lnk,isClosed,dayOfMs){
     if(who.indexOf(tech)<0)return;
     var d=String(t.date||"").slice(0,10);
     if(d.slice(0,7)!==month||!(d<asOfDay))return;
+    if(startDay&&d<startDay)return;
     if(t.status==="canceled"||t.status==="cancelled")return;
     visits++;
     var rid=lnk&&lnk.servedBy?lnk.servedBy[t.id]:null;
@@ -59122,22 +59313,25 @@ function ticketFacts(tech,month,asOfDay,pool,lnk,isClosed,dayOfMs){
 }
 
 window.aspScore={
-  CRITS:CRITS, weekId:weekId, monthOfWeek:monthOfWeek, weeksOfMonth:weeksOfMonth, addDays:addDays,
-  localDay:localDay, offWeekFn:offWeekFn, effective:effective,
+  CRITS:CRITS, TYPES:TYPES, VEHICLE_LABELS:VEHICLE_LABELS,
+  weekId:weekId, monthOfWeek:monthOfWeek, weeksOfMonth:weeksOfMonth, addDays:addDays, nextMonth:nextMonth, prevMonth:prevMonth,
+  localDay:localDay, offWeekFn:offWeekFn, effective:effective, kindOf:kindOf, photoCrit:photoCrit,
+  defaultCriteria:defaultCriteria, cleanCrit:cleanCrit, criteriaFor:criteriaFor, activeCriteria:activeCriteria, critOf:critOf, withCriteria:withCriteria, newCritId:newCritId,
+  evalCrit:evalCrit, evalDaily:evalDaily, evalPhotos:evalPhotos, evalEvents:evalEvents,
   evalUniform:evalUniform, evalVehicle:evalVehicle, evalTickets:evalTickets, evalReturns:evalReturns,
-  evalMonth:evalMonth, applyAdjust:applyAdjust, ticketFacts:ticketFacts
+  usedOf:usedOf, statusOf:statusOf, evalMonth:evalMonth, applyAdjust:applyAdjust, rankByRisk:rankByRisk, ticketFacts:ticketFacts
 };
 })();
 </script>
 <script id="aspenScorecardScript">
-/* ── TECH SCORECARD — DATA (v2.82.0) ─────────────────────────────────────
+/* ── TECH SCORECARD — DATA (v2.82.0 · criteria v2.85.0) ─────────────────────────────────────
    Firestore + Storage access for the Scorecard. Append-only: every office
    action is a NEW document in scorecard_marks; nothing is updated/deleted.
    Built by a factory so it can be tested with a fake db (tests/data.test.js). */
 (function(){
 "use strict";
-var TYPES={uniform:1,"return":1,photoReview:1,"void":1,adjust:1};
-var DEFAULTS={amount:{uniform:25,vehicle:25,tickets:25,returns:25},tol:{uniform:1,vehicle:0,tickets:2,returns:1},parts:[]};
+var TYPES={uniform:1,"return":1,photoReview:1,"void":1,adjust:1,daily:1,event:1};
+var DEFAULTS={amount:{uniform:25,vehicle:25,tickets:25,returns:25},tol:{uniform:1,vehicle:0,tickets:2,returns:1},parts:[],criteriaHistory:[],programStart:"",participants:null};
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function blank(s){ return !String(s==null?"":s).trim(); }
 
@@ -59167,13 +59361,19 @@ window.aspScoreDataFactory=function(env){
         var v=d.data()||{};
         ["amount","tol"].forEach(function(k){ Object.keys(s[k]).forEach(function(c){ if(v[k]&&v[k][c]!=null&&!isNaN(+v[k][c]))s[k][c]=Math.max(0,+v[k][c]); }); });
         if(Array.isArray(v.parts))s.parts=v.parts.filter(function(p){ return !blank(p); });
+        /* v2.85.0 — configurable criteria, program start, who takes part */
+        if(Array.isArray(v.criteriaHistory))s.criteriaHistory=v.criteriaHistory.filter(function(e){ return e&&/^\d{4}-\d{2}$/.test(e.fromMonth)&&Array.isArray(e.criteria); });
+        if(/^\d{4}-\d{2}-\d{2}$/.test(String(v.programStart||"")))s.programStart=v.programStart;
+        if(Array.isArray(v.participants))s.participants=v.participants.map(String).filter(function(x){ return !blank(x); });
       }
     }catch(e){ console.warn("[scorecard] settings",e); }
     return s;
   }
   async function saveSettings(s){
     if(!isOffice())throw new Error("office only");
-    await db.collection("config").doc("scorecard").set({amount:s.amount,tol:s.tol,parts:s.parts,by:me().name,atMs:env.now()});
+    await db.collection("config").doc("scorecard").set({amount:s.amount,tol:s.tol,parts:s.parts,
+      criteriaHistory:clone(s.criteriaHistory||[]),programStart:s.programStart||"",participants:Array.isArray(s.participants)?s.participants:null,
+      by:me().name,atMs:env.now()});
   }
 
   async function addMark(f){
@@ -59182,6 +59382,9 @@ window.aspScoreDataFactory=function(env){
     if(f.type==="uniform"&&f.ok===false&&blank(f.note))throw new Error("note required for a missed uniform");
     if(f.type==="photoReview"&&f.clean===false&&blank(f.note))throw new Error("note required when not clean");
     if((f.type==="void"||f.type==="adjust")&&blank(f.reason))throw new Error("reason required");
+    if((f.type==="daily"||f.type==="event")&&blank(f.crit))throw new Error("criterion required");
+    if(f.type==="daily"&&f.ok===false&&blank(f.note))throw new Error("note required when it is missed");
+    if(f.type==="event"&&blank(f.item))throw new Error("write what happened");
     var doc=clone(f);
     if(!doc.month)doc.month=String(doc.day||doc.weekMonth||"").slice(0,7)||doc.month;
     doc.by=me().name; doc.atMs=env.now(); doc.at=env.serverTimestamp();
@@ -59197,6 +59400,7 @@ window.aspScoreDataFactory=function(env){
     var u=me();
     if(!isOffice()&&p.tech!==u.name)throw new Error("techs can only send their own photo");
     var doc={tech:p.tech,weekId:p.weekId,month:p.month||"",url:p.url,path:p.path||"",takenAtMs:+p.takenAtMs,uploadedAtMs:env.now(),by:u.name,at:env.serverTimestamp()};
+    if(p.crit&&p.crit!=="vehicle")doc.crit=String(p.crit);   /* v2.85.0: other photo criteria; vehicle keeps the old shape */
     if(Array.isArray(p.photos)){ /* v2.83.0: weekly SET of angle photos; `url` stays = the front photo so rules and old readers keep working */
       if(p.photos.length<1||p.photos.length>8)throw new Error("a photo set has 1 to 8 photos");
       doc.photos=p.photos.map(function(x){
@@ -59220,7 +59424,7 @@ window.aspScoreDataFactory=function(env){
       if(cur.exists)throw new Error("already closed");
       var rows={};
       Object.keys(result.rows).forEach(function(t){ rows[t]=result.rows[t]; });
-      tx.set(ref,{month:month,rows:clone(rows),total:result.total,settings:clone(settings),closedBy:me().name,closedAtMs:env.now()});
+      tx.set(ref,{month:month,rows:clone(rows),total:result.total,criteria:clone(result.criteria||[]),settings:clone(settings||{}),closedBy:me().name,closedAtMs:env.now()});
       Object.keys(rows).forEach(function(t){
         tx.set(ref.collection("techs").doc(t),{month:month,tech:t,row:clone(rows[t]),closedAtMs:env.now()});
       });
@@ -59233,17 +59437,20 @@ window.aspScoreDataFactory=function(env){
 };
 })();
 
-/* ── TECH SCORECARD — SCREENS (v2.82.0) ──────────────────────────────────
-   tab18 / pg18. Office (admin, organizer): Today · Returns · Photos · Month ·
-   Settings. Technician: "My score" card only. Viewer: hidden.
+/* ── TECH SCORECARD — SCREENS (v2.82.0 · control center + criteria + PDF v2.85.0) ──
+   tab18 / pg18. Office (admin, organizer): Panel · Today · Events · Photos ·
+   Month · Settings. Technician: "My score" card only. Viewer: hidden.
    Registered through aspRegistrarPantalla (no extra showTab wrapper).
-   Listeners run ONLY while pg18 is open: zero reads if nobody opens it. */
+   Listeners run ONLY while pg18 is open: zero reads if nobody opens it.
+   v2.85.0: criteria come from settings (aspScore.criteriaFor); the Panel is
+   the default view; PDF reports (pdf-lib, already loaded by the app). */
 (function(){
 "use strict";
 if(window.__aspScorecard)return; window.__aspScorecard=true;
 
 var IDX=18, S=window.aspScore;
-var st={view:"today",month:"",settings:null,marks:[],photos:[],unsub:null,closed:null,closedFor:"",pendingMiss:{},busy:false,flushT:null,rejecting:null,rejAngles:{},rejNote:""};
+var st={view:"panel",month:"",settings:null,marks:[],photos:[],unsub:null,closed:null,closedFor:"",pendingMiss:{},busy:false,flushT:null,
+        rejecting:null,rejAngles:{},rejNote:"",sort:"risk",evCrit:"",edit:null,hist:{}};
 
 /* ---------- small helpers ---------- */
 function L(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } }
@@ -59260,9 +59467,12 @@ function money(n){ return "$"+(Math.round((+n||0)*100)/100).toLocaleString("en-U
 function fmtDay(d){ try{ return new Date(String(d).slice(0,10)+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}) }catch(_e){ return d } }
 function fmtWhen(ms){ try{ return new Date(+ms).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) }catch(_e){ return "" } }
 function monthLabel(m){ try{ return new Date(m+"-15T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}) }catch(_e){ return m } }
-function slug(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"tech" }
-var CRIT_NAME={uniform:function(){return L("Uniforme","Uniform")},vehicle:function(){return L("Vehículo limpio","Clean vehicle")},
-  tickets:function(){return L("Tickets reportados","Tickets reported")},returns:function(){return L("Vueltas por partes","Trips for parts")}};
+function monthShort(m){ try{ return new Date(m+"-15T12:00:00").toLocaleDateString("en-US",{month:"short"}) }catch(_e){ return m } }
+function slug(s){ return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"tech" }
+function critName(c){ return c?L(c.nameEs||c.name,c.name):"" }
+function typeName(t){ return {daily:L("Revisión diaria","Daily check"),photos:L("Fotos semanales","Weekly photos"),events:L("Eventos contados","Counted events"),tickets:L("Automático (tickets)","Automatic (tickets)")}[t]||t }
+function curMonth(){ return today().slice(0,7) }
+function isWeekday(d){ var w=new Date(d+"T12:00:00").getDay(); return w>=1&&w<=5 }
 
 var _D=null;
 function D(){
@@ -59273,13 +59483,29 @@ function D(){
   return _D;
 }
 
-/* ---------- ticket facts from the app's own data ---------- */
+/* ---------- criteria in force ---------- */
+function crits(month){ return S.activeCriteria(st.settings||{},month||st.month||curMonth()) }
+function critsOfType(t,month){ return crits(month).filter(function(c){ return c.type===t }) }
+function critById(id,month){ return S.critOf(S.criteriaFor(st.settings||{},month||st.month||curMonth()),id) }
+/* photo labels: the vehicle keeps its four named angles; other photo criteria use s1, s2… */
+var ANG=[{k:"front",es:"Frente",en:"Front"},{k:"back",es:"Atrás",en:"Back"},{k:"left",es:"Lado izquierdo",en:"Left side"},{k:"right",es:"Lado derecho",en:"Right side"}];
+function angName(k){ for(var i=0;i<ANG.length;i++)if(ANG[i].k===k)return L(ANG[i].es,ANG[i].en); return k }
+function isVehicle(c){ return !!c&&c.id==="vehicle" }
+function critLabels(c){
+  if(!c||isVehicle(c))return ANG.map(function(a){ return {k:a.k,name:angName(a.k)} });
+  return (c.labels||["Photo"]).map(function(l,i){ return {k:"s"+(i+1),name:l} });
+}
+function labelName(c,k){ var ls=critLabels(c); for(var i=0;i<ls.length;i++)if(ls[i].k===k)return ls[i].name; return angName(k) }
+function photosOf(p){ return (p&&Array.isArray(p.photos)&&p.photos.length)?p.photos:(p&&p.url?[{angle:"front",url:p.url}]:[]) }
+
+/* ---------- who takes part, ticket facts ---------- */
+function participants(){ return (st.settings&&Array.isArray(st.settings.participants))?st.settings.participants.slice():null }
 function pool(){ var a=[]; try{ a=a.concat(active||[]) }catch(_e){} try{ a=a.concat(done||[]) }catch(_e){} return a }
 function facts(techs,month){
-  var out={}, lnk=null, P=pool();
+  var out={}, lnk=null, P=pool(), start=(st.settings&&st.settings.programStart)||"";
   try{ lnk=(typeof _linkIndex==="function")?_linkIndex():{byId:{},servedBy:{},legacy:{}} }catch(_e){ lnk={byId:{},servedBy:{},legacy:{}} }
   var closed=function(t){ try{ return typeof _dispatchClosed==="function"?_dispatchClosed(t,lnk):!!t.fieldReportSubmitted }catch(_e){ return false } };
-  techs.forEach(function(t){ out[t]=S.ticketFacts(t,month,today(),P,lnk,closed) });
+  techs.forEach(function(t){ out[t]=S.ticketFacts(t,month,today(),P,lnk,closed,null,start) });
   return out;
 }
 function visitTechs(month){
@@ -59287,22 +59513,33 @@ function visitTechs(month){
   pool().forEach(function(t){ if(t&&t.source==="dispatch"&&String(t.date||"").slice(0,7)===month){ (Array.isArray(t.techs)?t.techs:(t.tech?[t.tech]:[])).forEach(function(x){ s[x]=1 }) } });
   return Object.keys(s);
 }
+function byName(a,b){ return a.localeCompare(b) }
 function monthTechs(month){
+  var p=participants(); if(p)return p.sort(byName);
   var s={}, add=function(x){ if(x)s[x]=1 };
-  if(month===today().slice(0,7))techList().forEach(add);
-  st.marks.forEach(function(m){ add(m.tech) }); st.photos.forEach(function(p){ add(p.tech) });
+  if(month===curMonth())techList().forEach(add);
+  st.marks.forEach(function(m){ add(m.tech) }); st.photos.forEach(function(x){ add(x.tech) });
   visitTechs(month).forEach(function(x){ if(techList().indexOf(x)>=0||s[x])add(x) });
-  return Object.keys(s).sort(function(a,b){ return a.localeCompare(b) });
+  return Object.keys(s).sort(byName);
 }
+function todayTechs(){ var p=participants(); return p?p.sort(byName):techList() }
 function evalNow(techs){
   return S.evalMonth({month:st.month,techs:techs,marks:st.marks,photos:st.photos,ticketFacts:facts(techs,st.month),
     settings:st.settings,asOfDay:today(),isOffWeek:S.offWeekFn(isOff)});
+}
+function currentResult(){
+  if(st.closed){
+    var c=st.closed, cs=(c.criteria&&c.criteria.length)?c.criteria.map(S.cleanCrit):S.activeCriteria(c.settings||st.settings||{},st.month);
+    var base={month:st.month,criteria:cs,rows:c.rows||{},total:c.total||0,pendingReviews:0,programStart:(c.settings&&c.settings.programStart)||""};
+    return {res:S.applyAdjust(base,st.marks),closed:true};
+  }
+  return {res:evalNow(monthTechs(st.month)),closed:false};
 }
 
 /* ---------- lifecycle ---------- */
 function start(){
   var d=D(); if(!d){ setTimeout(function(){ if(isOpen())start() },800); return }
-  if(!st.month)st.month=today().slice(0,7);
+  if(!st.month)st.month=curMonth();
   stop();
   d.loadSettings().then(function(s){ st.settings=s; paint() });
   st.unsub=d.watchMonth(st.month,function(snap){ st.marks=snap.marks; st.photos=snap.photos; paint() });
@@ -59320,155 +59557,378 @@ function paint(){
   if(!st.settings){ p.innerHTML='<div class="sc-empty">'+L("Cargando…","Loading…")+'</div>'; return }
   if(!office()){ p.innerHTML=techCard(); return }
   var pend=pendingPhotos().length;
-  var tabs=[["today",L("Hoy","Today")],["returns",L("Vueltas","Returns")],["photos",L("Fotos","Photos")],["month",L("Mes","Month")],["settings",L("Ajustes","Settings")]];
+  var tabs=[["panel",L("Panel","Panel")],["today",L("Hoy","Today")],["events",L("Eventos","Events")],["photos",L("Fotos","Photos")],["month",L("Mes","Month")],["settings",L("Ajustes","Settings")]];
   var H='<div class="sc-head"><h1>'+L("Puntajes","Scorecard")+'</h1><div class="sc-sub">'+L("Bono mensual por técnico","Monthly bonus per technician")+'</div></div><nav class="sc-tabs">';
   tabs.forEach(function(t){ H+='<button type="button" data-v="'+t[0]+'" class="'+(st.view===t[0]?"on":"")+'">'+t[1]+(t[0]==="photos"&&pend?'<span class="sc-n">'+pend+'</span>':"")+'</button>' });
-  H+='</nav><section class="sc-body">'+({today:vToday,returns:vReturns,photos:vPhotos,month:vMonth,settings:vSettings}[st.view])()+'</section>';
+  var V={panel:vPanel,today:vToday,events:vEvents,photos:vPhotos,month:vMonth,settings:vSettings}[st.view]||vPanel;
+  H+='</nav><section class="sc-body">'+V()+'</section>';
   var keepFocus=document.activeElement&&p.contains(document.activeElement)?document.activeElement.getAttribute("data-k"):null;
   p.innerHTML=H;
   if(keepFocus){ try{ var el=null; Array.prototype.some.call(p.querySelectorAll("[data-k]"),function(x){ if(x.getAttribute("data-k")===keepFocus){ el=x; return true } return false });
-    if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length) } }catch(_e){} }
+    if(el){ el.focus(); if(el.setSelectionRange&&typeof el.value==="string")el.setSelectionRange(el.value.length,el.value.length) } }catch(_e){} }
 }
 
-function latestUniform(tech,day){
-  var m=null; S.effective(st.marks).forEach(function(x){ if(x.type==="uniform"&&x.tech===tech&&x.day===day&&(!m||x.atMs>=m.atMs))m=x });
+/* status pill */
+function stInfo(s){
+  return {met:["ok","✓",L("Cumple","Met")],risk:["risk","⚠",L("Sin margen","No margin")],lost:["bad","✗",L("Perdido","Lost")],wait:["wait","⏳",L("En revisión","In review")]}[s]||["none","·",""];
+}
+function critShort(c,x){
+  x=x||{};
+  if(c.type==="daily")return (x.misses||0)+" "+L("falla(s)","miss(es)")+" · "+c.tol+" "+L("permitida(s)","allowed");
+  if(c.type==="photos"){
+    var w=x.weeks||[], cnt=w.filter(function(z){ return ["clean","dirty","missing","pending"].indexOf(z.state)>=0 }).length;
+    var cl=w.filter(function(z){ return z.state==="clean" }).length;
+    return cl+" "+L("de","of")+" "+cnt+" "+L("semanas","weeks")+(x.pending?" · "+x.pending+" "+L("por revisar","to review"):"");
+  }
+  if(c.type==="events")return (x.listed||0)+" "+L("este mes","this month")+((x.other||0)?" · "+x.other+" "+L("sin contar","not counted"):"")+" · "+c.tol+" "+L("permitido(s)","allowed");
+  return (x.late||[]).length+" "+L("tarde","late")+" · "+(x.unreported||[]).length+" "+L("sin reportar","not reported")+" · "+(x.visits||0)+" "+L("visitas","visits");
+}
+function latestDaily(tech,critId,day){
+  var m=null;
+  S.effective(st.marks).forEach(function(x){ var k=S.kindOf(x); if(k.kind==="daily"&&k.crit===critId&&x.tech===tech&&x.day===day&&(!m||x.atMs>=m.atMs))m=x });
   return m;
 }
-function vToday(){
-  var d=today(), list=techList(), on=list.filter(function(t){ return !isOff(t,d) });
-  if(d.slice(0,7)!==st.month)return '<p class="sc-lead">'+L("Las marcas de uniforme son del mes actual.","Uniform marks are for the current month.")+' <button type="button" class="sc-link" data-go-month="'+d.slice(0,7)+'">'+L("Ir al mes actual","Go to current month")+'</button></p>';
-  var marked=on.filter(function(t){ return latestUniform(t,d) }).length;
-  var H='<h2>'+L("Revisión de uniforme","Uniform check")+' · '+h(fmtDay(d))+'</h2><p class="sc-lead">'+L("Marca a cada técnico una vez en la mañana. La ✗ pide una nota corta: es lo que el técnico verá si pregunta por qué.","Mark each technician once in the morning. A ✗ asks for a short note — that is what the tech sees if he asks why.")+'</p>';
-  H+='<div class="sc-prog"><div class="sc-bar"><i style="width:'+(on.length?marked/on.length*100:0)+'%"></i></div><span>'+marked+' '+L("de","of")+' '+on.length+' '+L("marcados","marked")+'</span></div><div class="sc-list">';
-  list.forEach(function(t){
-    var off=isOff(t,d), m=latestUniform(t,d), miss=st.pendingMiss[t];
-    var sub=off?L("Día libre — no cuenta","Time off today — not counted"):m?((m.ok?L("Con uniforme","In uniform"):L("Sin uniforme","No uniform")+(m.note?" — "+h(m.note):""))+" · "+L("marcó","marked by")+" "+h(m.by)):L("Sin marcar","Not marked yet");
-    H+='<div class="sc-row'+(off?" off":"")+'"><div class="sc-av">'+h(t.charAt(0))+'</div><div class="sc-grow"><div class="sc-nm">'+h(t)+'</div><div class="sc-mut">'+sub+'</div>';
-    if(miss!=null)H+='<div class="sc-miss"><input data-k="miss-'+h(t)+'" data-miss="'+h(t)+'" placeholder="'+L("¿Qué le faltaba? (obligatorio)","What was missing? (required)")+'" value="'+h(miss)+'"><button type="button" class="sc-btn" data-savemiss="'+h(t)+'">'+L("Guardar","Save")+'</button><button type="button" class="sc-btn sec" data-cancelmiss="'+h(t)+'">'+L("Cancelar","Cancel")+'</button></div>';
-    H+='</div>';
-    if(!off)H+='<div class="sc-yn"><button type="button" class="y'+(m&&m.ok?" on":"")+'" data-uni="'+h(t)+'" data-ok="1" aria-label="'+L("Con uniforme","In uniform")+'">✓</button><button type="button" class="n'+((m&&!m.ok)||miss!=null?" on":"")+'" data-uni="'+h(t)+'" data-ok="0" aria-label="'+L("Sin uniforme","No uniform")+'">✗</button></div>';
-    H+='</div>';
+/* things still to do, shown on the card (current, open month only) */
+function pendingFor(tech,row){
+  var out=[], d=today(), start=st.settings.programStart||"";
+  if(st.closed||st.month!==curMonth())return out;
+  var inProg=!start||d>=start, unmarked=[], missing=[], review=[];
+  critsOfType("daily").forEach(function(c){
+    if(inProg&&isWeekday(d)&&!isOff(tech,d)&&!latestDaily(tech,c.id,d))unmarked.push(critName(c));
+  });
+  critsOfType("photos").forEach(function(c){
+    var wk=S.weekId(d), w=((row[c.id]||{}).weeks||[]).filter(function(z){ return z.weekId===wk })[0];
+    if(!w)return;
+    if(w.state==="open"||w.state==="missing")missing.push(critName(c));
+    else if(w.state==="pending")review.push(critName(c));
+  });
+  // One line per kind of pending work, not one per criterion.
+  if(unmarked.length)out.push("☐ "+L("Sin marcar hoy","Not marked today")+": "+unmarked.join(", "));
+  if(missing.length)out.push("📷 "+L("Falta foto","Photo missing")+": "+missing.join(", "));
+  if(review.length)out.push("⏳ "+L("Por revisar","To review")+": "+review.join(", "));
+  return out;
+}
+
+/* ---------- PANEL (control center) ---------- */
+function monthOptions(){
+  var out=[], m=curMonth();
+  for(var i=0;i<13;i++){ out.push(m); m=S.prevMonth(m) }
+  return out;
+}
+function monthPicker(){
+  return '<label class="sc-mut sc-mpick">'+L("Mes","Month")+' <select id="scMonth">'+monthOptions().map(function(m){ return '<option value="'+m+'"'+(m===st.month?" selected":"")+'>'+h(monthLabel(m))+'</option>' }).join("")+'</select></label>';
+}
+function vPanel(){
+  var cr=currentResult(), r=cr.res, cs=r.criteria, names=Object.keys(r.rows);
+  var order=st.sort==="name"?names.sort(byName):S.rankByRisk(r.rows,cs);
+  var full=names.filter(function(t){ var x=r.rows[t]; return x.max>0&&x.pay===x.max }).length;
+  var H='<div class="sc-phead"><div><h2>'+h(monthLabel(st.month))+(cr.closed?' <span class="sc-tag">'+L("Cerrado","Closed")+'</span>':"")+'</h2>'+monthPicker()+'</div>'+
+    '<div class="sc-tot"><span class="sc-mut">'+L("Bonos del mes","Bonus this month")+'</span><b>'+money(r.total)+'</b><span class="sc-mut">'+full+' '+L("de","of")+' '+names.length+' '+L("al 100%","at 100%")+'</span></div></div>';
+  if(!st.settings.programStart)H+='<div class="sc-warn">'+L("Falta la fecha de inicio del programa: sin ella, todo lo anterior a la herramienta cuenta en contra.","The program start date is not set: without it, everything before the tool counts against the techs.")+' <button type="button" class="sc-link" data-v="settings">'+L("Ponerla en Ajustes","Set it in Settings")+'</button></div>';
+  H+='<div class="sc-ptools"><div class="sc-seg" role="group" aria-label="'+L("Ordenar","Sort")+'"><button type="button" data-sort="risk" class="'+(st.sort!=="name"?"on":"")+'">'+L("Más en riesgo primero","Most at risk first")+'</button><button type="button" data-sort="name" class="'+(st.sort==="name"?"on":"")+'">A–Z</button></div>'+
+    '<button type="button" class="sc-btn sec" data-act="pdfall">📄 '+L("Reporte completo (PDF)","Full report (PDF)")+'</button></div>';
+  if(!names.length)return H+'<div class="sc-card">'+L("Sin técnicos para este mes. Revisa los participantes en Ajustes.","No technicians for this month. Check the participants in Settings.")+'</div>';
+  H+='<div class="sc-cards">';
+  order.forEach(function(t){
+    var row=r.rows[t], pct=row.max?Math.round(row.pay/row.max*100):0, pend=pendingFor(t,row);
+    H+='<article class="sc-tcard" data-card="'+h(t)+'" tabindex="0" role="button" aria-label="'+h(t)+'">'+
+      '<div class="sc-tc-top"><div class="sc-av">'+h(t.charAt(0))+'</div><div class="sc-grow"><div class="sc-nm">'+h(t)+'</div><div class="sc-bar"><i style="width:'+pct+'%"></i></div></div>'+
+      '<div class="sc-tc-pay"><b>'+money(row.pay)+'</b><small>'+L("de","of")+' '+money(row.max)+'</small></div></div><ul class="sc-pills">';
+    // Problems first, in full; everything that is simply "met" folds into one green line so the card stays short.
+    var okNames=[];
+    cs.forEach(function(c){ var x=row[c.id], s=S.statusOf(x,c), i=stInfo(s);
+      if(s==="met"&&!(x&&x.adjusted)){ okNames.push(critName(c)+(c.type==="events"?" ("+((x||{}).listed||0)+")":"")); return }
+      H+='<li class="sc-pill '+i[0]+'"><span class="sc-pi" aria-hidden="true">'+i[1]+'</span><span class="sc-pn">'+h(critName(c))+(x&&x.adjusted?" ✎":"")+'<small>'+h(critShort(c,x))+'</small></span><span class="sc-ps">'+h(i[2])+'</span></li>' });
+    if(okNames.length)H+='<li class="sc-pill ok sc-okrow"><span class="sc-pi" aria-hidden="true">✓</span><span class="sc-pn">'+h(okNames.join(" · "))+'</span><span class="sc-ps">'+h(L("Cumple","Met"))+'</span></li>';
+    H+='</ul>';
+    if(pend.length)H+='<div class="sc-pend">'+pend.map(function(p){ return '<span>'+h(p)+'</span>' }).join("")+'</div>';
+    H+='</article>';
   });
   return H+'</div>';
 }
 
-function vReturns(){
-  var parts=st.settings.parts||[];
-  var H='<h2>'+L("Vueltas por partes","Trips back for parts")+'</h2><p class="sc-lead">'+L("Regístrala cuando un técnico regresa al taller por una parte. Solo cuenta en contra si la parte está en la lista de la camioneta.","Log it when a tech comes back to the shop for a part. It only counts against him if the part is on the truck list.")+'</p>';
-  if(!parts.length)H+='<div class="sc-warn">'+L("La lista de partes de la camioneta está vacía: ninguna vuelta contará en contra hasta llenarla en Ajustes.","The truck parts list is empty: no trip will count until you fill it in Settings.")+'</div>';
-  H+='<div class="sc-card"><div class="sc-form"><label>'+L("Técnico","Technician")+'<select id="scRT">'+techList().map(function(t){ return '<option>'+h(t)+'</option>' }).join("")+'</select></label>';
-  H+='<label>'+L("Parte","Part")+'<select id="scRP">'+parts.map(function(p){ return '<option>'+h(p)+'</option>' }).join("")+'<option value="__other">'+L("Otra parte (no está en la lista)","Other part (not on the list)")+'</option></select></label>';
-  H+='<label class="full" id="scROw" hidden>'+L("¿Qué parte?","Which part?")+'<input id="scRO" data-k="ro" placeholder="e.g. Ozonator 110V"></label>';
-  H+='<label class="full">'+L("Nota","Note")+'<input id="scRN" data-k="rn" placeholder="'+L("Opcional — qué pasó","Optional — what happened")+'"></label>';
-  H+='<div class="full" id="scRV">'+verdict(parts.length?false:true)+'</div><div class="full"><button type="button" class="sc-btn" data-act="logret">'+L("Registrar vuelta","Log trip")+'</button></div></div></div>';
-  var items=S.effective(st.marks).filter(function(m){ return m.type==="return" }).sort(function(a,b){ return b.atMs-a.atMs });
-  H+='<div class="sc-card"><b>'+h(monthLabel(st.month))+'</b>';
-  if(!items.length)H+='<div class="sc-ev sc-mut">'+L("Sin vueltas registradas este mes.","No trips logged this month.")+'</div>';
-  items.forEach(function(r){ H+='<div class="sc-ev"><b>'+h(r.tech)+'</b> · '+h(r.part)+' <span class="sc-tag '+(r.onList?"bad":"")+'">'+(r.onList?L("Cuenta","Counts"):L("No cuenta","Does not count"))+'</span><div class="sc-mut">'+h(fmtDay(r.day))+' · '+L("registró","logged by")+' '+h(r.by)+(r.note?" · "+h(r.note):"")+'</div></div>' });
-  return H+'</div>';
+/* ---------- tech detail (from a Panel card) ---------- */
+function workdays(month){
+  var out=[], d=month+"-01";
+  while(d.slice(0,7)===month){ if(isWeekday(d))out.push(d); d=S.addDays(d,1) }
+  return out;
 }
-function verdict(other){
-  return other?'<div class="sc-verdict ok">'+L("No está en la lista de la camioneta — se registra como dato, no cuenta en contra.","Not on the truck list — logged as information, does not count against him.")+'</div>'
-             :'<div class="sc-verdict bad">'+L("Está en la lista de la camioneta — cuenta como vuelta por una parte que debía traer.","On the truck list — this counts as a trip for a part he should carry.")+'</div>';
+function dotsFor(tech,c,x){
+  var byDay={}, start=st.settings.programStart||"", T=today();
+  (x.items||[]).forEach(function(m){ byDay[m.day]=m });
+  var H='<div class="sc-dots" aria-label="'+L("Días del mes","Days of the month")+'">';
+  workdays(st.month).forEach(function(d){
+    var m=byDay[d], cls=m?(m.ok===false?"x":"ok"):(start&&d<start?"pre":(isOff(tech,d)?"off":(d>T?"fut":"none")));
+    H+='<i class="'+cls+'" title="'+h(fmtDay(d))+'">'+(+d.slice(8))+'</i>';
+  });
+  return H+'</div><div class="sc-legend"><span><i class="ok"></i>'+L("Cumplió","OK")+'</span><span><i class="x"></i>'+L("Falla","Miss")+'</span><span><i class="none"></i>'+L("Sin marcar","Not marked")+'</span><span><i class="off"></i>'+L("Libre / antes del inicio","Off / before start")+'</span></div>';
+}
+function fixBtn(m){ return office()?'<button type="button" class="sc-link" data-fix="'+h(m.id)+'">'+L("Corregir","Correct")+'</button>':"" }
+function voidedSet(){ var v={}; st.marks.forEach(function(m){ if(m.type==="void")v[m.voids]=m }); return v }
+function setRow(p,cls,c,bad){
+  var by={}; photosOf(p).forEach(function(x){ by[x.angle||"front"]=x });
+  bad=bad||[];
+  return '<div class="sc-set '+cls+'" style="--n:'+Math.min(4,critLabels(c).length)+'">'+critLabels(c).map(function(a){ var x=by[a.k];
+    return '<figure class="'+(bad.indexOf(a.k)>=0?"bad":"")+'">'+(x?'<img src="'+h(x.url)+'" alt="'+h(a.name)+'" loading="lazy">':'<div class="sc-noph">—</div>')+'<figcaption>'+h(a.name)+'</figcaption></figure>' }).join("")+'</div>';
+}
+/* weeks that have not started yet are not evidence of anything: leave them out */
+function shownWeeks(x){ var T=today(); return (x.weeks||[]).filter(function(w){ return !(w.state==="open"&&w.weekId>T) }) }
+var WEEK_LAB=function(s){ return {clean:"✓ "+L("Aprobada","Approved"),dirty:"✗ "+L("No aprobada","Not approved"),missing:"✗ "+L("Sin fotos","No photos"),off:L("Semana libre — no cuenta","Time off — not counted"),pending:"⏳ "+L("Esperando revisión","Waiting on review"),open:L("Semana en curso","Week still running"),before:L("Antes del inicio — no cuenta","Before program start — not counted")}[s]||s };
+function evidenceBody(tech,c,x,closed){
+  var V=voidedSet(), H="";
+  function line(m,text){ var v=V[m.id]; return '<div class="sc-ev'+(v?" voided":"")+'"><div>'+text+'</div><div class="sc-mut">'+L("Marcó","By")+' '+h(m.by)+' · '+h(fmtWhen(m.atMs))+(v?' · '+L("anulada por","cancelled by")+' '+h(v.by)+': '+h(v.reason):"")+'</div>'+(v||closed?"":fixBtn(m))+'</div>' }
+  if(c.type==="daily"){
+    if(!closed)H+=dotsFor(tech,c,x);
+    var mine=st.marks.filter(function(m){ var k=S.kindOf(m); return k.kind==="daily"&&k.crit===c.id&&m.tech===tech&&m.ok===false }).sort(function(a,b){ return a.day<b.day?-1:1 });
+    if(!mine.length)H+='<div class="sc-ev sc-mut">'+L("Sin fallas este mes.","No misses this month.")+'</div>';
+    mine.forEach(function(m){ H+=line(m,'<b>✗ '+h(fmtDay(m.day))+'</b>'+(m.note?" — "+h(m.note):"")) });
+  }
+  if(c.type==="photos"){
+    shownWeeks(x).forEach(function(w){
+      var bad=(w.review&&w.review.badAngles)||[];
+      H+='<div class="sc-ev"><b>'+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+'</b> · '+WEEK_LAB(w.state)+(bad.length?" — "+h(bad.map(function(k){ return labelName(c,k) }).join(", ")):"")+(w.review&&w.review.note?" — "+h(w.review.note):"")+
+        (w.photo?setRow(w.photo,"ev",c,bad):"")+(w.review?'<div class="sc-mut">'+L("Revisó","Reviewed by")+' '+h(w.review.by)+' · '+h(fmtWhen(w.review.atMs))+'</div>'+(closed||V[w.review.id]?"":fixBtn(w.review)):"")+'</div>';
+    });
+  }
+  if(c.type==="events"){
+    var ev=st.marks.filter(function(m){ var k=S.kindOf(m); return k.kind==="event"&&k.crit===c.id&&m.tech===tech });
+    if(!ev.length)H+='<div class="sc-ev sc-mut">'+L("Sin eventos este mes.","No events this month.")+'</div>';
+    ev.forEach(function(m){ var counts=m.onList!==false;
+      H+=line(m,'<b>'+h(fmtDay(m.day))+'</b> · '+h(m.item!=null?m.item:m.part)+' <span class="sc-tag '+(counts?"bad":"")+'">'+(counts?L("Cuenta","Counts"):L("Solo dato","Info only"))+'</span>'+(m.note?" — "+h(m.note):"")) });
+  }
+  if(c.type==="tickets"){
+    H+='<div class="sc-ev">'+(x.visits||0)+' '+L("visitas","visits")+' · '+(x.late||[]).length+' '+L("reportadas después del día de la visita","reported after the visit day")+'</div>';
+    (x.unreported||[]).forEach(function(u){ H+='<div class="sc-ev"><b>✗ '+h(fmtDay(u.date))+'</b> · '+h(u.customer)+' — '+L("nunca reportado","never reported")+((u.techs||[]).length>1?' ('+L("compartido con","shared with")+' '+h(u.techs.filter(function(z){ return z!==tech }).join(", "))+')':"")+'</div>' });
+    (x.late||[]).forEach(function(u){ H+='<div class="sc-ev">'+h(fmtDay(u.date))+' · '+h(u.customer)+' — '+L("reportado el","reported")+' '+h(fmtDay(u.reportDay))+'</div>' });
+    H+='<div class="sc-ev sc-mut">'+L("Calculado de los tickets mismos — nadie lo captura.","Calculated from the tickets themselves — nobody types this in.")+'</div>';
+  }
+  if(x.adjusted)H+='<div class="sc-ev"><b>✎ '+L("Ajuste","Adjustment")+'</b>: '+(x.adjusted.pass?L("se da por cumplido","marked as met"):L("se da por no cumplido","marked as missed"))+' — '+h(x.adjusted.reason)+'<div class="sc-mut">'+h(x.adjusted.by)+' · '+h(fmtWhen(x.adjusted.atMs))+'</div></div>';
+  if(office()&&closed)H+='<button type="button" class="sc-btn sec" data-adjust="'+h(tech)+'|'+h(c.id)+'|'+(x.pass?0:1)+'">'+(x.pass?L("Ajustar a no cumplido…","Adjust to missed…"):L("Ajustar a cumplido…","Adjust to met…"))+'</button>';
+  return H;
+}
+var CORR_NOTE=function(){ return '<p class="sc-mut">'+L("Una corrección nunca edita ni borra: agrega una entrada nueva con quién y por qué. La original queda visible.","A correction never edits or deletes: it adds a new entry with who and why. The original stays visible.")+'</p>' };
+function openTechDetail(tech){
+  var cr=currentResult(), r=cr.res, row=r.rows[tech]; if(!row)return;
+  var H='<div class="sc-dtop"><h2>'+h(tech)+'</h2><div class="sc-mut">'+h(monthLabel(st.month))+(cr.closed?" · "+L("Cerrado","Closed"):"")+'</div>'+
+    '<div class="sc-dpay"><b>'+money(row.pay)+'</b> '+L("de","of")+' '+money(row.max)+'</div>'+
+    '<button type="button" class="sc-btn" data-pdftech="'+h(tech)+'">📄 '+L("Reporte individual (PDF)","Individual report (PDF)")+'</button></div>';
+  r.criteria.forEach(function(c){ var x=row[c.id]||{}, i=stInfo(S.statusOf(x,c));
+    H+='<section class="sc-dsec"><div class="sc-dh"><b>'+h(critName(c))+'</b><span class="sc-st '+i[0]+'">'+i[1]+' '+h(i[2])+'</span></div><div class="sc-mut">'+h(critShort(c,x))+' · '+money(c.amount)+'</div>'+evidenceBody(tech,c,x,cr.closed)+'</section>' });
+  H+='<section class="sc-dsec"><div class="sc-dh"><b>'+L("Últimos 6 meses cerrados","Last 6 closed months")+'</b></div><div id="scHist" data-tech="'+h(tech)+'">'+L("Cargando…","Loading…")+'</div></section>'+CORR_NOTE();
+  drawer(H);
+  loadHist(tech);
+}
+function loadHist(tech){
+  var d=D(); if(!d)return;
+  var ms=[], m=st.month; for(var i=0;i<6;i++){ m=S.prevMonth(m); ms.unshift(m) }
+  Promise.all(ms.map(function(k){ if(k in st.hist)return Promise.resolve(st.hist[k]); return d.getMonth(k).then(function(x){ st.hist[k]=x; return x },function(){ return null }) })).then(function(docs){
+    var el=document.getElementById("scHist"); if(!el||el.getAttribute("data-tech")!==tech)return;
+    var vals=docs.map(function(x){ var r=x&&x.rows&&x.rows[tech]; return r?{pay:+r.pay||0,max:+r.max||0}:null });
+    if(!vals.some(Boolean)){ el.innerHTML='<div class="sc-mut">'+L("Todavía no hay meses cerrados.","No closed months yet.")+'</div>'; return }
+    var top=Math.max.apply(null,vals.map(function(v){ return v?Math.max(v.pay,v.max):0 }).concat([1]));
+    var W=300,H=120,bw=34,gap=(W-6*bw)/7,svg='<svg class="sc-hist" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+L("Bono por mes","Bonus per month")+'">';
+    vals.forEach(function(v,i){ var x=gap+i*(bw+gap), y0=H-22;
+      if(v){ var bh=Math.max(2,Math.round(v.pay/top*(H-40))); svg+='<rect x="'+x+'" y="'+(y0-bh)+'" width="'+bw+'" height="'+bh+'" rx="4" fill="var(--ac)"><title>'+h(monthLabel(ms[i]))+': '+money(v.pay)+'</title></rect><text x="'+(x+bw/2)+'" y="'+(y0-bh-4)+'" text-anchor="middle" font-size="10" fill="var(--i2)">'+money(v.pay)+'</text>' }
+      else svg+='<rect x="'+x+'" y="'+(y0-2)+'" width="'+bw+'" height="2" fill="var(--ln)"/>';
+      svg+='<text x="'+(x+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="var(--i3)">'+h(monthShort(ms[i]))+'</text>' });
+    el.innerHTML=svg+'</svg>';
+  });
+}
+function openEvidence(tech,critId){
+  var cr=currentResult(), c=S.critOf(cr.res.criteria,critId), x=((cr.res.rows[tech]||{})[critId])||{}; if(!c)return;
+  drawer('<h2>'+h(tech)+'</h2><p class="sc-mut">'+h(critName(c))+' · '+h(monthLabel(st.month))+'</p>'+evidenceBody(tech,c,x,cr.closed)+CORR_NOTE());
 }
 
+/* ---------- TODAY: every daily criterion ---------- */
+function vToday(){
+  var d=today(), list=todayTechs(), dailies=critsOfType("daily",curMonth()), on=list.filter(function(t){ return !isOff(t,d) });
+  if(curMonth()!==st.month)return '<p class="sc-lead">'+L("Las marcas diarias son del mes actual.","Daily marks are for the current month.")+' <button type="button" class="sc-link" data-go-month="'+curMonth()+'">'+L("Ir al mes actual","Go to current month")+'</button></p>';
+  if(!dailies.length)return '<div class="sc-card">'+L("No hay criterios de revisión diaria activos. Agrégalos en Ajustes.","There are no active daily criteria. Add them in Settings.")+'</div>';
+  var total=on.length*dailies.length, marked=0;
+  on.forEach(function(t){ dailies.forEach(function(c){ if(latestDaily(t,c.id,d))marked++ }) });
+  var H='<h2>'+L("Revisión diaria","Daily check")+' · '+h(fmtDay(d))+'</h2><p class="sc-lead">'+L("Marca a cada técnico una vez en la mañana. La ✗ pide una nota corta: es lo que el técnico verá si pregunta por qué.","Mark each technician once in the morning. A ✗ asks for a short note — that is what the tech sees if he asks why.")+'</p>';
+  if(st.settings.programStart&&d<st.settings.programStart)H+='<div class="sc-warn">'+L("El programa empieza el","The program starts on")+' '+h(fmtDay(st.settings.programStart))+'. '+L("Las marcas de antes no cuentan.","Marks before that do not count.")+'</div>';
+  H+='<div class="sc-prog"><div class="sc-bar"><i style="width:'+(total?marked/total*100:0)+'%"></i></div><span>'+marked+' '+L("de","of")+' '+total+' '+L("marcas","marks")+'</span></div><div class="sc-list">';
+  list.forEach(function(t){
+    var off=isOff(t,d);
+    H+='<div class="sc-row'+(off?" off":"")+'"><div class="sc-av">'+h(t.charAt(0))+'</div><div class="sc-grow"><div class="sc-nm">'+h(t)+'</div>';
+    if(off){ H+='<div class="sc-mut">'+L("Día libre — no cuenta","Time off today — not counted")+'</div></div></div>'; return }
+    H+='<div class="sc-dlist">';
+    dailies.forEach(function(c){
+      var key=t+"|"+c.id, m=latestDaily(t,c.id,d), miss=st.pendingMiss[key];
+      var sub=m?((m.ok?"✓":"✗ "+(m.note?h(m.note):""))+" · "+h(m.by)):L("Sin marcar","Not marked");
+      H+='<div class="sc-dl"><div class="sc-dlt"><b>'+h(critName(c))+'</b><span class="sc-mut">'+sub+'</span></div>'+
+        '<div class="sc-yn"><button type="button" class="y'+(m&&m.ok?" on":"")+'" data-daily="'+h(key)+'" data-ok="1" aria-label="'+h(critName(c))+' ✓">✓</button><button type="button" class="n'+((m&&!m.ok)||miss!=null?" on":"")+'" data-daily="'+h(key)+'" data-ok="0" aria-label="'+h(critName(c))+' ✗">✗</button></div>';
+      if(miss!=null)H+='<div class="sc-miss"><input data-k="miss-'+h(key)+'" data-miss="'+h(key)+'" placeholder="'+L("¿Qué pasó? (obligatorio)","What happened? (required)")+'" value="'+h(miss)+'"><button type="button" class="sc-btn" data-savemiss="'+h(key)+'">'+L("Guardar","Save")+'</button><button type="button" class="sc-btn sec" data-cancelmiss="'+h(key)+'">'+L("Cancelar","Cancel")+'</button></div>';
+      H+='</div>';
+    });
+    H+='</div></div></div>';
+  });
+  return H+'</div>';
+}
+function writeDaily(tech,critId,ok,note){
+  var base={tech:tech,day:today(),ok:ok,note:note||""};
+  /* the built-in uniform keeps its pre-v2.85 mark shape, so devices still on an older version agree */
+  return D().addMark(critId==="uniform"?Object.assign({type:"uniform"},base):Object.assign({type:"daily",crit:critId},base));
+}
+
+/* ---------- EVENTS: any counted criterion ---------- */
+function evCrit(){ var cs=critsOfType("events",curMonth()); var c=S.critOf(cs,st.evCrit)||cs[0]||null; if(c)st.evCrit=c.id; return c }
+function verdict(c,other){
+  if(!(c.list||[]).length)return "";
+  return other?'<div class="sc-verdict ok">'+L("No está en la lista — se registra como dato, no cuenta en contra.","Not on the list — logged as information, does not count against him.")+'</div>'
+             :'<div class="sc-verdict bad">'+L("Está en la lista — cuenta en contra.","On the list — this counts against him.")+'</div>';
+}
+function vEvents(){
+  var cs=critsOfType("events",curMonth()), c=evCrit();
+  if(!c)return '<div class="sc-card">'+L("No hay criterios de eventos activos. Agrégalos en Ajustes.","There are no active event criteria. Add them in Settings.")+'</div>';
+  var hasList=(c.list||[]).length>0;
+  var H='<h2>'+L("Registrar un evento","Log an event")+'</h2>';
+  if(cs.length>1)H+='<div class="sc-chips">'+cs.map(function(x){ return '<button type="button" class="sc-chipbtn'+(x.id===c.id?" on":"")+'" data-evcrit="'+h(x.id)+'">'+h(critName(x))+'</button>' }).join("")+'</div>';
+  H+='<p class="sc-lead">'+h(critName(c))+' · '+(hasList?L("Solo cuenta en contra si lo que pasó está en la lista.","It only counts against him if it is on the list."):L("Cada evento cuenta.","Every event counts."))+' '+L("Permitidos por mes:","Allowed per month:")+' '+c.tol+'.</p>';
+  H+='<div class="sc-card"><div class="sc-form"><label>'+L("Técnico","Technician")+'<select id="scET">'+todayTechs().map(function(t){ return '<option>'+h(t)+'</option>' }).join("")+'</select></label>';
+  if(hasList){
+    H+='<label>'+L("¿Qué pasó?","What happened?")+'<select id="scEP">'+c.list.map(function(p){ return '<option>'+h(p)+'</option>' }).join("")+'<option value="__other">'+L("Otro (no está en la lista)","Other (not on the list)")+'</option></select></label>';
+    H+='<label class="full" id="scEOw" hidden>'+L("Escribe cuál","Write which one")+'<input id="scEO" data-k="eo"></label>';
+  } else H+='<label>'+L("¿Qué pasó?","What happened?")+'<input id="scEO" data-k="eo" placeholder="'+L("Obligatorio","Required")+'"></label>';
+  H+='<label class="full">'+L("Nota","Note")+'<input id="scEN" data-k="en" placeholder="'+L("Opcional","Optional")+'"></label>';
+  H+='<div class="full" id="scEV">'+verdict(c,false)+'</div><div class="full"><button type="button" class="sc-btn" data-act="logevent">'+L("Registrar","Log it")+'</button></div></div></div>';
+  var items=st.marks.filter(function(m){ var k=S.kindOf(m); return k.kind==="event"&&k.crit===c.id }).filter(function(m){ return S.effective(st.marks).indexOf(m)>=0 }).sort(function(a,b){ return b.atMs-a.atMs });
+  H+='<div class="sc-card"><b>'+h(critName(c))+' · '+h(monthLabel(st.month))+'</b>';
+  if(!items.length)H+='<div class="sc-ev sc-mut">'+L("Sin eventos registrados este mes.","Nothing logged this month.")+'</div>';
+  items.forEach(function(m){ var counts=m.onList!==false; H+='<div class="sc-ev"><b>'+h(m.tech)+'</b> · '+h(m.item!=null?m.item:m.part)+' <span class="sc-tag '+(counts?"bad":"")+'">'+(counts?L("Cuenta","Counts"):L("No cuenta","Does not count"))+'</span><div class="sc-mut">'+h(fmtDay(m.day))+' · '+L("registró","logged by")+' '+h(m.by)+(m.note?" · "+h(m.note):"")+'</div></div>' });
+  return H+'</div>';
+}
+
+/* ---------- PHOTOS: every photo criterion ---------- */
 function reviewOf(photoId){ var r=null; S.effective(st.marks).forEach(function(m){ if(m.type==="photoReview"&&m.photoId===photoId&&(!r||m.atMs>=r.atMs))r=m }); return r }
 function latestPhotos(){
   var best={};
-  st.photos.forEach(function(p){ var k=p.tech+"|"+p.weekId; if(!best[k]||p.takenAtMs>=best[k].takenAtMs)best[k]=p });
+  st.photos.forEach(function(p){ var k=p.tech+"|"+S.photoCrit(p)+"|"+p.weekId; if(!best[k]||p.takenAtMs>=best[k].takenAtMs)best[k]=p });
   return Object.keys(best).map(function(k){ return best[k] });
 }
-function pendingPhotos(){ return latestPhotos().filter(function(p){ return !reviewOf(p.id) }).sort(function(a,b){ return a.takenAtMs-b.takenAtMs }) }
+function pendingPhotos(){ var start=(st.settings&&st.settings.programStart)||""; return latestPhotos().filter(function(p){ return !reviewOf(p.id)&&!(start&&p.weekId<start) }).sort(function(a,b){ return a.takenAtMs-b.takenAtMs }) }
 function prevApproved(p){
-  var r=null;
-  st.photos.forEach(function(x){ if(x.tech===p.tech&&x.weekId<p.weekId){ var rv=reviewOf(x.id); if(rv&&rv.clean&&(!r||x.weekId>r.weekId))r=x } });
+  var r=null, c=S.photoCrit(p);
+  st.photos.forEach(function(x){ if(x.tech===p.tech&&S.photoCrit(x)===c&&x.weekId<p.weekId){ var rv=reviewOf(x.id); if(rv&&rv.clean&&(!r||x.weekId>r.weekId))r=x } });
   return r;
 }
-function setRow(p,cls,bad){
-  var ph=photosOf(p), by={}; ph.forEach(function(x){ by[x.angle||"front"]=x });
-  bad=bad||[];
-  return '<div class="sc-set '+cls+'">'+ANG.map(function(a){ var x=by[a.k];
-    return '<figure class="'+(bad.indexOf(a.k)>=0?"bad":"")+'">'+(x?'<img src="'+h(x.url)+'" alt="'+h(angName(a.k))+'" loading="lazy">':'<div class="sc-noph">—</div>')+'<figcaption>'+h(angName(a.k))+'</figcaption></figure>' }).join("")+'</div>';
-}
 function vPhotos(){
-  var wk=S.weekId(today()), list=pendingPhotos();
-  var have={}; latestPhotos().forEach(function(p){ if(p.weekId===wk)have[p.tech]=1 });
-  var offW=S.offWeekFn(isOff);
-  var missing=(st.month===today().slice(0,7))?techList().filter(function(t){ return !have[t]&&!offW(t,wk) }):[]; /* only meaningful for the current month */
-  var H='<h2>'+L("Fotos semanales del vehículo","Weekly vehicle photos")+'</h2><p class="sc-lead">'+L("Semana del","Week of")+' '+h(fmtDay(wk))+'. '+L("Debajo de cada juego aparece el último aprobado, ángulo contra ángulo, para que una foto repetida salte a la vista.","Under each set you see the last approved one, angle against angle, so a reused picture stands out.")+(missing.length?' '+L("Faltan esta semana:","Still missing this week:")+' '+h(missing.join(", "))+'.':"")+'</p>';
+  var wk=S.weekId(today()), list=pendingPhotos(), pcs=critsOfType("photos"), offW=S.offWeekFn(isOff), start=st.settings.programStart||"";
+  var H='<h2>'+L("Fotos semanales","Weekly photos")+'</h2><p class="sc-lead">'+L("Semana del","Week of")+' '+h(fmtDay(wk))+'. '+L("Debajo de cada juego aparece el último aprobado, foto contra foto, para que una foto repetida salte a la vista.","Under each set you see the last approved one, photo against photo, so a reused picture stands out.")+'</p>';
+  if(st.month===curMonth()&&!(start&&wk<start)){
+    pcs.forEach(function(c){
+      var have={}; latestPhotos().forEach(function(p){ if(p.weekId===wk&&S.photoCrit(p)===c.id)have[p.tech]=1 });
+      var missing=todayTechs().filter(function(t){ return !have[t]&&!offW(t,wk) });
+      if(missing.length)H+='<p class="sc-mut">'+h(critName(c))+' — '+L("faltan esta semana:","still missing this week:")+' '+h(missing.join(", "))+'</p>';
+    });
+  }
   if(!list.length)H+='<div class="sc-card">'+L("Todas las fotos están revisadas.","All photos are reviewed.")+'</div>';
   list.forEach(function(p){
-    var prev=prevApproved(p), rej=st.rejecting===p.id;
-    H+='<div class="sc-card"><b>'+h(p.tech)+'</b> <span class="sc-mut">· '+L("semana del","week of")+' '+h(fmtDay(p.weekId))+' · '+L("tomadas","taken")+' '+h(fmtWhen(p.takenAtMs))+'</span>';
-    H+='<div class="sc-setlab">'+L("Esta semana","This week")+'</div>'+setRow(p,"now");
-    H+='<div class="sc-setlab">'+L("Última aprobada","Last approved")+(prev?' · '+h(fmtDay(prev.weekId)):"")+'</div>'+(prev?setRow(prev,"prev"):'<div class="sc-noph wide">'+L("Sin juego aprobado anterior","No earlier approved set")+'</div>');
+    var c=critById(S.photoCrit(p),S.monthOfWeek(p.weekId))||critById("vehicle"), prev=prevApproved(p), rej=st.rejecting===p.id;
+    H+='<div class="sc-card"><b>'+h(p.tech)+'</b> · '+h(critName(c))+' <span class="sc-mut">· '+L("semana del","week of")+' '+h(fmtDay(p.weekId))+' · '+L("tomadas","taken")+' '+h(fmtWhen(p.takenAtMs))+'</span>';
+    H+='<div class="sc-setlab">'+L("Esta semana","This week")+'</div>'+setRow(p,"now",c);
+    H+='<div class="sc-setlab">'+L("Último aprobado","Last approved")+(prev?' · '+h(fmtDay(prev.weekId)):"")+'</div>'+(prev?setRow(prev,"prev",c):'<div class="sc-noph wide">'+L("Sin juego aprobado anterior","No earlier approved set")+'</div>');
     if(rej){
       H+='<div class="sc-rej"><b>'+L("¿Qué foto muestra el problema?","Which photo shows the problem?")+'</b><div class="sc-rej-angles">';
-      photosOf(p).forEach(function(x){ var k=x.angle||"front"; H+='<label><input type="checkbox" data-badangle="'+h(k)+'"'+(st.rejAngles[k]?" checked":"")+'> '+h(angName(k))+'</label>' });
-      H+='</div><input data-k="rejnote" data-rejnote="1" placeholder="'+L("¿Qué no está limpio? El técnico verá esta nota.","What isn't clean? The tech will see this note.")+'" value="'+h(st.rejNote)+'">'+
-         '<div class="sc-acts"><button type="button" class="sc-btn" data-act="savereject" data-pid="'+h(p.id)+'">'+L("Guardar — no limpio","Save — not clean")+'</button><button type="button" class="sc-btn sec" data-act="cancelreject">'+L("Cancelar","Cancel")+'</button></div></div>';
+      photosOf(p).forEach(function(x){ var k=x.angle||"front"; H+='<label><input type="checkbox" data-badangle="'+h(k)+'"'+(st.rejAngles[k]?" checked":"")+'> '+h(labelName(c,k))+'</label>' });
+      H+='</div><input data-k="rejnote" data-rejnote="1" placeholder="'+L("¿Qué está mal? El técnico verá esta nota.","What is wrong? The tech will see this note.")+'" value="'+h(st.rejNote)+'">'+
+         '<div class="sc-acts"><button type="button" class="sc-btn" data-act="savereject" data-pid="'+h(p.id)+'">'+L("Guardar — no aprobada","Save — not approved")+'</button><button type="button" class="sc-btn sec" data-act="cancelreject">'+L("Cancelar","Cancel")+'</button></div></div>';
     } else {
-      H+='<div class="sc-acts"><button type="button" class="sc-btn" data-rev="'+h(p.id)+'" data-clean="1">'+L("Aprobar — limpio","Approve — clean")+'</button><button type="button" class="sc-btn sec" data-rev="'+h(p.id)+'" data-clean="0">'+L("No está limpio…","Not clean…")+'</button></div>';
+      H+='<div class="sc-acts"><button type="button" class="sc-btn" data-rev="'+h(p.id)+'" data-clean="1">'+L("Aprobar","Approve")+'</button><button type="button" class="sc-btn sec" data-rev="'+h(p.id)+'" data-clean="0">'+L("No aprobar…","Not approved…")+'</button></div>';
     }
     H+='</div>';
   });
   return H;
 }
 
-function monthOptions(){
-  var out=[], m=today().slice(0,7);
-  for(var i=0;i<13;i++){ out.push(m); var d=new Date(m+"-15T12:00:00"); d.setMonth(d.getMonth()-1); m=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0") }
-  return out;
-}
-function currentResult(){
-  if(st.closed){ var base={month:st.month,rows:st.closed.rows||{},total:st.closed.total||0,pendingReviews:0}; return {res:S.applyAdjust(base,st.marks,st.closed.settings||st.settings),closed:true} }
-  return {res:evalNow(monthTechs(st.month)),closed:false};
-}
-function cellLabel(k,x){
-  if(k==="uniform")return x.misses+" "+L("de","of")+" "+x.days+" "+L("días con falta","days missed");
-  if(k==="vehicle"){ var c=(x.weeks||[]).filter(function(w){ return w.state==="clean" }).length; return c+" "+L("limpias","clean")+" · "+(x.failed||0)+" "+L("fallas","failed")+(x.pending?" · "+x.pending+" "+L("por revisar","to review"):"") }
-  if(k==="tickets")return ((x.unreported||[]).length?(x.unreported.length+" "+L("sin reportar","never reported")+" · "):"")+(x.late||[]).length+" "+L("tarde de","late of")+" "+(x.visits||0);
-  return (x.listed||0)+" "+L("de la lista","for listed parts")+((x.other||0)?" · "+x.other+" "+L("otras","other"):"");
-}
+/* ---------- MONTH: table + close ---------- */
 function pips(x){ var H='<div class="sc-pips">'; (x.items||[]).forEach(function(m){ H+='<i'+(m.ok===false?' class="x"':"")+'></i>' }); return H+'</div>' }
 function vMonth(){
-  var cr=currentResult(), r=cr.res, a=st.settings.amount, max=a.uniform+a.vehicle+a.tickets+a.returns, T=today();
-  var H='<div class="sc-mhead"><div><h2>'+h(monthLabel(st.month))+(cr.closed?' <span class="sc-tag">'+L("Cerrado","Closed")+'</span>':"")+'</h2><label class="sc-mut">'+L("Mes","Month")+' <select id="scMonth">'+monthOptions().map(function(m){ return '<option value="'+m+'"'+(m===st.month?" selected":"")+'>'+h(monthLabel(m))+'</option>' }).join("")+'</select></label></div><div class="sc-tot"><span class="sc-mut">'+L("Total de bonos","Bonus total")+'</span><b>'+money(r.total)+'</b></div></div>';
+  var cr=currentResult(), r=cr.res, cs=r.criteria, T=today();
+  var H='<div class="sc-mhead"><div><h2>'+h(monthLabel(st.month))+(cr.closed?' <span class="sc-tag">'+L("Cerrado","Closed")+'</span>':"")+'</h2>'+monthPicker()+'</div><div class="sc-tot"><span class="sc-mut">'+L("Total de bonos","Bonus total")+'</span><b>'+money(r.total)+'</b></div></div>';
   if(cr.closed)H+='<p class="sc-lead">'+L("Cerrado por","Closed by")+' '+h(st.closed.closedBy)+' · '+h(fmtWhen(st.closed.closedAtMs))+'. '+L("Las correcciones se agregan como ajustes registrados.","Corrections are added as logged adjustments.")+'</p>';
   else H+='<p class="sc-lead">'+L("Toca cualquier cuadro para ver la evidencia.","Tap any box to see the evidence behind it.")+'</p>';
   var why="";
   if(!cr.closed){
     if(T.slice(0,7)<=st.month)why=L("El mes se puede cerrar desde el día 1 del mes siguiente.","The month can be closed from the 1st of next month.");
-    else if(r.pendingReviews)why=r.pendingReviews+" "+L("foto(s) sin revisar. No se puede cerrar hasta revisarlas — una foto nunca se aprueba sola.","photo(s) still need review. The month can't be closed until every photo is reviewed — a photo is never approved automatically.");
+    else if(r.pendingReviews)why=r.pendingReviews+" "+L("juego(s) de fotos sin revisar. No se puede cerrar hasta revisarlos — una foto nunca se aprueba sola.","photo set(s) still need review. The month can't be closed until every photo is reviewed — a photo is never approved automatically.");
     if(why&&T.slice(0,7)>st.month)H+='<div class="sc-warn">'+why+'</div>';
   }
-  var techs=Object.keys(r.rows);
+  H+='<div class="sc-acts"><button type="button" class="sc-btn sec" data-act="pdfall">📄 '+L("Reporte completo (PDF)","Full report (PDF)")+'</button></div>';
+  var techs=Object.keys(r.rows).sort(byName);
   if(!techs.length)return H+'<div class="sc-card">'+L("Sin datos para este mes.","No data for this month.")+'</div>';
-  H+='<div class="sc-gw"><table class="sc-grid"><thead><tr><th>'+L("Técnico","Technician")+'</th>'+S.CRITS.map(function(k){ return '<th>'+CRIT_NAME[k]()+' <span>('+L("permitido","allowed")+' '+((cr.closed&&st.closed.settings)||st.settings).tol[k]+')</span></th>' }).join("")+'<th class="r">'+L("Bono","Bonus")+'</th></tr></thead><tbody>';
+  H+='<div class="sc-gw"><table class="sc-grid"><thead><tr><th>'+L("Técnico","Technician")+'</th>'+cs.map(function(c){ return '<th>'+h(critName(c))+' <span>('+L("permitido","allowed")+' '+c.tol+')</span></th>' }).join("")+'<th class="r">'+L("Bono","Bonus")+'</th></tr></thead><tbody>';
   techs.forEach(function(t){
     var row=r.rows[t];
     H+='<tr><td><div class="sc-who"><div class="sc-av">'+h(t.charAt(0))+'</div><b>'+h(t)+'</b></div></td>';
-    S.CRITS.forEach(function(k){
-      var x=row[k]||{}, cls=x.wait?"wait":x.pass?"pass":"fail", amt=((cr.closed&&st.closed.settings)||st.settings).amount[k];
-      H+='<td><button type="button" class="sc-cell '+cls+'" data-ev="'+h(t)+'|'+k+'"><b>'+(x.wait?L("Esperando revisión","Waiting on review"):x.pass?L("Cumplió","Met")+" · "+money(amt):L("No cumplió","Missed")+" · $0")+(x.adjusted?" ✎":"")+'</b><span>'+h(cellLabel(k,x))+'</span>'+(k==="uniform"&&!cr.closed?pips(x):"")+'</button></td>';
+    cs.forEach(function(c){
+      var x=row[c.id]||{}, cls=x.wait?"wait":x.pass?"pass":"fail";
+      H+='<td><button type="button" class="sc-cell '+cls+'" data-ev="'+h(t)+'|'+h(c.id)+'"><b>'+(x.wait?L("Esperando revisión","Waiting on review"):x.pass?L("Cumplió","Met")+" · "+money(c.amount):L("No cumplió","Missed")+" · $0")+(x.adjusted?" ✎":"")+'</b><span>'+h(critShort(c,x))+'</span>'+(c.type==="daily"&&!cr.closed?pips(x):"")+'</button></td>';
     });
-    H+='<td class="sc-pay">'+money(row.pay)+'<small>'+L("de","of")+' '+money(max)+'</small></td></tr>';
+    H+='<td class="sc-pay">'+money(row.pay)+'<small>'+L("de","of")+' '+money(row.max)+'</small></td></tr>';
   });
   H+='</tbody></table></div>';
   if(!cr.closed)H+='<div class="sc-acts end"><button type="button" class="sc-btn" data-act="close"'+(why?" disabled":"")+'>'+L("Cerrar","Close")+' '+h(monthLabel(st.month))+'</button></div>';
   return H;
 }
 
+/* ---------- SETTINGS: program + criteria editor ---------- */
+function editState(){
+  if(st.edit)return st.edit;
+  var cm=curMonth(), from=S.nextMonth(cm);
+  st.edit={from:from,crits:JSON.parse(JSON.stringify(S.criteriaFor(st.settings,from))),programStart:st.settings.programStart||"",
+           participants:participants()||todayTechs(),adding:{type:"daily",name:"",amount:25,tol:0,labels:"",list:""}};
+  return st.edit;
+}
+function linesOf(v){ return String(v||"").split(/\n|,/).map(function(x){ return x.trim() }).filter(Boolean) }
 function vSettings(){
-  var s=st.settings;
-  var H='<h2>'+L("Ajustes","Settings")+'</h2><p class="sc-lead">'+L("Los cambios aplican al mes abierto. Los meses cerrados conservan los valores con que se cerraron.","Changes apply to the open month. Closed months keep the values they were closed with.")+'</p><div class="sc-set"><div class="sc-card"><b>'+L("Monto por criterio","Amount per criterion")+'</b>';
-  S.CRITS.forEach(function(k){ H+='<div class="sc-srow"><span>'+CRIT_NAME[k]()+'</span>$<input type="number" min="0" step="1" data-k="am-'+k+'" data-am="'+k+'" value="'+(+s.amount[k])+'"></div>' });
-  H+='</div><div class="sc-card"><b>'+L("Fallas permitidas por mes","Misses allowed per month")+'</b>';
-  S.CRITS.forEach(function(k){ H+='<div class="sc-srow"><span>'+CRIT_NAME[k]()+'</span><input type="number" min="0" step="1" data-k="tl-'+k+'" data-tl="'+k+'" value="'+(+s.tol[k])+'"></div>' });
-  H+='</div><div class="sc-card wide"><b>'+L("Partes que toda camioneta debe traer","Parts every truck must carry")+'</b><p class="sc-mut">'+L("Publica esta lista a los técnicos antes de que el primer mes cuente.","Publish this list to the techs before the first month counts.")+'</p><div>';
-  (s.parts||[]).forEach(function(p,i){ H+='<span class="sc-chip">'+h(p)+'<button type="button" data-rmpart="'+i+'" aria-label="Remove">×</button></span>' });
-  H+='</div><div class="sc-form"><label>'+L("Agregar parte","Add a part")+'<input id="scNP" data-k="np" placeholder="e.g. Flow switch"></label><div><button type="button" class="sc-btn sec" data-act="addpart">'+L("Agregar","Add")+'</button></div></div></div></div><div class="sc-acts end"><button type="button" class="sc-btn" data-act="savesettings">'+L("Guardar ajustes","Save settings")+'</button></div>';
+  var e=editState(), cm=curMonth(), nm=S.nextMonth(cm);
+  var everyone={}; todayTechs().concat(techList()).concat(e.participants).forEach(function(t){ everyone[t]=1 });
+  var H='<h2>'+L("Ajustes","Settings")+'</h2><div class="sc-setgrid">';
+  H+='<div class="sc-card"><b>'+L("Programa","Program")+'</b><p class="sc-mut">'+L("Nada anterior a la fecha de inicio cuenta en contra: días, semanas de fotos, eventos ni tickets.","Nothing before the start date counts: days, photo weeks, events or tickets.")+'</p>'+
+    '<label class="sc-fl">'+L("Fecha de inicio","Start date")+'<input type="date" data-k="pstart" data-se="programStart" value="'+h(e.programStart)+'"></label>'+
+    '<div class="sc-fl"><span>'+L("Quién participa en el bono","Who takes part in the bonus")+'</span><div class="sc-checks">'+Object.keys(everyone).sort(byName).map(function(t){
+      return '<label><input type="checkbox" data-part="'+h(t)+'"'+(e.participants.indexOf(t)>=0?" checked":"")+'> '+h(t)+'</label>' }).join("")+'</div></div></div>';
+  H+='<div class="sc-card wide"><b>'+L("Criterios","Criteria")+'</b><p class="sc-mut">'+L("Monto que paga cada criterio cumplido y cuántas fallas se permiten al mes. Un criterio se apaga, nunca se borra: su historial sigue visible.","What each met criterion pays and how many misses are allowed per month. A criterion is turned off, never deleted: its history stays visible.")+'</p><div class="sc-crit-list">';
+  e.crits.forEach(function(c,i){
+    H+='<div class="sc-crow'+(c.active?"":" off")+'"><div class="sc-crow-h"><b>'+h(critName(c))+'</b><span class="sc-tag">'+h(typeName(c.type))+'</span>'+
+      '<label class="sc-sw"><input type="checkbox" data-ce="'+i+'|active"'+(c.active?" checked":"")+'> '+L("Activo","Active")+'</label></div>'+
+      '<div class="sc-crow-f">'+(c.builtin?"":'<label>'+L("Nombre","Name")+'<input data-k="ce-'+i+'-name" data-ce="'+i+'|name" value="'+h(c.name)+'"></label>')+
+      '<label>'+L("Monto","Amount")+' ($)<input type="number" min="0" step="1" data-k="ce-'+i+'-amount" data-ce="'+i+'|amount" value="'+(+c.amount)+'"></label>'+
+      '<label>'+L("Fallas permitidas","Misses allowed")+'<input type="number" min="0" step="1" data-k="ce-'+i+'-tol" data-ce="'+i+'|tol" value="'+(+c.tol)+'"></label></div>';
+    if(c.type==="photos"&&!isVehicle(c))H+='<label class="sc-fl">'+L("Fotos que debe tomar (una por línea)","Photos to take (one per line)")+'<textarea rows="3" data-k="ce-'+i+'-labels" data-ce="'+i+'|labels">'+h((c.labels||[]).join("\n"))+'</textarea></label>';
+    if(c.type==="events")H+='<label class="sc-fl">'+(c.id==="returns"?L("Partes que toda camioneta debe traer (una por línea)","Parts every truck must carry (one per line)"):L("Lista (opcional, una por línea). Vacía = todo cuenta.","List (optional, one per line). Empty = everything counts."))+'<textarea rows="3" data-k="ce-'+i+'-list" data-ce="'+i+'|list">'+h((c.list||[]).join("\n"))+'</textarea></label>';
+    H+='</div>';
+  });
+  var a=e.adding;
+  H+='</div><details class="sc-add"'+(a.open?" open":"")+'><summary data-act="toggleadd">+ '+L("Agregar criterio","Add a criterion")+'</summary><div class="sc-form">'+
+    '<label>'+L("Tipo","Type")+'<select data-add="type">'+["daily","photos","events"].map(function(t){ return '<option value="'+t+'"'+(a.type===t?" selected":"")+'>'+h(typeName(t))+'</option>' }).join("")+'</select></label>'+
+    '<label>'+L("Nombre","Name")+'<input data-k="add-name" data-add="name" value="'+h(a.name)+'" placeholder="'+(a.type==="daily"?L("Ej. Llegó a tiempo","e.g. On time"):a.type==="photos"?L("Ej. Kit de herramientas","e.g. Tool kit"):L("Ej. Queja de cliente","e.g. Customer complaint"))+'"></label>'+
+    '<label>'+L("Monto","Amount")+' ($)<input type="number" min="0" data-k="add-amount" data-add="amount" value="'+h(a.amount)+'"></label>'+
+    '<label>'+L("Fallas permitidas","Misses allowed")+'<input type="number" min="0" data-k="add-tol" data-add="tol" value="'+h(a.tol)+'"></label>';
+  if(a.type==="photos")H+='<label class="full">'+L("Fotos que debe tomar (una por línea)","Photos to take (one per line)")+'<textarea rows="3" data-k="add-labels" data-add="labels">'+h(a.labels)+'</textarea></label>';
+  if(a.type==="events")H+='<label class="full">'+L("Lista (opcional, una por línea). Vacía = todo cuenta.","List (optional, one per line). Empty = everything counts.")+'<textarea rows="3" data-k="add-list" data-add="list">'+h(a.list)+'</textarea></label>';
+  H+='<div class="full"><button type="button" class="sc-btn sec" data-act="addcrit">'+L("Agregar a la lista","Add to the list")+'</button></div></div></details></div></div>';
+  var closedNow=st.month===cm&&!!st.closed;
+  H+='<div class="sc-card sc-apply"><label class="sc-fl">'+L("Los cambios de criterios cuentan desde","Criteria changes count from")+'<select data-se="from">'+
+    (closedNow?"":'<option value="'+cm+'"'+(e.from===cm?" selected":"")+'>'+h(monthLabel(cm))+' — '+L("este mes (cambia lo que ya se lleva)","this month (changes what is already scored)")+'</option>')+
+    '<option value="'+nm+'"'+(e.from===nm?" selected":"")+'>'+h(monthLabel(nm))+' — '+L("el mes siguiente (recomendado)","next month (recommended)")+'</option></select></label>'+
+    '<p class="sc-mut">'+L("La fecha de inicio y los participantes cuentan de inmediato. Los meses cerrados nunca cambian.","Start date and participants apply right away. Closed months never change.")+'</p>'+
+    '<div class="sc-acts end"><button type="button" class="sc-btn sec" data-act="reseteit">'+L("Descartar cambios","Discard changes")+'</button><button type="button" class="sc-btn" data-act="savesettings">'+L("Guardar ajustes","Save settings")+'</button></div></div>';
   return H;
+}
+function saveSettingsNow(){
+  var e=editState();
+  for(var i=0;i<e.crits.length;i++){ var c=e.crits[i];
+    if(!String(c.name||"").trim()){ say(L("Cada criterio necesita nombre","Every criterion needs a name"),"warn"); return }
+    if(c.type==="photos"&&!isVehicle(c)&&(!(c.labels||[]).length||c.labels.length>8)){ say(L("Un criterio de fotos lleva de 1 a 8 fotos","A photo criterion takes 1 to 8 photos"),"warn"); return } }
+  if(e.programStart&&!/^\d{4}-\d{2}-\d{2}$/.test(e.programStart)){ say(L("Fecha de inicio inválida","Invalid start date"),"warn"); return }
+  if(!e.participants.length){ say(L("Marca al menos un participante","Tick at least one participant"),"warn"); return }
+  var s=S.withCriteria(st.settings,e.from,e.crits);
+  s.programStart=e.programStart||""; s.participants=e.participants.slice().sort(byName);
+  e.crits.forEach(function(c){ if(c.builtin){ s.amount[c.id]=c.amount; s.tol[c.id]=c.tol; if(c.id==="returns")s.parts=(c.list||[]).slice() } });   /* older app versions still read these */
+  run(D().saveSettings(s),L("Ajustes guardados","Settings saved")).then(function(){ return D().loadSettings() }).then(function(fresh){ if(fresh){ st.settings=fresh; st.edit=null; paint() } });
 }
 
 /* ---------- evidence drawer ---------- */
@@ -59479,80 +59939,54 @@ function drawer(html){
     sc.onclick=closeDrawer; d.addEventListener("click",onClick) }
   if(html==null){ closeDrawer(); return }
   d.innerHTML='<button type="button" class="sc-x" data-act="closedrawer" aria-label="Close">×</button>'+html;
-  d.classList.add("open"); sc.classList.add("open");
+  d.classList.add("open"); sc.classList.add("open"); d.scrollTop=0;
   try{ d.querySelector(".sc-x").focus() }catch(_e){}
 }
 function closeDrawer(){ var d=document.getElementById("scDrawer"),sc=document.getElementById("scScrim"); if(d)d.classList.remove("open"); if(sc)sc.classList.remove("open") }
-function fixBtn(m){ return office()?'<button type="button" class="sc-link" data-fix="'+h(m.id)+'">'+L("Corregir","Correct")+'</button>':"" }
-function voidedSet(){ var v={}; st.marks.forEach(function(m){ if(m.type==="void")v[m.voids]=m }); return v }
-function openEvidence(tech,k){
-  var cr=currentResult(), x=(cr.res.rows[tech]||{})[k]||{}, V=voidedSet();
-  var H='<h2>'+h(tech)+'</h2><p class="sc-mut">'+CRIT_NAME[k]()+' · '+h(monthLabel(st.month))+'</p>';
-  var all=st.marks.filter(function(m){ return m.tech===tech });
-  function line(m,text){ var v=V[m.id]; return '<div class="sc-ev'+(v?" voided":"")+'"><div>'+text+'</div><div class="sc-mut">'+L("Marcó","By")+' '+h(m.by)+' · '+h(fmtWhen(m.atMs))+(v?' · '+L("anulada por","cancelled by")+' '+h(v.by)+': '+h(v.reason):"")+'</div>'+(v||cr.closed?"":fixBtn(m))+'</div>' }
-  if(k==="uniform"){
-    var u=all.filter(function(m){ return m.type==="uniform" }).sort(function(a,b){ return a.day<b.day?-1:1 });
-    if(!u.length)H+='<div class="sc-ev">'+L("Sin marcas este mes.","No marks this month.")+'</div>';
-    u.forEach(function(m){ H+=line(m,'<b>'+(m.ok?"✓":"✗")+' '+h(fmtDay(m.day))+'</b>'+(m.note?" — "+h(m.note):"")) });
-  }
-  if(k==="vehicle"){
-    (x.weeks||[]).forEach(function(w){
-      var lab={clean:"✓ "+L("Aprobada limpia","Approved clean"),dirty:"✗ "+L("No limpia","Not clean"),missing:"✗ "+L("Sin foto","No photo uploaded"),off:L("Time off — semana no cuenta","Time off — week not counted"),pending:L("Esperando revisión de oficina","Waiting on office review"),open:L("Semana en curso","Week still running")}[w.state]||w.state;
-      H+='<div class="sc-ev"><b>'+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+'</b> · '+lab+(w.review&&(w.review.badAngles||[]).length?" — "+h(w.review.badAngles.map(angName).join(", ")):"")+(w.review&&w.review.note?" — "+h(w.review.note):"")+(w.photo?setRow(w.photo,"ev",(w.review&&w.review.badAngles)||[]):"")+(w.review?'<div class="sc-mut">'+L("Revisó","Reviewed by")+' '+h(w.review.by)+' · '+h(fmtWhen(w.review.atMs))+'</div>'+(cr.closed||V[w.review.id]?"":fixBtn(w.review)):"")+'</div>';
-    });
-  }
-  if(k==="tickets"){
-    H+='<div class="sc-ev">'+(x.visits||0)+' '+L("visitas","visits")+' · '+(x.late||[]).length+' '+L("reportadas después del día de la visita","reported after the visit day")+'</div>';
-    (x.unreported||[]).forEach(function(u){ H+='<div class="sc-ev"><b>✗ '+h(fmtDay(u.date))+'</b> · '+h(u.customer)+' — '+L("nunca reportado","never reported")+((u.techs||[]).length>1?' ('+L("compartido con","shared with")+' '+h(u.techs.filter(function(z){ return z!==tech }).join(", "))+')':"")+'</div>' });
-    (x.late||[]).forEach(function(u){ H+='<div class="sc-ev">'+h(fmtDay(u.date))+' · '+h(u.customer)+' — '+L("reportado el","reported")+' '+h(fmtDay(u.reportDay))+'</div>' });
-    H+='<div class="sc-ev sc-mut">'+L("Calculado de los tickets mismos — nadie lo captura.","Calculated from the tickets themselves — nobody types this in.")+'</div>';
-  }
-  if(k==="returns"){
-    var rs=all.filter(function(m){ return m.type==="return" });
-    if(!rs.length)H+='<div class="sc-ev">'+L("Sin vueltas por partes.","No trips back for parts.")+'</div>';
-    rs.forEach(function(m){ H+=line(m,'<b>'+h(fmtDay(m.day))+'</b> · '+h(m.part)+' <span class="sc-tag '+(m.onList?"bad":"")+'">'+(m.onList?L("En la lista — cuenta","On truck list — counts"):L("Fuera de la lista — solo dato","Not on list — info only"))+'</span>'+(m.note?" — "+h(m.note):"")) });
-  }
-  if(x.adjusted)H+='<div class="sc-ev"><b>✎ '+L("Ajuste","Adjustment")+'</b>: '+(x.adjusted.pass?L("se da por cumplido","marked as met"):L("se da por no cumplido","marked as missed"))+' — '+h(x.adjusted.reason)+'<div class="sc-mut">'+h(x.adjusted.by)+' · '+h(fmtWhen(x.adjusted.atMs))+'</div></div>';
-  if(office())H+='<div class="sc-foot">'+(cr.closed?'<button type="button" class="sc-btn sec" data-adjust="'+h(tech)+'|'+k+'|'+(x.pass?0:1)+'">'+(x.pass?L("Ajustar a no cumplido…","Adjust to missed…"):L("Ajustar a cumplido…","Adjust to met…"))+'</button>':"")+'<p class="sc-mut">'+L("Una corrección nunca edita ni borra: agrega una entrada nueva con quién y por qué. La original queda visible.","A correction never edits or deletes: it adds a new entry with who and why. The original stays visible.")+'</p></div>';
-  drawer(H);
-}
 
 /* ---------- technician card ---------- */
 function techCard(){
   var me=user(); if(!me)return "";
-  st.month=today().slice(0,7);
-  var r=evalNow([me.name]), row=r.rows[me.name], a=st.settings.amount, max=a.uniform+a.vehicle+a.tickets+a.returns;
-  var wk=S.weekId(today()), wkState=null;
-  (row.vehicle.weeks||[]).forEach(function(w){ if(w.weekId===wk)wkState=w });
-  var needPhoto=!wkState||wkState.state==="open"||wkState.state==="missing";
-  var segs=S.CRITS.map(function(k){ var x=row[k]; return x.pass&&!x.wait?(k==="vehicle"&&needPhoto?"risk":"on"):(x.wait?"risk":"lost") });
-  var H='<div class="sc-phone"><div class="sc-top"><div class="sc-mut2">'+L("Hola","Hi")+' '+h(me.name)+' · '+h(monthLabel(st.month))+'</div><div class="sc-earn">'+money(row.pay)+' <small>'+L("en camino de","on track of")+' '+money(max)+'</small></div><div class="sc-meter">'+segs.map(function(s){ return '<i class="'+s+'"></i>' }).join("")+'</div></div><div class="sc-pbody">';
-  function crit(k,status,text,extra){ return '<div class="sc-crit"><div class="sc-ch">'+CRIT_NAME[k]()+'<span class="sc-st '+status[0]+'">'+status[1]+'</span></div><div class="sc-cs">'+text+'</div>'+(extra||"")+'</div>' }
-  var u=row.uniform, tol=st.settings.tol;
-  var notes=u.items.filter(function(m){ return m.ok===false }).map(function(m){ return '<div class="sc-note">✗ '+h(fmtDay(m.day))+(m.note?" — "+h(m.note):"")+' · '+h(m.by)+'</div>' }).join("");
-  H+=crit("uniform",u.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],(u.days-u.misses)+" "+L("de","of")+" "+u.days+" "+L("días con uniforme. Puedes fallar","days in uniform. You can miss")+" "+tol.uniform+" "+L("este mes.","this month."),notes);
-  var v=row.vehicle, vtext, vstat;
-  if(!v.pass){ vstat=["bad",L("Perdido","Missed")]; vtext=v.failed+" "+L("semana(s) sin foto aprobada.","week(s) without an approved photo.") }
-  else if(needPhoto){ vstat=["risk",L("Falta foto","Photo due")]; vtext=L("Toma la foto de esta semana antes del domingo","Take this week's photo before Sunday")+" "+h(fmtDay(S.addDays(wk,6)))+"." }
-  else if(wkState.state==="pending"){ vstat=["risk",L("Enviada","Sent")]; vtext=L("La foto de esta semana está con la oficina para revisión.","This week's photo is with the office for review.") }
-  else { vstat=["ok",L("Vas bien","On track")]; vtext=L("La foto de esta semana ya fue aprobada.","This week's photo is approved.") }
-  var vnotes=(v.weeks||[]).filter(function(w){ return w.state==="dirty" }).map(function(w){ return '<div class="sc-note">✗ '+L("Semana del","Week of")+' '+h(fmtDay(w.weekId))+(w.review&&(w.review.badAngles||[]).length?" — "+h(w.review.badAngles.map(angName).join(", ")):"")+(w.review&&w.review.note?" — "+h(w.review.note):"")+'</div>' }).join("");
-  var q=outboxCount;
-  var cam=needPhoto?'<button type="button" class="sc-cam" data-act="cam">📷 '+L("Tomar las 4 fotos del vehículo de esta semana","Take this week\u2019s 4 vehicle photos")+'</button>':(wkState&&wkState.photo?'<div class="sc-sent"><div class="sc-thumbs">'+photosOf(wkState.photo).map(function(x){ return '<img src="'+h(x.url)+'" alt="'+h(angName(x.angle||"front"))+'">' }).join("")+'</div><span>'+L("Enviadas","Sent")+' '+h(fmtWhen(wkState.photo.takenAtMs))+'</span></div>':"");
-  if(q)cam+='<div class="sc-note">'+L("Fotos guardadas sin señal — se enviarán solas al volver la conexión.","Photos saved without signal — they will send themselves when you're back online.")+'</div>';
-  H+=crit("vehicle",vstat,vtext,vnotes+cam);
-  var t=row.tickets;
-  H+=crit("tickets",t.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],t.visits+" "+L("visitas","visits")+" · "+t.unreported.length+" "+L("sin reportar","not reported")+" · "+t.late.length+" "+L("tarde","late")+" ("+tol.tickets+" "+L("permitidas","allowed")+").",t.unreported.map(function(x){ return '<div class="sc-note">✗ '+h(fmtDay(x.date))+' · '+h(x.customer)+'</div>' }).join(""));
-  var rr=row.returns;
-  H+=crit("returns",rr.pass?["ok",L("Vas bien","On track")]:["bad",L("Perdido","Missed")],rr.listed+" "+L("vuelta(s) por partes de la lista. Puedes tener","trip(s) for listed parts. You can have")+" "+tol.returns+".",'<details class="sc-parts"><summary>'+L("Lista de partes de la camioneta","Truck parts list")+'</summary>'+(st.settings.parts.length?st.settings.parts.map(function(p){ return '<span class="sc-chip">'+h(p)+'</span>' }).join(""):'<span class="sc-mut">'+L("Aún no publicada.","Not published yet.")+'</span>')+'</details>');
+  st.month=curMonth();
+  var p=participants();
+  if(p&&p.indexOf(me.name)<0)return '<div class="sc-card">'+L("Todavía no participas en el programa de bono. Pregunta en la oficina.","You are not part of the bonus program yet. Ask the office.")+'</div>';
+  var r=evalNow([me.name]), row=r.rows[me.name], cs=r.criteria, wk=S.weekId(today());
+  var segs=cs.map(function(c){ var s=S.statusOf(row[c.id],c); return s==="met"?"on":(s==="lost"?"lost":"risk") });
+  var H='<div class="sc-phone"><div class="sc-top"><div class="sc-mut2">'+L("Hola","Hi")+' '+h(me.name)+' · '+h(monthLabel(st.month))+'</div><div class="sc-earn">'+money(row.pay)+' <small>'+L("en camino de","on track of")+' '+money(row.max)+'</small></div><div class="sc-meter" style="grid-template-columns:repeat('+Math.max(1,cs.length)+',1fr)">'+segs.map(function(s){ return '<i class="'+s+'"></i>' }).join("")+'</div></div><div class="sc-pbody">';
+  if(st.settings.programStart&&today()<st.settings.programStart)H+='<div class="sc-crit"><div class="sc-cs">'+L("El programa empieza el","The program starts on")+' '+h(fmtDay(st.settings.programStart))+'.</div></div>';
+  function box(c,status,text,extra){ return '<div class="sc-crit"><div class="sc-ch">'+h(critName(c))+'<span class="sc-st '+status[0]+'">'+status[1]+'</span></div><div class="sc-cs">'+text+'</div>'+(extra||"")+'</div>' }
+  function base(s){ return {met:["ok",L("Vas bien","On track")],risk:["risk",L("Sin margen","No margin left")],lost:["bad",L("Perdido","Missed")],wait:["risk",L("En revisión","In review")]}[s]||["ok",""] }
+  cs.forEach(function(c){
+    var x=row[c.id]||{}, s=S.statusOf(x,c);
+    if(c.type==="daily"){
+      var notes=(x.items||[]).filter(function(m){ return m.ok===false }).map(function(m){ return '<div class="sc-note">✗ '+h(fmtDay(m.day))+(m.note?" — "+h(m.note):"")+' · '+h(m.by)+'</div>' }).join("");
+      H+=box(c,base(s),(x.days-x.misses)+" "+L("de","of")+" "+x.days+" "+L("días bien. Puedes fallar","days OK. You can miss")+" "+c.tol+" "+L("este mes.","this month."),notes);
+    } else if(c.type==="photos"){
+      var w=(x.weeks||[]).filter(function(z){ return z.weekId===wk })[0], ws=w?w.state:"before", need=ws==="open"||ws==="missing", stt, txt;
+      if(s==="lost"){ stt=base("lost"); txt=x.failed+" "+L("semana(s) sin fotos aprobadas.","week(s) without approved photos.") }
+      else if(ws==="before"){ stt=base(s); txt=L("Esta semana todavía no cuenta.","This week does not count yet.") }
+      else if(ws==="off"){ stt=base(s); txt=L("Semana libre: no cuenta.","Week off: it does not count.") }
+      else if(need){ stt=["risk",L("Falta foto","Photo due")]; txt=L("Toma las fotos de esta semana antes del domingo","Take this week's photos before Sunday")+" "+h(fmtDay(S.addDays(wk,6)))+"." }
+      else if(ws==="pending"){ stt=["risk",L("Enviadas","Sent")]; txt=L("Las fotos de esta semana están con la oficina para revisión.","This week's photos are with the office for review.") }
+      else { stt=base(s); txt=ws==="dirty"?L("Las fotos de esta semana no se aprobaron.","This week's photos were not approved."):L("Las fotos de esta semana ya se aprobaron.","This week's photos are approved.") }
+      var vnotes=(x.weeks||[]).filter(function(z){ return z.state==="dirty" }).map(function(z){ var bad=(z.review&&z.review.badAngles)||[]; return '<div class="sc-note">✗ '+L("Semana del","Week of")+' '+h(fmtDay(z.weekId))+(bad.length?" — "+h(bad.map(function(k){ return labelName(c,k) }).join(", ")):"")+(z.review&&z.review.note?" — "+h(z.review.note):"")+'</div>' }).join("");
+      var n=critLabels(c).length;
+      var cam=need?'<button type="button" class="sc-cam" data-act="cam" data-crit="'+h(c.id)+'">📷 '+(isVehicle(c)?L("Tomar las 4 fotos del vehículo de esta semana","Take this week’s 4 vehicle photos"):L("Tomar fotos","Take photos")+": "+h(critName(c))+" ("+n+")")+'</button>'
+        :(w&&w.photo?'<div class="sc-sent"><div class="sc-thumbs">'+photosOf(w.photo).map(function(z){ return '<img src="'+h(z.url)+'" alt="'+h(labelName(c,z.angle||"front"))+'">' }).join("")+'</div><span>'+L("Enviadas","Sent")+' '+h(fmtWhen(w.photo.takenAtMs))+'</span></div>':"");
+      H+=box(c,stt,txt,vnotes+cam);
+    } else if(c.type==="events"){
+      var listH=(c.list||[]).length?'<details class="sc-parts"><summary>'+(c.id==="returns"?L("Lista de partes de la camioneta","Truck parts list"):L("Qué cuenta","What counts"))+'</summary>'+c.list.map(function(z){ return '<span class="sc-chip">'+h(z)+'</span>' }).join("")+'</details>':"";
+      H+=box(c,base(s),(x.listed||0)+" "+L("este mes. Puedes tener","this month. You can have")+" "+c.tol+".",listH);
+    } else {
+      H+=box(c,base(s),(x.visits||0)+" "+L("visitas","visits")+" · "+(x.unreported||[]).length+" "+L("sin reportar","not reported")+" · "+(x.late||[]).length+" "+L("tarde","late")+" ("+c.tol+" "+L("permitidas","allowed")+").",(x.unreported||[]).map(function(z){ return '<div class="sc-note">✗ '+h(fmtDay(z.date))+' · '+h(z.customer)+'</div>' }).join(""));
+    }
+  });
+  if(outboxCount)H+='<div class="sc-note">'+L("Fotos guardadas sin señal — se enviarán solas al volver la conexión.","Photos saved without signal — they will send themselves when you're back online.")+'</div>';
   H+='<p class="sc-mut c">'+L("Solo ves tu propio puntaje. ¿Dudas sobre una marca? Pregunta en la oficina — cada marca dice quién la hizo.","You only see your own score. Questions about a mark? Ask the office — every mark shows who made it.")+'</p></div></div>';
   return H;
 }
 
-/* ---------- vehicle photos (v2.83.0): guided SET of 4 angles, each capped at 200 KB ---------- */
-var ANG=[{k:"front",es:"Frente",en:"Front"},{k:"back",es:"Atrás",en:"Back"},{k:"left",es:"Lado izquierdo",en:"Left side"},{k:"right",es:"Lado derecho",en:"Right side"}];
-function angName(k){ for(var i=0;i<ANG.length;i++)if(ANG[i].k===k)return L(ANG[i].es,ANG[i].en); return k }
-function photosOf(p){ return (p&&Array.isArray(p.photos)&&p.photos.length)?p.photos:(p&&p.url?[{angle:"front",url:p.url}]:[]) }
+/* ---------- photos: guided capture, 200 KB cap, offline queue (v2.83.0, generic v2.85.0) ---------- */
 var LIMIT=200000; /* hard cap per photo, bytes */
 /* Compress, measure, repeat: lower quality first, then size, until it fits. Uses the app's compressPhoto. */
 function compress200(file){
@@ -59578,10 +60012,15 @@ function idb(){ return new Promise(function(res,rej){ var rq=indexedDB.open("asp
 function idbAll(store){ return idb().then(function(d){ return new Promise(function(res){ var out=[], c=d.transaction(store).objectStore(store).openCursor(); c.onsuccess=function(){ var cur=c.result; if(cur){ out.push(cur.value); cur.continue() } else res(out) }; c.onerror=function(){ res(out) } }) }) }
 function idbPut(store,v){ return idb().then(function(d){ return new Promise(function(res,rej){ var tx=d.transaction(store,"readwrite"), os=tx.objectStore(store); if(store==="photos")os.add(v); else os.put(v); tx.oncomplete=res; tx.onerror=function(){ rej(tx.error) } }) }) }
 function idbDel(store,key){ return idb().then(function(d){ return new Promise(function(res){ var tx=d.transaction(store,"readwrite"); tx.objectStore(store).delete(key); tx.oncomplete=res; tx.onerror=res }) }) }
-function putDraft(dr){ dr.key=dr.tech+"|"+dr.weekId; return idbPut("drafts",dr) }
+/* drafts: vehicle keeps its pre-v2.85 key (tech|week) so a draft started before the update still resumes */
+function draftKey(tech,critId,wk){ return critId==="vehicle"?tech+"|"+wk:tech+"|"+critId+"|"+wk }
+function draftCrit(dr){ return dr.crit||"vehicle" }
+function putDraft(dr){ dr.crit=dr.crit||"vehicle"; dr.key=draftKey(dr.tech,dr.crit,dr.weekId); return idbPut("drafts",dr) }
 
-function uploadOne(tech,wk,angle,blob,takenAtMs){
-  var path="scorecard/vehicles/"+slug(tech)+"/"+wk+"/"+takenAtMs+(angle?"-"+angle:"")+".jpg";
+function uploadOne(tech,wk,angle,blob,takenAtMs,critId){
+  critId=critId||"vehicle";
+  var dir=critId==="vehicle"?"scorecard/vehicles/":"scorecard/"+slug(critId)+"/";
+  var path=dir+slug(tech)+"/"+wk+"/"+takenAtMs+(angle?"-"+angle:"")+".jpg";
   if(typeof storage==="undefined"||!storage)return Promise.reject(new Error("storage not ready"));
   var ref=storage.ref(path);
   return ref.put(blob,{contentType:"image/jpeg"}).then(function(){ return ref.getDownloadURL() }).then(function(url){
@@ -59590,11 +60029,11 @@ function uploadOne(tech,wk,angle,blob,takenAtMs){
 }
 function upload(item){
   if(Array.isArray(item.shots)){ /* a weekly set */
-    var done=[];
-    return item.shots.reduce(function(p,sh){ return p.then(function(){ return uploadOne(item.tech,item.weekId,sh.angle,sh.blob,sh.takenAtMs).then(function(r){ done.push(r) }) }) },Promise.resolve())
+    var done=[], crit=item.crit||"vehicle";
+    return item.shots.reduce(function(p,sh){ return p.then(function(){ return uploadOne(item.tech,item.weekId,sh.angle,sh.blob,sh.takenAtMs,crit).then(function(r){ done.push(r) }) }) },Promise.resolve())
       .then(function(){
         var last=Math.max.apply(null,done.map(function(x){ return x.takenAtMs }));
-        return D().addPhoto({tech:item.tech,weekId:item.weekId,month:S.monthOfWeek(item.weekId),url:done[0].url,path:done[0].path,takenAtMs:last,photos:done});
+        return D().addPhoto({tech:item.tech,crit:crit,weekId:item.weekId,month:S.monthOfWeek(item.weekId),url:done[0].url,path:done[0].path,takenAtMs:last,photos:done});
       });
   }
   /* legacy single-photo item queued by v2.82.0 */
@@ -59605,7 +60044,7 @@ function upload(item){
 }
 
 /* ---- the guide (full screen, step by step) ---- */
-var G={tech:"",wk:"",shots:{},step:0,mode:"shoot",busy:false,urls:[]};
+var G={tech:"",wk:"",crit:null,labs:[],shots:{},step:0,mode:"shoot",busy:false,urls:[]};
 function vanSvg(a){
   var ac="var(--ac)", body='fill="var(--cd)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"';
   var frame='<rect x="8" y="8" width="304" height="184" rx="14" fill="none" stroke="'+ac+'" stroke-width="2.5" stroke-dasharray="10 7"/>';
@@ -59614,6 +60053,12 @@ function vanSvg(a){
   var back='<path d="M95 140V64q0-12 12-12h106q12 0 12 12v76z" '+body+'/><line x1="160" y1="56" x2="160" y2="138" stroke="var(--ink)" stroke-width="2"/><rect x="112" y="64" width="40" height="26" rx="3" fill="#bcd3e0" stroke="var(--ink)" stroke-width="2"/><rect x="168" y="64" width="40" height="26" rx="3" fill="#bcd3e0" stroke="var(--ink)" stroke-width="2"/><rect x="97" y="96" width="9" height="22" rx="2" fill="#d33"/><rect x="214" y="96" width="9" height="22" rx="2" fill="#d33"/><rect x="95" y="104" width="130" height="7" fill="'+ac+'"/><rect x="92" y="134" width="136" height="10" rx="3" fill="var(--i2)"/><rect x="102" y="144" width="20" height="14" rx="3" fill="#222"/><rect x="198" y="144" width="20" height="14" rx="3" fill="#222"/><line x1="20" y1="158" x2="300" y2="158" stroke="var(--i3)" stroke-width="2"/>';
   var art=a==="front"?front:a==="back"?back:(a==="left"?'<g transform="translate(320 0) scale(-1 1)">'+side+'</g>':side);
   return '<svg viewBox="0 0 320 200" role="img" aria-label="'+h(angName(a))+'">'+frame+art+'</svg>';
+}
+/* other photo criteria: a framed camera outline with the photo's name */
+function genSvg(name){
+  return '<svg viewBox="0 0 320 200" role="img" aria-label="'+h(name)+'"><rect x="8" y="8" width="304" height="184" rx="14" fill="none" stroke="var(--ac)" stroke-width="2.5" stroke-dasharray="10 7"/>'+
+    '<rect x="112" y="58" width="96" height="66" rx="10" fill="var(--cd)" stroke="var(--ink)" stroke-width="3"/><rect x="138" y="48" width="30" height="12" rx="3" fill="var(--ink)"/><circle cx="160" cy="91" r="20" fill="none" stroke="var(--ink)" stroke-width="3"/><circle cx="160" cy="91" r="9" fill="var(--ac)"/>'+
+    '<text x="160" y="160" text-anchor="middle" font-family="DM Sans,sans-serif" font-weight="800" font-size="16" fill="var(--ink)">'+h(name)+'</text></svg>';
 }
 function freeUrls(){ G.urls.forEach(function(u){ try{ URL.revokeObjectURL(u) }catch(_e){} }); G.urls=[] }
 function blobUrl(b){ var u=URL.createObjectURL(b); G.urls.push(u); return u }
@@ -59624,15 +60069,18 @@ function guideEl(){
     document.body.appendChild(g); g.addEventListener("click",onGuideClick) }
   return g;
 }
-function firstMissing(){ for(var i=0;i<ANG.length;i++)if(!G.shots[ANG[i].k])return i; return ANG.length }
-function openGuide(){
+function firstMissing(){ for(var i=0;i<G.labs.length;i++)if(!G.shots[G.labs[i].k])return i; return G.labs.length }
+function openGuide(critId){
   var me=user(); if(!me)return Promise.resolve();
+  critId=critId||"vehicle";
+  G.crit=critById(critId,curMonth())||S.critOf(S.defaultCriteria({}),"vehicle"); G.labs=critLabels(G.crit);
   G.tech=me.name; G.wk=S.weekId(today()); G.shots={}; G.busy=false;
   return idbAll("drafts").catch(function(){ return [] }).then(function(all){
-    var stale=all.filter(function(d){ return d.tech===G.tech&&d.weekId!==G.wk });
+    var mine=all.filter(function(d){ return d.tech===G.tech&&draftCrit(d)===G.crit.id });
+    var stale=mine.filter(function(d){ return d.weekId!==G.wk });
     return Promise.all(stale.map(function(d){ return idbDel("drafts",d.key) })).then(function(){
-      all.forEach(function(d){ if(d.tech===G.tech&&d.weekId===G.wk)G.shots=d.shots||{} });
-      G.step=firstMissing(); G.mode=G.step<ANG.length?"shoot":"review";
+      mine.forEach(function(d){ if(d.weekId===G.wk)G.shots=d.shots||{} });
+      G.step=firstMissing(); G.mode=G.step<G.labs.length?"shoot":"review";
       guideEl().classList.add("open"); document.documentElement.classList.add("sc-guide-on"); renderGuide();
     });
   });
@@ -59640,45 +60088,51 @@ function openGuide(){
 function closeGuide(){ var g=document.getElementById("scGuide"); if(g)g.classList.remove("open"); document.documentElement.classList.remove("sc-guide-on"); freeUrls(); paint() }
 function renderGuide(){
   var g=guideEl(); freeUrls();
-  var dots=ANG.map(function(a,i){ return '<i class="'+(G.shots[a.k]?"done":"")+(G.mode!=="review"&&i===G.step?" now":"")+'"></i>' }).join("");
-  var H='<div class="sc-g-top"><button type="button" class="sc-g-x" data-g="close" aria-label="'+L("Cerrar","Close")+'">×</button><div><b>'+L("Fotos del vehículo","Vehicle photos")+'</b><div class="sc-g-sub">'+L("Semana del","Week of")+' '+h(fmtDay(G.wk))+'</div></div><div class="sc-g-dots">'+dots+'</div></div><div class="sc-g-body">';
+  var N=G.labs.length, veh=isVehicle(G.crit);
+  var dots=G.labs.map(function(a,i){ return '<i class="'+(G.shots[a.k]?"done":"")+(G.mode!=="review"&&i===G.step?" now":"")+'"></i>' }).join("");
+  var H='<div class="sc-g-top"><button type="button" class="sc-g-x" data-g="close" aria-label="'+L("Cerrar","Close")+'">×</button><div><b>'+(veh?L("Fotos del vehículo","Vehicle photos"):h(critName(G.crit)))+'</b><div class="sc-g-sub">'+L("Semana del","Week of")+' '+h(fmtDay(G.wk))+'</div></div><div class="sc-g-dots">'+dots+'</div></div><div class="sc-g-body">';
   if(G.mode==="review"){
-    H+='<h2>'+L("Revisa las 4 fotos","Check all 4 photos")+'</h2><p class="sc-g-sub">'+L("Toca Repetir en la que quieras cambiar. Al enviar, la oficina las revisa juntas.","Tap Retake on any you want to change. When you send, the office reviews them together.")+'</p><div class="sc-g-grid">';
-    ANG.forEach(function(a){ var s=G.shots[a.k]; H+='<figure><img src="'+blobUrl(s.blob)+'" alt="'+h(angName(a.k))+'"><figcaption>'+h(angName(a.k))+' · '+kb(s.bytes)+' <button type="button" class="sc-g-link" data-g="redo" data-a="'+a.k+'">'+L("Repetir","Retake")+'</button></figcaption></figure>' });
-    H+='</div><button type="button" class="sc-g-main" data-g="send"'+(G.busy?" disabled":"")+'>'+(G.busy?L("Enviando…","Sending…"):L("Enviar las 4 fotos","Send all 4 photos"))+'</button>';
+    H+='<h2>'+L("Revisa las","Check all")+' '+N+' '+L("fotos","photos")+'</h2><p class="sc-g-sub">'+L("Toca Repetir en la que quieras cambiar. Al enviar, la oficina las revisa juntas.","Tap Retake on any you want to change. When you send, the office reviews them together.")+'</p><div class="sc-g-grid">';
+    G.labs.forEach(function(a){ var s=G.shots[a.k]; H+='<figure><img src="'+blobUrl(s.blob)+'" alt="'+h(a.name)+'"><figcaption>'+h(a.name)+' · '+kb(s.bytes)+' <button type="button" class="sc-g-link" data-g="redo" data-a="'+h(a.k)+'">'+L("Repetir","Retake")+'</button></figcaption></figure>' });
+    H+='</div><button type="button" class="sc-g-main" data-g="send"'+(G.busy?" disabled":"")+'>'+(G.busy?L("Enviando…","Sending…"):(N===1?L("Enviar la foto","Send the photo"):L("Enviar las","Send all")+" "+N+" "+L("fotos","photos")))+'</button>';
   } else {
-    var a=ANG[G.step], s=G.shots[a.k];
-    H+='<div class="sc-g-step">'+(G.step+1)+' '+L("de","of")+' 4 · <b>'+h(angName(a.k))+'</b></div>';
+    var a=G.labs[G.step], s=G.shots[a.k];
+    H+='<div class="sc-g-step">'+(G.step+1)+' '+L("de","of")+' '+N+' · <b>'+h(a.name)+'</b></div>';
     if(s){
-      H+='<div class="sc-g-shot"><img src="'+blobUrl(s.blob)+'" alt="'+h(angName(a.k))+'"></div><p class="sc-g-sub c">'+L("Lista","Ready")+' · '+kb(s.bytes)+'</p><div class="sc-g-row"><button type="button" class="sc-g-sec" data-g="retake">'+L("Repetir","Retake")+'</button>'+
-         (G.step<ANG.length-1?'<button type="button" class="sc-g-main" data-g="next">'+L("Siguiente","Next")+' →</button>':'<button type="button" class="sc-g-main" data-g="review">'+L("Ver las 4","See all 4")+' →</button>')+'</div>';
+      H+='<div class="sc-g-shot"><img src="'+blobUrl(s.blob)+'" alt="'+h(a.name)+'"></div><p class="sc-g-sub c">'+L("Lista","Ready")+' · '+kb(s.bytes)+'</p><div class="sc-g-row"><button type="button" class="sc-g-sec" data-g="retake">'+L("Repetir","Retake")+'</button>'+
+         (G.step<N-1?'<button type="button" class="sc-g-main" data-g="next">'+L("Siguiente","Next")+' →</button>':'<button type="button" class="sc-g-main" data-g="review">'+(N===1?L("Revisar","Review"):L("Ver las","See all")+" "+N)+' →</button>')+'</div>';
     } else {
-      H+='<div class="sc-g-art">'+vanSvg(a.k)+'</div><ul class="sc-g-tips"><li>'+L("Todo el vehículo dentro del cuadro","Whole vehicle inside the frame")+'</li><li>'+L("De día o con buena luz","Daylight or good light")+'</li><li>'+L("Nada tapando el vehículo","Nothing blocking the vehicle")+'</li></ul>'+
+      var tips=veh?[L("Todo el vehículo dentro del cuadro","Whole vehicle inside the frame"),L("De día o con buena luz","Daylight or good light"),L("Nada tapando el vehículo","Nothing blocking the vehicle")]
+                  :[L("Que se vea completo dentro del cuadro","Show it complete inside the frame"),L("De día o con buena luz","Daylight or good light"),L("Enfocado: no muevas el teléfono","In focus: hold the phone still")];
+      H+='<div class="sc-g-art">'+(veh?vanSvg(a.k):genSvg(a.name))+'</div><ul class="sc-g-tips">'+tips.map(function(t){ return '<li>'+t+'</li>' }).join("")+'</ul>'+
          '<button type="button" class="sc-g-main" data-g="shoot"'+(G.busy?" disabled":"")+'>'+(G.busy?L("Procesando…","Processing…"):"📷 "+L("Abrir cámara","Open camera"))+'</button>';
     }
   }
   g.innerHTML=H+'</div>';
 }
 function shootNow(){
-  var a=ANG[G.step].k, inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.setAttribute("capture","environment");
+  var a=G.labs[G.step].k, inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.setAttribute("capture","environment");
   inp.onchange=function(){
     var f=inp.files&&inp.files[0]; if(!f)return;
     var takenAtMs=Date.now(); G.busy=true; renderGuide();
     compress200(f).then(function(blob){
       G.shots[a]={blob:blob,takenAtMs:takenAtMs,bytes:blob.size};
-      return putDraft({tech:G.tech,weekId:G.wk,shots:G.shots}).catch(function(e){ console.warn("[scorecard] draft",e) });
+      return putDraft({tech:G.tech,crit:G.crit.id,weekId:G.wk,shots:G.shots}).catch(function(e){ console.warn("[scorecard] draft",e) });
     }).catch(function(e){ console.warn("[scorecard] photo",e); say(L("No se pudo procesar la foto","Could not process the photo"),"err") })
       .then(function(){ G.busy=false; renderGuide() });
   };
   inp.click();
 }
 function sendSet(){
-  var item={tech:G.tech,weekId:G.wk,shots:ANG.map(function(a){ var s=G.shots[a.k]; return {angle:a.k,blob:s.blob,takenAtMs:s.takenAtMs} })};
+  var item={tech:G.tech,crit:G.crit.id,weekId:G.wk,shots:G.labs.map(function(a){ var s=G.shots[a.k]; return {angle:a.k,blob:s.blob,takenAtMs:s.takenAtMs} })};
   G.busy=true; renderGuide();
-  var finish=function(msg,type){ return idbDel("drafts",G.tech+"|"+G.wk).then(function(){ G.busy=false; G.shots={}; say(msg,type); closeGuide() }) };
+  var finish=function(msg,type){ return idbDel("drafts",draftKey(G.tech,G.crit.id,G.wk)).then(function(){ G.busy=false; G.shots={}; say(msg,type); closeGuide() }) };
   var queue=function(){ return idbPut("photos",item).then(function(){ outboxCount++; armFlush(); return finish(L("Sin señal: las fotos se guardaron y se enviarán solas.","No signal: photos saved, they will send themselves."),"warn") }) };
   if(navigator.onLine===false)return queue();
-  return upload(item).then(function(){ return finish(L("Fotos enviadas ✓","Photos sent ✓")) },function(e){ console.warn("[scorecard] upload",e); return queue() })
+  return upload(item).then(function(){ return finish(L("Fotos enviadas ✓","Photos sent ✓")) },function(e){ console.warn("[scorecard] upload",e);
+      /* a refused upload is not "no signal": keep the photos (they retry) but say what really happened */
+      if(denied(e))return idbPut("photos",item).then(function(){ outboxCount++; armFlush(); return finish(L("El servidor no dejó subir las fotos (permiso). Quedaron guardadas — avisa a la oficina.","The server refused the photos (permission). They are saved — tell the office."),"err") });
+      return queue() })
     .catch(function(e){ console.warn("[scorecard] send",e); G.busy=false; renderGuide(); say(L("No se pudieron guardar las fotos","Could not save the photos"),"err") });
 }
 function onGuideClick(ev){
@@ -59686,13 +60140,14 @@ function onGuideClick(ev){
   var g=el.getAttribute("data-g");
   if(g==="close")return closeGuide();
   if(g==="shoot")return shootNow();
-  if(g==="retake"){ delete G.shots[ANG[G.step].k]; putDraft({tech:G.tech,weekId:G.wk,shots:G.shots}).catch(function(){}); return renderGuide() }
-  if(g==="next"){ G.step=Math.min(ANG.length-1,G.step+1); return renderGuide() }
+  if(g==="retake"){ delete G.shots[G.labs[G.step].k]; putDraft({tech:G.tech,crit:G.crit.id,weekId:G.wk,shots:G.shots}).catch(function(){}); return renderGuide() }
+  if(g==="next"){ G.step=Math.min(G.labs.length-1,G.step+1); return renderGuide() }
   if(g==="review"){ G.mode="review"; return renderGuide() }
-  if(g==="redo"){ var a=el.getAttribute("data-a"); delete G.shots[a]; G.step=ANG.map(function(x){ return x.k }).indexOf(a); G.mode="shoot"; putDraft({tech:G.tech,weekId:G.wk,shots:G.shots}).catch(function(){}); return renderGuide() }
+  if(g==="redo"){ var a=el.getAttribute("data-a"); delete G.shots[a]; G.step=G.labs.map(function(x){ return x.k }).indexOf(a); G.mode="shoot"; putDraft({tech:G.tech,crit:G.crit.id,weekId:G.wk,shots:G.shots}).catch(function(){}); return renderGuide() }
   if(g==="send")return sendSet();
 }
-function takeVehiclePhoto(){ return openGuide() }
+function denied(e){ var c=String(e&&e.code||""), m=String(e&&e.message||""); return /unauthorized|permission-denied/i.test(c)||/permission|unauthorized/i.test(m) }
+function takeVehiclePhoto(){ return openGuide("vehicle") }
 var _flushing=false;
 function flushOutbox(){
   if(_flushing||typeof indexedDB==="undefined")return Promise.resolve();
@@ -59706,41 +60161,222 @@ function flushOutbox(){
 function armFlush(){ if(!st.flushT)st.flushT=setInterval(flushOutbox,30000) }
 window.addEventListener("online",function(){ flushOutbox() });
 
+/* ---------- PDF reports (pdf-lib) ---------- */
+var PDF_SRC="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
+function loadPdfLib(){
+  if(window.PDFLib)return Promise.resolve(window.PDFLib);
+  return new Promise(function(res,rej){ var s=document.createElement("script"); s.src=PDF_SRC;
+    s.onload=function(){ window.PDFLib?res(window.PDFLib):rej(new Error("pdf-lib missing")) }; s.onerror=function(){ rej(new Error("pdf-lib could not load")) }; document.head.appendChild(s) });
+}
+/* the standard PDF fonts only speak WinAnsi: replace or drop anything else (emoji, ✓ ✗) */
+function pdfSafe(t){ return String(t==null?"":t).replace(/[✓✔✗✘⏳]/g,"").replace(/[→]/g,"->")
+  .replace(/[^ -~ -ÿ–—‘’“”•…€™]/g,"").replace(/\s+/g," ").trim() }
+function fetchImg(url,ms){
+  return new Promise(function(res){
+    var done=false, t=setTimeout(function(){ if(!done){ done=true; res(null) } },ms||5000);
+    fetch(url,{mode:"cors"}).then(function(r){ return r.ok?r.arrayBuffer():null }).then(function(b){ if(!done){ done=true; clearTimeout(t); res(b) } },function(){ if(!done){ done=true; clearTimeout(t); res(null) } });
+  });
+}
+function Pdf(P,portrait){
+  this.P=P; this.W=portrait?612:792; this.H=portrait?792:612; this.M=40;
+  this.brown=P.rgb(0.24,0.17,0.12); this.ac=P.rgb(0.83,0.47,0.17); this.ink=P.rgb(0.12,0.1,0.08); this.mut=P.rgb(0.45,0.41,0.37); this.ln=P.rgb(0.88,0.85,0.8);
+  this.ok=P.rgb(0.09,0.4,0.2); this.bad=P.rgb(0.6,0.1,0.1); this.wait=P.rgb(0.7,0.36,0.04);
+}
+Pdf.prototype.init=function(){ var self=this;
+  return this.P.PDFDocument.create().then(function(doc){ self.doc=doc;
+    return Promise.all([doc.embedFont(self.P.StandardFonts.Helvetica),doc.embedFont(self.P.StandardFonts.HelveticaBold)]) })
+  .then(function(f){ self.f=f[0]; self.b=f[1]; self.page(); return self });
+};
+Pdf.prototype.page=function(){ this.pg=this.doc.addPage([this.W,this.H]); this.y=this.H-this.M; };
+Pdf.prototype.need=function(hh){ if(this.y-hh<this.M+20)this.page(); };
+Pdf.prototype.wrap=function(text,size,font,maxW){
+  var words=pdfSafe(text).split(" "), lines=[], cur="";
+  words.forEach(function(w){ var tryL=cur?cur+" "+w:w; if(font.widthOfTextAtSize(tryL,size)>maxW&&cur){ lines.push(cur); cur=w } else cur=tryL });
+  if(cur)lines.push(cur); return lines.length?lines:[""];
+};
+Pdf.prototype.text=function(text,o){ o=o||{}; var size=o.size||10, font=o.bold?this.b:this.f, x=o.x||this.M, maxW=o.maxW||(this.W-this.M-x), self=this;
+  var lines=this.wrap(text,size,font,maxW), lh=size*1.3;
+  lines.forEach(function(l){ self.need(lh); self.pg.drawText(l,{x:x,y:self.y-size,size:size,font:font,color:o.color||self.ink}); self.y-=lh });
+  if(o.after)this.y-=o.after;
+};
+Pdf.prototype.rule=function(){ this.need(8); this.pg.drawLine({start:{x:this.M,y:this.y-3},end:{x:this.W-this.M,y:this.y-3},thickness:0.8,color:this.ln}); this.y-=10; };
+Pdf.prototype.cell=function(text,x,w,y,o){ o=o||{}; var size=o.size||9, font=o.bold?this.b:this.f, t=pdfSafe(text);
+  while(t.length>1&&font.widthOfTextAtSize(t,size)>w-6)t=t.slice(0,-2)+"…";
+  var tx=o.right?x+w-3-font.widthOfTextAtSize(t,size):x+3; this.pg.drawText(t,{x:tx,y:y,size:size,font:font,color:o.color||this.ink}); };
+/* table: cols=[{w,label,right}], rows=[[{t,color,bold}]] */
+Pdf.prototype.table=function(cols,rows,o){ o=o||{}; var self=this, size=o.size||9, rh=size+9, tw=cols.reduce(function(a,c){ return a+c.w },0);
+  /* header labels wrap to two lines instead of being cut ("Customer complaint") */
+  var labs=cols.map(function(c){ return self.wrap(c.label,size,self.b,c.w-6).slice(0,2) }), two=labs.some(function(l){ return l.length>1 }), hh=two?rh+size+1:rh;
+  function head(){ self.need(hh+rh); self.pg.drawRectangle({x:self.M,y:self.y-hh,width:tw,height:hh,color:self.brown}); var x=self.M;
+    cols.forEach(function(c,j){ labs[j].forEach(function(l,k){ self.cell(l,x,c.w,self.y-hh+5+(labs[j].length-1-k)*(size+1),{size:size,bold:true,color:self.P.rgb(1,1,1),right:c.right}) }); x+=c.w }); self.y-=hh }
+  head();
+  rows.forEach(function(r,i){ if(self.y-rh<self.M+20){ self.page(); head() }
+    if(r.total)self.pg.drawRectangle({x:self.M,y:self.y-rh,width:tw,height:rh,color:self.P.rgb(0.93,0.88,0.81)});
+    else if(i%2)self.pg.drawRectangle({x:self.M,y:self.y-rh,width:tw,height:rh,color:self.P.rgb(0.97,0.95,0.92)});
+    var x=self.M; r.forEach(function(c,j){ self.cell(c.t,x,cols[j].w,self.y-rh+5,{size:size,bold:c.bold,color:c.color,right:cols[j].right}); x+=cols[j].w }); self.y-=rh });
+  this.y-=8;
+};
+Pdf.prototype.finish=function(draft,footer){ var self=this, pages=this.doc.getPages(), n=pages.length;
+  pages.forEach(function(p,i){
+    if(draft){ var wm=pdfSafe(L("BORRADOR — MES ABIERTO","DRAFT — OPEN MONTH")), sz=self.W>700?64:52, tw=self.b.widthOfTextAtSize(wm,sz);
+      p.drawText(wm,{x:self.W/2-tw*0.41,y:self.H/2-tw*0.29,size:sz,font:self.b,color:self.bad,opacity:0.13,rotate:self.P.degrees(35)}) }
+    p.drawText(pdfSafe(footer+" · "+L("Página","Page")+" "+(i+1)+" "+L("de","of")+" "+n),{x:self.M,y:22,size:8,font:self.f,color:self.mut});
+  });
+  return this.doc.save();
+};
+function stWord(s,c,x){ var i={met:[L("Cumplió","Met"),"ok"],risk:[L("Cumplió","Met"),"ok"],lost:[L("No cumplió","Missed"),"bad"],wait:[L("En revisión","In review"),"wait"]}[s]||["",""]; return {t:i[0]+(s==="met"||s==="risk"?" "+money(c.amount):""),k:i[1]} }
+function reportCtx(){
+  var cr=currentResult(), me=user()||{};
+  return {cr:cr,res:cr.res,draft:!cr.closed,month:st.month,who:me.name||"",when:fmtWhen(Date.now()),
+    footer:"Aspen Spas · "+L("Puntajes de técnicos","Technician Scorecard")+" · "+monthLabel(st.month)+" · "+L("Generado por","Generated by")+" "+(me.name||"")+" "+fmtWhen(Date.now())};
+}
+function header(d,ctx,title){
+  d.text("ASPEN SPAS",{size:9,bold:true,color:d.ac});
+  d.text(title,{size:18,bold:true,after:2});
+  var c=st.closed;
+  d.text(ctx.draft?L("BORRADOR — el mes sigue abierto: los números todavía pueden cambiar. No usar para pagar.","DRAFT — the month is still open: numbers can still change. Not for payment."):
+    L("Mes cerrado por","Month closed by")+" "+(c&&c.closedBy||"")+" · "+fmtWhen(c&&c.closedAtMs),{size:9.5,bold:ctx.draft,color:ctx.draft?d.bad:d.mut,after:6});
+}
+function correctionsOf(month){
+  var byId={}; st.marks.forEach(function(m){ byId[m.id]=m });
+  return st.marks.filter(function(m){ return m.type==="void"||m.type==="adjust" }).sort(function(a,b){ return a.atMs-b.atMs }).map(function(m){
+    if(m.type==="adjust"){ var c=critById(m.crit,month); return fmtWhen(m.atMs)+" · "+m.by+" · "+L("Ajuste","Adjustment")+": "+m.tech+" — "+critName(c)+" "+(m.pass?L("se da por cumplido","marked as met"):L("se da por no cumplido","marked as missed"))+" · "+m.reason }
+    var o=byId[m.voids]||{}, oc=critById(S.kindOf(o).crit||"",month);
+    return fmtWhen(m.atMs)+" · "+m.by+" · "+L("Anuló","Cancelled")+" "+(o.tech?o.tech+" — ":"")+(oc?critName(oc):o.type||"")+(o.day?" ("+fmtDay(o.day)+")":"")+" · "+m.reason;
+  });
+}
+function buildFullReport(){
+  var ctx=reportCtx(), r=ctx.res, cs=r.criteria, names=Object.keys(r.rows).sort(byName);
+  return loadPdfLib().then(function(P){ return new Pdf(P,false).init() }).then(function(d){
+    header(d,ctx,L("Puntajes de técnicos","Technician Scorecard")+" — "+monthLabel(ctx.month));
+    /* the number the boss approves goes first, top right */
+    var tl=pdfSafe(L("TOTAL A PAGAR","TOTAL TO PAY")), tv=pdfSafe(money(r.total)), top=d.H-d.M;
+    d.pg.drawText(tl,{x:d.W-d.M-d.b.widthOfTextAtSize(tl,9),y:top-9,size:9,font:d.b,color:d.mut});
+    d.pg.drawText(tv,{x:d.W-d.M-d.b.widthOfTextAtSize(tv,26),y:top-36,size:26,font:d.b,color:d.brown});
+    var maxAll=names.reduce(function(a,t){ return a+(+r.rows[t].max||0) },0);
+    d.text(L("Resumen por técnico","Summary by technician"),{size:12,bold:true,after:2});
+    var avail=d.W-2*d.M-110-90, cw=Math.max(56,Math.floor(avail/Math.max(1,cs.length))), size=cs.length>5?7.5:9;
+    var cols=[{w:110,label:L("Técnico","Technician")}].concat(cs.map(function(c){ return {w:cw,label:critName(c)+" ("+money(c.amount)+")"} })).concat([{w:90,label:L("Bono","Bonus"),right:true}]);
+    var rows=names.map(function(t){ var row=r.rows[t];
+      return [{t:t,bold:true}].concat(cs.map(function(c){ var w=stWord(S.statusOf(row[c.id],c),c); return {t:w.t+(row[c.id]&&row[c.id].adjusted?" *":""),color:d[w.k]} })).concat([{t:money(row.pay)+" / "+money(row.max),bold:true}]) });
+    var tr=[{t:L("TOTAL","TOTAL"),bold:true}].concat(cs.map(function(c){ var n=names.filter(function(t){ var x=r.rows[t][c.id]; return x&&x.pass&&!x.wait }).length; return {t:n+" "+L("de","of")+" "+names.length,color:d.mut} })).concat([{t:money(r.total)+" / "+money(maxAll),bold:true}]);
+    tr.total=true; rows.push(tr);
+    d.table(cols,rows,{size:size});
+    if(names.some(function(t){ return cs.some(function(c){ return r.rows[t][c.id]&&r.rows[t][c.id].adjusted }) }))d.text("* "+L("ajustado después del cierre (ver correcciones)","adjusted after closing (see corrections)"),{size:8.5,color:d.mut});
+    d.y-=4; d.text(L("Reglas del mes","Rules for the month"),{size:12,bold:true,after:2});
+    d.table([{w:220,label:L("Criterio","Criterion")},{w:170,label:L("Cómo se mide","How it is measured")},{w:90,label:L("Paga","Pays"),right:true},{w:120,label:L("Fallas permitidas","Misses allowed"),right:true}],
+      cs.map(function(c){ return [{t:critName(c),bold:true},{t:typeName(c.type)},{t:money(c.amount)},{t:String(c.tol)}] }),{size:8});
+    d.text(L("Inicio del programa","Program start")+": "+(r.programStart?fmtDay(r.programStart):L("sin fecha","not set"))+" · "+L("Participantes","Participants")+": "+names.length+" · "+L("Bono máximo por técnico","Top bonus per technician")+": "+money(cs.reduce(function(a,c){ return a+(+c.amount||0) },0)),{size:9,color:d.mut,after:6});
+    var corr=correctionsOf(ctx.month);
+    if(!corr.length)d.text(L("Correcciones del mes: ninguna.","Corrections this month: none."),{size:9.5,color:d.mut,after:4});
+    else { d.text(L("Correcciones del mes","Corrections this month"),{size:12,bold:true,after:2}); corr.forEach(function(l){ d.text("• "+l,{size:9}) }); d.y-=4 }
+    d.need(58); d.rule();
+    d.text(L("Aprobación","Approval"),{size:12,bold:true,after:12});
+    d.text(L("Aprobado por","Approved by")+": ______________________________    "+L("Fecha","Date")+": ______________    "+L("Firma","Signature")+": ______________________________",{size:10});
+    return d.finish(ctx.draft,ctx.footer);
+  });
+}
+function buildTechReport(tech){
+  var ctx=reportCtx(), r=ctx.res, cs=r.criteria, row=r.rows[tech];
+  if(!row)return Promise.reject(new Error("no data for "+tech));
+  var wanted=[];  /* photo sets to embed */
+  cs.forEach(function(c){ if(c.type==="photos")((row[c.id]||{}).weeks||[]).forEach(function(w){ if(w.photo)photosOf(w.photo).slice(0,4).forEach(function(p){ wanted.push(p.url) }) }) });
+  var imgs={}, missed=0;
+  return loadPdfLib().then(function(P){
+    return Promise.all(wanted.map(function(u){ return fetchImg(u,5000).then(function(b){ if(b)imgs[u]=b; else missed++ }) })).then(function(){ return new Pdf(P,true).init() });
+  }).then(function(d){
+    header(d,ctx,tech+" — "+monthLabel(ctx.month));
+    d.text(L("Bono","Bonus")+": "+money(row.pay)+" "+L("de","of")+" "+money(row.max),{size:16,bold:true,color:d.brown,after:6});
+    var embeds=Object.keys(imgs).map(function(u){ var b=new Uint8Array(imgs[u]), jpg=b[0]===0xFF&&b[1]===0xD8, png=b[0]===0x89&&b[1]===0x50;
+      if(!jpg&&!png)return Promise.resolve(); return (jpg?d.doc.embedJpg(b):d.doc.embedPng(b)).then(function(im){ imgs[u]=im },function(){ delete imgs[u] }) });
+    return Promise.all(embeds).then(function(){
+      cs.forEach(function(c){ var x=row[c.id]||{}, s=S.statusOf(x,c), w=stWord(s,c,x);
+        d.need(46); d.rule();
+        d.text(critName(c)+"  —  "+w.t,{size:12,bold:true,color:d[w.k]});
+        d.text(typeName(c.type)+" · "+critShort(c,x),{size:9,color:d.mut,after:3});
+        if(c.type==="daily"){ (x.items||[]).filter(function(m){ return m.ok===false }).forEach(function(m){ d.text("X "+fmtDay(m.day)+(m.note?" — "+m.note:"")+" · "+L("marcó","by")+" "+m.by,{size:9.5,x:d.M+10}) });
+          if(!(x.items||[]).some(function(m){ return m.ok===false }))d.text(L("Sin fallas.","No misses."),{size:9.5,x:d.M+10,color:d.mut}) }
+        if(c.type==="photos"){ shownWeeks(x).forEach(function(wk){
+            var bad=(wk.review&&wk.review.badAngles)||[];
+            d.text(L("Semana del","Week of")+" "+fmtDay(wk.weekId)+": "+WEEK_LAB(wk.state)+(bad.length?" — "+bad.map(function(k){ return labelName(c,k) }).join(", "):"")+(wk.review&&wk.review.note?" — "+wk.review.note:""),{size:9.5,x:d.M+10});
+            var ph=wk.photo?photosOf(wk.photo).slice(0,4).filter(function(p){ return imgs[p.url]&&imgs[p.url].width }):[];
+            if(ph.length){ d.need(82); var x0=d.M+10; ph.forEach(function(p){ var im=imgs[p.url], sc=Math.min(100/im.width,75/im.height); d.pg.drawImage(im,{x:x0,y:d.y-77,width:im.width*sc,height:im.height*sc}); x0+=108 }); d.y-=84 }
+          }); }
+        if(c.type==="events"){ var ev=st.marks.filter(function(m){ var k=S.kindOf(m); return k.kind==="event"&&k.crit===c.id&&m.tech===tech }).filter(function(m){ return S.effective(st.marks).indexOf(m)>=0 });
+          if(!ev.length)d.text(L("Sin eventos.","No events."),{size:9.5,x:d.M+10,color:d.mut});
+          ev.forEach(function(m){ d.text(fmtDay(m.day)+" — "+(m.item!=null?m.item:m.part)+" — "+(m.onList!==false?L("cuenta","counts"):L("solo dato","info only"))+(m.note?" — "+m.note:""),{size:9.5,x:d.M+10}) }) }
+        if(c.type==="tickets"){ (x.unreported||[]).forEach(function(u){ d.text("X "+fmtDay(u.date)+" · "+u.customer+" — "+L("nunca reportado","never reported"),{size:9.5,x:d.M+10}) });
+          (x.late||[]).forEach(function(u){ d.text(fmtDay(u.date)+" · "+u.customer+" — "+L("reportado el","reported")+" "+fmtDay(u.reportDay),{size:9.5,x:d.M+10}) }) }
+        if(x.adjusted)d.text(L("Ajuste","Adjustment")+": "+(x.adjusted.pass?L("se da por cumplido","marked as met"):L("se da por no cumplido","marked as missed"))+" — "+x.adjusted.reason+" · "+x.adjusted.by,{size:9.5,x:d.M+10,color:d.wait});
+        d.y-=4;
+      });
+      if(missed)d.text(L("Fotos: ","Photos: ")+missed+" "+L("no se pudieron incluir aquí; se ven en la app.","could not be included here; they are visible in the app."),{size:8.5,color:d.mut});
+      d.y-=10; d.need(52); d.rule();
+      d.text(L("Técnico","Technician")+": ______________________________    "+L("Fecha","Date")+": ______________",{size:10,after:2});
+      d.text(L("Recibí y revisé mi puntaje.","I received and reviewed my score."),{size:8.5,color:d.mut});
+      return d.finish(ctx.draft,ctx.footer);
+    });
+  });
+}
+function downloadPdf(bytes,name){
+  window.__aspLastPdf={name:name,bytes:bytes};
+  var b=new Blob([bytes],{type:"application/pdf"}), u=URL.createObjectURL(b), a=document.createElement("a");
+  a.href=u; a.download=name; a.rel="noopener"; document.body.appendChild(a); a.click();
+  setTimeout(function(){ try{URL.revokeObjectURL(u)}catch(_e){} a.remove() },4000);
+}
+function pdfName(who){ return "Scorecard-"+st.month+"-"+slug(who)+(st.closed?"":"-DRAFT")+".pdf" }
+function makeReport(tech){
+  if(st.busy)return Promise.resolve();
+  st.busy=true; say(L("Generando PDF…","Building PDF…"));
+  return (tech?buildTechReport(tech):buildFullReport()).then(function(bytes){ downloadPdf(bytes,pdfName(tech||L("todos","all"))); say(L("PDF listo ✓","PDF ready ✓")) },
+    function(e){ console.warn("[scorecard] pdf",e); say(L("No se pudo generar el PDF: ","Could not build the PDF: ")+(e&&e.message||e),"err") }).then(function(){ st.busy=false });
+}
+
 /* ---------- events ---------- */
 function run(p,okMsg){ st.busy=true; return p.then(function(r){ if(okMsg)say(okMsg); return r },function(e){ console.warn("[scorecard]",e); say(L("No se pudo guardar: ","Could not save: ")+(e&&e.message||e),"err") }).then(function(r){ st.busy=false; return r }) }
+function splitKey(k){ var i=k.lastIndexOf("|"); return [k.slice(0,i),k.slice(i+1)] }
 function onClick(ev){
-  var el=ev.target&&ev.target.closest?ev.target.closest("button,[data-v]"):null; if(!el||st.busy&&!el.hasAttribute("data-v"))return;
+  var el=ev.target&&ev.target.closest?ev.target.closest("button,[data-v],[data-card],summary[data-act]"):null; if(!el)return;
+  if(st.busy&&!el.hasAttribute("data-v")&&!el.hasAttribute("data-card")&&el.getAttribute("data-act")!=="closedrawer")return;
   var d=D(), a=el.getAttribute("data-act");
-  if(el.hasAttribute("data-v")){ st.view=el.getAttribute("data-v"); paint(); return }
+  if(el.hasAttribute("data-v")){ st.view=el.getAttribute("data-v"); if(st.view==="settings")st.edit=null; closeDrawer(); paint(); return }
+  if(el.hasAttribute("data-card")){ openTechDetail(el.getAttribute("data-card")); return }
+  if(el.hasAttribute("data-sort")){ st.sort=el.getAttribute("data-sort"); paint(); return }
   if(el.hasAttribute("data-go-month")){ st.month=el.getAttribute("data-go-month"); start(); return }
-  if(el.hasAttribute("data-uni")){
-    var t=el.getAttribute("data-uni");
-    if(el.getAttribute("data-ok")==="1"){ delete st.pendingMiss[t]; run(d.addMark({type:"uniform",tech:t,day:today(),ok:true})) }
-    else { st.pendingMiss[t]=st.pendingMiss[t]||""; paint() }
+  if(el.hasAttribute("data-daily")){
+    var k=el.getAttribute("data-daily"), sp=splitKey(k);
+    if(el.getAttribute("data-ok")==="1"){ delete st.pendingMiss[k]; run(writeDaily(sp[0],sp[1],true)) }
+    else { st.pendingMiss[k]=st.pendingMiss[k]||""; paint() }
     return;
   }
-  if(el.hasAttribute("data-savemiss")){ var tm=el.getAttribute("data-savemiss"), note=(st.pendingMiss[tm]||"").trim();
-    if(!note){ say(L("Escribe qué le faltaba","Write what was missing"),"warn"); return }
-    run(d.addMark({type:"uniform",tech:tm,day:today(),ok:false,note:note})).then(function(id){ if(id){ delete st.pendingMiss[tm]; paint() } }); return }
+  if(el.hasAttribute("data-savemiss")){ var km=el.getAttribute("data-savemiss"), note=(st.pendingMiss[km]||"").trim(), sm=splitKey(km);
+    if(!note){ say(L("Escribe qué pasó","Write what happened"),"warn"); return }
+    run(writeDaily(sm[0],sm[1],false,note)).then(function(id){ if(id){ delete st.pendingMiss[km]; paint() } }); return }
   if(el.hasAttribute("data-cancelmiss")){ delete st.pendingMiss[el.getAttribute("data-cancelmiss")]; paint(); return }
-  if(a==="logret"){
-    var other=document.getElementById("scRP").value==="__other", part=other?(document.getElementById("scRO").value.trim()):document.getElementById("scRP").value;
-    if(!part){ say(L("Escribe qué parte","Write which part"),"warn"); return }
-    run(d.addMark({type:"return",tech:document.getElementById("scRT").value,day:today(),part:part,onList:!other,note:document.getElementById("scRN").value.trim()}),L("Vuelta registrada","Trip logged")); return }
+  if(el.hasAttribute("data-evcrit")){ st.evCrit=el.getAttribute("data-evcrit"); paint(); return }
+  if(a==="logevent"){
+    var c=evCrit(); if(!c)return;
+    var sel=document.getElementById("scEP"), other=!sel||sel.value==="__other", item=other?(document.getElementById("scEO").value.trim()):sel.value;
+    var onList=(c.list||[]).length?!other:true, tech=document.getElementById("scET").value, nt=document.getElementById("scEN").value.trim();
+    if(!item){ say(L("Escribe qué pasó","Write what happened"),"warn"); return }
+    var mark=c.id==="returns"?{type:"return",tech:tech,day:today(),part:item,item:item,onList:onList,note:nt}:{type:"event",crit:c.id,tech:tech,day:today(),item:item,onList:onList,note:nt};
+    run(d.addMark(mark),L("Registrado","Logged")); return }
   if(el.hasAttribute("data-rev")){
     var pid=el.getAttribute("data-rev"), clean=el.getAttribute("data-clean")==="1", ph=null;
     st.photos.forEach(function(x){ if(x.id===pid)ph=x });
     if(!ph)return;
     if(!clean){ st.rejecting=pid; st.rejAngles={}; st.rejNote=""; paint(); return }
-    run(d.addMark({type:"photoReview",tech:ph.tech,photoId:pid,weekId:ph.weekId,month:ph.month,clean:true,note:""})); return }
+    var rv={type:"photoReview",tech:ph.tech,photoId:pid,weekId:ph.weekId,month:ph.month,clean:true,note:""}; if(ph.crit)rv.crit=ph.crit;
+    run(d.addMark(rv)); return }
   if(a==="cancelreject"){ st.rejecting=null; paint(); return }
   if(a==="savereject"){
     var rp=null, rid=el.getAttribute("data-pid"); st.photos.forEach(function(x){ if(x.id===rid)rp=x }); if(!rp)return;
-    var bad=ANG.map(function(x){ return x.k }).filter(function(k){ return st.rejAngles[k] });
+    var bad=photosOf(rp).map(function(x){ return x.angle||"front" }).filter(function(k){ return st.rejAngles[k] });
     if(!bad.length){ say(L("Marca cuál foto muestra el problema","Tick which photo shows the problem"),"warn"); return }
-    if(!st.rejNote.trim()){ say(L("Escribe qué no está limpio","Write what isn't clean"),"warn"); return }
-    run(d.addMark({type:"photoReview",tech:rp.tech,photoId:rid,weekId:rp.weekId,month:rp.month,clean:false,badAngles:bad,note:st.rejNote.trim()})).then(function(id){ if(id){ st.rejecting=null; paint() } }); return }
-  if(el.hasAttribute("data-ev")){ var pr=el.getAttribute("data-ev").split("|"); openEvidence(pr[0],pr[1]); return }
+    if(!st.rejNote.trim()){ say(L("Escribe qué está mal","Write what is wrong"),"warn"); return }
+    var rr={type:"photoReview",tech:rp.tech,photoId:rid,weekId:rp.weekId,month:rp.month,clean:false,badAngles:bad,note:st.rejNote.trim()}; if(rp.crit)rr.crit=rp.crit;
+    run(d.addMark(rr)).then(function(id){ if(id){ st.rejecting=null; paint() } }); return }
+  if(el.hasAttribute("data-ev")){ var pr=el.getAttribute("data-ev"), sx=splitKey(pr); openEvidence(sx[0],sx[1]); return }
   if(a==="closedrawer"){ closeDrawer(); return }
   if(el.hasAttribute("data-fix")){
     var mid=el.getAttribute("data-fix"), reason=prompt(L("¿Por qué se anula esta marca? Queda registrado.","Why is this mark being cancelled? This is logged."),"");
@@ -59753,22 +60389,55 @@ function onClick(ev){
   if(a==="close"){
     var res=evalNow(monthTechs(st.month));
     if(!confirm(L("¿Cerrar ","Close ")+monthLabel(st.month)+"? "+L("Total: ","Total: ")+money(res.total)+". "+L("El resultado queda congelado.","The result is frozen.")))return;
-    run(d.closeMonth(st.month,res,st.settings),L("Mes cerrado","Month closed")).then(function(){ st.closedFor=""; start() }); return }
-  if(a==="addpart"){ var np=document.getElementById("scNP"), v=np&&np.value.trim(); if(v&&st.settings.parts.indexOf(v)<0){ st.settings.parts.push(v); paint() } return }
-  if(el.hasAttribute("data-rmpart")){ st.settings.parts.splice(+el.getAttribute("data-rmpart"),1); paint(); return }
-  if(a==="savesettings"){ run(d.saveSettings(st.settings),L("Ajustes guardados","Settings saved")); return }
-  if(a==="cam"){ takeVehiclePhoto(); return }
+    run(d.closeMonth(st.month,res,{programStart:st.settings.programStart||"",participants:participants()}),L("Mes cerrado","Month closed")).then(function(){ st.closedFor=""; start() }); return }
+  if(a==="pdfall"){ makeReport(null); return }
+  if(el.hasAttribute("data-pdftech")){ makeReport(el.getAttribute("data-pdftech")); return }
+  if(a==="toggleadd"){ ev.preventDefault(); var e0=editState(); e0.adding.open=!e0.adding.open; paint(); return }
+  if(a==="addcrit"){
+    var e=editState(), ad=e.adding, nm=String(ad.name||"").trim();
+    if(!nm){ say(L("Ponle nombre al criterio","Give the criterion a name"),"warn"); return }
+    var nc={id:S.newCritId(nm,e.crits),name:nm,nameEs:nm,type:ad.type,amount:Math.max(0,+ad.amount||0),tol:Math.max(0,Math.floor(+ad.tol||0)),active:true,builtin:false};
+    if(ad.type==="photos"){ nc.labels=linesOf(ad.labels); if(!nc.labels.length||nc.labels.length>8){ say(L("Escribe de 1 a 8 fotos, una por línea","Write 1 to 8 photos, one per line"),"warn"); return } }
+    if(ad.type==="events")nc.list=linesOf(ad.list);
+    e.crits.push(nc); e.adding={type:ad.type,name:"",amount:25,tol:0,labels:"",list:"",open:false};
+    say(L("Agregado — falta guardar los ajustes","Added — remember to save the settings")); paint(); return }
+  if(a==="reseteit"){ st.edit=null; paint(); return }
+  if(a==="savesettings"){ saveSettingsNow(); return }
+  if(a==="cam"){ openGuide(el.getAttribute("data-crit")||"vehicle"); return }
 }
 function onChange(ev){
   var el=ev.target;
-  if(el.id==="scRP"){ var o=el.value==="__other"; document.getElementById("scROw").hidden=!o; document.getElementById("scRV").innerHTML=verdict(o); return }
+  if(el.id==="scEP"){ var o=el.value==="__other"; document.getElementById("scEOw").hidden=!o; document.getElementById("scEV").innerHTML=verdict(evCrit(),o); return }
   if(el.id==="scMonth"){ st.month=el.value; start(); return }
   if(el.hasAttribute("data-badangle")){ st.rejAngles[el.getAttribute("data-badangle")]=el.checked; return }
-  if(el.hasAttribute("data-am"))st.settings.amount[el.getAttribute("data-am")]=Math.max(0,+el.value||0);
-  if(el.hasAttribute("data-tl"))st.settings.tol[el.getAttribute("data-tl")]=Math.max(0,Math.floor(+el.value||0));
+  var e=st.edit; if(!e)return;
+  if(el.hasAttribute("data-part")){ var t=el.getAttribute("data-part"), i=e.participants.indexOf(t); if(el.checked&&i<0)e.participants.push(t); if(!el.checked&&i>=0)e.participants.splice(i,1); return }
+  if(el.getAttribute("data-se")==="programStart"){ e.programStart=el.value; return }
+  if(el.getAttribute("data-se")==="from"){ e.from=el.value; return }
+  if(el.hasAttribute("data-ce")){ var p=el.getAttribute("data-ce").split("|"), c=e.crits[+p[0]], f=p[1]; if(!c)return;
+    if(f==="active"){ c.active=el.checked; paint(); return }
+    editField(c,f,el.value); return }
+  if(el.hasAttribute("data-add")){ var fa=el.getAttribute("data-add"); e.adding[fa]=el.value; if(fa==="type")paint(); return }
 }
-function onInput(ev){ var el=ev.target; if(el.hasAttribute("data-miss"))st.pendingMiss[el.getAttribute("data-miss")]=el.value; if(el.hasAttribute("data-rejnote"))st.rejNote=el.value }
-document.addEventListener("keydown",function(e){ if(e.key==="Escape")closeDrawer() });
+function editField(c,f,v){
+  if(f==="amount")c.amount=Math.max(0,+v||0);
+  else if(f==="tol")c.tol=Math.max(0,Math.floor(+v||0));
+  else if(f==="name"){ c.name=v; c.nameEs=v }
+  else if(f==="labels")c.labels=linesOf(v);
+  else if(f==="list")c.list=linesOf(v);
+}
+function onInput(ev){ var el=ev.target;
+  if(el.hasAttribute("data-miss"))st.pendingMiss[el.getAttribute("data-miss")]=el.value;
+  if(el.hasAttribute("data-rejnote"))st.rejNote=el.value;
+  var e=st.edit; if(!e)return;
+  if(el.hasAttribute("data-ce")){ var p=el.getAttribute("data-ce").split("|"), c=e.crits[+p[0]]; if(c&&p[1]!=="active")editField(c,p[1],el.value) }
+  if(el.hasAttribute("data-add")&&el.getAttribute("data-add")!=="type")e.adding[el.getAttribute("data-add")]=el.value;
+  if(el.getAttribute("data-se")==="programStart")e.programStart=el.value;
+}
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape")closeDrawer();
+  if((e.key==="Enter"||e.key===" ")&&e.target&&e.target.getAttribute&&e.target.getAttribute("data-card")&&pg()&&pg().contains(e.target)){ e.preventDefault(); openTechDetail(e.target.getAttribute("data-card")) }
+});
 
 /* ---------- mount + register (same pattern as Parts admin, via the registry) ---------- */
 function monta(){
@@ -59786,13 +60455,13 @@ function monta(){
   p.addEventListener("click",onClick); p.addEventListener("change",onChange); p.addEventListener("input",onInput);
   new MutationObserver(function(){ if(!isOpen()){ stop(); closeDrawer() } }).observe(p,{attributes:true,attributeFilter:["class"]});
   if(typeof window.aspRegistrarPantalla==="function")
-    window.aspRegistrarPantalla({idx:IDX,ver:function(){ return !!user()&&!viewer() },alEntrar:function(){ st.view=st.view||"today"; start() }});
+    window.aspRegistrarPantalla({idx:IDX,ver:function(){ return !!user()&&!viewer() },alEntrar:function(){ st.view=st.view||"panel"; start() }});
 }
 if(typeof window.applyAppLang==="function"){
   var _al=window.applyAppLang;
   window.applyAppLang=function(){ var r=_al.apply(this,arguments); try{ var t=document.getElementById("tab"+IDX); if(t)t.textContent=L("Puntajes","Scorecard"); paint() }catch(_e){} return r };
 }
-/* Weekly nudge for techs: Thursday or later, no photo yet → one toast per day.
+/* Weekly nudge for techs: Thursday or later, a photo set still missing → one toast per day.
    One small query per session; sessionStorage only (no localStorage key). */
 function nudge(){
   try{
@@ -59801,9 +60470,15 @@ function nudge(){
     var key="aspScNudge"; if(sessionStorage.getItem(key)===d)return;
     sessionStorage.setItem(key,d); /* claim the day BEFORE the query: updAdmin runs several times at login */
     var wk=S.weekId(d);
-    db.collection("scorecard_photos").where("month","==",S.monthOfWeek(wk)).where("tech","==",me.name).get().then(function(s){
-      var has=s.docs.some(function(x){ return x.data().weekId===wk });
-      if(!has)say(L("Falta la foto del vehículo de esta semana — está en Puntajes.","This week's vehicle photo is still missing — it's in Scorecard."),"warn");
+    D().loadSettings().then(function(s){
+      if(s.programStart&&wk<s.programStart)return;
+      if(Array.isArray(s.participants)&&s.participants.indexOf(me.name)<0)return;
+      var pcs=S.activeCriteria(s,S.monthOfWeek(wk)).filter(function(c){ return c.type==="photos" }); if(!pcs.length)return;
+      return db.collection("scorecard_photos").where("month","==",S.monthOfWeek(wk)).where("tech","==",me.name).get().then(function(snap){
+        var have={}; snap.docs.forEach(function(x){ var v=x.data(); if(v.weekId===wk)have[S.photoCrit(v)]=1 });
+        var miss=pcs.filter(function(c){ return !have[c.id] });
+        if(miss.length)say(L("Faltan fotos de esta semana: ","This week's photos are missing: ")+miss.map(critName).join(", ")+" — "+L("están en Puntajes.","they are in Scorecard."),"warn");
+      });
     }).catch(function(){});
   }catch(_e){}
 }
@@ -59814,7 +60489,8 @@ if(typeof window.updAdmin==="function"){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta); else monta();
 setTimeout(monta,1500);
-window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,openGuide:openGuide,compress200:compress200,flushOutbox:flushOutbox,_putDraft:putDraft,_st:st};
+window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,openGuide:openGuide,compress200:compress200,flushOutbox:flushOutbox,
+  _putDraft:putDraft,_st:st,buildFullReport:buildFullReport,buildTechReport:buildTechReport,openTechDetail:openTechDetail};
 })();
 </script>
 </body>
