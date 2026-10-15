@@ -7196,8 +7196,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.85.0";
-var BUILD_DATE="2026-10-06";
+var APP_VERSION="2.86.0";
+var BUILD_DATE="2026-10-14";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
@@ -60491,6 +60491,761 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 setTimeout(monta,1500);
 window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,openGuide:openGuide,compress200:compress200,flushOutbox:flushOutbox,
   _putDraft:putDraft,_st:st,buildFullReport:buildFullReport,buildTechReport:buildTechReport,openTechDetail:openTechDetail};
+})();
+</script>
+<!-- ══════ VISTA SIMPLE · v2.86.0 (14 oct 2026) ══════
+     Las 20 recomendaciones de «Simplificar TECH-TICKETS», reversibles.
+     Apagar sin borrar: localStorage.simple="0" y recargar.
+     Revertir del todo: borrar estos dos bloques (aspenSimpleSkin + aspenSimpleScript). -->
+<style id="aspenSimpleSkin">
+/* ═══ VISTA SIMPLE · v2.86.0 — estilos. Todo cuelga de la clase body.asp-simple:
+   sin ella (localStorage.simple="0") no aplica ni una regla. El atajo «@ B» de las
+   fuentes se expande a body.asp-simple:not(#_q1):not(#_q2): los dos :not(#id)
+   suben la especificidad por encima de los bloques de octubre, que usan
+   #pg1 + !important. Ver aspenSimpleScript. ═══ */
+
+/* Lo que el script marca como «en silencio»: avisos de todo-bien, ceros, duplicados. */
+body.asp-simple:not(#_q1):not(#_q2) .asp-quiet{display:none!important}
+
+/* ── Diario ────────────────────────────────────────────────────────────── */
+/* R1: el Sprint y «Por etapa» en una sola linea */
+body.asp-simple:not(#_q1):not(#_q2) #pg1 > #bsLaunch{width:calc(100% - 140px)!important;margin:0 8px 12px 0!important;vertical-align:top;padding:11px 16px!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 > #nvLaunch{width:132px!important;margin:0 0 12px!important;padding:11px 10px!important;vertical-align:top;justify-content:center;white-space:nowrap;font-size:var(--fs-sm)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 > #bsDigest .bsd-r{padding:3px 0}
+/* R2: una sola vista de capacidad (la de tecnicos, cerrada por defecto) */
+body.asp-simple:not(#_q1):not(#_q2) #dailyCapacity{display:none!important}
+/* R3: un solo saludo, el de Hoy */
+body.asp-simple:not(#_q1):not(#_q2) #welcomeKPIs,body.asp-simple:not(#_q1):not(#_q2) #pg3 .welcome-hero{display:none!important}
+/* R4: los ceros no ocupan sitio */
+body.asp-simple:not(#_q1):not(#_q2) .dsum-card.dead,body.asp-simple:not(#_q1):not(#_q2) .daily-attn-card.dead{display:none!important}
+/* R5: los avisos de todo-bien se callan */
+body.asp-simple:not(#_q1):not(#_q2) #ops276ConflictBox.ok,body.asp-simple:not(#_q1):not(#_q2) .ops275-flow-summary,body.asp-simple:not(#_q1):not(#_q2) .ops276-preflight.good{display:none!important}
+/* R6: un solo selector de vista */
+body.asp-simple:not(#_q1):not(#_q2):not(.asp-ent) #aspenEntToolbar{display:none!important}
+/* R7: «◆ PENDING QB» repite «Pendiente QB»; un cierre completo no se anuncia; lo que falta va en ambar */
+body.asp-simple:not(#_q1):not(#_q2) .ops275-state.info,body.asp-simple:not(#_q1):not(#_q2) .ops276-closeout.high{display:none!important}
+body.asp-simple:not(#_q1):not(#_q2) .ops276-closeout{background:var(--c-warning-bg,#fff7e6)!important;color:var(--c-warning-fg,#8A6A3B)!important;border-color:transparent!important}
+/* R8: el tecnico no ve la oficina */
+body.asp-simple:not(#_q1):not(#_q2).asp-role-tech #customerDeliverablesDaily{display:none!important}
+
+/* ── El marco ──────────────────────────────────────────────────────────── */
+/* R10: «Synced» solo cuando NO (pending y offline se ven como siempre) */
+body.asp-simple:not(#_q1):not(#_q2) #syncBadge.sync-ok{display:none!important}
+/* R11: los ajustes pasan al menu del avatar */
+body.asp-simple:not(#_q1):not(#_q2) #langToggleBtn,body.asp-simple:not(#_q1):not(#_q2) #densityToggleBtn,body.asp-simple:not(#_q1):not(#_q2) #outdoorToggleBtn,body.asp-simple:not(#_q1):not(#_q2) #themeToggleBtn,body.asp-simple:not(#_q1):not(#_q2) .hdr-sub,body.asp-simple:not(#_q1):not(#_q2) .lock-btn .lock-hint{display:none!important}
+#aspProfile{position:fixed;right:max(12px,env(safe-area-inset-right,0px));z-index:1000020;width:min(300px,calc(100vw - 24px));max-height:calc(100dvh - 90px);overflow:auto;background:var(--cd,#fff);color:var(--ink,#1f1a15);border:1px solid var(--ln,#EBE4DA);border-radius:14px;box-shadow:0 14px 40px rgba(31,26,21,.18);padding:6px;font-family:inherit}
+#aspProfile[hidden]{display:none!important}
+#aspProfile .asp-pf-who{display:flex;flex-direction:column;padding:10px 12px 8px;border-bottom:1px solid var(--ln,#EBE4DA);margin-bottom:4px}
+#aspProfile .asp-pf-who b{font-size:var(--fs-base,15px)}
+#aspProfile .asp-pf-who span{font-size:var(--fs-xs,12px);color:var(--i3,#6F665B)}
+#aspProfile .asp-pf-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:8px 12px;border:0;border-radius:10px;background:none;color:inherit;font:inherit;font-size:var(--fs-sm,13px);text-align:left;cursor:pointer}
+#aspProfile button.asp-pf-row:hover,#aspProfile button.asp-pf-row:focus-visible{background:var(--bg,#FBF8F4);outline:none}
+#aspProfile .asp-pf-row > span:first-child{display:inline-flex;align-items:center;gap:10px}
+#aspProfile .asp-pf-row svg{color:var(--i2,#574E45)}
+#aspProfile .asp-pf-row em{font-style:normal;color:var(--i3,#6F665B);font-size:var(--fs-xs,12px)}
+#aspProfile .asp-pf-out{color:var(--c-danger-fg,#991b1b)}
+#aspProfile .asp-seg{display:inline-flex;border:1px solid var(--ln,#EBE4DA);border-radius:8px;overflow:hidden}
+#aspProfile .asp-seg button{border:0;background:none;color:var(--i2,#574E45);font:inherit;font-weight:700;min-width:36px;min-height:32px;padding:0 8px;cursor:pointer}
+#aspProfile .asp-seg button[aria-pressed="true"]{background:var(--ac,#D4772C);color:#fff}
+/* R12: el chat en la cabecera */
+body.asp-simple:not(#_q1):not(#_q2) #dmFab{display:none!important}
+#aspHdrChat{position:relative;display:inline-flex;align-items:center;justify-content:center}
+#aspHdrChat[hidden]{display:none!important}
+#aspHdrChat .asp-chat-n{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--c-danger-strong,#C0492F);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
+#aspHdrChat .asp-chat-n[hidden]{display:none}
+
+/* ── Navegacion ────────────────────────────────────────────────────────── */
+/* R13: en escritorio, 8 destinos; el resto en «Mas» */
+@media(min-width:901px){ body.asp-simple:not(#_q1):not(#_q2) #aspShell .asp-sec{display:none!important} }
+/* R14: las barras inferiores viejas siguen pintadas debajo del caparazon */
+body.asp-simple:not(#_q1):not(#_q2).asp-shell #bottomNav,body.asp-simple:not(#_q1):not(#_q2).asp-shell #mobNav{visibility:hidden!important;pointer-events:none!important}
+/* «Mas»: un titulo de grupo por grupo, sin huecos */
+body.asp-simple:not(#_q1):not(#_q2) #aspMore .as-grp2:first-of-type{margin-top:4px}
+
+/* ── Numeros ───────────────────────────────────────────────────────────── */
+/* R2 (Calendario): el espejo de «Capacidad del dia» tambien se va */
+body.asp-simple:not(#_q1):not(#_q2) #calCapacity{display:none!important}
+
+/* ── R20 · Cobros: las cuatro puertas del dinero en una franja ──────────── */
+#aspCobrosBar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:4px;background:var(--cd,#fff);border:1px solid var(--ln,#EBE4DA);border-radius:12px}
+#aspCobrosBar button{flex:1 1 120px;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 12px;border:0;border-radius:9px;background:none;color:var(--i2,#574E45);font:inherit;font-size:var(--fs-sm,13px);font-weight:700;cursor:pointer}
+#aspCobrosBar button:hover{background:var(--bg,#FBF8F4)}
+#aspCobrosBar button[aria-current="page"]{background:var(--ac,#D4772C);color:#fff}
+
+/* ── R15 · iconos de linea en vez de emoji (el emoji queda oculto en el DOM) ── */
+body.asp-simple:not(#_q1):not(#_q2) .asp-e{display:none!important}
+.asp-ico{display:inline-flex;align-items:center;vertical-align:-2px;margin-right:6px;color:inherit;flex:none}
+.asp-ico.solo{margin-right:0}
+.asp-ico svg{width:15px;height:15px}
+
+/* ── R16 · color solo para el estado (Diario) ─────────────────────────────
+   Se quedan con color: estado del ticket, garantia, pendiente/bloqueado, el
+   Sprint (accion) y el filtro activo. Lo demas pasa a neutros de la app. */
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tkt-techtxt{color:var(--i3)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .day-lbl{color:var(--i3)!important;background:transparent!important;border-color:transparent!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .day-line{background:var(--ln)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tech-col-cnt{background:var(--ln)!important;color:var(--i2)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .daily-attn-n{color:var(--ink,#1f1a15)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .daily-attn-ico{background:transparent!important;color:var(--i2)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .dsum-card{--dsum-c:var(--ln)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .dsum-card.on{--dsum-c:var(--ac)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tkt-tag.tw{background:var(--bg)!important;color:var(--i2)!important;border-color:var(--ln)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tkt-svc-chip{background:var(--bg)!important;color:var(--i2)!important}
+/* R17 (Diario): los tamanos que no vienen de los bloques de octubre, a la escala */
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .dsum-l,body.asp-simple:not(#_q1):not(#_q2) #pg1 .daily-attn-l,body.asp-simple:not(#_q1):not(#_q2) #pg1 #aplTally,body.asp-simple:not(#_q1):not(#_q2) #pg1 .tech-col-cnt{font-size:var(--fs-xs)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tkt-techtxt,body.asp-simple:not(#_q1):not(#_q2) #pg1 > #bsLaunch{font-size:var(--fs-sm)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tkt h4,body.asp-simple:not(#_q1):not(#_q2) #pg1 .dtl-arrow{font-size:var(--fs-md)!important}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .dsum-n,body.asp-simple:not(#_q1):not(#_q2) #pg1 .daily-attn-n{font-size:var(--fs-xl)!important}
+/* las tarjetas .tkt tenian su propia escala (13.2 / 15.6 / 16.8 px): vuelven a la de la app,
+   y asi tambien obedecen al «Tamano de letra» del menu */
+body.asp-simple:not(#_q1):not(#_q2) .tkt{--fs-xs:inherit;--fs-sm:inherit;--fs-base:inherit;--fs-md:inherit;--fs-lg:inherit;--fs-xl:inherit}
+body.asp-simple:not(#_q1):not(#_q2) #pg1 .tt-cov-clic span{font-size:inherit!important}
+
+/* ── Ajustes de la revision visual del paquete ─────────────────────────── */
+/* telefono: el Sprint en una linea; «Por etapa» queda como icono con su nombre en aria-label */
+@media(max-width:600px){
+  body.asp-simple:not(#_q1):not(#_q2) #pg1 > #bsLaunch{width:calc(100% - 54px)!important;margin-right:6px!important;padding:10px 10px!important;font-size:var(--fs-sm)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.asp-simple:not(#_q1):not(#_q2) #pg1 > #nvLaunch{width:48px!important;padding:10px 0!important}
+  body.asp-simple:not(#_q1):not(#_q2) #pg1 > #nvLaunch .asp-nv-l{display:none}
+}
+/* reglas viejas del tipo «.x span{margin-left:auto}» empujaban el icono al centro */
+body.asp-simple:not(#_q1):not(#_q2) .asp-ico{margin-left:0!important}
+/* Registro: en espanol la pastilla de garantia es mas larga; no debe pisar los dias de espera */
+body.asp-simple:not(#_q1):not(#_q2) #pg5 .zone-card-item h6{padding-right:48px!important}
+</style>
+<script id="aspenSimpleScript">
+/* ═══ VISTA SIMPLE · v2.86.0 (14 oct 2026) ════════════════════════════════
+   Aplica las 20 recomendaciones de «Simplificar TECH-TICKETS» SIN borrar ni
+   reescribir nada de lo que ya existe: oculta, junta, mueve o re-etiqueta
+   desde aqui. Todo el CSS vive bajo body.asp-simple (bloque aspenSimpleSkin).
+
+   Como funciona:
+     · Un solo MutationObserver (childList, todo el body) junta los cambios de
+       una tanda y corre pass() una vez por microtarea. El Diario se repinta
+       cada pocos segundos; asi lo oculto sigue oculto y lo re-etiquetado
+       sigue en espanol sin parpadeo (la microtarea corre antes de pintar).
+     · pass() es idempotente: cada modulo compara antes de escribir. Si no,
+       el observador se despertaria con sus propios cambios para siempre.
+   Interruptor: localStorage.simple="0" y recargar → la app vuelve a la 2.85.0.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+if(window.aspSimple)return;
+
+/* ?simple=1 / ?simple=0 en la direccion enciende o apaga sin consola (y lo recuerda). */
+try{
+  var q=/[?&]simple=([01])\b/.exec(location.search||"");
+  if(q){ if(q[1]==="0")localStorage.setItem("simple","0"); else localStorage.removeItem("simple"); }
+}catch(_e){}
+var ON=true;
+try{ ON=localStorage.getItem("simple")!=="0"; }catch(_e){}
+
+function role(){
+  try{
+    if(typeof currentUser==="undefined"||!currentUser)return "";
+    if(typeof _isViewer==="function"&&_isViewer())return "viewer";
+    return currentUser.role==="tech"?"tech":"office";
+  }catch(_e){ return ""; }
+}
+
+var API={ on:ON, role:role, pass:function(){},
+  off:function(){ try{localStorage.setItem("simple","0")}catch(_e){} location.reload(); },
+  turnOn:function(){ try{localStorage.removeItem("simple")}catch(_e){} location.reload(); } };
+window.aspSimple=API;
+if(!ON)return;
+
+/* ── utilidades ───────────────────────────────────────────────────────── */
+function $(id){ return document.getElementById(id); }
+function quiet(el,yes){ if(!el)return; if(el.classList.contains("asp-quiet")!==!!yes)el.classList.toggle("asp-quiet",!!yes); }
+function setText(el,txt){ if(el&&el.textContent!==txt)el.textContent=txt; }
+function T(en,es){ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }
+
+/* ── modulos: cada uno es function(){} idempotente ─────────────────────── */
+var MODS=[];
+function mod(name,fn){ MODS.push({name:name,fn:fn}); }
+
+mod("rol",function(){
+  var r=role(), b=document.body;
+  ["tech","office","viewer"].forEach(function(k){ var c="asp-role-"+k; if(b.classList.contains(c)!==(r===k))b.classList.toggle(c,r===k); });
+});
+
+/* ── R1 · una sola franja de cobro ────────────────────────────────────────
+   #bsDigest NO se oculta entero: sus otras filas (datos incompletos, esperando
+   partes, garantia inconsistente, deben dejar CC, alertas de pago) son avisos
+   reales. Se callan solo su cabecera («Tu dia», Aa, 🎨, ×), la fila que repite
+   el Sprint y la etiqueta de version. «Vista Nela» se queda, compacto, en la
+   misma linea que el Sprint. */
+mod("cobro",function(){
+  var dig=$("bsDigest");
+  if(dig){
+    var card=dig.firstElementChild;
+    if(card){
+      quiet(card.firstElementChild,true);                       // cabecera Tu dia + Aa + 🎨 + ×
+      var rows=card.querySelectorAll(".bsd-r"), vivos=0;
+      for(var i=0;i<rows.length;i++){
+        var dup=/bsOpen\(/.test(rows[i].getAttribute("onclick")||"");
+        quiet(rows[i],dup); if(!dup)vivos++;
+      }
+      var last=card.lastElementChild;                           // etiqueta aspVer
+      if(last&&last!==card.firstElementChild&&!last.classList.contains("bsd-r"))quiet(last,true);
+      quiet(dig,vivos===0);
+    }
+  }
+  var nv=$("nvLaunch");
+  if(nv){
+    var lbl=T("By stage","Por etapa");
+    if(nv.textContent.trim()!==lbl){
+      var svg=nv.querySelector("svg");
+      nv.innerHTML=(svg?svg.outerHTML:"")+' <span class="asp-nv-l">'+esc(lbl)+'</span>';
+      nv.setAttribute("aria-label",lbl);
+      nv.title=T("Billing board by stage","Tablero de facturación por etapa");
+    }
+  }
+});
+
+/* ── R2 · una sola vista de capacidad: cerrada por defecto ──────────────
+   Solo si el usuario nunca eligio (la llave no existe). Si la abrio, se respeta. */
+function capacidadCerrada(){
+  try{
+    if(localStorage.getItem("aspenDailyTimeline")!==null)return;
+    if(window.AspenOps275&&typeof AspenOps275.toggleCapacity==="function")AspenOps275.toggleCapacity();
+    else localStorage.setItem("aspenDailyTimeline","0");
+  }catch(_e){}
+}
+
+/* ── R4 · los ceros no ocupan sitio (las casillas .dead las oculta el CSS) ── */
+mod("ceros",function(){
+  var w=document.querySelector(".daily-attn-wrap");
+  if(w)quiet(w,!w.querySelector(".daily-attn-card:not(.dead)"));
+});
+
+/* ── R5 · los avisos de «todo bien» se callan ───────────────────────────── */
+mod("todoBien",function(){
+  var cd=$("customerDeliverablesDaily");
+  if(cd)quiet(cd,!!cd.querySelector(".cd-empty"));
+  var ec=$("admErrChip");
+  if(ec)quiet(ec,!!ec.textContent.trim()&&!ec.querySelector("[onclick]"));
+});
+
+/* ── R6 · un solo selector de vista ─────────────────────────────────────
+   La barra Board/Enterprise se oculta (CSS) mientras se esta en la vista normal,
+   y Enterprise entra como un boton mas de la barra de vistas. EN Enterprise la
+   barra de vistas no se pinta, asi que ahi la barra Board/Enterprise se queda
+   visible: nadie queda atrapado (body.asp-ent). */
+function entOn(){ try{ return localStorage.getItem("aspenEntMode")==="1"; }catch(_e){ return false; } }
+mod("selector",function(){
+  var ent=entOn(); if(document.body.classList.contains("asp-ent")!==ent)document.body.classList.toggle("asp-ent",ent);
+  var lenses=document.querySelector("#aspLensBar .apl-lenses");
+  if(!lenses||typeof window.aspenEntToggle!=="function")return;
+  var b=$("aspEntBtn");
+  if(!b){
+    b=document.createElement("button"); b.type="button"; b.id="aspEntBtn";
+    b.onclick=function(){ window.aspenEntToggle(!entOn()); pass(); };
+  }
+  if(b.parentNode!==lenses)lenses.appendChild(b);
+  var on=entOn(), txt=on?T("Normal view","Vista normal"):"Enterprise";
+  setText(b,txt);
+  if(b.getAttribute("aria-pressed")!==String(on))b.setAttribute("aria-pressed",String(on));
+});
+
+/* ── R7 · tarjeta de ticket con menos pastillas ─────────────────────────
+   «◆ PENDING QB» y «Closeout completo» los oculta el CSS. Aqui: la pastilla del
+   tipo por defecto (Service Call) y el nombre «Cierre» para lo que falta. */
+var SVC_DEFAULT=/^(Service Call|Llamada de servicio)$/i;
+mod("pastillas",function(){
+  var chips=document.querySelectorAll("#pg1 .tkt-svc-chip");
+  for(var i=0;i<chips.length;i++)quiet(chips[i],SVC_DEFAULT.test(chips[i].textContent.trim()));
+  var cl=document.querySelectorAll(".ops276-closeout");
+  for(var j=0;j<cl.length;j++){
+    var t=cl[j].textContent, m=/^\s*(?:Closeout|Cierre)\s+(\d+\/\d+)/.exec(t);
+    if(m)setText(cl[j],T("Closeout ","Cierre ")+m[1]);
+  }
+});
+
+/* ── R9 · «LIVE» solo cuando hay alguien ─────────────────────────────── */
+mod("presencia",function(){
+  var ps=$("presenceStrip");
+  if(ps)quiet(ps,!!ps.querySelector(".pres-none"));
+});
+
+/* ── R11 · cabecera: un solo boton de perfil ───────────────────────────────
+   Los cuatro ajustes (idioma, densidad, exterior, tema) y la segunda linea se
+   ocultan (CSS) y pasan a un menu que abre el avatar. Cada opcion hace click()
+   sobre el boton ORIGINAL: ni una linea de logica duplicada. Sin sesion, el
+   avatar sigue haciendo lo de siempre. */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function ico(n,sz){ try{ if(typeof icon==="function")return icon(n,sz||16); }catch(_e){} return ""; }
+function profileItems(){
+  var r=role(), u=(typeof currentUser!=="undefined"&&currentUser)||{};
+  var dark=document.body.classList.contains("dark-mode");
+  var outdoor=document.body.classList.contains("outdoor");
+  var compact=document.body.classList.contains("compact")||document.body.classList.contains("density-compact");
+  var es=(typeof APP_LANG!=="undefined"&&APP_LANG==="es");
+  var fs=1; try{ fs=parseInt(localStorage.getItem("aspFs")||"1",10)||1; }catch(_e){}
+  var rolTxt=u.role==="admin"?"Admin":u.role==="organizer"?T("Organizer","Organizador"):r==="viewer"?T("Viewer","Solo lectura"):T("Tech","Técnico");
+  var h='<div class="asp-pf-who"><b>'+esc(u.name||"")+'</b><span>'+esc(rolTxt)+'</span></div>';
+  h+='<div class="asp-pf-row" data-act="lang"><span>'+ico("languages")+T("Language","Idioma")+'</span><span class="asp-seg">'
+    +'<button type="button" data-lang="es" aria-pressed="'+es+'">ES</button><button type="button" data-lang="en" aria-pressed="'+(!es)+'">EN</button></span></div>';
+  h+='<button type="button" class="asp-pf-row" data-act="theme"><span>'+ico(dark?"sun":"moon")+T("Theme","Tema")+'</span><em>'+(dark?T("Dark","Oscuro"):T("Light","Claro"))+'</em></button>';
+  h+='<button type="button" class="asp-pf-row" data-act="outdoor"><span>'+ico("sun-medium")+T("Outdoor mode","Modo exterior")+'</span><em>'+(outdoor?T("On","Sí"):T("Off","No"))+'</em></button>';
+  h+='<button type="button" class="asp-pf-row" data-act="density"><span>'+ico("rows-3")+T("Compact view","Vista compacta")+'</span><em>'+(compact?T("On","Sí"):T("Off","No"))+'</em></button>';
+  if(typeof window.bsFs==="function")h+='<div class="asp-pf-row" data-act="size"><span>'+ico("type")+T("Text size","Tamaño de letra")+'</span><span class="asp-seg">'
+    +[1,2,3].map(function(n){return '<button type="button" data-fs="'+n+'" aria-pressed="'+(fs===n)+'" style="font-size:'+(10+n*2)+'px">Aa</button>';}).join("")+'</span></div>';
+  if(r==="office"&&typeof changeMyPIN==="function")h+='<button type="button" class="asp-pf-row" data-act="pin"><span>'+ico("key-round")+T("Change my PIN","Cambiar mi PIN")+'</span></button>';
+  if($("syncBadge"))h+='<button type="button" class="asp-pf-row" data-act="sync"><span>'+ico("refresh-cw")+T("Sync status","Estado de sincronización")+'</span></button>';
+  if(u.role==="admin")h+='<button type="button" class="asp-pf-row" data-act="simple"><span>'+ico("layout")+T("Simple view","Vista simple")+'</span><em>'+T("On · turn off","Sí · apagar")+'</em></button>';
+  h+='<button type="button" class="asp-pf-row asp-pf-out" data-act="logout"><span>'+ico("log-out")+T("Sign out","Salir")+'</span></button>';
+  return h;
+}
+function profileEl(){
+  var m=$("aspProfile");
+  if(!m){
+    m=document.createElement("div"); m.id="aspProfile"; m.setAttribute("role","menu"); m.hidden=true;
+    document.body.appendChild(m);
+    m.addEventListener("click",function(ev){
+      var t=ev.target;
+      var lang=t.closest&&t.closest("[data-lang]"); if(lang){ if(typeof setAppLang==="function")setAppLang(lang.getAttribute("data-lang")); profileOpen(true); return; }
+      var fsb=t.closest&&t.closest("[data-fs]"); if(fsb){ window.bsFs(parseInt(fsb.getAttribute("data-fs"),10)); profileOpen(true); return; }
+      var row=t.closest&&t.closest("button[data-act]"); if(!row)return;
+      var a=row.getAttribute("data-act"), map={theme:"themeToggleBtn",outdoor:"outdoorToggleBtn",density:"densityToggleBtn"};
+      if(map[a]){ var b=$(map[a]); if(b)b.click(); profileOpen(true); return; }
+      profileOpen(false);
+      if(a==="pin"&&typeof changeMyPIN==="function")changeMyPIN();
+      else if(a==="sync"){ var sb=$("syncBadge"); if(sb)sb.click(); }
+      else if(a==="simple")API.off();
+      else if(a==="logout"&&typeof toggleAdmin==="function")toggleAdmin();
+    });
+  }
+  return m;
+}
+function profileOpen(on){
+  var m=profileEl();
+  if(on){
+    m.innerHTML=profileItems();
+    var h=document.querySelector(".hdr"), top=h?Math.max(0,h.getBoundingClientRect().bottom)+6:60;
+    m.style.top=top+"px";
+    m.hidden=false;
+  }else m.hidden=true;
+}
+window.addEventListener("click",function(ev){
+  var t=ev.target;
+  if(t&&t.closest&&t.closest("#lockBtn")){
+    if(typeof currentUser==="undefined"||!currentUser)return;           // sin sesion: lo de siempre
+    ev.stopPropagation(); ev.preventDefault();
+    profileOpen(profileEl().hidden);
+    return;
+  }
+  var m=$("aspProfile");
+  if(m&&!m.hidden&&!(t&&t.closest&&t.closest("#aspProfile")))m.hidden=true;
+},true);
+document.addEventListener("keydown",function(ev){ if(ev.key==="Escape"){ var m=$("aspProfile"); if(m&&!m.hidden)m.hidden=true; } });
+mod("avatar",function(){
+  var lb=$("lockBtn"); if(!lb)return;
+  if(typeof currentUser!=="undefined"&&currentUser){
+    var t=T("Profile and settings","Perfil y ajustes");
+    if(lb.title!==t)lb.title=t;
+    if(lb.getAttribute("aria-haspopup")!=="menu")lb.setAttribute("aria-haspopup","menu");
+  }
+});
+
+/* ── R12 · el chat deja de flotar ───────────────────────────────────────────
+   #dmFab se oculta (CSS) y un boton en la cabecera hace lo mismo que su toque
+   (_dmMakeDraggable abre en mouseup: abrir o cerrar el panel). El numero de no
+   leidos se copia de #dmBadge. Solo aparece si el flotante apareceria. */
+mod("chat",function(){
+  var fab=$("dmFab"), lb=$("lockBtn");
+  var b=$("aspHdrChat");
+  if(!fab||!lb){ if(b)b.hidden=true; return; }
+  if(!b){
+    b=document.createElement("button"); b.type="button"; b.id="aspHdrChat"; b.className="theme-btn";
+    b.innerHTML=(ico("message-circle",19)||"💬")+'<span class="asp-chat-n" hidden></span>';
+    b.onclick=function(){
+      var pn=$("dmPanel");
+      if(pn&&pn.style.display==="flex"){ if(typeof closeTeamChat==="function")closeTeamChat(); }
+      else if(typeof _dmOpenPanel==="function")_dmOpenPanel();
+    };
+    watchChat(fab);
+  }
+  if(b.nextElementSibling!==lb||b.parentNode!==lb.parentNode)lb.parentNode.insertBefore(b,lb);
+  var show=fab.style.display!=="none"&&role()!=="viewer";
+  if(b.hidden===show)b.hidden=!show;
+  var t=T("Team chat","Chat del equipo"); if(b.title!==t){ b.title=t; b.setAttribute("aria-label",t); }
+  var bd=$("dmBadge"), n=b.querySelector(".asp-chat-n");
+  var cnt=(bd&&bd.style.display!=="none")?bd.textContent.trim():"";
+  if(n){ if(n.textContent!==cnt)n.textContent=cnt; if(n.hidden===!!cnt)n.hidden=!cnt; }
+});
+function watchChat(fab){
+  try{
+    var mo=new MutationObserver(schedule);
+    mo.observe(fab,{attributes:true,attributeFilter:["style"],subtree:true,childList:true,characterData:true});
+  }catch(_e){}
+}
+
+/* ── R13 / R14 · navegacion ────────────────────────────────────────────────
+   El riel y la barra del telefono los pinta aspenShellScript a partir del
+   #tabBar (y los repinta en cada cambio de contador). Aqui solo se ajusta lo
+   pintado: en escritorio quedan 8 destinos y el resto va a «Mas»; los nombres
+   se acortan donde no caben; los grupos salen una vez y en espanol; las dos
+   barras inferiores viejas, que seguian pintadas debajo, dejan de recibir toques. */
+var MAIN_PRIO=["tab16","tab1","tab4","tab5","tab6","tab8","tab0","tab3","tab10","tab12","tab18"], MAIN_MAX=8;
+var GRUPO={tab0:"work",tab4:"work",tab5:"work",tab1:"work",tab2:"work",tab12:"work",tab18:"work",tab16:"work",
+  tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",tab17:"manage",
+  tab10:"tools",tab9:"tools",tab7:"tools"};
+function grpTitle(g){ return g==="manage"?T("Management","Gestión"):g==="tools"?T("Tools","Herramientas"):T("Work","Trabajo"); }
+function isPhone(){ try{ return window.matchMedia("(max-width:900px)").matches; }catch(_e){ return window.innerWidth<=900; } }
+function visibleTabs(){
+  var bar=$("tabBar"); if(!bar)return [];
+  return Array.prototype.filter.call(bar.querySelectorAll(".tab"),function(t){ return t.id&&!t.classList.contains("hidden"); }).map(function(t){ return t.id; });
+}
+function mainSet(){
+  var vis=visibleTabs(), out=[];
+  MAIN_PRIO.forEach(function(id){ if(out.length<MAIN_MAX&&vis.indexOf(id)>=0)out.push(id); });
+  return out;
+}
+function tabName(id){
+  var t=$(id); if(!t)return "";
+  var x=""; Array.prototype.forEach.call(t.childNodes,function(n){ if(n.nodeType===3)x+=n.nodeValue; });
+  return x.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu,"").trim();
+}
+function navLabel(id,phone){
+  var tech=role()==="tech";
+  if(id==="tab8")return T("Payments","Cobros");
+  if(id==="tab1")return tech?(phone?"Tickets":T("My tickets","Mis tickets")):T("Daily","Diario");
+  if(id==="tab16")return T("Today","Hoy");
+  if(!phone)return null;
+  return ({tab0:T("Report","Reporte"),tab4:T("Schedule","Agenda"),tab10:T("Tools","Kit"),tab5:T("Log","Registro"),
+    tab6:T("Customers","Clientes"),tab12:"Coaching",tab3:"Admin",tab18:T("Scores","Puntajes")})[id]||null;
+}
+mod("nav",function(){
+  var sh=$("aspShell"); if(!sh)return;
+  var phone=isPhone(), main=mainSet(), vis=visibleTabs();
+  var sec=vis.filter(function(id){ return main.indexOf(id)<0; });
+  var items=sh.querySelectorAll(".as-i[data-tab]");
+  for(var i=0;i<items.length;i++){
+    var b=items[i], id=b.getAttribute("data-tab");
+    var isSec=main.indexOf(id)<0;
+    if(b.classList.contains("asp-sec")!==isSec)b.classList.toggle("asp-sec",isSec);
+    var l=b.querySelector(".as-lbl"), want=navLabel(id,phone);
+    if(l&&want){ setText(l,want); if(b.title!==want)b.title=want; }
+  }
+  /* titulos de grupo: en espanol, y fuera si en escritorio se quedaron vacios */
+  var gs=sh.querySelectorAll(".as-grp");
+  for(var j=0;j<gs.length;j++){
+    var g=gs[j], raw=g.getAttribute("data-g")||"";
+    if(!raw){ var tx=g.textContent.trim().toLowerCase(); raw=/manage|gesti/.test(tx)?"manage":/tool|herram/.test(tx)?"tools":"work"; g.setAttribute("data-g",raw); }
+    setText(g,grpTitle(raw));
+    var n=g.nextElementSibling, alive=false;
+    while(n&&!n.classList.contains("as-grp")){ if(n.matches(".as-i[data-tab]")&&!n.classList.contains("asp-sec")){ alive=true; break; } n=n.nextElementSibling; }
+    if(g.classList.contains("asp-sec")!==!alive)g.classList.toggle("asp-sec",!alive);
+  }
+  var mb=$("aspMoreBtn");
+  if(mb){ var none=sec.length===0; if(mb.classList.contains("asp-sec")!==none)mb.classList.toggle("asp-sec",none);
+    var ml=mb.querySelector(".as-lbl"); if(ml)setText(ml,T("More","Más")); }
+  masSheet(sh,main,phone);
+});
+/* «Mas»: se reescribe ordenado por grupo, con los mismos botones [data-tab] —
+   la delegacion de clics que puso abreMas() en #aspMore sigue funcionando. */
+function masSheet(sh,main,phone){
+  var m=$("aspMore"); if(!m||!m.classList.contains("on"))return;
+  var key=(phone?"p":"d")+"|"+main.join(",")+"|"+visibleTabs().join(",")+"|"+(typeof APP_LANG!=="undefined"?APP_LANG:"");
+  if(m.getAttribute("data-asp")===key)return;
+  var inBar=[];
+  if(phone)Array.prototype.forEach.call(sh.querySelectorAll(".as-i.as-primary[data-tab]"),function(b){ inBar.push(b.getAttribute("data-tab")); });
+  var list=visibleTabs().filter(function(id){ return phone?inBar.indexOf(id)<0:main.indexOf(id)<0; });
+  var h='<div class="as-sheet"><h3>'+esc(T("More","Más"))+'</h3>';
+  ["work","manage","tools"].forEach(function(g){
+    var del=list.filter(function(id){ return (GRUPO[id]||"work")===g; });
+    if(!del.length)return;
+    h+='<div class="as-grp2">'+esc(grpTitle(g))+'</div>';
+    del.forEach(function(id){
+      var rb=sh.querySelector('.as-i[data-tab="'+id+'"]');
+      var icoH=rb&&rb.querySelector(".as-ico")?rb.querySelector(".as-ico").innerHTML:"";
+      var lab=navLabel(id,false)||tabName(id)||id;
+      var bd=rb&&rb.querySelector(".as-b:not([hidden])")?rb.querySelector(".as-b").textContent.trim():"";
+      h+='<button type="button" class="as-m" data-tab="'+id+'"><span class="as-ico">'+icoH+'</span><span>'+esc(lab)+'</span>'+(bd?'<span class="as-b">'+esc(bd)+'</span>':'')+'</button>';
+    });
+  });
+  m.innerHTML=h+'</div>';
+  m.setAttribute("data-asp",key);
+}
+window.addEventListener("resize",function(){ schedule(); });
+
+/* el riel abierto por defecto en pantallas anchas — una sola vez: si despues
+   alguien lo contrae, aspShellPin desaparece y aspSimplePinInit impide volver
+   a fijarlo. Va aqui arriba (no en start) para ganarle al DOMContentLoaded del
+   caparazon, que lee la llave al montar. */
+try{
+  if(localStorage.getItem("aspSimplePinInit")===null){
+    localStorage.setItem("aspSimplePinInit","1");
+    if(window.innerWidth>=1280)localStorage.setItem("aspShellPin","1");
+  }
+}catch(_e){}
+
+/* ── R18 · un idioma ───────────────────────────────────────────────────────
+   El traductor de la app (_i18nPass + TR) es bueno, pero corre despues de
+   ciertos repintados, no de todos: los bloques de octubre repintan el Diario
+   cada pocos segundos y lo nuevo sale en ingles hasta la siguiente pasada
+   (en las capturas la misma pastilla salia «ENVIADO» y luego «SUBMITTED").
+   Aqui: (1) las frases que faltaban en TR — solo se AGREGAN, nunca se pisa una
+   que ya exista; (2) cada nodo nuevo dentro de las pantallas de la lista se
+   traduce en la misma microtarea en que aparece, antes de pintarse; (3) textos
+   con numeros o con un emoji delante, que TR no puede casar letra por letra.
+   Todo guarda el original igual que _i18nPass (node.__i18nEn / data-i18o-*),
+   asi que volver a EN lo deshace el propio traductor de la app. Nada fuera de
+   ESCOPO (Cobros de Nela, el papel del cliente, el chat) se toca. */
+var ESCOPO=["pg0","pg1","pg3","pg4","pg5","pg6","pg16","pg18","aspShell","aspMore","presenceStrip","tabBar","aspProfile"];
+/* de la hoja del ticket solo las etiquetas fijas, nunca los campos ni las notas */
+var ESCOPO_SEL="#tktDetailBg .dt-sec-t,#tktDetailBg .dtv2-colhead,#tktDetailBg .dtv2-top,#tktDetailBg .dt-chip,#tktDetailBg #tktDetailActions,#tktDetailBg a.dtv2-more";
+var MAS_TR={
+  "(select all)":"(seleccionar todos)","⏱ Enter":"⏱ Ingresa la hora de","time to continue":"para continuar",
+  "Add a new technician":"Agregar un técnico nuevo",
+  "Board":"Tablero","Grid":"Tabla","Charts":"Gráficas","Schedule":"Agenda",
+  "Reschedule":"Reagendar","Warranty":"Garantía","Full":"Completa","Submitted":"Enviado",
+  "◆ WAITING FOR PART":"◆ ESPERANDO PARTE","◆ NEEDS 2ND TECH":"◆ FALTA 2.º TÉCNICO","◆ WAITING FOR CUSTOMER":"◆ ESPERANDO AL CLIENTE",
+  "◆ RETURN · NEEDS DATE":"◆ VUELTA · FALTA FECHA","◆ NEEDS REPORT":"◆ FALTA REPORTE","◆ PAY FIRST":"◆ COBRAR PRIMERO",
+  "◆ PENDING QB":"◆ PENDIENTE QB","● READY TO GO":"● LISTO","● READY":"● LISTO",
+  "Volume":"Volumen","Team":"Equipo","Reports":"Reportes","Operations":"Operación","Reports → QB":"Reportes → QB",
+  "Team Wk":"Equipo sem.","Route":"Ruta","🌴 Time Off":"🌴 Días libres","💲 No warranty":"💲 Sin garantía","🛡️ Full · exp":"🛡️ Completa · vencida",
+  "Technician time off / vacation":"Días libres / vacaciones del técnico",
+  "No manufacturer warranty — this visit is billable":"Sin garantía de fábrica — esta visita se cobra",
+  "Marked under warranty but the coverage window has expired — verify before billing":"Marcada con garantía pero la cobertura ya venció — verifica antes de cobrar",
+  "🗺️ Map & Stats":"🗺️ Mapa y estadísticas","Load":"Carga","Rescheduled — needs new date":"Reagendadas — falta fecha",
+  "parts":"partes","customer":"cliente","✅ Part arrived":"✅ Llegó la parte","📅 Already scheduled:":"📅 Ya agendada:",
+  "Same job — use it":"Mismo trabajo — usar esta","Different job":"Otro trabajo","↻ RESCHEDULE":"↻ REAGENDAR","Unassigned ·":"Sin asignar ·",
+  "🗂️ Spa Data Worklist":"🗂️ Datos de spa por completar",
+  "— add install dates so warranty auto-locks (tap to open)":"— agrega la fecha de instalación para que la garantía se fije sola (toca para abrir)",
+  "Select a customer":"Elige un cliente","URGENT":"URGENTE","Toca para filtrar Daily":"Toca para filtrar el Diario",
+  "Customer & Address":"Cliente y dirección","Flags & Payment":"Marcas y pago","Notes & Updates":"Notas y novedades",
+  "Visit & Warranty":"Visita y garantía","Billing":"Facturación","Text Customer":"Mensaje al cliente",
+  "Ask for a Google review":"Pedir reseña en Google","Pay before service":"Cobrar antes del servicio",
+  "Pick a customer from the list to see their information, spa details, and full service history.":"Elige un cliente de la lista para ver su información, los datos del spa y todo su historial."
+};
+var MESES={January:"enero",February:"febrero",March:"marzo",April:"abril",May:"mayo",June:"junio",July:"julio",August:"agosto",September:"septiembre",October:"octubre",November:"noviembre",December:"diciembre"};
+var FRASES=[
+  [/^(\d+) customers$/,"$1 clientes"],
+  [/^\+(\d+) more$/,"+$1 más"],
+  [/^🔁 Service warranty: (\d+)d left$/,"🔁 Garantía de servicio: $1 d"],
+  [/^(.*)costliest to ignore first$/,"$1primero lo que más cuesta ignorar"],
+  [/^First-time fix · (.+)$/,"Arreglo a la primera · $1"],
+  [/^Sent back · (.+)$/,"Devueltas · $1"],
+  [/^🔧 waiting on part · today$/,"🔧 esperando parte · hoy"],
+  [/^🔧 waiting on part · (\d+)d$/,"🔧 esperando parte · $1 d"],
+  [/^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})$/,function(_m,mo,y){ return MESES[mo]+" "+y; }],
+  [/^90-day service warranty on this visit\. A callback for the same problem before (.+) is a covered, no-charge return\.$/,"Garantía de servicio de 90 días: una vuelta por el mismo problema antes del $1 está cubierta y no se cobra."],
+  [/^Waiting for (.+)$/,"Esperando $1"],
+  [/^(\d+) visit$/,"$1 visita"],[/^(\d+) visits$/,"$1 visitas"],
+  [/^Last: (.+)$/,"Última: $1"],
+  [/^Service warranty: (\d+)d left$/,"Garantía de servicio: $1 d"],
+  [/^Route · (Sun|Mon|Tue|Wed|Thu|Fri|Sat), (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})$/,function(_m,d,mo,n){
+    return "Ruta · "+({Sun:"dom",Mon:"lun",Tue:"mar",Wed:"mié",Thu:"jue",Fri:"vie",Sat:"sáb"})[d]+" "+n+" "+({Jan:"ene",Feb:"feb",Mar:"mar",Apr:"abr",May:"may",Jun:"jun",Jul:"jul",Aug:"ago",Sep:"sep",Oct:"oct",Nov:"nov",Dec:"dic"})[mo]; }]
+];
+var EMOJI_DELANTE=/^((?:\p{Extended_Pictographic}|️|‍)+\s+)(.+)$/u;
+function trTexto(t){
+  if(typeof TR==="undefined")return null;
+  if(TR[t]!=null)return TR[t];
+  var m=EMOJI_DELANTE.exec(t); if(m&&TR[m[2]]!=null)return m[1]+TR[m[2]];
+  for(var i=0;i<FRASES.length;i++){ if(FRASES[i][0].test(t))return t.replace(FRASES[i][0],FRASES[i][1]); }
+  return null;
+}
+function enEscopo(n){
+  var el=n.nodeType===1?n:n.parentElement;
+  if(!el||!el.closest)return false;
+  if(el.closest("[data-no-i18n],script,style,textarea"))return false;
+  for(var i=0;i<ESCOPO.length;i++){ var r=$(ESCOPO[i]); if(r&&(r===el||r.contains(el)))return true; }
+  return !!el.closest(ESCOPO_SEL);
+}
+function traduceNodo(root){
+  if(typeof APP_LANG==="undefined"||APP_LANG!=="es")return;
+  if(root.nodeType===3){ traduceTexto(root); return; }
+  if(root.nodeType!==1)return;
+  try{ if(typeof _i18nPass==="function")_i18nPass(root); }catch(_e){}
+  var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null,false), tn, lista=[];
+  while((tn=w.nextNode()))lista.push(tn);
+  lista.forEach(traduceTexto);
+  var els=root.querySelectorAll?root.querySelectorAll("[title]"):[];
+  Array.prototype.forEach.call(els,function(el){
+    if(el.getAttribute("data-i18o-title")!=null||(el.closest&&el.closest("[data-no-i18n]")))return;
+    var cur=el.getAttribute("title"), t=(cur||"").trim(), v=t?trTexto(t):null;
+    if(v!=null&&v!==t){ el.setAttribute("data-i18o-title",cur); el.setAttribute("title",cur.replace(t,v)); }
+  });
+}
+function traduceTexto(node){
+  if(node.__i18nEn!=null)return;
+  var raw=node.nodeValue; if(!raw)return;
+  var t=raw.trim(); if(!t)return;
+  var pe=node.parentElement; if(pe&&pe.closest&&pe.closest("[data-no-i18n],script,style,textarea"))return;
+  var v=trTexto(t); if(v==null||v===t)return;
+  node.__i18nEn=raw; node.nodeValue=raw.replace(t,v);
+}
+function sumarTR(){
+  if(typeof TR==="undefined")return;
+  Object.keys(MAS_TR).forEach(function(k){ if(TR[k]==null)TR[k]=MAS_TR[k]; });
+}
+var DIRTY=[];
+function idiomaPendiente(){
+  if(!DIRTY.length)return;
+  var lote=DIRTY; DIRTY=[];
+  if(typeof APP_LANG==="undefined"||APP_LANG!=="es")return;
+  for(var i=0;i<lote.length;i++){ var n=lote[i]; if(n.isConnected&&enEscopo(n))traduceNodo(n); }
+}
+function idiomaCompleto(){
+  if(typeof APP_LANG!=="undefined"&&APP_LANG==="es"){
+    ESCOPO.forEach(function(id){ var r=$(id); if(r)traduceNodo(r); });
+    Array.prototype.forEach.call(document.querySelectorAll(ESCOPO_SEL),traduceNodo);
+  }
+  iconos();
+}
+(function(){
+  /* al cambiar de idioma la app corre su propio pase; aqui solo se completa */
+  var o=window.setAppLang;
+  if(typeof o==="function"&&!o.__asp){
+    window.setAppLang=function(){ var r=o.apply(this,arguments); try{ pass(); idiomaCompleto(); }catch(_e){} return r; };
+    window.setAppLang.__asp=1;
+  }
+})();
+
+/* ── R19 · un numero, un nombre (solo nombres; ninguna definicion cambia) ── */
+mod("numeros",function(){
+  var bs=$("bsLaunch");
+  if(bs){
+    var cnt=bs.querySelector(".bs-cnt"), tn=cnt&&cnt.nextSibling;
+    if(tn&&tn.nodeType===3&&/pendientes/.test(tn.nodeValue))tn.nodeValue=tn.nodeValue.replace("pendientes",T("to bill","por facturar"));
+  }
+  var tl=$("aplTally");                      // el dinero por facturar ya esta en el Sprint
+  if(tl&&tl.textContent.indexOf("·")>=0){ var b=tl.querySelector("b"); if(b)tl.innerHTML="<b>"+esc(b.textContent)+"</b> tickets"; }
+  var cap=document.querySelector("#dailyTechTimeline .dtl-head small");
+  if(cap){ var m=/^(\d+)\s+(?:paradas?|stops?)\s+·/.exec(cap.textContent.trim());
+    if(m){ var n=+m[1]; setText(cap,n+" "+(n===1?T("scheduled visit","cita agendada"):T("scheduled visits","citas agendadas"))); } }
+  var kl=document.querySelectorAll("#pg3 .kpi-lbl");
+  for(var i=0;i<kl.length;i++){ if(/^(Today.s Stops|Paradas de hoy)$/i.test(kl[i].textContent.trim()))setText(kl[i],T("Today's visits","Citas de hoy")); }
+});
+
+/* ── R20 · un solo lugar para el dinero ────────────────────────────────────
+   Sin tocar el tablero de Nela: una franja arriba de pg8 con las cuatro puertas
+   que hoy estan repartidas (Sprint, tablero por etapa, este seguimiento y las
+   facturas). Cada boton llama a la funcion que ya existia, buscada en el momento
+   del clic. render20 reescribe pg8 entero; el observador la vuelve a poner. */
+mod("cobros",function(){
+  var pg=$("pg8"); if(!pg)return;
+  var bar=$("aspCobrosBar");
+  if(role()!=="office"){ if(bar)bar.remove(); return; }
+  if(!bar){
+    bar=document.createElement("nav"); bar.id="aspCobrosBar";
+    bar.addEventListener("click",function(ev){
+      var b=ev.target.closest&&ev.target.closest("[data-go]"); if(!b)return;
+      var go=b.getAttribute("data-go"), fn={bill:"bsOpen",stage:"nvOpen",invoices:"pf20Archive"}[go];
+      if(fn&&typeof window[fn]==="function")window[fn]();
+    });
+  }
+  var key=typeof APP_LANG!=="undefined"?APP_LANG:"";
+  if(bar.getAttribute("data-k")!==key){
+    var P=[["bill",T("To bill","Por facturar"),"zap"],["stage",T("By stage","Por etapa"),"layout-dashboard"],
+           ["collect",T("To collect","Por cobrar"),"hand-coins"],["invoices",T("Invoices","Facturas"),"file-text"]];
+    bar.setAttribute("aria-label",T("Payments","Cobros"));
+    bar.innerHTML=P.map(function(p){ return '<button type="button" data-go="'+p[0]+'"'+(p[0]==="collect"?' aria-current="page"':'')+'>'+ico(p[2],15)+'<span>'+esc(p[1])+'</span></button>'; }).join("");
+    bar.setAttribute("data-k",key);
+  }
+  if(pg.firstElementChild!==bar)pg.insertBefore(bar,pg.firstChild);
+});
+
+/* ── R15 · un solo juego de iconos ──────────────────────────────────────────
+   Solo etiquetas de interfaz de esta lista, nunca texto escrito por personas.
+   Si una etiqueta empieza con un emoji del mapa, delante se pone el icono de
+   linea y el emoji se QUEDA en el DOM, oculto (span.asp-e): el textContent no
+   cambia, asi que el codigo que lo lee (p. ej. el pulido de Route, que busca
+   «💲» al principio) sigue funcionando igual. Corre DESPUES de traducir, para
+   que el traductor vea la frase entera. */
+var ICONO_SEL=["#pg1 .daily-attn-title","#pg1 .daily-attn-ico","#pg1 .dtl-head","#pg1 .tkt-tag",
+  "#pg4 #timeOffBtn","#pg4 .ev-meta","#pg4 .ev-flags","#pg5 .slog-stab","#pg5 .slog-loggroup .lbl","#pg5 .slc","#pg5 .zone-card-item h6",
+  "#pg6 summary","#pg6 #cptToggle","#pg6 .qb-cust-search-ico","#pg3 #admBRail button","#pg3 .admBSecHdr","#pg18 .sc-btn","#pg18 .sc-pend",
+  "#tktDetailBg .dtv2-top","#tktDetailBg .dtv2-colhead","#tktDetailBg .dt-sec-t","#tktDetailBg .dt-chip","#tktDetailBg #tktDetailTitle",
+  "#tktDetailBg a.dtv2-more","#tktDetailBg .sms-tpl","#tktDetailBg #tktDetailActions button","#tktDetailBg .dtv2-colW .dt-sec button","#tktDetailBg .dtv2-colW .dt-sec span"].join(",");
+var EMO={"⚑":"flag","👤":"user-round","📝":"file-pen-line","💳":"credit-card","👥":"users",
+  "🧭":"compass","🔁":"shield-check","🌴":"palmtree","💲":"circle-dollar-sign","🛡":"shield",
+  "🔥":"flame","📋":"clipboard-list","📞":"phone","🗺":"map","🔧":"wrench","✅":"circle-check",
+  "📅":"calendar-check","🗂":"folder-open","📊":"chart-column","🔍":"search","📈":"trending-up",
+  "🏆":"trophy","🧠":"brain","⚙":"settings","📄":"file-text","☐":"square","📷":"camera",
+  "⚠":"triangle-alert","🧾":"receipt","📍":"map-pin","📇":"contact","🏷":"tag","🗓":"calendar",
+  "🛁":"bath","💵":"banknote","✨":"sparkles","⭐":"star","🚗":"car","🚚":"truck","📱":"smartphone","📌":"pin"};
+var EMO_RE=/^(\s*)(\p{Extended_Pictographic})(️?)\s*/u;
+function iconos(){
+  if(typeof icon!=="function")return;
+  var hosts=document.querySelectorAll(ICONO_SEL);
+  for(var h=0;h<hosts.length;h++){
+    var w=document.createTreeWalker(hosts[h],NodeFilter.SHOW_TEXT,null,false), tn, lista=[];
+    while((tn=w.nextNode()))lista.push(tn);
+    for(var i=0;i<lista.length;i++){
+      var node=lista[i], m=EMO_RE.exec(node.nodeValue||"");
+      if(!m||!EMO[m[2]])continue;
+      var pe=node.parentElement; if(!pe||pe.closest(".asp-e,textarea,[contenteditable]"))continue;
+      var svg=""; try{ svg=icon(EMO[m[2]],15); }catch(_e){}
+      if(!svg)continue;
+      var ic=document.createElement("span"); ic.className="asp-ico"; ic.setAttribute("aria-hidden","true"); ic.innerHTML=svg;
+      var em=document.createElement("span"); em.className="asp-e"; em.hidden=true; em.textContent=m[2]+m[3];
+      pe.insertBefore(ic,node); pe.insertBefore(em,node);
+      node.nodeValue=node.nodeValue.slice(m[0].length);
+      if(node.__i18nEn!=null){ var mm=EMO_RE.exec(node.__i18nEn); if(mm)node.__i18nEn=node.__i18nEn.slice(mm[0].length); }
+      if(!node.nodeValue.trim())ic.classList.add("solo");
+    }
+  }
+}
+
+/* ── R17 · la escala de letra, otra vez de una pieza ──────────────────────
+   Los bloques de octubre escriben ~290 tamanos en px a mano (y no responden al
+   «Tamano de letra» del menu). Al cargar se reescribe el TEXTO de esas hojas:
+   cada font-size en px pasa al token --fs-* mas cercano. Los rotulos de menos de
+   11 px no se tocan. El original queda en memoria: letra(false) lo repone. */
+var LETRA_IDS=["dailyOpsV274Styles","dailyOfficeTypographyV2748","aspenOpsV275Styles","aspenOpsV2751HumanPolish",
+  "ops2753ActivityEnrichedStyles","ops2754ActivityScrollChainFixStyle","aspenOpsV276Styles","ops2762SyncScheduledStyle",
+  "customerDeliverablesV2764Style","customerDeliverablesOfficeV2765","customerDeliverablesServiceLogV2767","aspenV281Look","aspenScorecardSkin"];
+function tokenDe(px){
+  if(px<11)return null;
+  if(px<=12.5)return "var(--fs-xs)"; if(px<=14)return "var(--fs-sm)"; if(px<=15.5)return "var(--fs-base)";
+  if(px<=17)return "var(--fs-md)"; if(px<=19.5)return "var(--fs-lg)"; if(px<=23.5)return "var(--fs-xl)"; return "var(--fs-2xl)";
+}
+var LETRA_ORIG={};
+function letra(on){
+  LETRA_IDS.forEach(function(id){
+    var el=$(id); if(!el||el.tagName!=="STYLE")return;
+    if(LETRA_ORIG[id]==null)LETRA_ORIG[id]=el.textContent;
+    var want=on?LETRA_ORIG[id].replace(/font-size\s*:\s*([0-9.]+)px/g,function(m,n){ var t=tokenDe(parseFloat(n)); return t?"font-size:"+t:m; }):LETRA_ORIG[id];
+    if(el.textContent!==want)el.textContent=want;
+  });
+}
+API.letra=letra;
+
+/* ── motor ────────────────────────────────────────────────────────────── */
+var running=false;
+function pass(){
+  if(running)return; running=true;
+  try{
+    for(var i=0;i<MODS.length;i++){ try{ MODS[i].fn(); }catch(e){ if(!MODS[i].warned){ MODS[i].warned=1; try{console.warn("[simple:"+MODS[i].name+"]",e);}catch(_e){} } } }
+    try{ idiomaPendiente(); }catch(e){ try{console.warn("[simple:idioma]",e);}catch(_e){} }
+    try{ iconos(); }catch(e){ try{console.warn("[simple:iconos]",e);}catch(_e){} }
+  }finally{ running=false; }
+}
+API.pass=pass;
+
+var queued=false;
+function schedule(){ if(queued)return; queued=true; Promise.resolve().then(function(){ queued=false; pass(); }); }
+function onMut(recs){
+  for(var i=0;i<recs.length;i++){ var a=recs[i].addedNodes; for(var j=0;j<a.length;j++)DIRTY.push(a[j]); }
+  if(DIRTY.length>4000)DIRTY=DIRTY.slice(-4000);
+  schedule();
+}
+
+function start(){
+  document.body.classList.add("asp-simple");
+  capacidadCerrada();
+  sumarTR();
+  letra(true);
+  pass();
+  idiomaCompleto();
+  try{ new MutationObserver(onMut).observe(document.body,{childList:true,subtree:true}); }catch(_e){}
+  /* el login, el rol y el idioma cambian sin tocar el DOM de forma visible */
+  setInterval(function(){ pass(); idiomaCompleto(); },4000);
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start); else start();
 })();
 </script>
 </body>
