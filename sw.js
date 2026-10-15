@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.86.0";  // 14 oct 2026 · vista simple · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.86.2";  // 15 oct 2026 · vista simple + arreglos de raíz (spa, fotos, needs report) · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell

@@ -7196,8 +7196,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.86.0";
-var BUILD_DATE="2026-10-14";
+var APP_VERSION="2.86.2";
+var BUILD_DATE="2026-10-15";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
@@ -16504,11 +16504,32 @@ function _custBestSpa(custName,excludeId){
       var k2=(typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").toLowerCase();
       if(k2!==key)return;
       var ms=Number(x.createdAtMs)||(x.date?(Date.parse(x.date+"T12:00:00")||0):0);
-      var sd=String(x.spaDesc||"").trim(); if(sd&&ms>=bestD){bestD=ms;out.desc=sd}
+      var sd=String(x.spaDesc||"").trim(); if(sd&&ms>=bestD){bestD=ms;out.desc=sd;out.descDate=x.date||""}
       var sm=String(x.spaModel||"").trim(); if(sm&&ms>=bestM){bestM=ms;out.model=sm}
     });
   }catch(_e){}
   return out;
+}
+/* v2.86.2 — EL SPA DE UNA CITA SE LEE AQUI, EN UN SOLO LUGAR.
+   Lo propio de la cita manda; si la cita no trae spa, vale lo ultimo que se
+   sabe del cliente (misma regla que el reagendo: el mas reciente, mismo hogar).
+   No se copia nada a la base: si alguien lo edita en la hoja, ahi si se guarda
+   en esa cita. `heredado` dice de donde vino para poder mostrarlo. */
+function aspSpaDeTicket(t){
+  var r={desc:"",heredado:false,fecha:""};
+  if(!t)return r;
+  if(String(t.spaDesc||"").trim()){r.desc=String(t.spaDesc);return r;}
+  var c={desc:"",model:""};try{c=_custBestSpa(t.customer,t.id)}catch(_e){}
+  if(c.desc){r.desc=c.desc;r.heredado=true;r.fecha=c.descDate||"";return r;}
+  if(String(t.spaModel||"").trim()){r.desc=String(t.spaModel);return r;}
+  if(c.model){r.desc=c.model;r.heredado=true;}
+  return r;
+}
+function _spaHeredadoHTML(r,editable){
+  if(!r||!r.heredado)return "";
+  var de=(r.fecha?(" · "+L2("visita del ","visit of ")+esc(r.fecha)):"");
+  return '<div class="dt-spa-heredado" style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px">↳ '+L2("Del registro del cliente","From the customer’s record")+de
+    +(editable?(" · "+L2("si lo editas, se guarda en esta cita","editing saves it on this visit")):"")+'</div>';
 }
 async function _autoCreateReschedDispatch(srcDocId,srcData){
   // ═══════════════════════════════════════════════════════════════════════════
@@ -24365,6 +24386,17 @@ function _custPhotoHistory(name,excludeId){
   out.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   return out;
 }
+/* v2.86.2 — el historial de fotos del cliente, para la hoja de CUALQUIER cita.
+   Antes solo existia dentro del resumen del reporte (ver la nota alla). */
+function _fotoHistHTML(t){
+  var ph=[];try{ph=_custPhotoHistory(t&&t.customer,t&&t.id)}catch(_e){}
+  if(!ph.length)return "";
+  return '<div class="dt-foto-hist">'
+    +'<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px">🖼️ '+L2("Fotos de otras visitas","Photo history · other visits")+' ('+ph.length+')</div>'
+    +'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">'+ph.map(function(p){
+      return '<div style="flex:none;width:90px"><img src="'+esc(p.url)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="width:90px;height:90px;object-fit:cover;border-radius:9px;border:1px solid var(--ln);cursor:zoom-in;display:block"><div style="font-size:11px;color:var(--i3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.date||"")+(p.tech?(" · "+esc(p.tech)):"")+'</div></div>';
+    }).join("")+'</div></div>';
+}
 /* ═══ FRANJA DE REAGENDAR (jul 2026) ══════════════════════════════
    markResched guardaba fecha, motivo, bloqueo, disponibilidad y urgencia
    desde hace meses, pero NADA de eso se pintaba: ni en la hoja del ticket
@@ -24725,20 +24757,23 @@ function openTktDetail(id){
   // For techs, if the field is empty, hide the whole section (no ugly placeholder).
   var _isTechView=currentUser&&currentUser.role==="tech";
   // Spa Description
-  var _spa=t.spaDesc||"";
+  var _spaR=aspSpaDeTicket(t), _spa=_spaR.desc;   // v2.86.2: la cita sin spa muestra el del cliente
   if(_isTechView){
     var _wl=(typeof _warrantyLabelForTicket==="function"?_warrantyLabelForTicket(t):((t.warranty&&t.warranty.label)?String(t.warranty.label):""));
     var _wCov=_wl&&_wl!=="N/W"&&!/no\s*warranty/i.test(_wl);
     h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
-    if(_spa)h+='<div class="notes" style="min-height:60px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap">'+esc(_spa)+'</div>';
+    if(_spa)h+='<div class="notes" style="min-height:60px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac);white-space:pre-wrap">'+esc(_spa)+'</div>'+_spaHeredadoHTML(_spaR,false);
     if(_wl)h+='<div style="margin-top:8px"><span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:9px;font-weight:800;font-size:var(--fs-sm);'+(_wCov?'background:var(--c-success-bg);color:var(--c-success-fg)':'background:var(--c-ash);color:var(--i2)')+'">\uD83D\uDEE1\uFE0F '+esc(_wl)+'</span></div>';
     h+='<button onclick="showTab(10)" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;color:var(--c-info-strong);font-weight:800;font-size:var(--fs-sm);border:1.5px dashed var(--c-info-strong);border-radius:9px;padding:7px 11px;background:#fff;cursor:pointer">\uD83D\uDCD6 '+L2("Guía de diagnóstico","Diagnostic guide")+'</button>';
+    h+=_fotoHistHTML(t);   // v2.86.2
     h+='</div>';
     try{if(typeof _techSpaHistoryHTML==="function")h+=_techSpaHistoryHTML(t)}catch(_e){}
   }else{
     h+='<div class="dt-sec"><div class="dt-sec-t">🛁 Spa Info</div>';
     h+='<textarea id="tktDetailSpaDesc" class="notes" style="min-height:80px;font-size:var(--fs-base);background:#f0f7ff;border-left:3px solid var(--ac)" onblur="saveTktSpaDesc(\''+t.id+'\')">'+esc(_spa)+'</textarea>';
+    h+=_spaHeredadoHTML(_spaR,true);   // v2.86.2
     h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:2px">Spa description auto-saves when you tap away</div>';
+    h+=_fotoHistHTML(t);               // v2.86.2
     h+='</div>';
   }
   // ── Field Report summary: what the tech actually did on the visit. The report
@@ -24769,16 +24804,9 @@ function openTktDetail(id){
       s+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin:8px 0 4px">📷 Photos ('+_pm.length+')</div>';
       s+='<div class="tkt-media">'+_pm.map(function(m){return '<img src="'+esc(m.url||m.data||"")+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">';}).join("")+'</div>';
     }
-    // Customer PHOTO HISTORY — photos from this customer's OTHER visits, visible to techs too.
-    try{
-      var _ph=_custPhotoHistory(t.customer,t.id);
-      if(_ph.length){
-        s+='<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px">\uD83D\uDDBC\uFE0F Photo history \u00b7 other visits ('+_ph.length+')</div>';
-        s+='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">'+_ph.map(function(ph){
-          return '<div style="flex:none;width:90px"><img src="'+esc(ph.url)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="width:90px;height:90px;object-fit:cover;border-radius:9px;border:1px solid var(--ln);cursor:zoom-in;display:block"><div style="font-size:11px;color:var(--i3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ph.date||"")+(ph.tech?(" \u00b7 "+esc(ph.tech)):"")+'</div></div>';
-        }).join("")+'</div>';
-      }
-    }catch(_phe){}
+    // v2.86.2: el historial de fotos de las OTRAS visitas ya no vive aqui. Estaba
+    // despues del `return` de arriba, asi que una cita sin reporte nunca lo
+    // mostraba. Ahora lo pinta _fotoHistHTML(t) dentro de Spa Info, siempre.
     s+='</div>';
     h+=s;
   })();
@@ -25932,10 +25960,15 @@ function voiceToggle(targetId){
   catch(_e){toast("Couldn't start voice","err");voiceStop()}
 }
 async function saveTktSpaDesc(id){
+  /* v2.86.2 — solo se escribe lo que la persona CAMBIO. Antes cada vez que el
+     cursor salia del recuadro se escribia lo que mostraba; con el spa heredado
+     del cliente eso habria copiado el texto a la cita sin que nadie lo pidiera. */
+  var _sdEl=document.getElementById("tktDetailSpaDesc");
+  if(!_sdEl||_sdEl.value===_sdEl.defaultValue)return;
   // Spa Description is admin-only (techs see read-only).
   if(!currentUser||(currentUser.role!=="admin"&&currentUser.role!=="organizer")){toast("Only admins can edit spa description","err");return}
   if(!db)return;
-  try{await db.collection("tickets").doc(id).update({spaDesc:document.getElementById("tktDetailSpaDesc").value});toast("Spa desc saved ✓")}
+  try{await db.collection("tickets").doc(id).update({spaDesc:_sdEl.value});_sdEl.defaultValue=_sdEl.value;toast("Spa desc saved ✓")}
   catch(e){toast("Error: "+e.message,"err")}
 }
 let _backToTktId=null;
@@ -60493,7 +60526,7 @@ window.aspScoreUI={paint:paint,start:start,takeVehiclePhoto:takeVehiclePhoto,ope
   _putDraft:putDraft,_st:st,buildFullReport:buildFullReport,buildTechReport:buildTechReport,openTechDetail:openTechDetail};
 })();
 </script>
-<!-- ══════ VISTA SIMPLE · v2.86.0 (14 oct 2026) ══════
+<!-- ══════ VISTA SIMPLE · v2.86.2 (15 oct 2026) ══════
      Las 20 recomendaciones de «Simplificar TECH-TICKETS», reversibles.
      Apagar sin borrar: localStorage.simple="0" y recargar.
      Revertir del todo: borrar estos dos bloques (aspenSimpleSkin + aspenSimpleScript). -->
@@ -60555,7 +60588,7 @@ body.asp-simple:not(#_q1):not(#_q2) #dmFab{display:none!important}
 #aspHdrChat .asp-chat-n[hidden]{display:none}
 
 /* ── Navegacion ────────────────────────────────────────────────────────── */
-/* R13: en escritorio, 8 destinos; el resto en «Mas» */
+/* R13: lo que no tenga sitio en escritorio va a «Mas» (desde v2.86.1 caben todos, asi que solo se oculta «Mas») */
 @media(min-width:901px){ body.asp-simple:not(#_q1):not(#_q2) #aspShell .asp-sec{display:none!important} }
 /* R14: las barras inferiores viejas siguen pintadas debajo del caparazon */
 body.asp-simple:not(#_q1):not(#_q2).asp-shell #bottomNav,body.asp-simple:not(#_q1):not(#_q2).asp-shell #mobNav{visibility:hidden!important;pointer-events:none!important}
@@ -60614,7 +60647,7 @@ body.asp-simple:not(#_q1):not(#_q2) .asp-ico{margin-left:0!important}
 body.asp-simple:not(#_q1):not(#_q2) #pg5 .zone-card-item h6{padding-right:48px!important}
 </style>
 <script id="aspenSimpleScript">
-/* ═══ VISTA SIMPLE · v2.86.0 (14 oct 2026) ════════════════════════════════
+/* ═══ VISTA SIMPLE · v2.86.1 (15 oct 2026) ════════════════════════════════
    Aplica las 20 recomendaciones de «Simplificar TECH-TICKETS» SIN borrar ni
    reescribir nada de lo que ya existe: oculta, junta, mueve o re-etiqueta
    desde aqui. Todo el CSS vive bajo body.asp-simple (bloque aspenSimpleSkin).
@@ -60884,10 +60917,10 @@ function watchChat(fab){
 /* ── R13 / R14 · navegacion ────────────────────────────────────────────────
    El riel y la barra del telefono los pinta aspenShellScript a partir del
    #tabBar (y los repinta en cada cambio de contador). Aqui solo se ajusta lo
-   pintado: en escritorio quedan 8 destinos y el resto va a «Mas»; los nombres
-   se acortan donde no caben; los grupos salen una vez y en espanol; las dos
-   barras inferiores viejas, que seguian pintadas debajo, dejan de recibir toques. */
-var MAIN_PRIO=["tab16","tab1","tab4","tab5","tab6","tab8","tab0","tab3","tab10","tab12","tab18"], MAIN_MAX=8;
+   pintado: los nombres se acortan donde no caben; los grupos salen una vez y en
+   espanol; las dos barras inferiores viejas, que seguian pintadas debajo, dejan
+   de recibir toques. v2.86.1: en escritorio vuelven TODOS los destinos a la barra
+   lateral (Alberto los quiere a la vista); «Mas» solo queda en el telefono. */
 var GRUPO={tab0:"work",tab4:"work",tab5:"work",tab1:"work",tab2:"work",tab12:"work",tab18:"work",tab16:"work",
   tab6:"manage",tab8:"manage",tab13:"manage",tab14:"manage",tab15:"manage",tab3:"manage",tab17:"manage",
   tab10:"tools",tab9:"tools",tab7:"tools"};
@@ -60897,11 +60930,7 @@ function visibleTabs(){
   var bar=$("tabBar"); if(!bar)return [];
   return Array.prototype.filter.call(bar.querySelectorAll(".tab"),function(t){ return t.id&&!t.classList.contains("hidden"); }).map(function(t){ return t.id; });
 }
-function mainSet(){
-  var vis=visibleTabs(), out=[];
-  MAIN_PRIO.forEach(function(id){ if(out.length<MAIN_MAX&&vis.indexOf(id)>=0)out.push(id); });
-  return out;
-}
+function mainSet(){ return visibleTabs(); }
 function tabName(id){
   var t=$(id); if(!t)return "";
   var x=""; Array.prototype.forEach.call(t.childNodes,function(n){ if(n.nodeType===3)x+=n.nodeValue; });
