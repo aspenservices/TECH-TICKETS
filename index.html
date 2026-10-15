@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.86.2";
+var APP_VERSION="2.87.0";
 var BUILD_DATE="2026-10-15";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -61277,5 +61277,284 @@ function start(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start); else start();
 })();
 </script>
+<!-- ═══ SPA READER v2 + SPECIAL WARRANTY (Oct 2026) — reads special warranty notes ("WARRANTY, DUE TO DISTANCE.
+     5 YEARS ON PARTS, TRIP CHARGE ON YEARS 2-5") and shows what applies TODAY on the Daily ticket
+     card and in Customer 360. Display only: it never changes the billing verdict.
+     Source: the customer's spa description (spaDesc) or a note pasted on a ticket
+     (specialWarrantyNote). Local parsing first; AI only when someone taps the button.
+     Reversible: delete these two blocks. ═══ -->
+<style id="aspenSpecialWarrantyStyle">
+.sw-badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800;line-height:1.2;cursor:pointer;border:1px solid #c9a227;background:#fff8e1;color:#7a5a00;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.sw-badge.exp{border-color:var(--ln);background:var(--c-ash-2,#f1ede8);color:var(--i3)}
+.sw-badge.unk{border-style:dashed}
+.sw-panel{border:1px solid #e6cf7a;border-left:4px solid #c9a227;border-radius:12px;background:var(--cd,#fff);padding:12px 14px;margin:0 0 14px}
+.sw-panel.exp{border-color:var(--ln);border-left-color:var(--i3)}
+.sw-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.sw-h b{font-size:13px;color:var(--br);letter-spacing:.3px;text-transform:uppercase}
+.sw-yr{margin-left:auto;font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;background:#fff8e1;color:#7a5a00;border:1px solid #e6cf7a}
+.sw-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
+.sw-cell{border:1px solid var(--ln);border-radius:10px;padding:8px 10px;background:var(--bg,#faf8f4);min-width:0}
+.sw-cell span{display:block;font-size:9.5px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:var(--i3)}
+.sw-cell b{display:block;font-size:13px;margin-top:2px}
+.sw-cell i{display:block;font-style:normal;font-size:10.5px;color:var(--i3);margin-top:2px;line-height:1.35}
+.sw-cell.covered{border-color:var(--c-success-strong,#16a34a);background:var(--c-success-bg,#e6f4ea)}.sw-cell.covered b{color:var(--c-success-fg,#166534)}
+.sw-cell.charged{border-color:var(--c-warning-strong,#d97706);background:var(--c-warning-bg,#fef3c7)}.sw-cell.charged b{color:var(--c-warning-fg,#92400e)}
+.sw-cell.unknown b{color:var(--i2)}
+.sw-meta{font-size:11.5px;color:var(--i2);line-height:1.5}
+.sw-quote{margin-top:8px;font:11px/1.45 ui-monospace,Menlo,monospace;color:var(--i2);background:var(--bg,#faf8f4);border:1px dashed var(--ln);border-radius:8px;padding:7px 9px;white-space:pre-wrap}
+.sw-acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.sw-acts button{border:1px solid var(--ln);background:var(--cd,#fff);color:var(--i2);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
+.sw-acts button.pri{background:var(--br,#3D2B1F);color:#fff;border-color:var(--br,#3D2B1F)}
+.sw-ai{margin-top:8px;font-size:12px;line-height:1.5;color:var(--ink);background:var(--c-purple-bg,#f3e8ff);border-radius:8px;padding:8px 10px;white-space:pre-wrap;display:none}
+#swOv{position:fixed;inset:0;z-index:100050;background:rgba(20,14,10,.45);display:flex;align-items:center;justify-content:center;padding:14px}
+#swOv .sw-box{width:min(620px,100%);max-height:92dvh;overflow:auto;background:var(--cd,#fff);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#swOv textarea{width:100%;box-sizing:border-box;min-height:120px;border:1.5px solid var(--ln);border-radius:10px;padding:9px 10px;font:12.5px/1.5 ui-monospace,Menlo,monospace;background:var(--bg,#faf8f4);color:var(--ink)}
+@media(max-width:560px){.sw-grid{grid-template-columns:1fr}}
+</style>
+<script id="aspenSpecialWarrantyScript">
+(function(){
+'use strict';
+if(window.__aspenSpecialWarranty)return;window.__aspenSpecialWarranty=true;
+/* ── GENERAL SPA READER v2 (15 oct 2026) — replaces _parseSpaDescription, same output shape.
+   Rules (Alberto): if the text has a DELIVERY date, the year written is the DELIVERY year;
+   only without a delivery date does the model year ("2021 Quattro ES") or, last, any year count.
+   Reads more ways of writing the same thing: Delivered / Delivery Date / Del / Del. date /
+   Install date / Spa installed / Entregado / Fecha de entrega; 3/16/2022, 3-16-22, 3.16.22, 2022-03-16,
+   March 16, 2022, Mar 16 2022, 16 Mar 2022; Serial # / S/N / SN / Ser#. ── */
+(function(){
+  var MON={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,SEPT:8,OCT:9,NOV:10,DEC:11,ENE:0,ABR:3,AGO:7,DIC:11};
+  function mk(y,m,d){if(y<100)y+=2000;var x=new Date(y,m,d);return(x.getFullYear()===y&&x.getMonth()===m&&x.getDate()===d)?x:null}
+  function dateAt(s){
+    s=String(s||'');var m;
+    if((m=s.match(/^\s*(\d{4})-(\d{1,2})-(\d{1,2})/)))return mk(+m[1],+m[2]-1,+m[3]);
+    if((m=s.match(/^\s*([01]?\d)[\/\-.]([0-3]?\d)[\/\-.]((?:19|20)?\d{2})(?!\d)/)))return mk(+m[3],+m[1]-1,+m[2]);
+    if((m=s.match(/^\s*([A-Za-z]{3,9})\.?\s+([0-3]?\d)(?:st|nd|rd|th)?,?\s+((?:19|20)\d{2})/))){var k=m[1].slice(0,4).toUpperCase();var mo=MON[k]!=null?MON[k]:MON[k.slice(0,3)];if(mo!=null)return mk(+m[3],mo,+m[2])}
+    if((m=s.match(/^\s*([0-3]?\d)\s+(?:de\s+)?([A-Za-z]{3,9})\.?,?\s+(?:de\s+)?((?:19|20)\d{2})/))){var k2=m[2].slice(0,3).toUpperCase();if(MON[k2]!=null)return mk(+m[3],MON[k2],+m[1])}
+    return null;
+  }
+  window._spaDateAt=dateAt;
+  var old=window._parseSpaDescription;
+  window._parseSpaDescriptionV1=old;
+  window._parseSpaDescription=function(desc){
+    if(!desc||typeof desc!=='string')return null;
+    var r={delivered:null,deliveredStr:'',year:null,model:'',series:'',serial:'',isSwimSpa:false,confidence:0,modelYear:null,yearSource:''};
+    /* 1) delivery date: the first date that follows a delivery/installation word */
+    var re=/(deliver(?:ed|y)?(?:\s*date)?|del\.?\s*date|\bdel\b\.?|install(?:ation)?\s*date|spa\s+installed(?:\s+on)?|entregad[oa]|fecha\s+de\s+entrega)\s*(?:on)?\s*[:\-]?\s*/ig,m;
+    while((m=re.exec(desc))){var rest=desc.slice(re.lastIndex,re.lastIndex+30),d=dateAt(rest);if(d){r.delivered=d;r.deliveredStr=(rest.match(/^[^\n]*?(?:\d{4}|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2})/)||[rest.trim()])[0].trim();break}}
+    /* 2) model: known names first (same list the app already uses) */
+    var known=(typeof SPA_MODELS_KNOWN!=='undefined'&&SPA_MODELS_KNOWN)||[];
+    for(var i=0;i<known.length;i++){if(new RegExp('\\b'+known[i]+'\\b','i').test(desc)){r.model=known[i].charAt(0).toUpperCase()+known[i].slice(1);break}}
+    r.isSwimSpa=/\bswim[\s-]*spa\b/i.test(desc)||r.model==='Swim';
+    /* 3) "YYYY <Model> <SERIES>" line → model year + series, read together */
+    var my=desc.match(/\b((?:19|20)\d{2})\s+([A-Za-z][\w']*(?:\s+[A-Za-z][\w']*)?)\s+(ES|GS|VS|SS|Core|Holiday|Swim\s*Spa)\b/i);
+    if(my){r.modelYear=+my[1];if(!r.model)r.model=my[2].replace(/\b\w/g,function(c){return c.toUpperCase()});if(!/swim/i.test(my[3]))r.series=my[3].toUpperCase()}
+    if(!r.series&&r.model){var sm=desc.match(new RegExp('\\b'+r.model+'\\s*[-–]?\\s*(ES|GS|VS|SS|Core|Holiday)\\b','i'));if(sm)r.series=sm[1].toUpperCase()}
+    if(!r.series){var sm2=desc.match(/\b(ES|GS|VS|SS|Core|Holiday)\b/);if(sm2)r.series=sm2[1].toUpperCase()}
+    if(r.series&&/^(CORE|HOLIDAY)$/.test(r.series))r.series=r.series.charAt(0)+r.series.slice(1).toLowerCase();
+    /* 4) model year without the pattern: a year NOT inside a date */
+    if(!r.modelYear){var clean=desc.replace(/\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{1,2}-\d{1,2}|[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}/g,' ');var y1=clean.match(/\b(20[0-3]\d|19[89]\d)\b/);if(y1)r.modelYear=+y1[1]}
+    /* 5) THE RULE: with a delivery date, the year is the delivery year */
+    if(r.delivered){r.year=r.delivered.getFullYear();r.yearSource='delivery'}
+    else if(r.modelYear){r.year=r.modelYear;r.yearSource='model'}
+    /* 6) serial */
+    var se=desc.match(/(?:serial|s\/n|\bsn\b|ser\.?\s*#)\s*(?:#|number|no\.?)?\s*[:#]?\s*([a-z0-9][a-z0-9\-]{2,})/i);if(se)r.serial=se[1];
+    var conf=0;if(r.delivered)conf+=40;if(r.model)conf+=25;if(r.series)conf+=20;if(r.isSwimSpa&&!r.series)conf+=20;if(r.year)conf+=10;if(r.serial)conf+=5;
+    r.confidence=conf;return conf<20?null:r;
+  };
+})();
+
+function L(es,en){try{return typeof L2==='function'?L2(es,en):en}catch(_e){return en}}
+function E(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+var NUM={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,SIX:6,SEVEN:7,EIGHT:8,NINE:9,TEN:10,UNO:1,DOS:2,TRES:3,CUATRO:4,CINCO:5,SEIS:6,SIETE:7,DIEZ:10};
+function n(x){x=String(x||'').toUpperCase();return NUM[x]||parseInt(x,10)||0}
+function fmt(d){try{return d.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'})}catch(_e){return ''}}
+function addYears(d,y){var r=new Date(d.getTime());r.setFullYear(r.getFullYear()+y);return r}
+function compKey(w){
+  w=String(w||'').toUpperCase().replace(/\s+/g,' ');
+  if(/PARTS? (AND|&) LABOU?R|P ?& ?L|FULL/.test(w))return ['parts','labor'];
+  if(/TRIP|TC\b|TRAVEL|SERVICE CALL/.test(w))return ['trip'];
+  if(/LABOU?R|MANO DE OBRA/.test(w))return ['labor'];
+  if(/PART|PARTE|EQUIP|COMPONENT/.test(w))return ['parts'];
+  if(/SHELL|STRUCTUR|CABINET/.test(w))return ['shell'];
+  return [];
+}
+var YR='(\\d+|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN)';
+var COMP='(PARTS?\\s*(?:AND|&)\\s*LABOU?R|PARTS?|LABOU?R|TRIP(?:\\s*CHARGES?)?|TRAVEL|SHELL|STRUCTURE|EQUIPMENT|FULL\\s*COVERAGE)';
+/* ── The reader. Returns null when the text has no SPECIAL warranty clause. ──
+   Rules are read from the note itself; anything the note does not state stays "unknown"
+   (Alberto, 15 oct 2026: "depende de la nota" — never assume). */
+window.parseSpecialWarranty=function(text,today){
+  var raw=String(text||'');if(!raw.trim())return null;
+  var U=raw.toUpperCase().replace(/[“”]/g,'"');
+  /* a special clause = a sentence with WARRANTY/WARRANTEE/GARANT that also carries terms or a reason */
+  var sentences=U.split(/(?:\n|\.(?=\s|$)|;)+/).map(function(s){return s.trim()}).filter(Boolean);
+  var idx=-1;
+  for(var i=0;i<sentences.length;i++){if(/WARRANT|GARANT/.test(sentences[i])){idx=i;break}}
+  if(idx<0)return null;
+  /* the clause = the warranty sentence + the next 3 sentences (terms usually follow it) */
+  var parts=[sentences[idx]];for(var j=idx+1;j<sentences.length&&j<=idx+4;j++){if(/YEAR|YR|AÑO|TRIP|LABOU?R|PARTS?|PARTE|CHARGE|COBRA|COVER|CUBIER|VIAJE/.test(sentences[j]))parts.push(sentences[j]);else break}
+  var clause=parts.join('. ');
+  var hasTerms=new RegExp(YR+'\\s*(?:YEARS?|YRS?|AÑOS?)').test(clause)||/TRIP|LABOU?R|PARTS?|NO CHARGE|SIN CARGO|COVERED|CUBIERT/.test(clause);
+  var hasReason=/DUE TO|SPECIAL|EXTENDED|COURTESY|GOODWILL|EXCEPTION|PER (TOM|SAM|OWNER|MGMT|MANAGEMENT)/.test(clause);
+  if(!hasTerms&&!hasReason)return null;
+  var r={raw:raw,clause:clause,reason:'',terms:[],delivered:null,yearN:null,maxYears:0,until:null,expired:false,
+    today:{parts:{s:'unknown'},labor:{s:'unknown'},trip:{s:'unknown'}},model:'',serial:'',location:''};
+  var mr=clause.match(/DUE TO ([A-Z0-9 ,'\-]{3,40})/);if(mr)r.reason=mr[1].replace(/[ ,]+$/,'').toLowerCase();
+  else if(/COURTESY|GOODWILL/.test(clause))r.reason='courtesy';
+  else if(/PER (TOM|SAM|OWNER)/.test(clause))r.reason='owner approval';
+  /* delivery date — reuse the app's own reader when available */
+  try{var p=typeof _parseSpaDescription==='function'?_parseSpaDescription(raw):null;if(p){r.delivered=p.delivered||null;r.model=[p.year,p.model,p.series].filter(Boolean).join(' ');r.serial=p.serial||''}}catch(_e){}
+  /* model line like "2021 Quattro ES": read the year next to the model, never the delivery date's year */
+
+  if(!r.serial){var msr=raw.match(/serial\s*(?:#|number|no\.?)?\s*[:#]?\s*([a-z0-9\-]{3,})/i);if(msr)r.serial=msr[1]}
+  if(!r.delivered){var md=raw.match(/(?:deliver(?:ed|y)?|entregad[oa]|fecha de entrega)\s*(?:date)?\s*[:\-]?\s*(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/i);if(md){var y=+md[3];if(y<100)y+=2000;var d=new Date(y,+md[1]-1,+md[2]);if(!isNaN(d)&&d.getMonth()===+md[1]-1)r.delivered=d}}
+  var ml=raw.match(/(?:spa\s+is\s+)?located\s+at\s*:?\s*(?:\*+[^*\n]*\*+\s*)?([\s\S]{4,90}?\b[A-Z]{2}\s+\d{5})/i);if(ml)r.location=ml[1].replace(/\s*\n\s*/g,', ').trim();
+  /* terms */
+  function push(comp,mode,from,to,src){compKey(comp).forEach(function(c){r.terms.push({c:c,mode:mode,from:from,to:to,src:src.trim()})});if(mode==='covered'&&to>r.maxYears)r.maxYears=to;if(to>r.maxYears&&mode==='charged')r.maxYears=Math.max(r.maxYears,to)}
+  var m,re;
+  /* "TRIP CHARGE ON YEARS 2-5" / "LABOR CHARGED YEARS 2-5" → charged in that range */
+  re=new RegExp('(TRIP\\s*CHARGES?|TRAVEL(?:\\s*CHARGE)?|LABOU?R(?:\\s*CHARGE)?|PARTS?)\\s*(?:IS\\s*|ARE\\s*)?(?:CHARGED\\s*|BILLED\\s*|APPLIES\\s*|ON\\s*|IN\\s*|FOR\\s*)+(?:YEARS?|YRS?|AÑOS?)\\s*'+YR+'\\s*(?:-|–|TO|THRU|THROUGH|AL?)\\s*'+YR,'g');
+  while((m=re.exec(clause))){var isCharge=/TRIP|TRAVEL|CHARGE|CHARGED|BILLED/.test(m[0]);push(m[1],isCharge?'charged':'covered',n(m[2]),n(m[3]),m[0])}
+  /* "NO TRIP CHARGE YEARS 1-2" → covered */
+  re=new RegExp('NO\\s+(TRIP\\s*CHARGES?|LABOU?R(?:\\s*CHARGE)?|CHARGE)\\s*(?:ON|FOR|IN)?\\s*(?:YEARS?|YRS?)\\s*'+YR+'(?:\\s*(?:-|–|TO|THRU|THROUGH)\\s*'+YR+')?','g');
+  while((m=re.exec(clause))){var a=n(m[2]),b=m[3]?n(m[3]):a;push(/CHARGE$/.test(m[1])&&!/TRIP|LABOU?R/.test(m[1])?'parts and labor':m[1],'covered',a,b,m[0])}
+  /* "5 YEARS ON PARTS" / "5 YR PARTS & LABOR" / "3 YEARS LABOR" → covered years 1..N */
+  re=new RegExp(YR+'\\s*(?:-\\s*)?(?:YEARS?|YRS?|AÑOS?)\\s*(?:ON|OF|FOR|DE|EN)?\\s*'+COMP,'g');
+  while((m=re.exec(clause))){var N=n(m[1]);if(N>0&&N<=15)push(m[2],'covered',1,N,m[0])}
+  /* "PARTS 5 YEARS" (component first) */
+  re=new RegExp(COMP+'\\s*(?:FOR|ON|-|:)?\\s*'+YR+'\\s*(?:YEARS?|YRS?|AÑOS?)','g');
+  while((m=re.exec(clause))){var N2=n(m[2]);if(N2>0&&N2<=15&&!r.terms.some(function(t){return t.src.indexOf(m[0])>=0||m[0].indexOf(t.src)>=0}))push(m[1],'covered',1,N2,m[0])}
+  /* "N YEAR WARRANTY" with no component → whole warranty length only */
+  if(!r.maxYears){m=clause.match(new RegExp(YR+'\\s*(?:YEARS?|YRS?)\\s*(?:SPECIAL\\s*|EXTENDED\\s*)?WARRANT'));if(m)r.maxYears=n(m[1])}
+  /* today */
+  var now=today||new Date();
+  if(r.delivered){var days=Math.floor((now-r.delivered)/86400000);r.yearN=days<0?1:Math.floor(days/365.25)+1;
+    if(r.maxYears){r.until=addYears(r.delivered,r.maxYears);r.expired=now>r.until}}
+  ['parts','labor','trip'].forEach(function(c){
+    var ts=r.terms.filter(function(t){return t.c===c});if(!ts.length)return;
+    if(!r.yearN){r.today[c]={s:'unknown',why:L('falta fecha de entrega','no delivery date'),src:ts[0].src};return}
+    var hit=null;ts.forEach(function(t){if(r.yearN>=t.from&&r.yearN<=t.to)hit=hit&&hit.mode==='charged'?hit:t});
+    if(hit)r.today[c]={s:hit.mode,src:hit.src,from:hit.from,to:hit.to};
+    else{var maxTo=Math.max.apply(null,ts.map(function(t){return t.to}));r.today[c]=r.yearN>maxTo&&ts.some(function(t){return t.mode==='covered'})?{s:'charged',src:ts[0].src,why:L('venció en el año ','ended after year ')+maxTo}:{s:'unknown',src:ts[0].src,why:L('la nota no dice el año ','note does not cover year ')+r.yearN}}
+  });
+  return r;
+};
+/* ── which text applies to a ticket: a note pasted on any ticket of that customer wins,
+      otherwise the customer's spa description. Same customer = full name key (_custGroupKey). ── */
+function key(nm){try{return typeof _custGroupKey==='function'?_custGroupKey(nm):String(nm||'').trim().toLowerCase()}catch(_e){return String(nm||'').trim().toLowerCase()}}
+function allT(){try{return [].concat(typeof active!=='undefined'?active:[],typeof done!=='undefined'?done:[])}catch(_e){return[]}}
+function sourceFor(customer){
+  var k=key(customer),pasted=null,desc='';
+  allT().forEach(function(x){if(!x||!x.customer||key(x.customer)!==k)return;
+    if(x.specialWarrantyNote&&(!pasted||String(x.specialWarrantyNoteAt||'')>String(pasted.at||'')))pasted={text:x.specialWarrantyNote,at:x.specialWarrantyNoteAt||'',id:x.id};
+    if(x.spaDesc&&x.spaDesc.length>desc.length)desc=x.spaDesc});
+  if(pasted)return{text:pasted.text,from:'ticket'};
+  if(desc)return{text:desc,from:'spa'};
+  return null;
+}
+var cache={};
+window.specialWarrantyFor=function(customer){
+  var s=sourceFor(customer);if(!s)return null;
+  var ck=s.text+'|'+new Date().toDateString();
+  if(!(ck in cache))cache[ck]=window.parseSpecialWarranty(s.text);
+  var r=cache[ck];if(r)r.from=s.from;return r;
+};
+function word(st){return st==='covered'?L('Cubierto','Covered'):st==='charged'?L('Se cobra','Charge'):L('La nota no dice','Not stated')}
+function short(r){
+  if(r.expired)return '⭐ '+L('Garantía especial vencida','Special warranty ended');
+  var bits=[];
+  if(r.yearN)bits.push(L('Año ','Yr ')+r.yearN+(r.maxYears?'/'+r.maxYears:''));
+  [['parts',L('Partes','Parts')],['labor','Labor'],['trip',L('Viaje','Trip')]].forEach(function(p){var s=r.today[p[0]].s;if(s==='covered')bits.push(p[1]+' ✓');else if(s==='charged')bits.push(p[1]+' $')});
+  return '⭐ '+L('Garantía especial','Special warranty')+(bits.length?' · '+bits.join(' · '):'');
+}
+function panelHTML(r,customer,compact){
+  var exp=r.expired,yr=r.yearN?(L('Año ','Year ')+r.yearN+(r.maxYears?' '+L('de','of')+' '+r.maxYears:'')):L('Sin fecha de entrega','No delivery date');
+  var h='<div class="sw-panel'+(exp?' exp':'')+'"><div class="sw-h"><span>⭐</span><b>'+L('Garantía especial','Special warranty')+'</b>'+(r.reason?'<span class="sw-meta">· '+E(L('motivo: ','reason: '))+'"'+E(r.reason)+'"</span>':'')+'<span class="sw-yr">'+E(yr)+'</span></div>';
+  h+='<div class="sw-grid">';
+  [['parts',L('Partes','Parts')],['labor','Labor'],['trip',L('Viaje / TC','Trip charge')]].forEach(function(p){
+    var t=r.today[p[0]];h+='<div class="sw-cell '+t.s+'"><span>'+p[1]+'</span><b>'+word(t.s)+'</b><i>'+E(t.src?('"'+t.src.toLowerCase()+'"'):L('no aparece en la nota','not in the note'))+(t.why?' · '+E(t.why):'')+'</i></div>'});
+  h+='</div><div class="sw-meta">';
+  if(r.delivered)h+=L('Entregado ','Delivered ')+fmt(r.delivered);
+  if(r.until)h+=' · '+(exp?L('venció ','ended '):L('vence ','ends '))+fmt(r.until)+(exp?'':' ('+Math.max(0,Math.ceil((r.until-new Date())/86400000))+' '+L('días','days')+')');
+  if(r.model)h+=' · '+E(r.model);if(r.serial)h+=' · S/N '+E(r.serial);
+  if(r.location)h+='<br>📍 '+L('El spa está en: ','Spa is at: ')+E(r.location);
+  if(r.today.labor.s==='unknown')h+='<br>ℹ️ '+L('Lo que la nota no dice se rige por la garantía normal del modelo — revísala antes de cobrar.','Anything the note does not state follows the model\u2019s normal warranty — check it before billing.');
+  h+='</div>';
+  if(!compact)h+='<div class="sw-quote">'+E(r.clause)+'</div><div class="sw-meta" style="margin-top:4px">'+(r.from==='ticket'?L('Leído de la nota pegada en un ticket','Read from a note pasted on a ticket'):L('Leído de la descripción del spa del cliente','Read from the customer\u2019s spa description'))+'</div>';
+  h+='<div class="sw-acts"><button type="button" onclick="swOpen(\''+E(String(customer).replace(/'/g,"\\'"))+'\')">'+L('Ver / pegar nota','View / paste note')+'</button></div>';
+  return h+'</div>';
+}
+/* ── modal: shows the reading, lets the office paste the note on the ticket, AI on demand ── */
+window.swOpen=function(customer,ticketId){
+  var r=window.specialWarrantyFor(customer);
+  var tk=null;allT().forEach(function(x){if(x&&(String(x.id)===String(ticketId)||(!ticketId&&key(x.customer)===key(customer)&&(!tk||String(x.date||'')>String(tk.date||'')))))tk=x});
+  var s=sourceFor(customer);
+  var old=document.getElementById('swOv');if(old)old.remove();
+  var ov=document.createElement('div');ov.id='swOv';
+  ov.innerHTML='<div class="sw-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><b style="font-size:16px;color:var(--br)">⭐ '+L('Garantía especial','Special warranty')+' — '+E(customer)+'</b><button type="button" id="swX" style="margin-left:auto;border:0;background:none;font-size:20px;cursor:pointer;color:var(--i3)">×</button></div>'
+    +(r?panelHTML(r,customer,false).replace(/<div class="sw-acts">[\s\S]*?<\/div><\/div>$/,'</div>'):'<div class="sw-meta" style="margin-bottom:10px">'+L('No encontré una garantía especial en las notas de este cliente. Pega aquí la nota de QuickBooks para guardarla en el ticket.','No special warranty found in this customer\u2019s notes. Paste the QuickBooks note here to save it on the ticket.')+'</div>')
+    +'<div class="sw-meta" style="margin:10px 0 5px;font-weight:800">'+L('Nota (pega aquí el texto de QB)','Note (paste the QB text here)')+'</div>'
+    +'<textarea id="swText" placeholder="Delivery Date: 3/16/2022&#10;WARRANTY, DUE TO DISTANCE. 5 YEARS ON PARTS, TRIP CHARGE ON YEARS 2-5">'+E(s?s.text:'')+'</textarea>'
+    +'<div id="swLive"></div>'
+    +'<div class="sw-acts"><button type="button" class="pri" id="swSave"'+(tk?'':' disabled title="No ticket loaded"')+'>'+L('Guardar en el ticket','Save on the ticket')+(tk&&tk.date?' ('+E(tk.date)+')':'')+'</button><button type="button" id="swAI">✨ '+L('Que la IA lo lea','Let AI read it')+'</button></div>'
+    +'<div class="sw-ai" id="swAIOut"></div></div>';
+  document.body.appendChild(ov);
+  function close(){ov.remove()}
+  ov.addEventListener('click',function(e){if(e.target===ov)close()});
+  document.getElementById('swX').onclick=close;
+  var ta=document.getElementById('swText'),live=document.getElementById('swLive');
+  function preview(){var p=window.parseSpecialWarranty(ta.value);live.innerHTML=p?'<div style="margin-top:10px">'+panelHTML(Object.assign(p,{from:'ticket'}),customer,true).replace(/<div class="sw-acts">[\s\S]*?<\/div><\/div>$/,'</div>')+'</div>':(ta.value.trim()?'<div class="sw-meta" style="margin-top:8px">⚠️ '+L('No encuentro una cláusula de garantía en este texto.','No warranty clause found in this text.')+'</div>':'')}
+  ta.addEventListener('input',preview);if(!r)preview();
+  document.getElementById('swSave').onclick=async function(){
+    if(!tk)return;var v=ta.value.trim(),now=new Date().toISOString();
+    try{if(typeof db!=='undefined'&&db)await db.collection('tickets').doc(String(tk.id)).update({specialWarrantyNote:v,specialWarrantyNoteAt:now,specialWarrantyNoteBy:(typeof currentUser!=='undefined'&&currentUser&&currentUser.name)||''});
+      tk.specialWarrantyNote=v;tk.specialWarrantyNoteAt=now;cache={};
+      try{toast(L('Nota de garantía guardada ✓ · ','Warranty note saved ✓ · ')+customer)}catch(_e){}
+      close();try{if(typeof rndrA==='function')rndrA()}catch(_e){}
+    }catch(e){console.error('[special warranty save]',e);try{toast(L('No se pudo guardar · ','Could not save · ')+String((e&&(e.code||e.message))||'error').slice(0,80),'err')}catch(_t){}}
+  };
+  document.getElementById('swAI').onclick=async function(){
+    var out=document.getElementById('swAIOut'),btn=this,txt=ta.value.trim();if(!txt)return;
+    if(typeof _aiFetch!=='function'){out.style.display='block';out.textContent=L('IA no disponible en esta app.','AI is not available here.');return}
+    btn.disabled=true;btn.textContent=L('Leyendo…','Reading…');out.style.display='block';out.textContent='…';
+    try{
+      var resp=await _aiFetch({model:'claude-sonnet-4-6',max_tokens:400,
+        system:'You read hot tub (spa) warranty notes for Aspen Spas St. Louis. Today is '+new Date().toDateString()+'. Using ONLY what the note says, answer in Spanish, 5 short lines: 1) Año de garantía hoy (desde la fecha de entrega). 2) Partes: cubiertas / se cobran / la nota no dice. 3) Mano de obra: idem. 4) Cargo de viaje (trip charge): idem. 5) Fecha en que termina. Never invent terms; if the note does not say something, write "la nota no dice".',
+        messages:[{role:'user',content:txt}]});
+      var d=await resp.json();if(!resp.ok)throw new Error((d&&d.error&&d.error.message)||('HTTP '+resp.status));
+      out.textContent=((d.content||[]).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('\n')).trim()||'—';
+    }catch(e){out.textContent='⚠ '+String((e&&e.message)||e).slice(0,160)}
+    btn.disabled=false;btn.textContent='✨ '+L('Que la IA lo lea','Let AI read it');
+  };
+};
+/* ── Daily card badge ── */
+function decorate(){
+  try{document.querySelectorAll('#pg1 .tkt').forEach(function(card){
+    var h4=card.querySelector('h4[data-cust]'),tiers=card.querySelector('.tkt-tiers');if(!h4||!tiers)return;
+    var old=tiers.querySelector('.sw-badge');if(old)old.remove();
+    var nm=h4.getAttribute('data-cust'),r=window.specialWarrantyFor(nm);if(!r)return;
+    var b=document.createElement('span');var unk=['parts','labor','trip'].every(function(c){return r.today[c].s==='unknown'});
+    b.className='sw-badge'+(r.expired?' exp':'')+(unk?' unk':'');b.textContent=short(r);b.title=L('Toca para ver qué cubre hoy','Tap to see what it covers today');
+    b.addEventListener('click',function(e){e.stopPropagation();window.swOpen(nm)});
+    tiers.insertBefore(b,tiers.firstChild);
+  })}catch(e){console.warn('[special warranty card]',e)}
+}
+var _ra=window.rndrA;if(typeof _ra==='function'&&!_ra.__sw){window.rndrA=function(){var r=_ra.apply(this,arguments);setTimeout(decorate,0);return r};window.rndrA.__sw=true}
+/* ── Customer 360 panel (top of the service history) ── */
+var _c3=window._c360Render;
+if(typeof _c3==='function'&&!_c3.__sw){
+  window._c360Render=function(tkts){
+    var h=_c3.apply(this,arguments);
+    try{var t=(tkts||[]).find(function(x){return x&&x.customer});var nm=t?t.customer:'';var r=nm?window.specialWarrantyFor(nm):null;
+      if(r)h=panelHTML(r,nm,false)+h;
+      else if(nm)h='<div class="sw-acts" style="margin:0 0 10px"><button type="button" onclick="swOpen(\''+E(nm.replace(/'/g,"\\'"))+'\')">⭐ '+L('Agregar garantía especial','Add special warranty')+'</button></div>'+h;
+    }catch(e){console.warn('[special warranty c360]',e)}
+    return h;
+  };
+  window._c360Render.__sw=true;
+}
+})();
+</script>
+
 </body>
 </html>
