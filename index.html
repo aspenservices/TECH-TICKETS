@@ -7196,7 +7196,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.87.0";
+var APP_VERSION="2.87.1";
 var BUILD_DATE="2026-10-15";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -24387,13 +24387,16 @@ function _custPhotoHistory(name,excludeId){
   return out;
 }
 /* v2.86.2 — el historial de fotos del cliente, para la hoja de CUALQUIER cita.
-   Antes solo existia dentro del resumen del reporte (ver la nota alla). */
+   Antes solo existia dentro del resumen del reporte (ver la nota alla).
+   v2.87.1 — la tira mide lo que mide su columna (width:0 + min-width:100%) y se
+   desplaza por dentro. Sin eso, con 12+ fotos el ancho de las fotos se sumaba
+   al de la columna Visita de la hoja (grid en fr) y aplastaba Cliente y Trabajo. */
 function _fotoHistHTML(t){
   var ph=[];try{ph=_custPhotoHistory(t&&t.customer,t&&t.id)}catch(_e){}
   if(!ph.length)return "";
   return '<div class="dt-foto-hist">'
     +'<div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px">🖼️ '+L2("Fotos de otras visitas","Photo history · other visits")+' ('+ph.length+')</div>'
-    +'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">'+ph.map(function(p){
+    +'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;width:0;min-width:100%;box-sizing:border-box">'+ph.map(function(p){
       return '<div style="flex:none;width:90px"><img src="'+esc(p.url)+'" loading="lazy" onerror="_imgFallback(this)" onclick="event.stopPropagation();_previewTktImg(this)" style="width:90px;height:90px;object-fit:cover;border-radius:9px;border:1px solid var(--ln);cursor:zoom-in;display:block"><div style="font-size:11px;color:var(--i3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.date||"")+(p.tech?(" · "+esc(p.tech)):"")+'</div></div>';
     }).join("")+'</div></div>';
 }
