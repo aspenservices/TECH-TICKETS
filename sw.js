@@ -31,7 +31,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.88.1";  // 16 oct 2026 · acabado (20 + 200), arreglos de raiz y «Needs report» solo lo que no tiene reporte · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.87.1";  // 15 oct 2026 · tira de fotos dentro de su columna · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell
