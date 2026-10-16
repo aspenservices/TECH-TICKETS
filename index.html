@@ -7205,8 +7205,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.88.0";
-var BUILD_DATE="2026-10-15";
+var APP_VERSION="2.88.1";
+var BUILD_DATE="2026-10-16";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
@@ -10295,23 +10295,58 @@ function _dayDiff(d1,d2){
 // un vinculo faltante sino un vinculo que el propio documento desmiente.
 var LINK_TRUTH_SINCE="2026-07-27T00:00:00.000Z";
 var _LINK_TRUTH_MS=Date.parse(LINK_TRUTH_SINCE);
+/* v2.88.1 — «NECESITA REPORTE» SOLO PARA LO QUE DE VERDAD NO TIENE REPORTE.
+   La lista mostraba visitas que SI tenian reporte. Tres hechos escritos se leian
+   a medias o no se leian:
+   1) El vinculo de la cita (fieldReportId) solo valia si el reporte estaba
+      CARGADO en este aparato. La memoria es una ventana (6 meses vivos + lo
+      abierto + el archivo si se abrio), no la base: «no lo tengo cargado» no es
+      «no existe». Ahora el vinculo escrito manda; si el reporte no esta cargado
+      se le pregunta al servidor (_verificaVinculos) y solo un «no existe» del
+      servidor lo invalida. Antes, ademas, la limpieza borraba esos vinculos
+      buenos (bomba de tiempo cuando las citas salen de la ventana de 6 meses).
+   2) El reporte declara su visita al nacer: rep_<cita> (llenado desde la cita)
+      o dispatchId (reporte suelto o reagendo). Es identidad por construccion
+      (la misma regla del guardia de v2.3.0), no un parecido. Si la cita no
+      guardo su vinculo, ese reporte la cumple — salvo que la oficina la haya
+      reabierto como visita nueva (cleanupExempt) o que la cita sea posterior
+      al reporte. La limpieza (A) escribe el vinculo que falta.
+   3) El desempate I2 comparaba fieldReportSubmittedAt como TEXTO, con dos
+      formatos («4/28/2026, …» y ISO). Ahora compara milisegundos. */
+var _lnkFaltan=Object.create(null);   // reportes que el servidor confirmo que NO existen
 function _linkIndex(){
-  var byId=Object.create(null), claim=Object.create(null), servedBy=Object.create(null), legacy=Object.create(null);
+  var byId=Object.create(null), claim=Object.create(null), servedBy=Object.create(null), legacy=Object.create(null), via=Object.create(null);
   var pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
   pool.forEach(function(t){ if(t&&t.id)byId[t.id]=t; });
+  function cuando(x){ var n=Date.parse(String((x&&x.fieldReportSubmittedAt)||"")); return isNaN(n)?Infinity:n; }
+  // 1) el vinculo escrito en la cita
   pool.forEach(function(t){
     if(!t||t.source!=="dispatch")return;
     var rid=t.fieldReportId||""; if(!rid)return;
-    if(!byId[rid])return;                                   // el reporte no existe
+    if(!byId[rid]&&_lnkFaltan[rid])return;                  // el servidor dijo que ese reporte no existe
     if(t.reschedFromId&&t.reschedFromId===rid)return;        // I1
     var prev=claim[rid];
-    if(prev){                                                // I2, desempate estable
-      var a=byId[prev]||{}, sa=String(a.fieldReportSubmittedAt||""), sb=String(t.fieldReportSubmittedAt||"");
-      var gana = sa&&sb ? (sa<=sb?prev:t.id) : (String(prev)<String(t.id)?prev:t.id);
+    if(prev){                                                // I2, desempate estable por fecha real
+      var ca=cuando(byId[prev]), cb=cuando(t);
+      var gana=(ca!==cb)?(ca<cb?prev:t.id):(String(prev)<String(t.id)?prev:t.id);
       if(gana!==t.id)return;
-      delete servedBy[prev];
+      delete servedBy[prev]; delete via[prev];
     }
-    claim[rid]=t.id; servedBy[t.id]=rid;
+    claim[rid]=t.id; servedBy[t.id]=rid; via[t.id]=byId[rid]?"vinculo":"vinculo-sin-cargar";
+  });
+  // 2) el reporte que declara su visita (rep_<cita> o dispatchId)
+  var _x=new Date(), _hoyLnk=_x.getFullYear()+"-"+String(_x.getMonth()+1).padStart(2,"0")+"-"+String(_x.getDate()).padStart(2,"0");
+  pool.forEach(function(r){
+    if(!r||!r.id||r.source==="dispatch"||r.source==="coaching"||r.status==="canceled"||r.status==="cancelled")return;
+    var sid=String(r.id), did=(sid.indexOf("rep_")===0)?sid.slice(4):String(r.dispatchId||"");
+    if(!did)return;
+    var t=byId[did]; if(!t||t.source!=="dispatch"||t.status==="canceled")return;
+    if(servedBy[did]||claim[sid])return;                     // ya tiene su vinculo / ese reporte ya cumple otra
+    if(t.cleanupExempt)return;                               // la oficina la reabrio como visita nueva
+    if(t.reschedFromId&&t.reschedFromId===sid)return;        // I1
+    var td=String(t.date||"").slice(0,10), rd=String(r.date||"").slice(0,10);
+    if(!td||td>_hoyLnk||(rd&&td>rd))return;                  // sin fecha, futura o posterior al reporte: no la cumple
+    claim[sid]=did; servedBy[did]=sid; via[did]="reporte";
   });
   // Segunda pasada: cierres LEGACY (anteriores al corte, sin vinculo valido y
   // sin contradiccion I1). Se dan por buenos y se marcan aparte, para que los
@@ -10326,9 +10361,31 @@ function _linkIndex(){
     // Comparar como TEXTO daba falso ("4/..." > "2026-...") y resucitaba visitas
     // de abril. Se comparan milisegundos, y lo ilegible cae del lado seguro.
     var when=Date.parse(String(t.fieldReportSubmittedAt||t.linkBackfilledAt||""));
-    if(isNaN(when)||when<_LINK_TRUTH_MS){ legacy[t.id]=1; servedBy[t.id]=t.fieldReportId||"legacy"; }
+    if(isNaN(when)||when<_LINK_TRUTH_MS){ legacy[t.id]=1; servedBy[t.id]=t.fieldReportId||"legacy"; via[t.id]="legacy"; }
   });
-  return {byId:byId, servedBy:servedBy, claimedBy:claim, legacy:legacy};
+  return {byId:byId, servedBy:servedBy, claimedBy:claim, legacy:legacy, via:via};
+}
+/* v2.88.1 — el aparato de la oficina le pregunta al servidor por los reportes
+   vinculados que no tiene cargados (como mucho 25 por vuelta, cada 10 min).
+   Solo un «no existe» del servidor invalida un vinculo. */
+var _lnkVisto=Object.create(null), _lnkVerifAt=0;
+async function _verificaVinculos(force){
+  if(typeof db==="undefined"||!db)return 0;
+  if(typeof currentUser==="undefined"||!currentUser||currentUser.role==="tech")return 0;
+  if(typeof navigator!=="undefined"&&navigator&&navigator.onLine===false)return 0;
+  if(!force&&Date.now()-_lnkVerifAt<600000)return 0;
+  _lnkVerifAt=Date.now();
+  var lnk=_linkIndex(), ids=[];
+  Object.keys(lnk.via).forEach(function(did){ if(lnk.via[did]!=="vinculo-sin-cargar")return; var rid=lnk.servedBy[did]; if(rid&&!_lnkVisto[rid]&&ids.indexOf(rid)<0)ids.push(rid); });
+  ids=ids.slice(0,25);
+  var n=0;
+  for(var i=0;i<ids.length;i++){
+    _lnkVisto[ids[i]]=1;
+    try{ var s=await db.collection("tickets").doc(ids[i]).get(); if(!s.exists){ _lnkFaltan[ids[i]]=1; n++; } }
+    catch(_e){ delete _lnkVisto[ids[i]]; }
+  }
+  if(n){ try{window.__aspLkK=0}catch(_e){} try{if(typeof refreshAll==="function")refreshAll()}catch(_e){} }
+  return n;
 }
 function _isDispatchServed(t,lnk){
   if(!t||t.source!=="dispatch")return false;
@@ -10421,6 +10478,7 @@ async function _runDispatchCleanup(opts){
   // Fix: delegate to the SAME _buildFieldReportIndex + _hasMatchingReport
   // helpers that _isVisibleDispatch uses, AND skip tickets created in the
   // last 5 minutes so brand-new entries never vanish from under the user.
+  try{ _verificaVinculos(false); }catch(_vv){}
   var idx=_buildFieldReportIndex();
   var todayStr=fmtD(new Date());
   var nowMs=Date.now();
@@ -10476,7 +10534,7 @@ async function _runDispatchCleanup(opts){
         if(_md.fieldReportSubmitted!==true||_md.status==="canceled")continue;
         if(String(_md.cleanedUpBy||"").indexOf("manual-dismiss")===0)continue;
         var _rid=_md.fieldReportId||"";
-        var _ok=_rid&&_lnkR.byId[_rid]&&!(_md.reschedFromId&&_md.reschedFromId===_rid)&&_lnkR.claimedBy[_rid]===_mal[_m].id;
+        var _ok=_rid&&(_lnkR.byId[_rid]||!_lnkFaltan[_rid])&&!(_md.reschedFromId&&_md.reschedFromId===_rid)&&(!_lnkR.claimedBy[_rid]||_lnkR.claimedBy[_rid]===_mal[_m].id);
         if(_ok)continue;                                  // el dato cambio: ya es valido
         await db.collection("tickets").doc(_mal[_m].id).update({
           fieldReportSubmitted:false,
@@ -23171,7 +23229,7 @@ function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
   // Highlights the card in amber so it doesn't get lost in the calendar.
   // v2.2.0: solo cuenta la evidencia de ESTA visita, no la heredada de otra.
-  const needsReport=t.source==="dispatch"&&!!_visitCheckInAt(t)&&!!_visitCheckOutAt(t)&&!t.fieldReportSubmitted&&t.status!=="canceled";
+  const needsReport=t.source==="dispatch"&&!!_visitCheckInAt(t)&&!!_visitCheckOutAt(t)&&(typeof aspPideReporte==="function"?aspPideReporte(t):(!t.fieldReportSubmitted&&t.status!=="canceled"));
   // REPORTED (Jun 2026, Option A): a dispatch whose field report is already in.
   // Stays in the calendar as a green "✓ Reported" card instead of disappearing.
   // v2.0.0: la insignia verde sale del VINCULO, no del booleano. Si el dato
@@ -52454,7 +52512,19 @@ window.aspTieneReporte=function(t){
   return !!t.fieldReportSubmitted;
 };
 /* cerradas SIN reporte: el aviso accionable que sale de cruzar las dos */
-window.aspCerradaSinReporte=function(t){ return aspEstaCerrada(t)&&!aspTieneReporte(t) };
+/* v2.88.1 — la oficina quito la cita a mano (× del calendario): se resolvio a
+   proposito sin reporte. No es una visita que deba un reporte. */
+window.aspCerradaAMano=function(t){ return !!t&&String(t.cleanedUpBy||"").indexOf("manual-dismiss")===0 };
+window.aspCerradaSinReporte=function(t){ return aspEstaCerrada(t)&&!aspTieneReporte(t)&&!aspCerradaAMano(t) };
+/* v2.88.1 — LA definicion de «necesita reporte», para todas las pantallas: una
+   cita (no cancelada ni quitada a mano) sin reporte que ya se cerro, o en la que
+   el tecnico llego y se fue ese mismo dia. */
+window.aspPideReporte=function(t){
+  if(!t||t.source!=="dispatch"||t.status==="canceled"||t.status==="cancelled")return false;
+  if(aspCerradaAMano(t)||aspTieneReporte(t))return false;
+  if(aspEstaCerrada(t))return true;
+  try{ return !!(_visitCheckInAt(t)&&_visitCheckOutAt(t)); }catch(_e){ return !!(t.checkInAt&&t.checkOutAt); }
+};
 })();
 </script>
 
@@ -57023,6 +57093,7 @@ function isDispatch(t){return !!(t&&t.source==="dispatch")}
 function payFirst(t){try{return !!(t&&!t.paidBeforeServiceOK&&(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer))))}catch(_e){return !!(t&&t.paymentBeforeService&&!t.paidBeforeServiceOK)}}
 function continuation(t){try{return !!(t&&((typeof aspEsContinuacion==="function"&&aspEsContinuacion(t))||t.autoFromResched||t.autoFromFollowUp||t.reschedFromId))}catch(_e){return !!(t&&(t.autoFromResched||t.autoFromFollowUp||t.reschedFromId))}}
 function needsReport(t){
+  if(typeof aspPideReporte==="function")return aspPideReporte(t);
   if(!isDispatch(t)||!notCanceled(t))return false;
   try{if(typeof aspCerradaSinReporte==="function"&&aspCerradaSinReporte(t))return true}catch(_e){}
   try{var ci=typeof _visitCheckInAt==="function"?_visitCheckInAt(t):(t.checkInAt||"");var co=typeof _visitCheckOutAt==="function"?_visitCheckOutAt(t):(t.checkOutAt||"");var has=typeof aspTieneReporte==="function"?aspTieneReporte(t):!!t.fieldReportSubmitted;return !!(ci&&co&&!has)}catch(_e){return false}
@@ -57041,7 +57112,7 @@ function attentionItems(k){
 }
 function attentionMeta(k){
   var m={
-    report:{ico:"📝",es:"Necesita reporte",en:"Needs report",whyEs:"Visita cerrada sin field report",whyEn:"Visit closed without field report",c:"var(--c-warning-strong)"},
+    report:{ico:"📝",es:"Necesita reporte",en:"Needs report",whyEs:"Visita sin reporte de campo",whyEn:"Visit without a field report",c:"var(--c-warning-strong)"},
     unassigned:{ico:"👤",es:"Sin asignar",en:"Unassigned",whyEs:"Cita sin técnico",whyEn:"Appointment has no technician",c:"var(--c-info-strong)"},
     payfirst:{ico:"💳",es:"Cobrar primero",en:"Pay first",whyEs:"Pago requerido antes del servicio",whyEn:"Payment required before service",c:"var(--c-danger-strong)"},
     tech2:{ico:"👥",es:"Necesita 2do tech",en:"Needs 2nd tech",whyEs:"Trabajo marcado para dos técnicos",whyEn:"Job requires a second technician",c:"var(--c-purple-strong)"},
@@ -57437,7 +57508,7 @@ function isDispatch(t){return !!(t&&t.source==="dispatch")}
 function isCanceled(t){return !t||t.status==="canceled"||t.status==="cancelled"}
 function isDone(t){return !!(t&&(t.status==="done"||t.status==="complete"||t.fieldReportSubmitted===true))}
 function payFirst(t){try{return !!(t&&!t.paidBeforeServiceOK&&(t.paymentBeforeService||(typeof _isCustPayFirst==="function"&&_isCustPayFirst(t.customer))))}catch(_e){return !!(t&&t.paymentBeforeService&&!t.paidBeforeServiceOK)}}
-function needsReport(t){if(!isDispatch(t)||isCanceled(t))return false;try{if(typeof aspCerradaSinReporte==="function"&&aspCerradaSinReporte(t))return true}catch(_e){}try{var ci=typeof _visitCheckInAt==="function"?_visitCheckInAt(t):(t.checkInAt||"");var co=typeof _visitCheckOutAt==="function"?_visitCheckOutAt(t):(t.checkOutAt||"");var has=typeof aspTieneReporte==="function"?aspTieneReporte(t):!!t.fieldReportSubmitted;return !!(ci&&co&&!has)}catch(_e){return false}}
+function needsReport(t){if(typeof aspPideReporte==="function")return aspPideReporte(t);if(!isDispatch(t)||isCanceled(t))return false;try{if(typeof aspCerradaSinReporte==="function"&&aspCerradaSinReporte(t))return true}catch(_e){}try{var ci=typeof _visitCheckInAt==="function"?_visitCheckInAt(t):(t.checkInAt||"");var co=typeof _visitCheckOutAt==="function"?_visitCheckOutAt(t):(t.checkOutAt||"");var has=typeof aspTieneReporte==="function"?aspTieneReporte(t):!!t.fieldReportSubmitted;return !!(ci&&co&&!has)}catch(_e){return false}}
 function continuation(t){try{return !!(t&&((typeof aspEsContinuacion==="function"&&aspEsContinuacion(t))||t.autoFromResched||t.autoFromFollowUp||t.reschedFromId))}catch(_e){return !!(t&&(t.autoFromResched||t.autoFromFollowUp||t.reschedFromId))}}
 function waitPart(t){var s=[t&&t.reschedBlocker,t&&t.reschedBlockerPart,t&&t.reschedReason,t&&t.reschedNote].filter(Boolean).join(" ").toLowerCase();return !!(t&&(t.reschedBlocker==="part"||t.reschedBlocker==="parts"||t.reschedBlockerPart||/wait(?:ing)?[^\n]{0,20}part|part[^\n]{0,20}(?:order|backorder|needed)/i.test(s)))}
 function waitCustomer(t){var s=[t&&t.reschedBlocker,t&&t.reschedReason,t&&t.reschedNote,t&&t.reschedAvailability].filter(Boolean).join(" ").toLowerCase();return !!(t&&(/customer|access|availability|gate|not home|call customer|schedule with/i.test(s)||t.reschedBlocker==="customer"))}
@@ -61616,7 +61687,7 @@ if(typeof _c3==='function'&&!_c3.__sw){
 })();
 </script>
 
-<!-- ══════ ACABADO · v2.88.0 (15 oct 2026) ══════
+<!-- ══════ ACABADO · v2.88.1 (15 oct 2026) ══════
      Las 20 sugerencias y las 200 propuestas de «Acabado de TECH-TICKETS», reversibles.
      Apagar sin borrar: localStorage.acabado="0" (o ?acabado=0) y recargar.
      Revertir del todo: borrar estos dos bloques (aspenAcabadoSkin + aspenAcabadoScript).
