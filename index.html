@@ -7206,7 +7206,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.88.9";
+var APP_VERSION="2.89.0";
 var BUILD_DATE="2026-10-22";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -61873,7 +61873,7 @@ if(typeof _c3==='function'&&!_c3.__sw){
 })();
 </script>
 
-<!-- ══════ ACABADO · v2.88.9 (22 oct 2026) ══════
+<!-- ══════ ACABADO · v2.89.0 (22 oct 2026) ══════
      Las 20 sugerencias y las 200 propuestas de «Acabado de TECH-TICKETS», reversibles.
      Apagar sin borrar: localStorage.acabado="0" (o ?acabado=0) y recargar.
      Revertir del todo: borrar estos dos bloques (aspenAcabadoSkin + aspenAcabadoScript).
@@ -63296,8 +63296,25 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .kpi-card:has(.asp-l-cero){display:none!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi.asp-kz{display:none!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpis:not(:has(.pf20-kpi:not(.asp-kz))){display:none!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p:not(.tkt-techline){display:none!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > span:not(.asp-a-mas):not([style*="danger"]):not([style*="--r)"]):not([style*="#DC2626"]):not([style*="#dc2626"]){display:none!important}
+/* 2.89.0 — la Ruta vuelve a mostrar zona, dirección (abre el mapa) y teléfono (llamar o texto) */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > .asp-nowar{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > span:not(.asp-a-mas):not(.asp-nowar){margin-top:8px!important;display:inline-flex!important;vertical-align:middle}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p:not(.tkt-techline){margin:6px 0 0!important;font-size:14px!important;color:var(--i2)!important;line-height:1.35;display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 10px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p:not(.tkt-techline) + p:not(.tkt-techline){margin-top:3px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p a[href]{color:var(--ink)!important;text-decoration:none!important;gap:7px!important;font-weight:500!important;min-height:26px;align-items:center!important;min-width:0}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p a[href] svg,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p a[href] .asp-ico{display:inline-block!important;margin-right:3px!important;color:var(--ac)!important;stroke:var(--ac)!important;flex:0 0 auto;width:15px!important;height:15px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p a[href]:hover{text-decoration:underline!important;text-underline-offset:3px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-sms{display:inline-flex!important;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;background:var(--acl);color:var(--acd,#A85C1F)!important;font-size:13px!important;font-weight:700!important;text-decoration:none!important;flex:0 0 auto}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-sms:hover{text-decoration:none!important;background:var(--ac);color:#fff!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-sms svg{color:currentColor!important;stroke:currentColor!important}
+/* la hoja: dirección y teléfonos del cliente arriba */
+.asp-c-contacto{display:none}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto{display:flex!important;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:14px 18px;border-radius:var(--c-r);background:var(--cd);box-shadow:var(--c-sh);order:0}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto a{display:inline-flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-size:15px!important;font-weight:500;min-width:0}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto a:not(.asp-c-sms) svg{color:var(--ac);stroke:var(--ac);flex:0 0 auto}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto a:not(.asp-c-sms):hover{text-decoration:underline;text-underline-offset:3px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto .asp-c-tel{display:inline-flex;align-items:center;gap:10px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto .asp-c-dir span{overflow-wrap:anywhere}
 
 /* ── 6 · «Te necesita ahora» ── */
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora{display:block;background:var(--cd);border-radius:24px;box-shadow:var(--c-sh);padding:22px 24px 14px;margin:0 0 20px}
@@ -63376,6 +63393,8 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill .dot{width:40px!important;height:40px!important;margin:0!important;border-radius:50%!important;display:grid!important;place-items:center;box-shadow:0 3px 10px rgba(33,23,18,.16)}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill .dot::after{content:attr(data-ini);font:700 13px var(--a-font,inherit);color:#fff;letter-spacing:.02em}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill.unassigned .dot{background:var(--i3)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill:not(.on):not(.unassigned) .dot{background:var(--i3)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill:not(:has(.dot)){font-size:13px!important;width:auto;height:36px;padding:0 14px!important;border-radius:999px!important;opacity:1}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill .cnt{position:absolute;top:-5px;right:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cd)!important;color:var(--ink)!important;font-size:13px!important;font-weight:700!important;line-height:22px!important;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill:not(.on){opacity:.32}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill:hover{transform:scale(1.08)}
@@ -63383,18 +63402,32 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini .asp-hr{font-size:14px!important}
 
 /* ── 16 · Registro: una lista, la espera mas larga arriba ── */
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg5:not(.asp-c-filtrosOn) #slogList > :is(.sl-aging-summary,.sl-aging-summary + div:not(.asp-c-filtros),.sl-aging-summary + .asp-c-filtros + div){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg5:not(.asp-c-filtrosOn) #slogList > .sl-aging-summary{display:none!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .slc > div:first-child{flex-wrap:wrap;row-gap:2px}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-filtros{display:inline-flex!important;align-items:center;gap:6px;height:34px;padding:0 14px;margin:0 0 14px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px!important;font-weight:600!important;cursor:pointer}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-filtros{margin-right:12px!important;display:inline-flex!important;align-items:center;gap:6px;height:34px;padding:0 14px;margin:0 0 14px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px!important;font-weight:600!important;cursor:pointer}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg5.asp-c-filtrosOn .asp-c-filtros{background:var(--ink);color:var(--cd);border-color:var(--ink)}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-grid{display:flex!important;flex-direction:column!important;gap:10px!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-body{display:contents!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-hdr{display:none!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item{display:grid!important;grid-template-columns:1fr auto;column-gap:14px;align-items:center;padding:14px 18px!important;margin:0!important;background:var(--cd)!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item > :is(h6,p){grid-column:1}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item > :is(.sl-age-chip,.asp-c-zona){grid-column:2;justify-self:end}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item > .sl-age-chip{grid-row:1}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-zona{display:block!important;font-size:13px!important;color:var(--i3);grid-row:2}
+/* 2.89.0 — por zonas otra vez: cada zona es una columna con su color arriba y sus tarjetas */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-grid{gap:18px!important;align-items:start}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card:not(#_cx){background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-hdr{border-radius:14px!important;padding:11px 16px!important;font-size:16px!important;font-weight:700!important;margin:0 0 10px!important;border:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-hdr > span:last-child{font-size:14px!important;font-weight:700!important;opacity:.85}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-body{display:flex!important;flex-direction:column!important;gap:10px!important;padding:0!important;background:transparent!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item{padding:14px 16px!important;margin:0!important;background:var(--cd)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5):not(.dark-mode):not(.theme-ember) :is(.wrap,#tktDetailBg .modal) .asp-c-zc:not(#_cx){background:var(--zb)!important;color:var(--zf)!important;border-color:transparent!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .slc > div:first-child > span:not(:first-child){font-size:14px!important;font-weight:500!important}
+/* arriba: Urgent / Needs new date / New Spa / Pending credit card como una fila de pastillas */
+.asp-c-grpbar{display:none}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar{display:flex!important;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button{display:inline-flex;align-items:center;gap:9px;height:38px;padding:0 8px 0 15px;border-radius:999px;border:1px solid var(--ln);background:var(--cd);color:var(--ink);font-size:14px!important;font-weight:600!important;cursor:pointer;box-shadow:0 1px 2px rgba(33,23,18,.05);transition:transform .3s var(--c-res),box-shadow .2s ease,border-color .2s ease}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button:hover{transform:translateY(-1px);box-shadow:var(--c-sh)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button b{min-width:24px;height:24px;padding:0 8px;border-radius:999px;color:#fff;font-size:13px!important;line-height:24px;text-align:center;background:var(--c-g,var(--i3))}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button[aria-pressed="true"]{border-color:var(--c-g,var(--ink));box-shadow:0 0 0 1px var(--c-g,var(--ink)) inset}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button svg{color:var(--c-g,var(--i3));flex:0 0 auto}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp:not(.asp-c-grpOn){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp.asp-c-grpOn{animation:aspCEntra .35s var(--c-res) backwards;margin-bottom:18px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .sl-cols{display:block!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp > .slc-g{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;gap:12px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp > .lbl{font-size:13px!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .slc{padding:14px 16px!important;background:var(--cd)!important}
 
 /* ── 17 · ficha del cliente en modo lectura ── */
@@ -63412,7 +63445,7 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 /* ── 18 · la hoja en una columna, facturacion plegada ── */
 @media (min-width:901px){ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #tktDetailBg .modal{max-width:880px!important} }
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:20px!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-top{order:0;min-width:0;max-width:100%} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colV{order:1} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colW{order:2} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colC{order:3} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-morebtn{order:4} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-acts{order:5}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-top{order:0;min-width:0;max-width:100%} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colC{order:1} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colV{order:2} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colW{order:3} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-morebtn{order:4} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-acts{order:5}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-top > *{min-width:0;max-width:100%}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW){width:100%!important;max-width:none!important;min-width:0!important;align-self:stretch!important;box-sizing:border-box}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colV > .dt-sec,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW > .asp-c-fact{width:100%!important;max-width:none!important;box-sizing:border-box}
@@ -63425,6 +63458,8 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact-r{flex:1;min-width:0;font-size:14px!important;color:var(--i2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact > svg{color:var(--i3);flex:0 0 auto}
 
+/* 2.89.0 — Scores: los cuadros del mes vuelven a verse */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg18 .sc-mc:is(.none,.fut):not(#_cx){box-shadow:0 0 0 1px var(--ln) inset!important}
 /* ── 19 · Cobros: la cabecera clara ── */
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-head{background:var(--cd)!important;color:var(--ink)!important;box-shadow:var(--c-sh)!important;border-radius:24px!important;border:0!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-head :is(h1,h2,h3,p,div,span,b,small,strong){color:var(--ink)}
@@ -64452,6 +64487,77 @@ document.addEventListener("click",function(e){
   var mm=t.closest(".asp-c-masmenu"); if(mm){ e.preventDefault(); e.stopPropagation(); var sh=$("aspShell"); if(sh)cls(sh,"asp-c-menuOn",!sh.classList.contains("asp-c-menuOn")); schedule(); return; }
 },true);
 document.addEventListener("keydown",function(e){ if(e.key==="Escape"){ var p=$("aspPrPanel"); if(p&&!p.hidden){ e.stopPropagation(); prCerrar(); } } },true);
+
+/* ══ v2.89.0 · lo que Alberto pidio de vuelta ═════════════════════════════════════
+   Ruta: zona, direccion (abre el mapa) y telefono con «Text». Registro: zonas de vuelta y los
+   grupos de arriba (Urgent, Needs new date, New Spa, Pending credit card) en una fila de pastillas. */
+mod("claraRutaTexto",function(){
+  if(!claraOn())return;
+  Array.prototype.forEach.call(document.querySelectorAll('#pg4 .cal-tkt-mini > p a[href^="tel:"]'),function(a){
+    var p=a.parentNode; if(p.querySelector(".asp-c-sms"))return;
+    var num=a.getAttribute("href").slice(4).replace(/[^\d+]/g,""); if(!num)return;
+    var x=document.createElement("a"); x.className="asp-c-sms"; x.href="sms:"+num; x.setAttribute("onclick","event.stopPropagation()");
+    x.title=T("Send a text","Mandar mensaje"); x.innerHTML=ico("message-circle",13)+'<span>'+T("Text","Texto")+'</span>'; p.appendChild(x);
+    if(!a.title)a.title=T("Call","Llamar");
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#pg4 .cal-tkt-mini > p a[href*="maps."]'),function(a){ if(!a.title)a.title=T("Open in Maps","Abrir en el mapa"); });
+});
+/* las zonas con su color de siempre (ZONE_COLORS): chip de la Ruta y encabezado de cada zona del Registro */
+function zonaCol(n){ try{ return ZONE_COLORS[String(n||"").trim()]||null; }catch(_e){ return null; } }
+mod("claraZonaColor",function(){
+  if(!claraOn())return;
+  function pinta(el,z){ var c=zonaCol(z); if(!c)return; if(el.style.getPropertyValue("--zb")!==c.bg){ el.style.setProperty("--zb",c.bg); el.style.setProperty("--zf",c.text); } cls(el,"asp-c-zc",true); }
+  Array.prototype.forEach.call(document.querySelectorAll("#pg4 .cal-tkt-mini > span:not(.asp-nowar):not(.asp-a-mas)"),function(sp){ pinta(sp,sp.textContent); });
+  Array.prototype.forEach.call(document.querySelectorAll("#slogList .zone-card-hdr"),function(h){ var f=h.querySelector("span"); pinta(h,f?f.textContent:""); });
+});
+/* la hoja del ticket: direccion y telefonos del cliente arriba, a un toque (mapa, llamar, texto) */
+function telLink(n){ var d=String(n||"").replace(/[^\d+]/g,""); return d.length>=7?d:""; }
+mod("claraHojaContacto",function(){
+  var bg=$("tktDetailBg"); if(!bg||!bg.classList.contains("open"))return;
+  var g=bg.querySelector(".dtv2-grid"); if(!g)return;
+  var c=g.querySelector(":scope > .asp-c-contacto");
+  if(!claraOn()){ if(c)c.remove(); return; }
+  function v(id){ var e=document.getElementById(id); return e?String(e.value||"").trim():""; }
+  var dir=v("dtAddr"), ciu=v("dtCity"), zip=v("dtZip"), tels=[];
+  Array.prototype.forEach.call(bg.querySelectorAll(".dtv2-colC input.dt-ph"),function(i){ var t=String(i.value||"").trim(); if(t&&tels.indexOf(t)<0)tels.push(t); });
+  var linea=[dir,[ciu,zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  var k=linea+"|"+tels.join("|");
+  if(!linea&&!tels.length){ if(c)c.remove(); return; }
+  if(!c){ c=document.createElement("div"); c.className="asp-c-contacto"; }
+  var top=g.querySelector(":scope > .dtv2-top"); if(c.parentNode!==g||(top&&c.nextElementSibling!==top))g.insertBefore(c,top||g.firstChild);
+  if(c.__k===k)return; c.__k=k;
+  var h="";
+  if(linea)h+='<a class="asp-c-dir" href="https://maps.apple.com/?q='+encodeURIComponent(linea)+'" target="_blank" rel="noopener" title="'+T("Open in Maps","Abrir en el mapa")+'">'+ico("map-pin",16)+'<span>'+esc(linea)+'</span></a>';
+  tels.forEach(function(t){ var n=telLink(t); if(!n){ h+='<span class="asp-c-tel">'+ico("phone",16)+esc(t)+'</span>'; return; }
+    h+='<span class="asp-c-tel"><a href="tel:'+n+'" title="'+T("Call","Llamar")+'">'+ico("phone",16)+'<span>'+esc(t)+'</span></a><a class="asp-c-sms" href="sms:'+n+'" title="'+T("Send a text","Mandar mensaje")+'">'+ico("message-circle",13)+'<span>'+T("Text","Texto")+'</span></a></span>'; });
+  c.innerHTML=h;
+});
+var LG={};
+mod("claraLogGrupos",function(){
+  var sl=$("slogList"); if(!sl)return;
+  var bar=sl.querySelector(":scope > .asp-c-grpbar");
+  if(!claraOn()){ if(bar)bar.remove(); Array.prototype.forEach.call(sl.querySelectorAll(":scope > .asp-c-grp"),function(c){ c.classList.remove("asp-c-grp","asp-c-grpOn"); }); return; }
+  /* las secciones viven sueltas en #slogList o dentro de .sl-cols (la capa simple las pone en columnas) */
+  var gs=[]; Array.prototype.forEach.call(sl.querySelectorAll(".lbl"),function(l){ var c=l.parentNode;
+    if(!c||c.closest(".zone-grid")||!c.querySelector(":scope > .slc-g"))return; gs.push([c,l]); });
+  if(!gs.length){ if(bar)bar.remove(); return; }
+  if(!bar){ bar=document.createElement("div"); bar.className="asp-c-grpbar"; bar.setAttribute("role","group"); bar.setAttribute("aria-label",T("Queues","Pendientes")); }
+  var top=gs[0][0]; while(top.parentNode&&top.parentNode!==sl)top=top.parentNode;
+  if(bar.parentNode!==sl||bar.nextElementSibling!==top)sl.insertBefore(bar,top);
+  var h="";
+  gs.forEach(function(g){ var c=g[0], l=g[1], txt="";
+    for(var i=0;i<l.childNodes.length;i++){ if(l.childNodes[i].nodeType===3)txt+=l.childNodes[i].nodeValue; }
+    txt=txt.replace(/\s+/g," ").trim(); var k=txt.toLowerCase(); if(!k)return;
+    var n=c.querySelectorAll(":scope > .slc-g > *").length, col=l.style.color||"var(--i3)", on=!!LG[k];
+    var sv=l.querySelector("svg"); var icon=sv?sv.outerHTML:"";
+    cls(c,"asp-c-grp",true); cls(c,"asp-c-grpOn",on); setAttr(c,"data-c-grp",k);
+    h+='<button type="button" data-c-grp="'+esc(k)+'" aria-pressed="'+(on?"true":"false")+'" style="--c-g:'+esc(col)+'">'+icon+'<span>'+esc(txt)+'</span><b>'+n+'</b></button>'; });
+  if(bar.__h!==h){ bar.__h=h; bar.innerHTML=h; }
+});
+document.addEventListener("click",function(e){
+  var b=e.target&&e.target.closest&&e.target.closest(".asp-c-grpbar button[data-c-grp]"); if(!b)return;
+  e.preventDefault(); e.stopPropagation(); var k=b.getAttribute("data-c-grp"); LG[k]=!LG[k]; schedule();
+},true);
 
 /* ── 21 · el titulo de la pestana dice donde estas ────────────────────────── */
 mod("titulo",function(){
