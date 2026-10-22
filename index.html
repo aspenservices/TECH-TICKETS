@@ -2912,6 +2912,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <!-- ASPEN TECH TICKETS v2.80.0 · integrated build (2.73.0 base + 2.74–2.79 production changes) · 2026-10-06 -->
 </head>
 <body>
+<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado (se apaga en el perfil) */try{if(localStorage.getItem("aspLimpia")!=="0")document.body.classList.add("asp-limpia")}catch(e){}</script>
 <!-- Offline status indicator (shown only when device is offline) -->
 <div id="onlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-dialog);background:var(--c-warning-strong);color:#fff;padding:6px 12px;font-size:var(--fs-sm);font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:8px">
   <span class="lucide-mount" data-lucide="wifi-off" data-size="15" data-color="#fff" style="display:inline-flex;align-items:center"></span><span>Offline Mode — Changes will sync when reconnected</span>
@@ -7205,8 +7206,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.88.6";
-var BUILD_DATE="2026-10-20";
+var APP_VERSION="2.88.9";
+var BUILD_DATE="2026-10-22";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
@@ -10672,16 +10673,24 @@ async function calDismissTicket(id,custName,ev){
 }
 // ─── WELCOME DASHBOARD (animated count-up KPIs, admin/organizer) ────────────
 // Animate a number from 0 → target with easing (respects reduced-motion).
+/* v2.88.7 — cada repintado (cada cambio de datos) volvia a contar desde 0: los numeros de Admin y del
+   resumen bajaban a 0 y subian otra vez (se veia como parpadeo). Ahora cuenta desde 0 solo la primera
+   vez; despues va del numero anterior al nuevo, y si no cambio se queda quieto. */
+var _cuLast={};
+function _cuKey(el){ if(el.id)return el.id; var c=el.closest&&el.closest(".kpi-card"), l=c&&c.querySelector(".kpi-lbl"); return l?("lbl:"+l.textContent.trim()):""; }
 function _countUp(el,to,suffix){
   if(!el)return;
   suffix=suffix||"";
+  var key=_cuKey(el), from=(key&&_cuLast[key]!=null)?_cuLast[key]:0; if(key)_cuLast[key]=to;
+  if(from===to){el.textContent=to+suffix;return;}
   if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){el.textContent=to+suffix;return;}
   var dur=800,start=null;
+  el.textContent=from+suffix;
   function step(ts){
     if(!start)start=ts;
     var p=Math.min(1,(ts-start)/dur);
     var eased=1-Math.pow(1-p,3);
-    el.textContent=Math.round(to*eased)+suffix;
+    el.textContent=Math.round(from+(to-from)*eased)+suffix;
     if(p<1)requestAnimationFrame(step);else el.textContent=to+suffix;
   }
   requestAnimationFrame(step);
@@ -56420,7 +56429,13 @@ function pasaFechas(root){
 window._fechasPasada=pasaFechas;
 /* se engancha a todo lo que repinta: el traductor (corre tras cada pintado) y un observador con freno */
 var _fT=null;
-function programa(){ clearTimeout(_fT); _fT=setTimeout(function(){ try{ pasaFechas(_fechaRoot()) }catch(_e){} },120) }
+/* v2.88.7 — antes solo a los 120 ms: se veia «2026-10-20» y luego «Tue Oct 20». Ahora en el siguiente
+   cuadro (antes de pintar), una sola vez aunque se pida muchas; el de 120 ms queda de respaldo. */
+var _fR=0;
+function programa(){
+  if(!_fR){ try{ _fR=requestAnimationFrame(function(){ _fR=0; try{ pasaFechas(_fechaRoot()) }catch(_e){} }) }catch(_e){ _fR=0 } }
+  clearTimeout(_fT); _fT=setTimeout(function(){ try{ pasaFechas(_fechaRoot()) }catch(_e){} },120)
+}
 (function(){ var ip=window._i18nPass; if(typeof ip==="function"){ window._i18nPass=function(root){ var r=ip.apply(this,arguments); programa(); return r } } })();
 var _fMo=null;
 function _fechaRoot(){
@@ -57784,7 +57799,7 @@ A.closeAgeBand=function(){var b=document.getElementById('ops2751AgeBg');if(b)b.c
 A.showAgeBand=function(band){var all=visibleServiceCalls(),list=all.filter(function(t){return bandFor(t)===band}).sort(function(a,b){return ticketTs(a)-ticketTs(b)}),names={fresh:'0–2 days',warn:'3–6 days',late:'7–13 days',critical:'14+ days'},bg=ageOverlay(),box=document.getElementById('ops2751AgeContent');box.innerHTML='<div class="ops2751-agehead"><div><b>'+E(L('Clientes esperando','Customers waiting'))+' · '+E(names[band]||band)+'</b><small>'+list.length+' '+E(L(list.length===1?'llamada':'llamadas',list.length===1?'call':'calls'))+'</small></div><button onclick="AspenOps275.closeAgeBand()">×</button></div><div class="ops2751-agelist">'+(list.map(function(t){var d=ageDays(t),zone='';try{zone=(typeof effectiveZone==='function'?effectiveZone(t):t.zone)||''}catch(_e){zone=t.zone||''}return '<button class="ops2751-ageitem" onclick="AspenOps275.closeAgeBand();if(typeof openTktDetail===\'function\')openTktDetail(\''+E(String(t.id).replace(/'/g,"\\'"))+'\')"><span><b>'+E(t.customer||'Customer')+'</b><small>'+E([zone,t.date||L('sin fecha','no date')].filter(Boolean).join(' · '))+'</small></span><span class="age">'+E(ageText(d))+'</span></button>'}).join('')||'<div style="padding:18px;text-align:center;color:var(--i3)">'+E(L('No hay llamadas en este rango','No calls in this range'))+'</div>')+'</div>';bg.classList.add('open')};
 
 /* Re-run after the native Service Log and v2.75 decorator, using the SAME filtered source. */
-if(typeof window.rndrSlog==='function'){var _rs=window.rndrSlog;window.rndrSlog=function(){var r=_rs.apply(this,arguments);setTimeout(renderWaitingAge,0);return r}}
+if(typeof window.rndrSlog==='function'){var _rs=window.rndrSlog;window.rndrSlog=function(){var r=_rs.apply(this,arguments);try{renderWaitingAge()}catch(_e){}/* v2.88.7 — antes solo diferido: «9 · 0–2d» cambiaba a «0–2 days: 2» */setTimeout(renderWaitingAge,0);return r}}
 setTimeout(renderWaitingAge,1100);
 
 /* Human-readable activity. Technical reconciliation stays available only under Developer audit. */
@@ -58142,7 +58157,7 @@ function hideLegacyRepeated(body){try{var kids=Array.prototype.slice.call(body.c
 function decorateC360(){var body=document.querySelector("#qbCustDetail .qb-cust-tab-body");if(!body)return;var tkts=selectedTickets();if(!tkts.length)return;var tab=typeof qbCustTab!=="undefined"?qbCustTab:"";if(tab==="spa"&&!document.getElementById("ops276Passport")){body.insertAdjacentHTML("afterbegin",passportHTML(tkts))}if(tab==="history"&&!document.getElementById("ops276Patterns")){var anchor=body.querySelector(".ops275-universal");var html=problemPatternsHTML(tkts)+partsHistoryHTML(tkts);if(anchor)anchor.insertAdjacentHTML("afterend",html);else body.insertAdjacentHTML("afterbegin",html);hideLegacyRepeated(body)}}
 
 /* wrappers */
-if(typeof window.rndrA==="function"){var ra=window.rndrA;window.rndrA=function(){var r=ra.apply(this,arguments);setTimeout(decorateDaily,0);return r}}
+if(typeof window.rndrA==="function"){var ra=window.rndrA;window.rndrA=function(){var r=ra.apply(this,arguments);try{decorateDaily()}catch(_e){}/* v2.88.7 — antes solo diferido: el aviso de cierre aparecia despues */setTimeout(decorateDaily,0);return r}}
 if(typeof window.qbCustRenderDetail==="function"){var qc=window.qbCustRenderDetail;window.qbCustRenderDetail=function(customers){var r=qc.apply(this,arguments);setTimeout(decorateC360,0);return r}}
 setTimeout(function(){try{decorateDaily()}catch(_e){}try{decorateC360()}catch(_e){}},900);
 })();
@@ -61858,7 +61873,7 @@ if(typeof _c3==='function'&&!_c3.__sw){
 })();
 </script>
 
-<!-- ══════ ACABADO · v2.88.6 (20 oct 2026) ══════
+<!-- ══════ ACABADO · v2.88.9 (22 oct 2026) ══════
      Las 20 sugerencias y las 200 propuestas de «Acabado de TECH-TICKETS», reversibles.
      Apagar sin borrar: localStorage.acabado="0" (o ?acabado=0) y recargar.
      Revertir del todo: borrar estos dos bloques (aspenAcabadoSkin + aspenAcabadoScript).
@@ -61968,11 +61983,7 @@ body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ:focus-within{border-col
 body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ input{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;font:500 14px var(--a-font);color:var(--ink);padding:0!important;height:100%;box-shadow:none!important}
 body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ input::placeholder{color:var(--i3)}
 body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ kbd{font:600 11px var(--a-font);color:var(--i3);border:1px solid var(--ln);border-radius:6px;padding:2px 6px;background:var(--bg)}
-/* los buscadores de cada pantalla los maneja la cabecera (en escritorio) */
-@media (min-width:901px){
-  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).asp-a-conBusca #pg1 > .search-wrap,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).asp-a-conBusca #pg2 > .search-wrap,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).asp-a-conBusca #pg4 .cal-main > .search-wrap,
-  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).asp-a-conBusca #pg5 .slog-loggroup > .search-wrap,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).asp-a-conBusca #pg6 .qb-cust-search-wrap,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).asp-a-conBusca #pg8 .pf20-search{display:none!important}
-}
+/* v2.88.7 — los buscadores vuelven a cada pantalla (la cabecera ya no tiene caja) */
 /* 28 · el avatar es un circulo */
 body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .hdr #lockBtn{background:transparent!important;border:0!important;box-shadow:none!important;width:42px;height:42px;padding:0!important;display:grid;place-items:center}
 body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .hdr #lockBtn > span{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--acl);color:var(--acd,#A85C1F);font:800 13px/1 var(--a-font);letter-spacing:.02em}
@@ -62007,10 +62018,7 @@ body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspMore .as-b{background:var(--a
   body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .hdr::before{content:"";flex:0 0 26px;height:26px;background:var(--a-logo) no-repeat 0 center/auto 26px;margin-right:4px}
   body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrT h1{font-size:19px}
   body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrT span{display:none}
-  /* 195 · el buscador es una lupa; la pantalla muestra el suyo al tocarla */
-  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ{width:40px;height:40px;padding:0;justify-content:center;border:0;background:transparent;cursor:pointer}
-  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ input,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspAHdrQ kbd{display:none}
-  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3):not(.asp-a-buscaOn) #pg1 > .search-wrap,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3):not(.asp-a-buscaOn) #pg5 .slog-loggroup > .search-wrap,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3):not(.asp-a-buscaOn) #pg4 .cal-main > .search-wrap{display:none!important}
+  /* v2.88.7 — en el telefono cada pantalla vuelve a mostrar su buscador (sin la lupa de la cabecera) */
   /* 35 · la pestana activa sin caja: icono y nombre en crema con una raya arriba */
   body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspShell .as-i.on{background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:#fff8f0!important;position:relative}
   body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #aspShell .as-i.on::before{content:"";position:absolute;top:0;left:50%;width:26px;height:3px;margin-left:-13px;border-radius:0 0 3px 3px;background:var(--ac)}
@@ -62944,6 +62952,519 @@ body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode #pg4 .ctl-head .ctl-tco
 /* v2.88.5 · Spa Info en tema oscuro: legible (en claro sigue el celeste de la 2.87.1) */
 body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode #tktDetailSpaDesc{background:color-mix(in srgb,#3b82f6 14%,var(--cd))!important;color:var(--ink)!important}
 </style>
+<style id="aspenBuscaSkin">
+/* ══ v2.88.7 · barra contraida, buscadores de cada pantalla, tema oscuro y toques ══
+   Reversible: borrar este bloque (y los parches marcados v2.88.7 del acabado). */
+
+/* ── barra lateral contraida (escritorio) ── */
+@media (min-width:901px){
+  /* el contador: burbuja naranja chica en la esquina del icono, con un aro del color de la barra
+     (antes: pastilla gris de 20 px encima del icono) */
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3):not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-i .as-b{position:absolute!important;top:3px!important;left:calc(50% + 4px)!important;right:auto!important;
+    min-width:17px!important;width:auto!important;height:17px!important;margin:0!important;padding:0 5px!important;border:0!important;border-radius:9px!important;
+    font:800 10px/17px var(--a-font)!important;letter-spacing:0!important;text-align:center;color:#fff!important;background:var(--ac)!important;
+    box-shadow:0 0 0 2px var(--hdr-bg,#211712)!important;font-variant-numeric:tabular-nums;pointer-events:none}
+  /* el logo: solo la hoja, entera y centrada (antes «AS» cortado) */
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3):not(.asp-pin) #aspShell:not(:hover):not(:focus-within) .as-logo{width:23px!important;min-width:0!important;max-width:23px!important;padding:0!important;
+    align-self:center!important;margin-left:auto!important;margin-right:auto!important;background-position:0 center!important;background-size:auto 26px!important}
+}
+
+/* ── buscadores: un solo diseño en las seis pantallas ── */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca{position:relative!important;display:flex!important;align-items:center;margin-bottom:14px}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca::before{content:none!important;display:none!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca .qb-cust-search-ico{display:none!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca > input{flex:1 1 auto;width:100%!important;height:44px!important;min-height:44px;margin:0!important;padding:0 66px 0 42px!important;
+  border:1px solid var(--ln)!important;border-radius:10px!important;background:var(--cd)!important;color:var(--ink)!important;
+  font:500 15px var(--a-font)!important;letter-spacing:0;box-shadow:0 1px 2px rgba(33,23,18,.05)!important;outline:none!important;
+  -webkit-appearance:none;appearance:none;transition:border-color .15s ease,box-shadow .15s ease}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca > input::placeholder{color:var(--i3);opacity:1}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca > input:hover{border-color:var(--a-line2,#d8ccbf)!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca > input:focus{border-color:var(--ac)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent)!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-blupa{position:absolute;left:14px;top:50%;transform:translateY(-50%);display:grid;place-items:center;color:var(--i3);pointer-events:none;z-index:1}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca:focus-within .asp-a-blupa{color:var(--ac)}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-bx{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;border:0!important;background:transparent!important;
+  color:var(--i3);display:none;place-items:center;cursor:pointer;padding:0!important;box-shadow:none!important;z-index:1}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-bx:hover{background:var(--acl)!important;color:var(--ink)}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca.asp-a-lleno .asp-a-bx{display:grid}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-bk{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:none;font:600 11px/16px var(--a-font);color:var(--i3);
+  border:1px solid var(--ln);border-radius:6px;padding:0 7px;background:var(--bg);pointer-events:none}
+@media (min-width:901px){ body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca:not(.asp-a-lleno):not(:focus-within) .asp-a-bk{display:block} }
+/* Clientes: la caja vive en la columna de la lista, un poco mas compacta */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #pg6 .asp-a-busca{margin-bottom:8px}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #pg6 .asp-a-busca > input{height:40px!important;min-height:40px;padding-left:38px!important;font-size:14px!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #pg6 .asp-a-blupa{left:12px}
+/* Cobros: comparte la fila con «Planner board» */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #pg8 .asp-a-busca{margin-bottom:0;flex:1 1 auto;min-width:0}
+/* Diario: se queda arriba al bajar, como en la 2.87.1, sin franja de otro color */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #pg1 > .asp-a-busca{background:var(--bg)!important}
+@media (max-width:900px){
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-busca > input{height:46px!important;min-height:46px;font-size:16px!important}
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #pg6 .asp-a-busca > input{height:44px!important;min-height:44px;font-size:16px!important}
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .asp-a-bx{width:38px;height:38px;right:4px}
+}
+
+/* ── tema oscuro: lo que no se leia ── */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode #pg5 .slc[style*="background: rgb(255, 255, 255)"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode #pg5 .slc[style*="background:#fff"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode #pg5 .slc[style*="background: #fff"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode #pg5 .slc[style*="background:white"],
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).theme-ember #pg5 .slc[style*="background: rgb(255, 255, 255)"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).theme-ember #pg5 .slc[style*="background:#fff"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).theme-ember #pg5 .slc[style*="background: #fff"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).theme-ember #pg5 .slc[style*="background:white"]{background:var(--cd)!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .mode-btn:not(.on) .mode-t{color:var(--ink)}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode .mode-btn.on .mode-d,body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).theme-ember .mode-btn.on .mode-d{color:#fff!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).dark-mode [style*="background:var(--c-warning-fg)"][style*="color:#fff"],body.asp-acabado:not(#_a1):not(#_a2):not(#_a3).theme-ember [style*="background:var(--c-warning-fg)"][style*="color:#fff"]{color:#1d1406!important}
+
+/* ── toques chicos ── */
+/* «3 Unassigned», «2 Return call»: el numero separado de su nombre */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .daily-attn-n{margin-right:.32em}
+/* telefono, Ruta: el «⋯» de cada visita se toca con el dedo (40 px de area) */
+@media (hover:none){ body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) .cal-tkt-mini .asp-a-mas::after{content:"";position:absolute;inset:-7px} }
+/* la × de la vista de Nela: un boton de verdad, no 12 px */
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #nvOv .asp-a-x{min-width:40px;min-height:40px;display:inline-grid;place-items:center;border-radius:10px!important;line-height:1!important}
+body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #nvOv .asp-a-x:hover{background:var(--acl)!important}
+/* telefono, Clientes: sin cliente elegido, la lista entera y sin panel vacio */
+@media (max-width:840px){
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #qbCustMain.asp-a-vacio{display:none!important}
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3) #qbCustSide:not(.hidden-mobile){max-height:none!important}
+}
+</style>
+<style id="aspenLimpiaSkin">
+/* ══ v2.88.8 · VISTA LIMPIA — las 20 sugerencias del 21 oct ═══════════════════════
+   Todo cuelga de body.asp-limpia. Apagada (perfil › «Vista limpia»), la app es la 2.88.7.
+   Alcance: las pantallas (.wrap) y la hoja del ticket; nunca el papel del cliente. */
+.asp-l-mas,.asp-l-lmas,.asp-l-herr,.asp-l-mas3{display:none}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4){--l-hair:rgba(33,23,18,.075);--l-sh:0 1px 2px rgba(33,23,18,.05),0 4px 14px rgba(33,23,18,.045);--l-chip:#F2EDE6;--l-chip-fg:#5E5349}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4).dark-mode,body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4).theme-ember{--l-hair:rgba(255,255,255,.09);--l-sh:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.25);--l-chip:rgba(255,255,255,.08);--l-chip-fg:#CFC8BF}
+
+/* ── 1 · negrita solo para lo importante ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(div,span,p,small,label,li,td,th,em,a,summary,i,section,article):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-weight:500!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(button,[role="button"],select,.btn):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-weight:600!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(h1,h2,h3,h4,h5,h6,b,strong,.qb-cust-row-name,.qb-cust-hero-name,.cap-card-name,.tkt-total span,.dsum-n,.daily-attn-n,.kpi-num,.kv,.cc-v,.qb-cust-stat .v,.tdy-hh,.tdy-mm,.bs-cnt,.ctl-tcol,.tdy-th b):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-weight:700!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tkt-left h4{font-weight:700!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-row-name > :first-child,body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-row.active .qb-cust-row-name{font-weight:600!important}
+
+/* ── 2 · menos MAYUSCULAS: solo los titulos de seccion ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) *:not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){text-transform:none!important;letter-spacing:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(h1,h2,h3,h4,h5,.qb-cust-hero-name):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){letter-spacing:-.01em!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.dtv2-colhead,.dt-sec-t,.dt-sec-t > span:first-child,.daily-attn-title,.qb-cust-side-title,.slog-loggroup > .lbl,.tdy-rh h3){text-transform:uppercase!important;letter-spacing:.06em!important;font-size:11px!important;font-weight:700!important;color:var(--i3)!important}
+
+/* ── 3 · una escala: nota 12 · texto 14 · titulo de tarjeta 15 · cifra 20 ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.kl,.kd,.cc-l,.dsum-l,.daily-attn-l,.qb-cust-stat .l,.kpi-lbl,.kpi-sub,label,small,.lbl,.tkt-techtxt,.cap-card-pct,.tkt-tag,.ops276-closeout,.tkt-status,.asp-hr,.qb-cust-row-zone,.qb-cust-row-visits,.qb-cust-hero-sub,.tdy-addr,.tdy-k,.tdy-mod,.qb-cust-list-hdr span,.qb-cust-side-meta,.apl-tally,.cal-tech-pill,.asp-rc-pill,.slc div,.zone-card-item div):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-size:12px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.tkt-left h4,.cal-tkt-mini h5,.qb-cust-row-name,.tdy-card h4,.tdy-card b,.slc span[style*="font-weight"]):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-size:15px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.kv,.cc-v,.dsum-n,.daily-attn-n,.kpi-num,.qb-cust-stat .v):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-size:20px!important;line-height:1.15!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.apl-lenses button,.cal-vb,.qb-cust-tab,.qb-cust-btn,.tdy-b,.dtl-head,.asp-l-lmas,.asp-l-herr):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])){font-size:13px!important}
+
+/* ── 4 · borde o sombra, no los dos: una sombra suave en la tarjeta, nada adentro ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(div,span,section,article,p,a,li,details,summary,button):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n]) *):not(:where(#v8ReportOverlay,#v8ReportPaper,#v7OwnReport,[data-no-i18n])):not(:focus-visible){box-shadow:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.tkt,.dtl-shell,.tdy-kpi,.tdy-col,.tdy-next,.cal-cmd-stat,.cal-tkt-mini,.slc,.zone-card,.qb-cust-stat,.dt-sec,.kpi-card,.v7-panel,.cap-panel,.qb-cust-shell):not(#_lx){box-shadow:var(--l-sh)!important;border-top-color:var(--l-hair)!important;border-right-color:var(--l-hair)!important;border-bottom-color:var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.dsum-card,.daily-attn-card,.dtl-shell,.tdy-kpi,.tdy-col,.cal-cmd-stat:not(.asp-kurg),.qb-cust-stat,.dt-sec,.kpi-card,.v7-panel,.cap-panel,.zone-card){border-left-color:var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.tkt,.cal-tkt-mini,.slc){border-left-width:3px!important}
+
+/* ── 5 · color solo cuando significa algo ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.kv,.dsum-n,.kpi-num,.qb-cust-stat .v,.tdy-mm):not(.asp-l-cero){color:var(--ink)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat:not(.asp-kurg) .cc-v{color:var(--ink)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat.asp-kurg .cc-v{color:var(--c-danger-fg,#B42318)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat .cc-l{color:var(--i3)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat{--sc:var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat.asp-kurg{--sc:var(--c-danger-strong)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .dsum-card:not(.on){--dsum-c:var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .kpi-card{--kpi-ac:var(--l-hair)!important}
+/* las pastillas de tecnico del calendario conservan su color (pedido de la 2.88.4) */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > span[style*="padding:2px 8px"],body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > span[style*="padding: 2px 8px"]{background:var(--l-chip)!important;color:var(--l-chip-fg)!important;border:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-row-zone{color:var(--i3)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-row.active{background:var(--l-chip)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .zone-card-hdr{background:var(--l-chip)!important;color:var(--ink)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #slogList > .sl-aging-summary + div button{background:var(--l-chip)!important;color:var(--l-chip-fg)!important;border-color:transparent!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #slogList > .sl-aging-summary + div button:first-of-type{background:var(--cd)!important;color:var(--ink)!important;border:1px solid var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #bsLaunch{background:var(--cd)!important;border:1px solid var(--l-hair)!important;color:var(--ink)!important;box-shadow:var(--l-sh)!important}
+
+/* ── 6 · pastillas: una forma, tres tonos ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.tkt-tag,.ops276-closeout,.tkt-status,.sl-aging-summary button,.ops2751-age-total,#slogList > .sl-aging-summary + div button,.dtv2-top > div:nth-child(2) > span,.tdy-mod,.asp-rc-pill,.cal-tkt-mini > span[style*="border-radius"]):not(.asp-quiet){border:0!important;border-radius:999px!important;padding:2px 9px!important;line-height:18px!important;box-shadow:none!important;font-weight:600!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.ops276-closeout,.tkt-tag.tw,.dtv2-top > div:nth-child(2) > span,.ops2751-age-total,.sl-aging-summary button:not(.warn):not(.late):not(.critical)){background:var(--l-chip)!important;color:var(--l-chip-fg)!important}
+
+/* ── 7 · direcciones y telefonos en gris, sin subrayado ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(a[href^="tel:"],a[href*="maps"]):not([style*="background"]):not([class*="btn"]),body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.cal-tkt-mini a,.slc div[style*="color:var(--ac)"]){color:var(--i2)!important;text-decoration:none!important;font-weight:500!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini p{overflow:hidden}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini a{font-size:13px!important;display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%}
+
+/* ── 8 · ceros apagados ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-cero{color:var(--i3)!important;opacity:.6}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-cero[style*="background"]{background:var(--l-chip)!important;color:var(--l-chip-fg)!important;opacity:1}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .sl-aging-summary button.zero{opacity:.45}
+
+/* ── 9 · tarjeta de ticket: el estado y lo mas urgente; el resto en «+N» ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .tkt-tiers:not(.asp-l-ver) .asp-l-oc{display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-mas{display:inline-flex;align-items:center;height:22px;padding:0 9px;margin:2px 0 0;border:0;border-radius:999px;background:var(--l-chip);color:var(--l-chip-fg);font:600 12px/22px var(--a-font);cursor:pointer;vertical-align:middle}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-mas:hover{background:var(--acl);color:var(--ink)}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tkt-tiers .asp-l-mas{order:99}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tkt-tiers{display:flex!important;flex-wrap:wrap;align-items:center;gap:6px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tkt-tiers > div:not([id^="covd-"]){display:contents!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tkt-tiers [id^="covd-"]{flex-basis:100%}
+
+/* ── 10 · arriba del Diario: cifras y «Needs attention» en una franja ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary{display:flex!important;flex-wrap:wrap;align-items:stretch;gap:8px!important;margin-bottom:10px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .dsum-card.dead{display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary :is(.dsum-card,.daily-attn-card){box-shadow:none!important;background:var(--cd)!important;border:1px solid var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .dsum-card.on{border-color:color-mix(in srgb,var(--ac) 45%,transparent)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .dsum-card:not(.dead){display:inline-flex!important;flex-direction:row!important;align-items:center!important;gap:8px!important;width:auto!important;min-width:0!important;min-height:0!important;height:46px!important;padding:0 14px!important;flex:0 0 auto!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .dsum-l{white-space:nowrap!important;width:auto!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .dsum-n{width:auto!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .daily-attn-wrap{display:flex!important;flex-wrap:wrap;align-items:stretch;gap:8px!important;flex:1 1 300px;width:auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .daily-attn-title{display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .daily-attn-card{height:46px!important;min-height:0!important;padding:0 14px!important;width:auto!important;flex:0 0 auto!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .daily-attn-card.dead{display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailyTechTimeline .dtl-head{min-height:0!important;padding:10px 14px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailyTechTimeline .dtl-head *{margin-top:0!important;margin-bottom:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailyTechTimeline{margin-bottom:10px!important}
+
+/* ── 11 · lentes: tres a la vista y «Más» ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .apl-lenses:not(.asp-l-todas) :is([data-lens="charts"],[data-lens="sched"],#aspEntBtn):not([aria-selected="true"]):not([aria-pressed="true"]){display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-lmas{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--i2);padding:0 10px;cursor:pointer;font:600 13px var(--a-font);min-height:34px;border-radius:8px}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-lmas:hover{background:var(--cd);color:var(--ink)}
+
+/* ── 12 · Hoy: la proxima visita clara; cifras mas chicas en una fila ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext{background:var(--cd)!important;color:var(--ink)!important;border:1px solid var(--l-hair)!important;border-left:4px solid var(--ac)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext :is(h2,.tdy-addr,.tdy-k){color:var(--ink)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-k{color:var(--ac)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-addr{color:var(--i2)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext h2{font-size:18px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-mod{color:var(--l-chip-fg)!important;background:var(--l-chip)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-b:not(.open){background:var(--cd)!important;color:var(--ink)!important;border:1px solid var(--ln)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tdy-kpis{gap:8px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tdy-kpi{padding:10px 14px!important;min-height:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tdy-kpi .kv{margin:2px 0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .tdy-th{background:transparent!important;border-bottom:1px solid var(--l-hair)!important}
+
+/* ── 13–15 · Ruta: cabeceras claras con la franja del tecnico; tarjeta corta; cifras en una linea ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .ctl-tcol{background-image:linear-gradient(var(--cd),var(--cd))!important;background-size:100% calc(100% - 4px)!important;background-position:bottom!important;background-repeat:no-repeat!important;color:var(--ink)!important;font-size:12px!important;border-bottom:1px solid var(--l-hair)!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini h5{margin-bottom:2px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini .asp-hr{background:transparent!important;color:var(--i2)!important;padding:0!important;font-weight:700!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd{gap:8px!important;margin-bottom:10px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat{display:flex!important;flex-direction:row-reverse!important;justify-content:flex-end!important;align-items:baseline!important;gap:8px!important;padding:10px 14px!important;min-height:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat .cc-v,body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat .cc-l{margin:0!important}
+
+/* ── 16–17 · Registro: resumen y carga en una fila; tarjetas con una accion principal ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #slogList > .sl-aging-summary{display:inline-flex!important;flex-wrap:wrap;align-items:center;gap:6px!important;vertical-align:middle;margin:0 16px 10px 0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #slogList > .sl-aging-summary + div{display:inline-flex!important;vertical-align:middle;margin-bottom:10px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .slc-g{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .slc .asp-part-btn{background:transparent!important;border:0!important;color:var(--ac)!important;padding:2px 0!important;margin:2px 0 4px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .slc > div:first-child > span:not(:first-child){background:transparent!important;border:0!important;padding:0!important;color:var(--i3)!important;font-weight:500!important}
+
+/* ── 18 · Clientes: herramientas tras un boton ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) #pg6:not(.asp-l-herrOn) > details,body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) #pg6:not(.asp-l-herrOn) #cptToggle{display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-herr{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;color:var(--i2);font:600 12px var(--a-font);padding:4px 8px;border-radius:7px;cursor:pointer;margin-left:auto;margin-right:6px;min-height:28px}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-herr:hover{background:var(--l-chip);color:var(--ink)}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-side-meta{display:flex!important;align-items:center}
+
+/* ── 19 · ficha del cliente ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .asp-l-tl{background:var(--cd)!important;color:var(--i2)!important;border:0!important;border-bottom:1px solid var(--l-hair)!important;min-height:34px!important;height:34px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .qb-cust-action-bar:not(.asp-l-ver3) .asp-l-oc3{display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-action-bar .asp-l-fant{background:transparent!important;border-color:transparent!important;color:var(--i2)!important;text-decoration:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-mas3{display:inline-grid;place-items:center;width:38px;height:38px;border:1px solid var(--ln);border-radius:var(--a-r2,10px);background:var(--cd);color:var(--i2);cursor:pointer}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-mas3:hover{color:var(--ink);border-color:var(--i3)}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-hero-stats{gap:8px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-stat{padding:10px 14px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .qb-cust-tab:not(.on){color:var(--i2)!important}
+
+/* ── 20 · hoja del ticket ── */
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso{display:flex!important;align-items:center!important;gap:10px!important;padding:8px 12px!important;border-width:1px!important;min-height:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso > span:first-child{font-size:15px!important;line-height:1!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso > div{display:flex!important;align-items:baseline;gap:8px;min-width:0;flex:1}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso > div > div:first-child{white-space:nowrap;font-size:14px!important;font-weight:700!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso > div > div:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;opacity:.8}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .dtv2-colhead{border-bottom:0!important;padding-bottom:0!important;margin-bottom:6px!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-pleg-t{cursor:pointer;user-select:none}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-pleg-t::after{content:"";width:7px;height:7px;margin-left:auto;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);opacity:.7;flex:0 0 auto}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .dt-sec.asp-l-pleg .asp-l-pleg-t::after{transform:rotate(-45deg)}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .dt-sec-t.asp-l-pleg-t{display:flex!important;align-items:center;gap:8px}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .dt-sec.asp-l-pleg > :not(.dt-sec-t){display:none!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .dt-sec.asp-l-pleg > .dt-sec-t{margin-bottom:0!important}
+body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) a.asp-l-sec{background:var(--cd)!important;color:var(--ink)!important;border:1px solid var(--ln)!important;box-shadow:none!important}
+
+/* ── telefono ── */
+@media (max-width:900px){
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .dsum-card,body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .daily-attn-card{height:42px!important;padding:0 12px!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) #dailySummary .daily-attn-wrap{flex-basis:100%}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat{flex-direction:column-reverse!important;align-items:flex-start!important;gap:0!important;padding:6px 10px!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat .cc-v{font-size:18px!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .cal-cmd-stat .cc-l{font-size:11px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso{align-items:flex-start!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso > div{display:block!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) .asp-l-aviso > div > div:last-child{white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .asp-l-mas{height:28px;padding:0 11px}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.sl-aging-summary button,#slogList > .sl-aging-summary + div button,.asp-rc-pill){min-height:32px!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) :is(.wrap,#tktDetailBg .modal) :is(.itka-mas,.sc-link){min-height:32px!important}
+  body.asp-limpia:not(#_l1):not(#_l2):not(#_l3):not(#_l4) .dt-sec-t.asp-l-pleg-t{min-height:32px!important}
+}
+</style>
+<style id="aspenClaraSkin">
+/* ══ v2.88.9 · VISTA LIMPIA «APPLE» ════════════════════════════════════════════════
+   Cuelga de body.asp-limpia (perfil › «Vista limpia»). El Cerebro decide que se ve; el
+   resto queda a un toque. Letra mas grande, mas aire, sombras en capas, resortes suaves.
+   «Por reportar» (arriba) funciona con o sin la vista limpia. */
+
+/* ═══ «Por reportar» ═══ */
+#aspPrBtn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px 0 11px;border-radius:999px;border:1px solid var(--ln);background:var(--cd);color:var(--ink);font:600 13px var(--a-font,inherit);cursor:pointer;white-space:nowrap;transition:transform .3s cubic-bezier(.34,1.45,.64,1),box-shadow .2s ease}
+#aspPrBtn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(33,23,18,.10)}
+#aspPrBtn svg{color:var(--c-warning-strong,#D97706);flex:0 0 auto}
+#aspPrBtn b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--c-warning-strong,#D97706);color:#fff;font:700 13px/22px var(--a-font,inherit);text-align:center}
+#aspPrBtn.cero{color:var(--i2)}
+#aspPrBtn.cero svg{color:var(--c-success-strong,#15803D)}
+#aspPrBg[hidden],#aspPrPanel[hidden]{display:none!important}
+#aspPrPanel:not(.on),#aspPrBg:not(.on){pointer-events:none}
+#aspPrBg{position:fixed;inset:0;z-index:9990;background:rgba(20,14,10,.16);opacity:0;transition:opacity .22s ease}
+#aspPrBg.on{opacity:1}
+#aspPrPanel{position:fixed;z-index:9991;width:min(430px,calc(100vw - 24px));max-height:min(660px,calc(100vh - 110px));display:flex;flex-direction:column;background:var(--cd);color:var(--ink);border-radius:22px;border:1px solid rgba(33,23,18,.06);
+  box-shadow:0 2px 6px rgba(0,0,0,.06),0 28px 70px rgba(33,23,18,.24);opacity:0;transform:translateY(-10px) scale(.97);transform-origin:top right;transition:opacity .22s ease,transform .42s cubic-bezier(.34,1.4,.64,1)}
+#aspPrPanel.on{opacity:1;transform:none}
+.asp-c-pr-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 20px 10px}
+.asp-c-pr-h h3{margin:0;font:800 22px/1.15 var(--a-font,inherit);letter-spacing:-.02em;color:var(--ink)}
+.asp-c-pr-h p{margin:4px 0 0;font:500 14px var(--a-font,inherit);color:var(--i3)}
+.asp-c-pr-x{flex:0 0 auto;width:32px;height:32px;border-radius:50%;border:0;background:var(--bg);color:var(--i2);display:grid;place-items:center;cursor:pointer}
+.asp-c-pr-x:hover{color:var(--ink)}
+.asp-c-pr-b{overflow:auto;padding:2px 10px 14px;overscroll-behavior:contain}
+.asp-c-pr-t{margin:4px 0 10px}
+.asp-c-pr-t header{display:flex;align-items:center;gap:10px;padding:10px 10px 6px}
+.asp-c-pr-av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;color:#fff;font:700 13px var(--a-font,inherit);box-shadow:0 2px 6px rgba(33,23,18,.16)}
+.asp-c-pr-t header b{font:700 16px var(--a-font,inherit);color:var(--ink)}
+.asp-c-pr-n{margin-left:auto;min-width:24px;height:22px;padding:0 8px;border-radius:999px;background:var(--bg);color:var(--i2);font:700 13px/22px var(--a-font,inherit);text-align:center}
+.asp-c-pr-v{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:8px 10px 8px 50px;border:0;border-radius:14px;background:transparent;color:var(--ink);text-align:left;cursor:pointer;font-family:var(--a-font,inherit);transition:background .15s ease}
+.asp-c-pr-v:hover,.asp-c-pr-v:focus-visible{background:var(--bg);outline:none}
+.asp-c-pr-i{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.asp-c-pr-i .nm{font:600 15px var(--a-font,inherit);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asp-c-pr-i .dd{font:500 13px var(--a-font,inherit);color:var(--i3)}
+.asp-c-edad{flex:0 0 auto;padding:3px 10px;border-radius:999px;font:600 13px var(--a-font,inherit);white-space:nowrap}
+.asp-c-edad.bien{background:var(--bg);color:var(--i2)}
+.asp-c-edad.aviso{background:var(--c-warning-bg,#FDF3E1);color:var(--c-warning-fg,#8A5A0B)}
+.asp-c-edad.mal{background:var(--c-danger-bg,#FDECEA);color:var(--c-danger-fg,#B42318)}
+.asp-c-pr-v > svg{color:var(--i3);flex:0 0 auto}
+.asp-c-pr-ok{display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 16px 34px;text-align:center;color:var(--i2);font:500 14px var(--a-font,inherit)}
+.asp-c-pr-ok svg{color:var(--c-success-strong,#15803D)}
+.asp-c-pr-ok b{font:700 17px var(--a-font,inherit);color:var(--ink)}
+#calGrid .cal-day{position:relative}
+.asp-c-prdot{position:absolute;top:6px;right:6px;z-index:2;min-width:22px;height:22px;padding:0 6px;border:0;border-radius:999px;background:var(--c-warning-strong,#D97706);color:#fff;font:700 13px/22px var(--a-font,inherit);cursor:pointer;box-shadow:0 0 0 2px var(--cd)}
+.asp-c-prdot:hover{transform:scale(1.1)}
+@media (max-width:900px){
+  #aspPrPanel{left:0!important;right:0!important;top:auto!important;bottom:0;width:100%;max-height:84vh;border-radius:24px 24px 0 0;transform:translateY(60px);transform-origin:bottom center;padding-bottom:env(safe-area-inset-bottom,0px)}
+  #aspPrPanel.on{transform:none}
+  #aspPrBtn{padding:0 10px}
+  #aspPrBtn span{display:none}
+  .asp-c-pr-v{min-height:60px}
+}
+
+/* ═══ tokens de la vista «Apple» ═══ */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5){--c-r:18px;--c-sh:0 1px 2px rgba(33,23,18,.05),0 10px 30px rgba(33,23,18,.07);--c-sh2:0 2px 6px rgba(33,23,18,.07),0 18px 44px rgba(33,23,18,.13);--c-res:cubic-bezier(.34,1.45,.64,1);
+  --fs-xs:13px;--fs-sm:14px;--fs-base:15px;--fs-md:16px;--fs-lg:18px;--fs-xl:22px;--fs-2xl:28px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember{--c-sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.3);--c-sh2:0 2px 6px rgba(0,0,0,.45),0 18px 44px rgba(0,0,0,.45)}
+@media (max-width:900px){ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5){--fs-sm:15px;--fs-base:16px;--fs-md:17px;--fs-lg:19px} }
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-linea,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-spa,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-editar,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-frase,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-fact,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-filtros,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #aspCAhora{display:none}
+.asp-c-linea,.asp-c-spa,.asp-c-editar,.asp-c-frase,.asp-c-fact,.asp-c-filtros,#aspCAhora,.asp-c-masmenu,.asp-c-zona{display:none}
+
+/* ── 1 · letra mas grande: notas 13 · texto 14–15 · titulos 17 · cifras 28 · pantalla 26 ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #aspAHdrT h1{font-size:26px!important;font-weight:800!important;letter-spacing:-.02em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #aspAHdrT span{font-size:13px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.kl,.kd,.cc-l,.dsum-l,.daily-attn-l,.qb-cust-stat .l,.kpi-lbl,.kpi-sub,label,small,.lbl,.cap-card-pct,.tkt-tag,.ops276-closeout,.tkt-status,.asp-hr,.qb-cust-row-zone,.qb-cust-row-visits,.qb-cust-hero-sub,.tdy-k,.tdy-mod,.qb-cust-list-hdr span,.qb-cust-side-meta,.apl-tally,.asp-rc-pill,.day-lbl,.tdy-p){font-size:13px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt-techtxt,.zone-card-item p,.slc div,.zone-card-item div,.tdy-meta,.tdy-addr,.qb-cust-row-name > :not(:first-child)){font-size:14px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt-left h4,.cal-tkt-mini h5,.tdy-nm,.slc span[style*="font-weight"],.zone-card-item h6,.qb-cust-row-name > :first-child){font-size:17px!important;letter-spacing:-.01em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.kv,.cc-v,.dsum-n,.daily-attn-n,.kpi-num,.qb-cust-stat .v){font-size:28px!important;letter-spacing:-.02em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.slog-stab,.slc-prog,.asp-part-btn,.apl-lenses button,.cal-vb,.qb-cust-tab,.qb-cust-btn,.dtl-head,.asp-l-lmas,.asp-l-herr,.cal-to-trigger,#todoTriggerBtn){font-size:14px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.dtv2-colhead,.dt-sec-t,.dt-sec-t > span:first-child,.daily-attn-title,.qb-cust-side-title,.slog-loggroup > .lbl,.tdy-rh h3){font-size:13px!important;letter-spacing:.06em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(input:not([type=checkbox]):not([type=radio]),textarea,select){font-size:15px!important}
+
+/* ── 2 · aire, esquinas de 18 px y sombras en capas ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt,.tdy-kpi,.tdy-col,.cal-cmd-stat,.cal-tkt-mini,.slc,.zone-card-item,.qb-cust-stat,.dt-sec,.kpi-card,.v7-panel,.qb-cust-shell,.cap-panel,.dtl-shell):not(#_cx){border-radius:var(--c-r)!important;box-shadow:var(--c-sh)!important;border-top-color:transparent!important;border-right-color:transparent!important;border-bottom-color:transparent!important;border-left-color:transparent!important;
+  transition:transform .4s var(--c-res),box-shadow .25s ease!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt,.cal-tkt-mini,.slc,.zone-card-item):not(#_cx){border-left-width:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dt-sec{padding:18px 20px!important}
+@media (hover:hover){ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt,.cal-tkt-mini,.slc,.zone-card-item,.tdy-card,.kpi-card):hover{transform:translateY(-2px);box-shadow:var(--c-sh2)!important} }
+/* ── 5 · resortes: la hoja sube con rebote suave ── */
+@keyframes aspCSube{from{transform:translateY(28px) scale(.985);opacity:.4}to{transform:none;opacity:1}}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #tktDetailBg.open .modal{animation:aspCSube .5s var(--c-res) backwards}
+@keyframes aspCEntra{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-frase{animation:aspCEntra .45s var(--c-res) backwards}
+
+/* ── 3 · el estado como punto y palabra ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt-status,.tdy-p){background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important;display:inline-flex!important;align-items:center;gap:6px;font-weight:600!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt-status,.tdy-p)::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tkt-status > :is(svg,.asp-ico,i){display:none!important}
+/* ── 4 · iconos solo donde orientan ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) :is(.tkt-left,.cal-tkt-mini,.slc,.zone-card-item,.tdy-card,.qb-cust-hero-sub,.qb-cust-row) .asp-ico{display:none!important}
+
+/* ── 7 · 9 · 11 · el estado normal no se muestra; dinero solo donde se cobra ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tkt-tiers{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tkt.asp-c-ver .tkt-tiers{display:flex!important;margin-top:8px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tkt.asp-c-ver .tkt-tiers .asp-l-oc{display:inline-flex!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tkt-tiers .asp-l-mas,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .ops275-state{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tdy-mm,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tdy-kpis,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-cmd{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .kpi-card:has(.asp-l-cero){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi.asp-kz{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpis:not(:has(.pf20-kpi:not(.asp-kz))){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p:not(.tkt-techline){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > span:not(.asp-a-mas):not([style*="danger"]):not([style*="--r)"]):not([style*="#DC2626"]):not([style*="#dc2626"]){display:none!important}
+
+/* ── 6 · «Te necesita ahora» ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora{display:block;background:var(--cd);border-radius:24px;box-shadow:var(--c-sh);padding:22px 24px 14px;margin:0 0 20px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora header h2{margin:0 0 8px;font-size:22px!important;font-weight:800!important;letter-spacing:-.02em!important;color:var(--ink)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora ul{list-style:none;margin:0;padding:0}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li{display:flex;align-items:center;gap:14px;min-height:58px;padding:6px 0;border-top:1px solid var(--ln)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li:first-child{border-top:0}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora .asp-c-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:var(--c-info-strong,#2563EB)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li.aviso .asp-c-dot{background:var(--c-warning-strong,#D97706)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li.mal .asp-c-dot{background:var(--c-danger-strong,#DC2626)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-t{flex:1;min-width:0;font-size:16px!important;line-height:1.35;color:var(--ink)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-t b{font-size:20px!important;font-weight:800!important;margin-right:2px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li button{flex:0 0 auto;border:0;border-radius:999px;padding:9px 18px;background:var(--acl);color:var(--acd,#A85C1F);font-size:14px!important;font-weight:700!important;cursor:pointer;transition:transform .3s var(--c-res),background .2s ease}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li:first-child button{background:var(--ac);color:#fff}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li button:hover{transform:scale(1.05)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora footer{padding-top:6px;border-top:1px solid var(--ln);margin-top:4px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-mas{border:0;background:none;color:var(--i3);font-size:13px!important;font-weight:600!important;padding:8px 0 2px;cursor:pointer}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-mas:hover{color:var(--ink)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-ok{display:flex;gap:8px;align-items:center;color:var(--i2);margin:0 0 8px;font-size:16px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-ok svg{color:var(--c-success-strong,#15803D)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg1:not(.asp-c-todo) > :is(#bsLaunch,#dailySummary,#dailyTechTimeline){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg1 > #nvLaunch{float:right;margin:-62px 20px 0 0!important;position:relative;z-index:2}
+
+/* ── 8 · 10 · la frase del Cerebro en la tarjeta ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea{display:inline-flex!important;align-items:center;gap:8px;margin:8px 0 0;padding:0;border:0;background:none;font-size:14px!important;font-weight:600!important;color:var(--i2);cursor:pointer;text-align:left}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea .asp-c-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--c-info-strong,#2563EB)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea.bien .asp-c-dot{background:var(--c-success-strong,#15803D)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea.aviso .asp-c-dot{background:var(--c-warning-strong,#D97706)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea.mal .asp-c-dot{background:var(--c-danger-strong,#DC2626)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-anillo{width:18px;height:18px;margin-left:4px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-anillo .f{fill:none;stroke:var(--ln);stroke-width:2.6}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-anillo .p{fill:none;stroke:var(--ac);stroke-width:2.6;stroke-linecap:round}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea em{font-style:normal;font-size:13px!important;color:var(--i3)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea:hover{color:var(--ink)}
+
+/* ── 14 · Diario: secciones por tecnico con tarjetas en rejilla ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols{display:flex!important;flex-direction:column!important;gap:26px!important;overflow:visible!important;padding:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px!important;align-items:start;width:auto!important;min-width:0!important;max-width:none!important;flex:none!important;background:transparent!important;padding:0!important;border:0!important;box-shadow:none!important;height:auto!important;max-height:none!important;overflow:visible!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col > :not(.tkt){grid-column:1/-1}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-hdr{background:transparent!important;padding:0 2px!important;border:0!important;margin:0!important;gap:10px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-name{font-size:21px!important;font-weight:800!important;letter-spacing:-.02em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-cnt{background:var(--l-chip)!important;color:var(--i2)!important;font-size:13px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-sep{justify-content:flex-start!important;margin:2px 2px -4px!important;padding:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-line{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-lbl{background:none!important;padding:0!important;border:0!important;color:var(--i3)!important;font-size:13px!important;font-weight:600!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tkt{margin:0!important;background:var(--cd)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tkt-h{padding:16px 18px!important;min-height:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tkt-left h4{margin:0 0 3px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .apl-lenses{border-radius:12px!important;padding:3px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .apl-lenses button{border-radius:9px!important}
+
+/* ── 12 · el spa en una linea ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-spa{display:flex!important;align-items:center;gap:12px;margin:4px 0 2px;font-size:15px!important;color:var(--ink)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dt-sec:not(.asp-l-pleg) > .asp-c-spa{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dt-sec.asp-l-pleg > .asp-c-spa{display:flex!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-spa > span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-spa-ver{flex:0 0 auto;border:0;background:none;color:var(--ac);font-size:14px!important;font-weight:600!important;cursor:pointer;padding:4px 0}
+
+/* ── 13 · Hoy: la proxima visita en grande, botones redondos, cifras en una linea ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext{padding:24px 26px!important;border-radius:24px!important;border:0!important;box-shadow:var(--c-sh)!important;gap:20px!important;align-items:center!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext h2{font-size:30px!important;font-weight:800!important;letter-spacing:-.025em!important;margin:2px 0 4px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-addr{font-size:15px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-acts{display:flex!important;gap:16px!important;align-items:flex-start}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-b{display:flex!important;flex-direction:column!important;align-items:center!important;gap:6px!important;background:none!important;border:0!important;padding:0!important;min-width:58px;color:var(--i2)!important;font-size:13px!important;font-weight:600!important;box-shadow:none!important;transition:transform .3s var(--c-res)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-b svg{box-sizing:content-box;width:20px!important;height:20px!important;padding:14px;border-radius:50%;background:var(--acl);color:var(--ac)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-b.open svg{background:var(--ac);color:#fff}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-b:hover{transform:scale(1.06)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext .tdy-b:not(:has(svg))::before{content:"›";display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--ac);color:#fff;font:400 30px/1 var(--a-font,inherit);padding-bottom:3px;box-sizing:border-box}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-frase{display:flex!important;flex-wrap:wrap;align-items:baseline;gap:6px 22px;margin:4px 2px 18px;font-size:15px!important;color:var(--i2)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-frase b{font-size:22px!important;font-weight:800!important;color:var(--ink);margin-right:3px;letter-spacing:-.02em}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .tdy-card{padding:14px 16px!important}
+
+/* ── 15 · Ruta: avatares de tecnico, tarjeta de nombre y hora ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #calTechPills{gap:12px!important;align-items:center}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill{font-size:0!important;width:42px;height:42px;min-width:0!important;padding:0!important;border-radius:50%!important;border:0!important;background:transparent!important;position:relative;justify-content:center;align-items:center;transition:transform .3s var(--c-res),opacity .2s ease}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill .dot{width:40px!important;height:40px!important;margin:0!important;border-radius:50%!important;display:grid!important;place-items:center;box-shadow:0 3px 10px rgba(33,23,18,.16)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill .dot::after{content:attr(data-ini);font:700 13px var(--a-font,inherit);color:#fff;letter-spacing:.02em}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill.unassigned .dot{background:var(--i3)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill .cnt{position:absolute;top:-5px;right:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cd)!important;color:var(--ink)!important;font-size:13px!important;font-weight:700!important;line-height:22px!important;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill:not(.on){opacity:.32}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tech-pill:hover{transform:scale(1.08)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini{padding:12px 14px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini .asp-hr{font-size:14px!important}
+
+/* ── 16 · Registro: una lista, la espera mas larga arriba ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg5:not(.asp-c-filtrosOn) #slogList > :is(.sl-aging-summary,.sl-aging-summary + div:not(.asp-c-filtros),.sl-aging-summary + .asp-c-filtros + div){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .slc > div:first-child{flex-wrap:wrap;row-gap:2px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-filtros{display:inline-flex!important;align-items:center;gap:6px;height:34px;padding:0 14px;margin:0 0 14px;border:1px solid var(--ln);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px!important;font-weight:600!important;cursor:pointer}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg5.asp-c-filtrosOn .asp-c-filtros{background:var(--ink);color:var(--cd);border-color:var(--ink)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-grid{display:flex!important;flex-direction:column!important;gap:10px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-body{display:contents!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-hdr{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item{display:grid!important;grid-template-columns:1fr auto;column-gap:14px;align-items:center;padding:14px 18px!important;margin:0!important;background:var(--cd)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item > :is(h6,p){grid-column:1}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item > :is(.sl-age-chip,.asp-c-zona){grid-column:2;justify-self:end}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #slogList .zone-card-item > .sl-age-chip{grid-row:1}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-zona{display:block!important;font-size:13px!important;color:var(--i3);grid-row:2}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .slc{padding:14px 16px!important;background:var(--cd)!important}
+
+/* ── 17 · ficha del cliente en modo lectura ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .asp-c-editar{display:inline-flex!important;align-items:center;margin-left:auto;align-self:center;border:0;border-radius:999px;padding:9px 20px;background:var(--acl);color:var(--acd,#A85C1F);font-size:14px!important;font-weight:700!important;cursor:pointer;transition:transform .3s var(--c-res)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .asp-c-editar:hover{transform:scale(1.04)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-edit .asp-c-editar{background:var(--bg);color:var(--i2)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .qb-cust-hero-name{font-size:30px!important;letter-spacing:-.025em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .qb-cust-hero-stats{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .asp-c-frase{margin:12px 2px 2px}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect .qb-cust-info-grid :is(input,textarea){border-color:transparent!important;background:transparent!important;box-shadow:none!important;padding-left:0!important;resize:none;cursor:default;color:var(--ink)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect .qb-cust-info-grid :is(.qb-cust-phone-x,button[onclick*="emove"],button[onclick*="elPhone"]),body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect .qb-cust-info-cell.asp-c-vacio,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect #custAddPhoneRow{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect .qb-cust-action-bar .qb-cust-btn.primary{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect .qb-cust-info-grid{background:var(--cd)!important}
+
+/* ── 18 · la hoja en una columna, facturacion plegada ── */
+@media (min-width:901px){ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #tktDetailBg .modal{max-width:880px!important} }
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:20px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-top{order:0;min-width:0;max-width:100%} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colV{order:1} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colW{order:2} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colC{order:3} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-morebtn{order:4} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-acts{order:5}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-top > *{min-width:0;max-width:100%}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW){width:100%!important;max-width:none!important;min-width:0!important;align-self:stretch!important;box-sizing:border-box}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colV > .dt-sec,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW > .asp-c-fact{width:100%!important;max-width:none!important;box-sizing:border-box}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW.asp-c-plegW > :not(.dtv2-colhead):not(.asp-c-fact){display:none!important}
+/* teléfono: la base esconde facturación tras «More options»; abierta desde «Facturación» se ve */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid:not(.dtv2-open) .dtv2-colW:not(.asp-c-plegW) > .dtv2-core{display:block!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact{display:flex!important;align-items:center;gap:14px;width:100%;padding:18px 20px;margin:0 0 12px;border:0;border-radius:var(--c-r);background:var(--cd);color:var(--ink);box-shadow:var(--c-sh);cursor:pointer;text-align:left;transition:transform .35s var(--c-res),box-shadow .25s ease}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact:hover{transform:translateY(-1px);box-shadow:var(--c-sh2)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact-t{font-size:16px!important;font-weight:700!important;flex:0 0 auto}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact-r{flex:1;min-width:0;font-size:14px!important;color:var(--i2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact > svg{color:var(--i3);flex:0 0 auto}
+
+/* ── 19 · Cobros: la cabecera clara ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-head{background:var(--cd)!important;color:var(--ink)!important;box-shadow:var(--c-sh)!important;border-radius:24px!important;border:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-head :is(h1,h2,h3,p,div,span,b,small,strong){color:var(--ink)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-head :is(p,small,.pf20-sub){color:var(--i2)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-head .pf20-head-actions button:not([class*="new"]):not([style*="--ac"]){background:var(--bg)!important;color:var(--ink)!important;border:1px solid var(--ln)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi{background:var(--bg)!important;border:0!important}
+
+/* ── 20 · menu corto (oficina, computadora) ── */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #aspShell.asp-c-menu:not(.asp-c-menuOn) :is(.as-i.asp-c-sec:not(.on),.as-grp:not(:first-of-type)){display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #aspShell.asp-c-menu .asp-c-masmenu{display:flex!important;position:relative}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) .asp-c-masdot{position:absolute;top:7px;left:28px;width:8px;height:8px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 2px var(--hdr-bg,#211712)}
+
+/* el panel lateral de la hoja escondido sin sombra en el borde */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #ticketDetail:not(.open){box-shadow:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .ctl-tcol{font-size:13px!important}
+/* ── telefono ── */
+@media (max-width:900px){
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora{padding:18px 18px 10px;border-radius:22px}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li{gap:10px}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-t{font-size:15px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-t b{font-size:18px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li button{padding:8px 14px}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg1 > #nvLaunch{float:none;margin:0 0 12px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col{grid-template-columns:1fr}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext{flex-direction:column!important;align-items:flex-start!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext h2{font-size:26px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .cal-hdr > :first-child{flex-wrap:wrap!important;row-gap:10px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 #calTitle{flex-basis:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-prdot{font-size:0!important;min-width:9px;width:9px;height:9px;padding:0;top:6px;right:6px;box-shadow:0 0 0 2px var(--cd)}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail .qb-cust-hero-name{font-size:25px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-actbar button{font-size:14px!important;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-actbar button :is(svg,.asp-ico){display:none!important}
+  #aspPrBtn.cero span{display:inline}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-frase b{font-size:20px!important}
+}
+
+</style>
+
+
+
 <script id="aspenAcabadoScript">
 /* ═══ ACABADO · v2.88.0 (15 oct 2026) ═══════════════════════════════════════
    Las 20 sugerencias y las 200 propuestas de «Acabado de TECH-TICKETS». Mismo
@@ -63033,6 +63554,11 @@ mod("perfil",function(){
     var mas=el("button",{type:"button","class":"asp-pf-row asp-a-masTemas","data-aact":"moreThemes"},'<span>'+ico("droplets")+T("More themes","Más temas")+'</span><em>Ember · Aspen</em>');
     row.parentNode.insertBefore(mas,th);
   }
+  /* v2.88.8 — «Vista limpia»: para todos los usuarios */
+  if(!m.querySelector('[data-aact="limpia"]')){
+    var lim=el("button",{type:"button","class":"asp-pf-row","data-aact":"limpia"},filaLimpia());
+    m.insertBefore(lim,m.querySelector('[data-act="logout"]')||null);
+  }
   var simp=m.querySelector('[data-act="simple"]');
   if(isAdmin()&&!m.querySelector('[data-aact="off"]')){
     var off=el("button",{type:"button","class":"asp-pf-row","data-aact":"off"},'<span>'+ico("sparkles")+T("New finish (2.88)","Acabado nuevo (2.88)")+'</span><em>'+T("On · turn off","Sí · apagar")+'</em>');
@@ -63048,6 +63574,9 @@ document.addEventListener("click",function(ev){
   var r=t.closest('#aspProfile [data-aact]'); if(!r)return;
   var a=r.getAttribute("data-aact");
   if(a==="off"){ API.off(); return; }
+  if(a==="limpia"){ ev.stopPropagation(); var on=!document.body.classList.contains("asp-limpia");
+    try{ localStorage.setItem("aspLimpia",on?"1":"0"); }catch(_e){}
+    cls(document.body,"asp-limpia",on); r.innerHTML=filaLimpia(); schedule(); return; }
   if(a==="moreThemes"){ var tb=$("themeToggleBtn"); if(tb)tb.click(); var row2=$("aspProfile")&&$("aspProfile").querySelector('[data-aact="theme"]'); if(row2)row2.innerHTML=filaTema(); }
 },true);
 /* ══ 82–84 · una fecha, una hora, un dinero ═══════════════════════════════════
@@ -63445,7 +63974,8 @@ function contexto(id){
     if(id==="tab1"){ var t=$("aplTally"), b=t&&t.querySelector("b"); if(b)n=b.textContent.trim()+" tickets"; }
     if(id==="tab6"){ var k=document.querySelector("#pg6 .qb-cust-count,#pg6 .cust-count"); if(k)n=k.textContent.trim(); }
     /* 33 · migas: la herramienta abierta en Kit y la seccion de Admin */
-    if(id==="tab10"){ var vw=$("ttViewer"), vt=$("ttViewerTitle"); if(vw&&vw.style.display!=="none"&&vt&&vt.textContent.trim())var tl=sinEmoji(vt.textContent); if(ES()){ var tt=trA(tl); if(tt)tl=tt; } return nombre("tab10")+" › "+tl; }
+    /* v2.88.7 — solo con una herramienta abierta (antes decia «Kit › undefined») */
+    if(id==="tab10"){ var vw=$("ttViewer"), vt=$("ttViewerTitle"); if(vw&&vw.style.display!=="none"&&vt&&vt.textContent.trim()){ var tl=sinEmoji(vt.textContent); if(ES()){ var tt=trA(tl); if(tt)tl=tt; } if(tl)return nombre("tab10")+" › "+tl; } }
     if(id==="tab3"){ var on=document.querySelector("#admBRail button.on"); if(on&&sinEmoji(on.textContent))return nombre("tab3")+" › "+sinEmoji(on.textContent); }
   }catch(_e){}
   return n?c+" · "+n:c;
@@ -63457,19 +63987,9 @@ function cabecera(){
     box=el("div",{id:"aspAHdrT"},'<h1></h1><span></span>');
     h.insertBefore(box,h.firstChild);
   }
-  var q=$("aspAHdrQ");
-  if(!q){
-    q=el("label",{id:"aspAHdrQ"});
-    q.innerHTML=ico("search",17)+'<input type="search" autocomplete="off" spellcheck="false"><kbd>⌘K</kbd>';
-    var ref=$("aspHdrChat")||$("lockBtn");
-    h.insertBefore(q,ref||null);
-    var inp=q.querySelector("input");
-    inp.addEventListener("input",function(){ var tgt=$(BUSCA[tabActual()]); if(!tgt)return;
-      tgt.value=inp.value; tgt.dispatchEvent(new Event("input",{bubbles:true})); tgt.dispatchEvent(new KeyboardEvent("keyup",{bubbles:true})); });
-    inp.addEventListener("focus",function(){ if(!$(BUSCA[tabActual()])){ inp.blur(); paleta(); } });
-    inp.addEventListener("keydown",function(e){ if(e.key==="Escape"){ inp.value=""; inp.dispatchEvent(new Event("input")); inp.blur(); } });
-    q.addEventListener("click",function(e){ if(isPhone()){ e.preventDefault(); lupaTelefono(); } });
-  }
+  /* v2.88.7 — sin caja de busqueda en la cabecera: cada pantalla vuelve a tener la suya, donde estaba.
+     La paleta sigue en ⌘K / Ctrl+K. */
+  var q=null;
   return {h:h,box:box,q:q};
 }
 function paleta(){ try{ if(typeof _cmdPalOpenFn==="function")_cmdPalOpenFn(); }catch(e){ warn("paleta",e); } }
@@ -63486,15 +64006,452 @@ mod("cabecera",function(){
   var id=tabActual(), nom=nombre(id)||"";
   setText(c.box.querySelector("h1"),nom);
   setText(c.box.querySelector("span"),contexto(id));
-  var inp=c.q.querySelector("input"), tgt=$(BUSCA[id]);
-  var ph=tgt?T("Search in ","Buscar en ")+nom+"…":T("Search or go to…","Buscar o ir a…");
-  if(inp.placeholder!==ph)inp.placeholder=ph;
-  setAttr(inp,"aria-label",ph);
-  if(c.q.getAttribute("data-tab")!==id){ c.q.setAttribute("data-tab",id); inp.value=tgt?tgt.value:""; document.body.classList.remove("asp-a-buscaOn"); }
-  cls(document.body,"asp-a-conBusca",!!tgt);
+  cls(document.body,"asp-a-conBusca",false); cls(document.body,"asp-a-buscaOn",false);
   /* el titulo propio de Hoy repite la cabecera */
   quiet(document.querySelector("#pg16 .tdy-h"),true);
 });
+
+/* ── v2.88.7 · cada pantalla con su buscador, un solo diseño ────────────────
+   Vuelven a su lugar (Diario, Completados, Calendario, Registro, Clientes, Cobros).
+   A cada caja se le agrega la lupa de linea, el «×» para borrar y la pista «/».
+   El oninput de cada una no cambia (rndrA, rndrD, rndrCal, rndrSlog, rndrCust, pf20Search). */
+var BUSCAS=["searchActive","searchDone","searchCal","searchSlog","searchCust","pf20q"];
+function buscaCaja(inp){ return inp.closest(".search-wrap,.qb-cust-search-wrap,.pf20-search")||inp.parentElement; }
+function buscaLleno(inp){ var w=buscaCaja(inp); if(w)cls(w,"asp-a-lleno",!!inp.value); }
+function buscaBorra(inp){ if(!inp.value)return; inp.value=""; inp.dispatchEvent(new Event("input",{bubbles:true})); buscaLleno(inp); }
+mod("buscadores",function(){
+  for(var i=0;i<BUSCAS.length;i++){
+    var inp=$(BUSCAS[i]); if(!inp)continue;
+    var w=buscaCaja(inp); if(!w)continue;
+    if(w.getAttribute("data-a-busca")!=="1"){
+      w.setAttribute("data-a-busca","1"); w.classList.add("asp-a-busca");
+      var lupa=document.createElement("span"); lupa.className="asp-a-blupa"; lupa.setAttribute("aria-hidden","true"); lupa.innerHTML=ico("search",17);
+      var x=document.createElement("button"); x.type="button"; x.className="asp-a-bx"; x.innerHTML=ico("x",16);
+      var k=document.createElement("kbd"); k.className="asp-a-bk"; k.setAttribute("aria-hidden","true"); k.textContent="/";
+      w.insertBefore(lupa,w.firstChild); w.appendChild(x); w.appendChild(k);
+      inp.setAttribute("autocomplete","off"); inp.setAttribute("enterkeyhint","search"); inp.setAttribute("spellcheck","false");
+    }
+    var bx=w.querySelector(".asp-a-bx"); if(bx){ setAttr(bx,"aria-label",T("Clear search","Borrar búsqueda")); setAttr(bx,"title",T("Clear (Esc)","Borrar (Esc)")); }
+    if(!inp.getAttribute("aria-label")||inp.__aBl!==ES()){ inp.__aBl=ES(); inp.setAttribute("aria-label",inp.placeholder||T("Search","Buscar")); }
+    buscaLleno(inp);
+  }
+});
+document.addEventListener("click",function(e){
+  var b=e.target&&e.target.closest&&e.target.closest(".asp-a-bx"); if(!b)return;
+  var w=b.closest(".asp-a-busca"), inp=w&&w.querySelector("input"); if(!inp)return;
+  e.preventDefault(); buscaBorra(inp); try{ inp.focus(); }catch(_e){}
+},true);
+document.addEventListener("input",function(e){ var t=e.target; if(t&&t.id&&BUSCAS.indexOf(t.id)>=0)buscaLleno(t); },true);
+document.addEventListener("keydown",function(e){
+  var t=e.target;
+  if(e.key==="Escape"&&t&&t.id&&BUSCAS.indexOf(t.id)>=0){
+    if(t.value){ e.preventDefault(); e.stopPropagation(); buscaBorra(t); } else { try{ t.blur(); }catch(_e){} }
+    return;
+  }
+  if(e.key!=="/"||e.metaKey||e.ctrlKey||e.altKey||isPhone())return;
+  if(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))return;
+  if(hojaAbierta())return;
+  var pg=document.querySelector(".wrap.show"); if(!pg)return;
+  for(var i=0;i<BUSCAS.length;i++){ var inp=$(BUSCAS[i]); if(inp&&pg.contains(inp)&&vis(inp)){ e.preventDefault(); try{ inp.focus(); inp.select(); }catch(_e){} return; } }
+},true);
+
+/* v2.88.7 — telefono, Clientes: sin cliente elegido la lista ocupa la pantalla (antes se cortaba a la
+   mitad y abajo quedaba un panel vacio con «Back to list»); con cliente elegido (por toque o desde otra
+   pantalla) el detalle se abre completo con «‹ Back to list», como al tocar una fila. */
+mod("clientesTel",function(){
+  var side=$("qbCustSide"), main=$("qbCustMain"); if(!side||!main)return;
+  if(window.innerWidth>840){ cls(main,"asp-a-vacio",false); return; }
+  var sel=false; try{ sel=!!selectedCustKey; }catch(_e){}
+  cls(side,"hidden-mobile",sel); cls(main,"fullscreen-mobile",sel); cls(main,"asp-a-vacio",!sel);
+});
+
+/* ══ v2.88.8 · VISTA LIMPIA (las 20 sugerencias del 21 oct) ═══════════════════
+   Se prende con body.asp-limpia (perfil › «Vista limpia»; localStorage aspLimpia="0" la apaga).
+   Estos modulos solo agregan clases y botones; el CSS de aspenLimpiaSkin decide que se ve.
+   Ningun nodo se mueve ni se borra; ningun onclick cambia. Corren en la misma pasada: sin parpadeo. */
+function limpiaOn(){ try{ return localStorage.getItem("aspLimpia")!=="0"; }catch(_e){ return true; } }
+function filaLimpia(){ var on=document.body.classList.contains("asp-limpia");
+  return '<span>'+ico("sparkles")+T("Clean view","Vista limpia")+'</span><em>'+(on?T("On · turn off","Sí · apagar"):T("Off · turn on","No · prender"))+'</em>'; }
+init("limpia",function(){ cls(document.body,"asp-limpia",limpiaOn()); });
+mod("limpiaClase",function(){ var on=limpiaOn(); if(document.body.classList.contains("asp-limpia")!==on)cls(document.body,"asp-limpia",on); });
+/* 8 · ceros apagados */
+var CERO_SEL=".dsum-n,.daily-attn-n,.kpi-num,.kv,.cc-v,.qb-cust-stat .v,.pf20-kpi b,.pf20-kpi strong,.tdy-kpi .kv,#todoTriggerCount";
+var CERO_RE=/^\s*(0|0%|\$0(\.00)?|—|–|-|0\/0)\s*$/;
+mod("limpiaCeros",function(){
+  if(!document.body.classList.contains("asp-limpia"))return;
+  var pg=document.querySelector(".wrap.show"); if(!pg)return;
+  var l=pg.querySelectorAll(CERO_SEL); for(var i=0;i<l.length;i++){ var dc=l[i].getAttribute("data-count"); /* con conteo animado se mira el destino, no el 0 del primer cuadro */
+    cls(l[i],"asp-l-cero",dc!=null?(+dc===0):CERO_RE.test(l[i].textContent||"")); }
+});
+/* 9 · tarjeta de ticket: el estado y la pastilla mas urgente; el resto en «+N» */
+function tonoDe(c,fondo){ var m=String(c||"").match(/[\d.]+/g); if(!m)return 0; var r=+m[0],g=+m[1],b=+m[2],a=m[3]==null?1:+m[3];
+  if(a<0.1)return 0; var mx=Math.max(r,g,b),mn=Math.min(r,g,b); if(mx-mn<(fondo?22:40))return 0;
+  var h=mx===r?((g-b)/(mx-mn))*60:mx===g?(2+(b-r)/(mx-mn))*60:(4+(r-g)/(mx-mn))*60; if(h<0)h+=360;
+  return (h<18||h>335)?3:(h<62?2:1); }
+function tonoChip(x){ var cs=getComputedStyle(x); return Math.max(tonoDe(cs.backgroundColor,true),tonoDe(cs.color,false)); }
+mod("limpiaChips",function(){
+  if(!document.body.classList.contains("asp-limpia"))return;
+  var pg=document.querySelector(".wrap.show"); if(!pg)return;
+  var ts=pg.querySelectorAll(".tkt .tkt-tiers");
+  for(var i=0;i<ts.length;i++){
+    var t=ts[i];
+    var chips=Array.prototype.filter.call(t.querySelectorAll(".tkt-tag,.ops276-closeout"),function(x){ return x.closest(".tkt-tiers")===t&&!x.closest('[id^="covd-"]')&&!x.classList.contains("asp-l-mas"); });
+    var firma=chips.map(function(x){ return x.textContent; }).join("|");
+    if(t.__lFirma===firma)continue;
+    t.__lFirma=firma;
+    chips.forEach(function(x){ x.classList.remove("asp-l-oc"); });
+    var vis=chips.filter(function(x){ return x.getClientRects().length&&getComputedStyle(x).display!=="none"; });
+    var mejor=null, tm=-1; vis.forEach(function(x){ var k=tonoChip(x); if(k>tm){ tm=k; mejor=x; } });
+    var resto=vis.filter(function(x){ return x!==mejor; });
+    resto.forEach(function(x){ x.classList.add("asp-l-oc"); });
+    var b=t.querySelector(":scope > .asp-l-mas");
+    if(!resto.length){ if(b)b.remove(); continue; }
+    if(!b){ b=document.createElement("button"); b.type="button"; b.className="asp-l-mas"; t.appendChild(b); }
+    setAttr(b,"data-n",String(resto.length));
+    setText(b,t.classList.contains("asp-l-ver")?T("Less","Menos"):"+"+resto.length);
+    setAttr(b,"aria-expanded",t.classList.contains("asp-l-ver")?"true":"false");
+    setAttr(b,"aria-label",T("Show all tags","Ver todas las etiquetas"));
+  }
+});
+/* 11 · lentes del Diario: List, Board, Grid a la vista; el resto en «Más» */
+mod("limpiaLentes",function(){
+  if(!document.body.classList.contains("asp-limpia"))return;
+  var b=document.querySelector("#aspLensBar .apl-lenses"); if(!b)return;
+  var m=b.querySelector(".asp-l-lmas");
+  if(!m){ m=document.createElement("button"); m.type="button"; m.className="asp-l-lmas"; b.appendChild(m); }
+  var ab=b.classList.contains("asp-l-todas"), txt=ab?T("Less","Menos"):T("More","Más");
+  if(m.getAttribute("data-t")!==txt){ m.innerHTML='<span>'+txt+'</span>'+ico(ab?"chevron-up":"chevron-down",14); m.setAttribute("data-t",txt); m.setAttribute("aria-expanded",ab?"true":"false"); }
+});
+/* 18 · Clientes: Spa Data Worklist y Vista tabla tras «Herramientas» */
+mod("limpiaClientes",function(){
+  if(!document.body.classList.contains("asp-limpia"))return;
+  var pg=$("pg6"); if(!pg)return; var meta=pg.querySelector(".qb-cust-side-meta"); if(!meta)return;
+  var b=meta.querySelector(".asp-l-herr");
+  if(!b){ b=document.createElement("button"); b.type="button"; b.className="asp-l-herr"; meta.insertBefore(b,meta.querySelector("select")); }
+  var on=pg.classList.contains("asp-l-herrOn"), t=on?T("Hide tools","Ocultar"):T("Tools","Herramientas");
+  if(b.getAttribute("data-t")!==t){ b.innerHTML=ico("sliders-horizontal",14)+'<span>'+t+'</span>'; b.setAttribute("data-t",t); b.setAttribute("aria-expanded",on?"true":"false"); }
+});
+/* 19 · ficha del cliente: Merge y Satisfaction tras «⋯»; Call y Map discretos; timeline sin turquesa */
+mod("limpiaFicha",function(){
+  if(!document.body.classList.contains("asp-limpia"))return;
+  var d=$("qbCustDetail"); if(!d)return;
+  var tl=d.querySelector(":scope > button"); if(tl&&/timeline|cronolog/i.test(tl.textContent))cls(tl,"asp-l-tl",true);
+  var bar=d.querySelector(".qb-cust-action-bar"); if(!bar)return;
+  var oc=Array.prototype.filter.call(bar.querySelectorAll(".qb-cust-btn"),function(x){ return /Merge|Fusionar|Combinar|Satisfaction|Satisfacci/i.test(x.textContent||""); });
+  oc.forEach(function(x){ cls(x,"asp-l-oc3",true); });
+  Array.prototype.forEach.call(bar.querySelectorAll("a.qb-cust-btn"),function(x){ cls(x,"asp-l-fant",true); });
+  var m=bar.querySelector(".asp-l-mas3");
+  if(oc.length&&!m){ m=document.createElement("button"); m.type="button"; m.className="asp-l-mas3"; m.innerHTML=ico("ellipsis",18);
+    bar.insertBefore(m,bar.querySelector(".qb-saved-flash")||null); }
+  if(m){ setAttr(m,"aria-label",T("More actions","Más acciones")); setAttr(m,"title",T("More actions","Más acciones")); setAttr(m,"aria-expanded",bar.classList.contains("asp-l-ver3")?"true":"false"); }
+});
+/* 20 · hoja: aviso de garantia en una linea; Spa info y Notas plegables (se recuerda) */
+var PLEG_RE=/^(Spa Info|Info del spa|Información del spa|Notes & Updates|Notas y actualizaciones|Notas)/i;
+function plegGuardado(){ try{ return JSON.parse(localStorage.getItem("aspLPleg")||"{}")||{}; }catch(_e){ return {}; } }
+mod("limpiaHoja",function(){
+  if(!document.body.classList.contains("asp-limpia"))return;
+  var b=$("tktDetailBody"); if(!b||!hojaAbierta())return;
+  var av=b.querySelector(".dtv2-top > div:first-child");
+  if(av&&/warning-bg|danger-bg|success-bg/.test(av.getAttribute("style")||"")&&!av.classList.contains("asp-l-aviso")){ av.classList.add("asp-l-aviso"); av.title=(av.textContent||"").replace(/\s+/g," ").trim(); }
+  var g=plegGuardado();
+  Array.prototype.forEach.call(b.querySelectorAll(".dt-sec-t"),function(t){
+    var tx=(t.textContent||"").replace(/^[^A-Za-z\u00C0-\u017F]+/,"").trim(); if(!PLEG_RE.test(tx))return;
+    var k=/spa/i.test(tx)?"spa":"notas"; cls(t,"asp-l-pleg-t",true); setAttr(t,"data-l-pleg",k);
+    setAttr(t,"role","button"); setAttr(t,"tabindex","0"); setAttr(t,"aria-expanded",g[k]?"false":"true");
+    cls(t.parentElement,"asp-l-pleg",!!g[k]);
+  });
+  Array.prototype.forEach.call(b.querySelectorAll("a"),function(a){ if(/On The Way|Voy en camino|Google/i.test(a.textContent||""))cls(a,"asp-l-sec",true); });
+});
+/* los botones de la vista limpia (un solo escuchador; solo cambia clases) */
+document.addEventListener("click",function(e){
+  var t=e.target; if(!t||!t.closest)return;
+  var mas=t.closest(".asp-l-mas");
+  if(mas){ e.preventDefault(); e.stopPropagation(); var tr=mas.parentElement; var ver=!tr.classList.contains("asp-l-ver"); cls(tr,"asp-l-ver",ver);
+    mas.textContent=ver?T("Less","Menos"):"+"+(mas.getAttribute("data-n")||""); mas.setAttribute("aria-expanded",ver?"true":"false"); return; }
+  var lm=t.closest(".asp-l-lmas");
+  if(lm){ e.preventDefault(); e.stopPropagation(); var bar=lm.parentElement; cls(bar,"asp-l-todas",!bar.classList.contains("asp-l-todas")); schedule(); return; }
+  var he=t.closest(".asp-l-herr");
+  if(he){ e.preventDefault(); e.stopPropagation(); var pg=$("pg6"); if(pg)cls(pg,"asp-l-herrOn",!pg.classList.contains("asp-l-herrOn")); schedule(); return; }
+  var m3=t.closest(".asp-l-mas3");
+  if(m3){ e.preventDefault(); e.stopPropagation(); var ab=m3.parentElement; cls(ab,"asp-l-ver3",!ab.classList.contains("asp-l-ver3")); schedule(); return; }
+  var pt=t.closest(".asp-l-pleg-t");
+  if(pt&&document.body.classList.contains("asp-limpia")){ if(t.closest("button,a,input,textarea"))return;
+    var k=pt.getAttribute("data-l-pleg"), g=plegGuardado(); g[k]=!g[k]; try{ localStorage.setItem("aspLPleg",JSON.stringify(g)); }catch(_e){}
+    cls(pt.parentElement,"asp-l-pleg",!!g[k]); pt.setAttribute("aria-expanded",g[k]?"false":"true"); return; }
+},true);
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Enter"&&e.key!==" ")return; var t=e.target; if(!t||!t.classList||!t.classList.contains("asp-l-pleg-t"))return;
+  e.preventDefault(); t.click();
+},true);
+
+/* ══ v2.88.9 · VISTA LIMPIA «APPLE» + «POR REPORTAR» ═══════════════════════════════
+   La pantalla muestra conclusiones; los datos siguen ahi, a un toque. Estos modulos leen lo que
+   la app ya calculo (contadores, etiquetas, active/done, aspPideReporte, aspTieneReporte) y solo
+   agregan clases, style.order y elementos propios .asp-c-*. Nada se mueve ni se borra. */
+function claraOn(){ return document.body.classList.contains("asp-limpia"); }
+function hoyIso(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function fechaLinda(d){ try{ return new Date(d+"T12:00:00").toLocaleDateString(ES()?"es-MX":"en-US",{weekday:"short",month:"short",day:"numeric"}); }catch(_e){ return d; } }
+function hace(n){ if(n<=0)return T("today","hoy"); if(n===1)return T("yesterday","ayer"); return ES()?"hace "+n+" días":n+" days ago"; }
+function plural(n,en1,enN,es1,esN){ return n+" "+(ES()?(n===1?es1:esN):(n===1?en1:enN)); }
+function soyTecnico(){ try{ return typeof _isTechUser==="function"&&_isTechUser(); }catch(_e){ return false; } }
+
+/* ── «Por reportar»: visitas cuyo dia ya paso sin reporte (o de hoy, si la app ya lo pide) ── */
+var PR={t:0,lista:[],firma:""};
+window.aspPorReportar=function(forzar){
+  var ahora=Date.now(); if(!forzar&&ahora-PR.t<1500)return PR.lista;
+  var hoy=hoyIso(), out=[], visto={};
+  var pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
+  for(var i=0;i<pool.length;i++){ var t=pool[i];
+    if(!t||t.source!=="dispatch"||visto[t.id])continue; visto[t.id]=1;
+    var st=String(t.status||"").toLowerCase(); if(st==="canceled"||st==="cancelled")continue;
+    var d=String(t.date||"").slice(0,10); if(!/^\d{4}-\d\d-\d\d$/.test(d)||d>hoy)continue;
+    try{ if(aspCerradaAMano(t)||aspTieneReporte(t))continue; }catch(_e){ if(t.fieldReportSubmitted)continue; }
+    var debe=d<hoy; if(!debe){ try{ debe=!!aspPideReporte(t); }catch(_e){} } if(!debe)continue;
+    var dias=Math.max(0,Math.round((new Date(hoy+"T12:00:00")-new Date(d+"T12:00:00"))/864e5));
+    out.push({id:String(t.id),cliente:t.customer||"—",dia:d,hora:t.arrival||t.time||"",techs:(t.techs||[]).slice(),dias:dias});
+  }
+  out.sort(function(a,b){ return b.dias-a.dias||String(a.cliente).localeCompare(String(b.cliente)); });
+  if(soyTecnico()){ var yo=""; try{ yo=(currentUser&&currentUser.name)||""; }catch(_e){} out=out.filter(function(x){ return x.techs.indexOf(yo)>=0; }); }
+  PR={t:ahora,lista:out,firma:out.map(function(x){ return x.id+"@"+x.techs.join("+")+"@"+x.dias; }).join("|")};
+  return out;
+};
+function avTec(n){ var col="var(--i3)"; try{ var i=TECHS.indexOf(n); if(i>=0)col=TECH_COLORS[i%TECH_COLORS.length]; }catch(_e){}
+  var ps=String(n||"?").trim().split(/\s+/), ini=(ps.length>1?ps[0][0]+ps[ps.length-1][0]:String(n||"?").slice(0,2)).toUpperCase();
+  return '<span class="asp-c-pr-av" style="background:'+col+'">'+esc(ini)+'</span>'; }
+function prGrupos(l){ var g={}, orden=[];
+  l.forEach(function(v){ (v.techs.length?v.techs:[T("Unassigned","Sin asignar")]).forEach(function(n){ if(!g[n]){ g[n]=[]; orden.push(n); } g[n].push(v); }); });
+  orden.sort(function(a,b){ return g[b].length-g[a].length||a.localeCompare(b); });
+  return orden.map(function(n){ return {nombre:n,visitas:g[n]}; }); }
+function prHTML(){
+  var l=aspPorReportar(true), gs=prGrupos(l);
+  var sub=l.length?plural(l.length,"visit","visits","visita","visitas")+" · "+plural(gs.length,"technician","technicians","técnico","técnicos"):T("Everyone is up to date","Todos al día");
+  var h='<div class="asp-c-pr-h"><div><h3>'+T("To report","Por reportar")+'</h3><p>'+esc(sub)+'</p></div><button type="button" class="asp-c-pr-x" aria-label="'+T("Close","Cerrar")+'">'+ico("x",18)+'</button></div><div class="asp-c-pr-b">';
+  if(!l.length)h+='<div class="asp-c-pr-ok">'+ico("circle-check",42)+'<b>'+T("All reports are in","Todos los reportes están al día")+'</b><span>'+T("Nothing pending from past days.","No hay nada pendiente de días anteriores.")+'</span></div>';
+  gs.forEach(function(g){
+    h+='<section class="asp-c-pr-t"><header>'+avTec(g.nombre)+'<b>'+esc(g.nombre)+'</b><span class="asp-c-pr-n">'+g.visitas.length+'</span></header>';
+    g.visitas.forEach(function(v){ var tono=v.dias>=4?"mal":v.dias>=2?"aviso":"bien";
+      h+='<button type="button" class="asp-c-pr-v" data-id="'+esc(v.id)+'"><span class="asp-c-pr-i"><span class="nm">'+esc(v.cliente)+'</span><span class="dd">'+esc(fechaLinda(v.dia))+(v.hora?" · "+esc(v.hora):"")+'</span></span><span class="asp-c-edad '+tono+'">'+esc(hace(v.dias))+'</span>'+ico("chevron-right",16)+'</button>'; });
+    h+='</section>'; });
+  return h+'</div>';
+}
+function prPanel(){ var p=$("aspPrPanel"); if(!p){ var bg=document.createElement("div"); bg.id="aspPrBg"; bg.hidden=true; document.body.appendChild(bg);
+  p=document.createElement("div"); p.id="aspPrPanel"; p.setAttribute("role","dialog"); p.setAttribute("aria-modal","true"); p.hidden=true; document.body.appendChild(p); } return p; }
+function prAbrir(desde){ var p=prPanel(); p.innerHTML=prHTML(); p.setAttribute("aria-label",T("To report","Por reportar")); p.__firma=PR.firma;
+  var b=desde||$("aspPrBtn"); p.style.top=""; p.style.right="";
+  if(b&&!isPhone()){ var r=b.getBoundingClientRect(); p.style.top=Math.round(Math.min(r.bottom+8,innerHeight-200))+"px"; p.style.right=Math.round(Math.max(12,innerWidth-r.right))+"px"; }
+  p.hidden=false; $("aspPrBg").hidden=false; requestAnimationFrame(function(){ p.classList.add("on"); $("aspPrBg").classList.add("on"); }); }
+function prCerrar(){ var p=$("aspPrPanel"); if(!p||p.hidden)return; p.classList.remove("on"); $("aspPrBg").classList.remove("on"); setTimeout(function(){ p.hidden=true; $("aspPrBg").hidden=true; },220); }
+window.aspPorReportarAbrir=prAbrir;
+mod("claraPrBoton",function(){
+  var to=$("todoTriggerBtn"); if(!to||!to.parentNode)return;
+  var b=$("aspPrBtn");
+  if(!b){ b=document.createElement("button"); b.type="button"; b.id="aspPrBtn"; b.className="asp-c-prbtn"; to.parentNode.insertBefore(b,to); }
+  var n=aspPorReportar().length, txt=n?T("To report","Por reportar"):T("All reported","Al día"), key=n+"|"+txt;
+  if(b.getAttribute("data-k")!==key){ b.setAttribute("data-k",key); cls(b,"cero",!n);
+    b.innerHTML=ico(n?"clipboard-pen-line":"circle-check",16)+'<span>'+txt+'</span>'+(n?'<b>'+n+'</b>':'');
+    setAttr(b,"title",n?(soyTecnico()?T("Your visits without a report","Tus visitas sin reporte"):T("Visits without a report, by technician","Visitas sin reporte, por técnico")):T("Every visit has its report","Todas las visitas tienen su reporte")); }
+  var p=$("aspPrPanel"); if(p&&!p.hidden&&p.__firma!==PR.firma){ var sc=(p.querySelector(".asp-c-pr-b")||{}).scrollTop||0; p.innerHTML=prHTML(); p.__firma=PR.firma; var nb=p.querySelector(".asp-c-pr-b"); if(nb)nb.scrollTop=sc; }
+});
+/* puntos en el mes: dias con visitas sin reporte */
+mod("claraPrPuntos",function(){
+  var g=$("calGrid"); if(!g||!g.querySelector(".cal-day"))return;
+  var l=aspPorReportar(), cuenta={}; l.forEach(function(v){ cuenta[v.dia]=(cuenta[v.dia]||0)+1; });
+  Array.prototype.forEach.call(g.querySelectorAll(".cal-day"),function(c){
+    var m=/calSelectDay\('(\d{4}-\d\d-\d\d)'\)/.exec(c.getAttribute("onclick")||""); var n=m?cuenta[m[1]]||0:0;
+    var dot=c.querySelector(":scope > .asp-c-prdot");
+    if(!n){ if(dot)dot.remove(); return; }
+    if(!dot){ dot=document.createElement("button"); dot.type="button"; dot.className="asp-c-prdot"; c.appendChild(dot); }
+    setText(dot,String(n)); setAttr(dot,"title",plural(n,"visit without a report","visits without a report","visita sin reporte","visitas sin reporte")); setAttr(dot,"aria-label",dot.title);
+  });
+});
+
+/* ── 6 · «Te necesita ahora» (Diario): el Cerebro ordena lo pendiente y muestra 3 ── */
+var AH_PRI={urgent:1,payfirst:2,unassigned:3,return:4,report:5,needs2:6,bill:7,repeat:8,qbpending:9};
+function ahoraItems(){
+  var it=[], vistos={};
+  Array.prototype.forEach.call(document.querySelectorAll("#dailySummary .daily-attn-card:not(.dead)"),function(c){
+    var k=(/_dailySetAttention\('(\w+)'\)/.exec(c.getAttribute("onclick")||"")||[])[1]; if(!k||k==="report")return;
+    var n=parseInt((c.querySelector(".daily-attn-n")||{}).textContent,10)||0; if(n>0&&!vistos[k]){ vistos[k]=1; it.push({k:k,n:n,el:c}); } });
+  Array.prototype.forEach.call(document.querySelectorAll("#dailySummary .dsum-card:not(.dead)"),function(c){
+    var k=(/_dailySummaryClick\('(\w+)'\)/.exec(c.getAttribute("onclick")||"")||[])[1]||""; var kk=/urgent/i.test(k)?"urgent":/repeat/i.test(k)?"repeat":/qbpend/i.test(k)?"qbpending":"";
+    var n=parseInt((c.querySelector(".dsum-n")||{}).textContent,10)||0; if(kk&&n>0&&!vistos[kk]){ vistos[kk]=1; it.push({k:kk,n:n,el:c}); } });
+  var pr=aspPorReportar().length; if(pr)it.push({k:"report",n:pr,el:null});
+  var bs=$("bsLaunch"); if(bs&&bs.getClientRects){ var bn=parseInt((bs.querySelector(".bs-cnt")||{}).textContent,10)||0; var mm=/(\$[\d,.]+)/.exec(bs.textContent||""); if(bn>0)it.push({k:"bill",n:bn,el:bs,monto:mm?mm[1]:""}); }
+  it.sort(function(a,b){ return (AH_PRI[a.k]||50)-(AH_PRI[b.k]||50); });
+  return it;
+}
+function ahoraTexto(x){ var n=x.n;
+  switch(x.k){
+    case "unassigned": return [plural(n,"visit without a technician","visits without a technician","visita sin técnico","visitas sin técnico"),T("Assign","Asignar"),"aviso"];
+    case "return": return [plural(n,"return call without a date","return calls without a date","regreso sin fecha","regresos sin fecha"),T("Schedule","Agendar"),"aviso"];
+    case "payfirst": return [plural(n,"customer must pay first","customers must pay first","cliente debe pagar antes","clientes deben pagar antes"),T("Review","Revisar"),"mal"];
+    case "needs2": return [plural(n,"visit needs a 2nd tech","visits need a 2nd tech","visita necesita 2.º técnico","visitas necesitan 2.º técnico"),T("Review","Revisar"),"aviso"];
+    case "urgent": return [plural(n,"urgent visit","urgent visits","visita urgente","visitas urgentes"),T("View","Ver"),"mal"];
+    case "report": return [plural(n,"visit without a report","visits without a report","visita sin reporte","visitas sin reporte"),T("See who","Ver quién"),"aviso"];
+    case "bill": return [n+" "+T("to bill","por facturar")+(x.monto?" · "+x.monto:""),T("Bill","Facturar"),"info"];
+    case "repeat": return [plural(n,"repeat visit","repeat visits","visita repetida","visitas repetidas"),T("View","Ver"),"info"];
+    case "qbpending": return [plural(n,"waiting for QuickBooks","waiting for QuickBooks","esperando QuickBooks","esperando QuickBooks"),T("View","Ver"),"info"];
+  } return [n+"",T("View","Ver"),"info"]; }
+var AH_ITEMS=[];
+mod("claraAhora",function(){
+  if(!claraOn())return; var pg=$("pg1"); if(!pg)return;
+  var c=$("aspCAhora"); if(!c){ c=document.createElement("section"); c.id="aspCAhora"; c.className="asp-c-ahora"; pg.insertBefore(c,pg.firstChild); }
+  var it=ahoraItems(); AH_ITEMS=it; var top=it.slice(0,3), resto=it.length-top.length;
+  var firma=(ES()?"es":"en")+top.map(function(x){ return x.k+x.n+(x.monto||""); }).join("|")+"#"+resto+(pg.classList.contains("asp-c-todo")?"T":"");
+  if(c.__f===firma)return; c.__f=firma;
+  var h='<header><h2>'+(top.length?T("Needs you now","Te necesita ahora"):T("All clear","Todo en orden"))+'</h2></header>';
+  if(!top.length)h+='<p class="asp-c-ahora-ok">'+ico("circle-check",18)+T("Nothing urgent. The team is on track.","Nada urgente. El equipo va al día.")+'</p>';
+  else{ h+='<ul>'; top.forEach(function(x,i){ var t=ahoraTexto(x); h+='<li class="'+t[2]+'"><span class="asp-c-dot"></span><span class="asp-c-ahora-t"><b>'+esc(t[0].split(" ")[0])+'</b> '+esc(t[0].split(" ").slice(1).join(" "))+'</span><button type="button" data-ah="'+i+'">'+esc(t[1])+'</button></li>'; }); h+='</ul>'; }
+  h+='<footer><button type="button" class="asp-c-ahora-mas">'+(pg.classList.contains("asp-c-todo")?T("Hide the full summary","Ocultar el resumen"):(resto>0?T("+"+resto+" more · full summary","+"+resto+" más · resumen completo"):T("Full summary","Resumen completo")))+'</button></footer>';
+  c.innerHTML=h;
+});
+
+/* ── 8 · 10 · la tarjeta del ticket: una frase del Cerebro y un anillo de cierre ── */
+function anillo(n,tot){ var c=2*Math.PI*8, f=Math.max(0,Math.min(1,n/tot));
+  return '<svg class="asp-c-anillo" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" class="f"/><circle cx="10" cy="10" r="8" class="p" stroke-dasharray="'+(f*c).toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 10 10)"/></svg>'; }
+function fraseTkt(t){
+  var st=t.querySelector(".tkt-status"), stc=st?st.className:"", stx=st?(st.textContent||"").trim():"";
+  var cie=t.querySelector(".ops276-closeout"), raw=cie?(cie.getAttribute("data-a-raw")||""):"", m=/(\d)\s*\/\s*(\d)/.exec(raw);
+  var est=t.querySelector(".ops275-state"), estx=est?(est.textContent||""):"";
+  var qb=t.querySelector(".tt-meta .tkt-tag");
+  var cub=Array.prototype.some.call(t.querySelectorAll(".tt-cov .tkt-tag"),function(x){ return /100%|full|cubiert|covered/i.test(x.textContent||"")&&!/no warr|sin garant/i.test(x.textContent||""); });
+  var r;
+  if(/resched|reag/i.test(stc+" "+stx))r=[T("Needs a new date","Necesita fecha nueva"),"aviso"];
+  else if(/PART|PIEZA|PARTE/i.test(estx))r=[T("Waiting for a part","Esperando pieza"),"aviso"];
+  else if(cub)r=[T("Warranty · don't charge","Garantía · no cobrar"),"bien"];
+  else if(qb&&qb.getClientRects().length!==undefined&&/qb|quickbooks/i.test(qb.textContent||""))r=[T("Ready for QuickBooks","Lista para QuickBooks"),"info"];
+  else if(/done|submit|complet|enviad/i.test(stc+" "+stx))r=[T("All set","Todo listo"),"bien"];
+  else r=[stx||T("Pending","Pendiente"),"info"];
+  return {txt:r[0],tono:r[1],n:m?+m[1]:null,tot:m?+m[2]:null,firma:stc+stx+raw+estx+(qb?qb.textContent:"")+(cub?"c":"")};
+}
+mod("claraTkt",function(){
+  if(!claraOn())return; var pg=document.querySelector(".wrap.show"); if(!pg)return;
+  Array.prototype.forEach.call(pg.querySelectorAll(".tkt"),function(t){
+    var izq=t.querySelector(".tkt-left"); if(!izq)return;
+    var f=fraseTkt(t), firma=f.firma+(ES()?"es":"en"); if(t.__cF===firma&&izq.querySelector(":scope > .asp-c-linea"))return; t.__cF=firma;
+    var l=izq.querySelector(":scope > .asp-c-linea");
+    if(!l){ l=document.createElement("button"); l.type="button"; l.className="asp-c-linea"; var tl=izq.querySelector(".tkt-techline"); izq.insertBefore(l,tl?tl.nextSibling:null); }
+    l.className="asp-c-linea "+f.tono;
+    l.innerHTML='<span class="asp-c-dot"></span><span>'+esc(f.txt)+'</span>'+(f.n!=null&&f.n<f.tot?anillo(f.n,f.tot)+'<em>'+f.n+'/'+f.tot+'</em>':'');
+    setAttr(l,"aria-label",f.txt+(f.n!=null?" · "+T("closeout","cierre")+" "+f.n+"/"+f.tot:"")+" · "+T("show details","ver detalles"));
+  });
+});
+
+/* ── 12 · el spa en una linea (la hoja) ── */
+function resumenSpa(txt){ txt=String(txt||""); if(!txt.trim())return "";
+  var p=null; try{ p=typeof _parseSpaDescription==="function"?_parseSpaDescription(txt):null; }catch(_e){}
+  var partes=[], mod_=(p&&p.model)||(/Model:\s*([^|]+)/i.exec(txt)||[])[1], del=(p&&p.delivered)?p.delivered.getFullYear():(/Delivered:\s*[\d/]*?(\d{4})/i.exec(txt)||[])[1], pack=(/Pack:\s*([^|]+)/i.exec(txt)||[])[1];
+  if(mod_)partes.push(String(mod_).trim()); if(del)partes.push(String(del)); if(pack)partes.push(String(pack).trim());
+  return partes.length?partes.join(" · "):txt.replace(/\s+/g," ").slice(0,60)+(txt.length>60?"…":""); }
+mod("claraSpa",function(){
+  if(!claraOn()||!hojaAbierta())return; var ta=$("tktDetailSpaDesc"); if(!ta)return; var sec=ta.closest(".dt-sec"); if(!sec)return;
+  try{ var g=JSON.parse(localStorage.getItem("aspLPleg")||"{}")||{}; if(!("spa" in g)){ g.spa=true; localStorage.setItem("aspLPleg",JSON.stringify(g)); } }catch(_e){}
+  var r=sec.querySelector(":scope > .asp-c-spa"); var tit=sec.querySelector(".dt-sec-t");
+  if(!r){ r=document.createElement("div"); r.className="asp-c-spa"; sec.insertBefore(r,tit?tit.nextSibling:sec.firstChild); }
+  var txt=resumenSpa(ta.value), k=txt+"|"+(ES()?1:0); if(r.__k!==k){ r.__k=k; r.innerHTML='<span>'+esc(txt||T("No spa description yet","Sin descripción del spa"))+'</span><button type="button" class="asp-c-spa-ver">'+T("See all","Ver todo")+'</button>'; }
+});
+
+/* ── 13 · Hoy: cifras en una linea (sin dinero) ── */
+function fraseCifras(nodos,lab,val,salta){ var p=[];
+  Array.prototype.forEach.call(nodos,function(k){ if(salta&&salta(k))return; var v=(k.querySelector(val)||{}).textContent, l=(k.querySelector(lab)||{}).textContent; if(!v)return;
+    l=String(l||"").trim(); if(/^(hours|horas)$/i.test(l))l=T("on site","en sitio");
+    p.push('<span><b>'+esc(v.trim())+'</b> '+esc(l.toLowerCase())+'</span>'); }); return p.join(""); }
+mod("claraHoy",function(){
+  if(!claraOn())return; var k=document.querySelector("#pg16 .tdy-kpis"); if(!k)return;
+  var f=k.previousElementSibling; if(!f||!f.classList.contains("asp-c-frase")){ f=document.createElement("div"); f.className="asp-c-frase"; k.parentNode.insertBefore(f,k); }
+  var h=fraseCifras(k.querySelectorAll(".tdy-kpi"),".kl",".kv",function(x){ return !!x.querySelector(".kv.money"); }); if(f.__h!==h){ f.__h=h; f.innerHTML=h; }
+});
+/* ── 15 · Ruta: cifras en una linea; tecnicos como avatares ── */
+mod("claraRuta",function(){
+  if(!claraOn())return; var c=document.querySelector("#pg4 .cal-cmd");
+  if(c){ var f=c.previousElementSibling; if(!f||!f.classList.contains("asp-c-frase")){ f=document.createElement("div"); f.className="asp-c-frase"; c.parentNode.insertBefore(f,c); }
+    var h=fraseCifras(c.querySelectorAll(".cal-cmd-stat"),".cc-l",".cc-v"); if(f.__h!==h){ f.__h=h; f.innerHTML=h; } }
+  Array.prototype.forEach.call(document.querySelectorAll("#calTechPills .cal-tech-pill"),function(b){
+    var d=b.querySelector(".dot"); if(!d)return; var nom=""; for(var i=0;i<b.childNodes.length;i++){ if(b.childNodes[i].nodeType===3)nom+=b.childNodes[i].nodeValue; } nom=nom.trim();
+    var ps=nom.split(/\s+/), ini=(ps.length>1?ps[0][0]+ps[ps.length-1][0]:nom.slice(0,2)).toUpperCase(); if(b.classList.contains("unassigned"))ini="?";
+    setAttr(d,"data-ini",ini); setAttr(b,"title",nom); setAttr(b,"aria-label",nom); });
+});
+/* ── 16 · Registro: una sola lista, la espera mas larga arriba ── */
+mod("claraLog",function(){
+  if(!claraOn())return; var g=document.querySelector("#slogList .zone-grid"); if(!g)return;
+  Array.prototype.forEach.call(g.querySelectorAll(".zone-card"),function(z){
+    var zn=((z.querySelector(".zone-card-hdr span")||{}).textContent||"").trim();
+    Array.prototype.forEach.call(z.querySelectorAll(".zone-card-item"),function(it){
+      var a=it.querySelector(".sl-age-chip"), m=/(\d+)/.exec(a?a.textContent:""), d=m?+m[1]:0, o=String(-d*10);
+      if(it.style.order!==o)it.style.order=o;
+      if(zn&&!it.querySelector(":scope > .asp-c-zona")){ var s2=document.createElement("span"); s2.className="asp-c-zona"; s2.textContent=zn; it.appendChild(s2); } }); });
+  var sl=$("slogList"), sum=sl&&sl.querySelector(":scope > .sl-aging-summary");
+  var fb=sl&&sl.querySelector(":scope > .asp-c-filtros");
+  if(sum&&!fb){ fb=document.createElement("button"); fb.type="button"; fb.className="asp-c-filtros"; fb.innerHTML=ico("sliders-horizontal",15)+'<span>'+T("Filters","Filtros")+'</span>'; }
+  if(sum&&fb.nextElementSibling!==sum)sl.insertBefore(fb,sum);   /* siempre arriba del resumen */
+});
+/* ── 17 · ficha del cliente en modo lectura; «Editar» la abre ── */
+mod("claraFicha",function(){
+  var d=$("qbCustDetail"); if(!d)return;
+  var nom=((d.querySelector(".qb-cust-hero-name")||{}).textContent||"").trim();
+  if(d.__cNom!==nom){ d.__cNom=nom; cls(d,"asp-c-edit",false); }   /* otro cliente: vuelve a lectura */
+  var on=claraOn(), edit=d.classList.contains("asp-c-edit");
+  cls(d,"asp-c-lect",on&&!edit);
+  Array.prototype.forEach.call(d.querySelectorAll(".qb-cust-info-cell"),function(c){
+    var ins=c.querySelectorAll("input,textarea"), vacio=ins.length>0; for(var i=0;i<ins.length;i++){ if(String(ins[i].value||"").trim()){ vacio=false; break; } }
+    cls(c,"asp-c-vacio",on&&!edit&&vacio); });
+  Array.prototype.forEach.call(d.querySelectorAll(".qb-cust-info-grid input,.qb-cust-info-grid textarea"),function(x){
+    if(on&&!edit){ if(!x.readOnly){ x.readOnly=true; x.setAttribute("data-c-ro","1"); } }
+    else if(x.getAttribute("data-c-ro")==="1"){ x.readOnly=false; x.removeAttribute("data-c-ro"); } });
+  if(!on)return;
+  var hero=d.querySelector(".qb-cust-hero-row");
+  if(hero&&!hero.querySelector(".asp-c-editar")){ var b=document.createElement("button"); b.type="button"; b.className="asp-c-editar"; hero.appendChild(b); }
+  var be=hero&&hero.querySelector(".asp-c-editar"); if(be)setText(be,edit?T("Cancel","Cancelar"):T("Edit","Editar"));
+  var stats=d.querySelector(".qb-cust-hero-stats");
+  if(stats){ var f=stats.previousElementSibling; if(!f||!f.classList.contains("asp-c-frase")){ f=document.createElement("div"); f.className="asp-c-frase"; stats.parentNode.insertBefore(f,stats); }
+    var h=fraseCifras(stats.querySelectorAll(".qb-cust-stat"),".l",".v"); if(f.__h!==h){ f.__h=h; f.innerHTML=h; } }
+});
+/* ── 18 · la hoja en una columna; la facturacion plegada con su resumen ── */
+mod("claraHoja",function(){
+  if(!claraOn()||!hojaAbierta()||soyTecnico())return; var w=document.querySelector("#tktDetailBody .dtv2-colW"); if(!w)return;
+  var g={}; try{ g=JSON.parse(localStorage.getItem("aspLPleg")||"{}")||{}; }catch(_e){}
+  var pleg=g.fact!==false; cls(w,"asp-c-plegW",pleg);
+  var hb=w.querySelector(":scope > .asp-c-fact");
+  if(!hb){ hb=document.createElement("button"); hb.type="button"; hb.className="asp-c-fact"; var ch=w.querySelector(".dtv2-colhead"); w.insertBefore(hb,ch?ch.nextSibling:w.firstChild); }
+  var wr=w.querySelector(".w-result"), cobro=Array.prototype.find.call(w.querySelectorAll(".dt-sec span"),function(x){ return /CHARGE|COBRAR|NO CHARGE|SIN COBRO|covered|cubiert/i.test(x.textContent||""); });
+  var res=[wr?(wr.textContent||"").replace(/\s+/g," ").trim():"", cobro?(cobro.textContent||"").trim():""].filter(Boolean).join(" · ");
+  var k=res+"|"+pleg+"|"+(ES()?1:0);
+  if(hb.__k!==k){ hb.__k=k; hb.innerHTML='<span class="asp-c-fact-t">'+T("Billing","Facturación")+'</span><span class="asp-c-fact-r">'+esc(res||T("Visit type, warranty and parts","Tipo de visita, garantía y piezas"))+'</span>'+ico(pleg?"chevron-right":"chevron-down",18); setAttr(hb,"aria-expanded",pleg?"false":"true"); }
+});
+/* ── 20 · menu corto (oficina, computadora): lo diario a la vista y «Más» ── */
+var MENU_PRIN={tab16:1,tab1:1,tab4:1,tab5:1,tab6:1,tab8:1};
+mod("claraMenu",function(){
+  var sh=$("aspShell"); if(!sh)return; var on=claraOn()&&!soyTecnico()&&!isPhone();
+  cls(sh,"asp-c-menu",on); if(!on)return;
+  var items=sh.querySelectorAll(".as-i[data-tab]"), ult=null, conB=false;
+  Array.prototype.forEach.call(items,function(x){ var pr=!!MENU_PRIN[x.getAttribute("data-tab")]; cls(x,"asp-c-sec",!pr); if(pr)ult=x; else if(x.querySelector(".as-b:not([hidden])")&&(x.querySelector(".as-b").textContent||"").trim())conB=true; });
+  var m=sh.querySelector(":scope > .asp-c-masmenu");
+  if(!m&&ult){ m=document.createElement("button"); m.type="button"; m.className="as-i asp-c-masmenu"; ult.parentNode.insertBefore(m,ult.nextSibling); }
+  if(m){ var ab=sh.classList.contains("asp-c-menuOn"), k=ab+"|"+conB+"|"+(ES()?1:0);
+    if(m.__k!==k){ m.__k=k; m.innerHTML='<span class="as-ico">'+ico(ab?"chevron-up":"layout-grid",20)+'</span><span class="as-lbl">'+(ab?T("Less","Menos"):T("More","Más"))+'</span>'+(conB&&!ab?'<span class="asp-c-masdot"></span>':''); setAttr(m,"aria-expanded",ab?"true":"false"); } }
+});
+/* los toques de la vista «Apple» (un escuchador; solo clases) */
+document.addEventListener("click",function(e){
+  var t=e.target; if(!t||!t.closest)return;
+  if(t.closest("#aspPrBtn")){ e.preventDefault(); e.stopPropagation(); var p=$("aspPrPanel"); if(p&&!p.hidden)prCerrar(); else prAbrir(t.closest("#aspPrBtn")); return; }
+  var pd=t.closest(".asp-c-prdot"); if(pd){ e.preventDefault(); e.stopPropagation(); prAbrir($("aspPrBtn")||pd); return; }
+  if(t.closest(".asp-c-pr-x")||t.id==="aspPrBg"){ e.preventDefault(); prCerrar(); return; }
+  var v=t.closest(".asp-c-pr-v"); if(v){ e.preventDefault(); e.stopPropagation(); var id=v.getAttribute("data-id"); prCerrar(); setTimeout(function(){ try{ openTktDetail(id); }catch(_e){} },80); return; }
+  var ah=t.closest("#aspCAhora [data-ah]"); if(ah){ e.preventDefault(); e.stopPropagation(); var x=AH_ITEMS[+ah.getAttribute("data-ah")]; if(!x)return;
+    if(x.k==="report"){ prAbrir(ah); return; } if(x.el)x.el.click(); return; }
+  var am=t.closest(".asp-c-ahora-mas"); if(am){ e.preventDefault(); var pg=$("pg1"); if(pg)cls(pg,"asp-c-todo",!pg.classList.contains("asp-c-todo")); schedule(); return; }
+  var li=t.closest(".asp-c-linea"); if(li){ e.preventDefault(); e.stopPropagation(); var tk=li.closest(".tkt"); if(tk)cls(tk,"asp-c-ver",!tk.classList.contains("asp-c-ver")); return; }
+  if(t.closest(".asp-c-spa-ver")){ e.preventDefault(); e.stopPropagation(); var tt=t.closest(".dt-sec"); var ti=tt&&tt.querySelector(".asp-l-pleg-t"); if(ti)ti.click(); return; }
+  var fi=t.closest(".asp-c-filtros"); if(fi){ e.preventDefault(); var p5=$("pg5"); if(p5)cls(p5,"asp-c-filtrosOn",!p5.classList.contains("asp-c-filtrosOn")); return; }
+  var ed=t.closest(".asp-c-editar"); if(ed){ e.preventDefault(); e.stopPropagation(); var d=$("qbCustDetail"); if(d){ var ins=d.querySelectorAll(".qb-cust-info-grid input,.qb-cust-info-grid textarea");
+    if(!d.classList.contains("asp-c-edit")){ for(var i=0;i<ins.length;i++)ins[i].__cv=ins[i].value; cls(d,"asp-c-edit",true); }
+    else { for(var j=0;j<ins.length;j++){ if(ins[j].__cv!==undefined)ins[j].value=ins[j].__cv; } cls(d,"asp-c-edit",false); }   /* Cancelar: deja todo como estaba */
+    schedule(); } return; }
+  var sv=t.closest("#qbCustDetail .qb-cust-btn.primary"); if(sv){ setTimeout(function(){ var d=$("qbCustDetail"); if(d){ cls(d,"asp-c-edit",false); schedule(); } },700); return; }
+  var fa=t.closest(".asp-c-fact"); if(fa){ e.preventDefault(); e.stopPropagation(); var g={}; try{ g=JSON.parse(localStorage.getItem("aspLPleg")||"{}")||{}; }catch(_e){} g.fact=(g.fact===false); try{ localStorage.setItem("aspLPleg",JSON.stringify(g)); }catch(_e){} schedule(); return; }
+  var mm=t.closest(".asp-c-masmenu"); if(mm){ e.preventDefault(); e.stopPropagation(); var sh=$("aspShell"); if(sh)cls(sh,"asp-c-menuOn",!sh.classList.contains("asp-c-menuOn")); schedule(); return; }
+},true);
+document.addEventListener("keydown",function(e){ if(e.key==="Escape"){ var p=$("aspPrPanel"); if(p&&!p.hidden){ e.stopPropagation(); prCerrar(); } } },true);
 
 /* ── 21 · el titulo de la pestana dice donde estas ────────────────────────── */
 mod("titulo",function(){
@@ -63559,6 +64516,8 @@ init("historia",function(){
       if(!listo){ if(tries<60)setTimeout(go,500); return; }
       if(m[1]==="t"&&hojaAbierta())return;
       if(m[1]==="c"&&hechos)return;
+      /* v2.88.7 — un enlace #c/Nombre abria Clientes (con cobros y montos) tambien a un tecnico */
+      if(m[1]==="c"&&typeof _isTechUser==="function"&&_isTechUser())return;
       desdeHist=true;
       try{
         if(m[1]==="t"&&typeof ot==="function")ot.call(window,tgt);
@@ -63989,10 +64948,13 @@ document.addEventListener("click",function(ev){
 var LETRA_NO="#v8ReportOverlay,#v7OwnReport,svg,.app-av,.asp-a-dot,.as-b,kbd,#pg15,.asp-e,#pg4 .ctl-head"; /* v2.88.4 — #pg4 .ctl-head: la base achica la cabecera de las columnas angostas para que quepa el nombre */
 var letraRoots=[], letraSet=new Set(), letraEls=[], letraT=0;
 function letraEncola(x){ if(!x)return; if(x.nodeType===3)x=x.parentElement; if(!x||x.nodeType!==1||letraSet.has(x))return; letraSet.add(x); letraRoots.push(x); letraArranca(); }
-function letraArranca(){ if(!letraT)letraT=setTimeout(letraTrabaja,120); }
-function letraTrabaja(){
-  letraT=0;
-  var budget=400, cand=[];
+/* v2.88.7 — antes: setTimeout de 120 ms, asi que todo se pintaba a 11 px y luego saltaba a 12 (parpadeo).
+   Ahora lo nuevo se mide y se sube en la misma pasada (microtarea), ANTES de pintarlo; el temporizador
+   queda para el resto (las pantallas que aun no se abren, en tandas al arrancar). */
+function letraArranca(){ if(!letraT)letraT=setTimeout(function(){ letraT=0; letraTrabaja(400); },120); }
+function letraYa(){ letraTrabaja(4000); }
+function letraTrabaja(max){
+  var budget=max||400, cand=[];
   while(budget>0&&(letraEls.length||letraRoots.length)){
     if(!letraEls.length){ var r=letraRoots.shift(); letraSet.delete(r);
       if(!r||!r.isConnected||(r.closest&&r.closest(LETRA_NO)))continue;
@@ -64004,16 +64966,25 @@ function letraTrabaja(){
     if(tiene)cand.push(e);
   }
   var subir=[];
-  for(var i=0;i<cand.length;i++){ var el2=cand[i]; if(el2.closest(LETRA_NO))continue; var fs=parseFloat(getComputedStyle(el2).fontSize); if(fs&&fs<11.6)subir.push([el2,fs]); }
-  for(var j=0;j<subir.length;j++){ subir[j][0].style.setProperty("font-size","12px","important"); subir[j][0].setAttribute("data-a-fs",String(Math.round(subir[j][1]*10)/10)); }
+  /* v2.88.9 — con la vista limpia la minima es 13 px */
+  var lim=document.body.classList.contains("asp-limpia"), umbral=lim?12.6:11.6, minimo=lim?"13px":"12px";
+  for(var i=0;i<cand.length;i++){ var el2=cand[i]; if(el2.closest(LETRA_NO))continue; var fs=parseFloat(getComputedStyle(el2).fontSize); if(fs&&fs<umbral)subir.push([el2,fs]); }
+  for(var j=0;j<subir.length;j++){ subir[j][0].style.setProperty("font-size",minimo,"important"); subir[j][0].setAttribute("data-a-fs",String(Math.round(subir[j][1]*10)/10)); }
   if(letraEls.length||letraRoots.length)letraArranca();
 }
 after(function(){
   if(!NUEVOS.length)return;
   var lote=NUEVOS.splice(0,NUEVOS.length);
   for(var n=0;n<lote.length;n++){ var x=lote[n]; if(x&&x.nodeType===3)x=x.parentElement; if(x&&x.nodeType===1&&!(x.parentElement&&letraSet.has(x.parentElement)))letraEncola(x); }
+  letraYa();
 });
-init("letraInicial",function(){ ["pg16","pg1","aspShell","presenceStrip"].forEach(function(id){ letraEncola($(id)); }); });
+init("letraInicial",function(){
+  var vis0=document.querySelector(".wrap.show"); if(vis0)letraEncola(vis0);
+  ["pg16","pg1","aspShell","presenceStrip"].forEach(function(id){ letraEncola($(id)); });
+  letraTrabaja(4000);
+  /* v2.88.7 — las demas pantallas se preparan en tandas al arrancar: al abrirlas ya no saltan */
+  $$(".wrap,.hdr").forEach(function(w){ letraEncola(w); });
+});
 mod("letraPantalla",function(){
   var pg=document.querySelector(".page.show"); if(!pg||pg.__aFsPg)return;
   pg.__aFsPg=1; letraEncola(pg);
@@ -64040,35 +65011,57 @@ var EMO_A={"📍":"map-pin","📞":"phone","🏠":"house","🧠":"brain","📋":
   "🧑‍🔧":"user-cog","👷":"hard-hat","🤖":"bot","💸":"banknote","🪣":"paint-bucket","🧯":"fire-extinguisher","🔩":"cog","🛠":"wrench","📐":"ruler",
   "🌐":"globe","🕘":"history","🕑":"clock","🕒":"clock","🕓":"clock","🕔":"clock","🕕":"clock","🕖":"clock","🕗":"clock","🕙":"clock","🕚":"clock","🕛":"clock","📤":"send","🗒":"notebook-pen","📚":"library","🗄":"archive","📁":"folder","🪪":"id-card","🧮":"calculator","☀":"sun","🌙":"moon"};
 var EMO_A_RE=/^(\s*)(\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic})*)(️?)\s*/u;
-function iconosA(){
+/* v2.88.7 — antes cada pasada recorria ~400 selectores en todo el documento y media la visibilidad de
+   cada caja (Admin: ~940 ms por cada cambio de datos). Ahora la pasada revisa solo los nodos nuevos;
+   el recorrido completo queda para el pulso de 4 s y el cambio de idioma. */
+function iconoTexto(node,yaHost){
+  var m=EMO_A_RE.exec(node.nodeValue||"");
+  if(!m||!EMO_A[m[2]])return;
+  var pe=node.parentElement; if(!pe||pe.closest(".asp-e,textarea,[contenteditable],input,[data-no-i18n]"))return;
+  if(!yaHost){ var hh=null; try{ hh=pe.closest(ICONOS_SEL); }catch(_e){} if(!hh)return; }
+  var svg=""; try{ svg=icon(EMO_A[m[2]],15); }catch(_e){}
+  if(!svg)return;
+  var ic=document.createElement("span"); ic.className="asp-ico"; ic.setAttribute("aria-hidden","true"); ic.innerHTML=svg;
+  var em=document.createElement("span"); em.className="asp-e"; em.hidden=true; em.textContent=m[2]+m[3];
+  pe.insertBefore(ic,node); pe.insertBefore(em,node);
+  node.nodeValue=node.nodeValue.slice(m[0].length);
+  if(node.__i18nEn!=null){ var mm=EMO_A_RE.exec(node.__i18nEn); if(mm)node.__i18nEn=node.__i18nEn.slice(mm[0].length); }
+  if(!node.nodeValue.trim())ic.classList.add("solo");
+}
+var EMO_HAY=/\p{Extended_Pictographic}/u;
+function iconosA(nodos){
   if(typeof icon!=="function")return;
+  if(nodos){
+    for(var q=0;q<nodos.length;q++){
+      var nd=nodos[q]; if(!nd||!nd.isConnected)continue;
+      if(nd.nodeType===3){ iconoTexto(nd,false); continue; }
+      if(nd.nodeType!==1||!EMO_HAY.test(nd.textContent||""))continue;
+      var w1=document.createTreeWalker(nd,NodeFilter.SHOW_TEXT,null,false), t1, l1=[];
+      while((t1=w1.nextNode()))if(EMO_HAY.test(t1.nodeValue))l1.push(t1);
+      for(var r=0;r<l1.length;r++)iconoTexto(l1[r],false);
+    }
+    return;
+  }
   var hosts=document.querySelectorAll(ICONOS_SEL);
   for(var h=0;h<hosts.length;h++){
-    if(!vis(hosts[h]))continue;
+    if(!EMO_HAY.test(hosts[h].textContent||""))continue;
     var w=document.createTreeWalker(hosts[h],NodeFilter.SHOW_TEXT,null,false), tn, lista=[];
     while((tn=w.nextNode()))lista.push(tn);
-    for(var i=0;i<lista.length;i++){
-      var node=lista[i], m=EMO_A_RE.exec(node.nodeValue||"");
-      if(!m||!EMO_A[m[2]])continue;
-      var pe=node.parentElement; if(!pe||pe.closest(".asp-e,textarea,[contenteditable],input,[data-no-i18n]"))continue;
-      var svg=""; try{ svg=icon(EMO_A[m[2]],15); }catch(_e){}
-      if(!svg)continue;
-      var ic=document.createElement("span"); ic.className="asp-ico"; ic.setAttribute("aria-hidden","true"); ic.innerHTML=svg;
-      var em=document.createElement("span"); em.className="asp-e"; em.hidden=true; em.textContent=m[2]+m[3];
-      pe.insertBefore(ic,node); pe.insertBefore(em,node);
-      node.nodeValue=node.nodeValue.slice(m[0].length);
-      if(node.__i18nEn!=null){ var mm=EMO_A_RE.exec(node.__i18nEn); if(mm)node.__i18nEn=node.__i18nEn.slice(mm[0].length); }
-      if(!node.nodeValue.trim())ic.classList.add("solo");
-    }
+    for(var i=0;i<lista.length;i++)iconoTexto(lista[i],true);
   }
 }
 API.iconos=iconosA;
-after(function(){ try{ iconosA(); }catch(e){ warn("iconos",e); } });
+var ICO_Q=[], icoTodo=true, icoLang=null;
+after(function(){ try{
+  var lg=ES()?"es":"en"; if(lg!==icoLang){ icoLang=lg; icoTodo=true; }
+  if(icoTodo||ICO_Q.length>3000){ icoTodo=false; ICO_Q.length=0; iconosA(); }
+  else if(ICO_Q.length){ iconosA(ICO_Q.splice(0,ICO_Q.length)); }
+}catch(e){ warn("iconos",e); } });
 
 /* ── 79 · todas las hojas se cierran igual (la × de cada una, misma pieza) ── */
 var CIERRES="#tktDetailBg .mcl,#repMBg .mcl,#bsOv .bs-x,#dailyOfficeBg .daily-office-x,#nvOv button";
 mod("cierres",function(){
-  $$(CIERRES).forEach(function(b){ if(!vis(b))return; var t=b.textContent.trim(); if(!/^(×|✕|←)$/.test(t))return; cls(b,"asp-a-x",true); cls(b,"asp-a-atras",t==="←"); if(!b.getAttribute("aria-label"))b.setAttribute("aria-label",T("Close","Cerrar")); });
+  $$(CIERRES).forEach(function(b){ if(b.__aX===b.textContent)return; b.__aX=b.textContent; var t=b.textContent.trim(); if(!/^(×|✕|←)$/.test(t))return; cls(b,"asp-a-x",true); cls(b,"asp-a-atras",t==="←"); if(!b.getAttribute("aria-label"))b.setAttribute("aria-label",T("Close","Cerrar")); });
 });
 /* ══ HOJA DEL TICKET (16, 126–137) y SERVICE REVIEW ══════════════════════════
    La hoja se repinta entera cada vez que se abre o cambia algo: cada pasada
@@ -64681,7 +65674,7 @@ var queued=false;
 function schedule(){ if(queued)return; queued=true; Promise.resolve().then(function(){ queued=false; pass(); }); }
 API.schedule=schedule;
 function onMut(recs){
-  for(var i=0;i<recs.length;i++){ var a=recs[i].addedNodes; for(var j=0;j<a.length;j++){ NUEVOS.push(a[j]); DIRTY_A.push(a[j]); } }
+  for(var i=0;i<recs.length;i++){ var a=recs[i].addedNodes; for(var j=0;j<a.length;j++){ NUEVOS.push(a[j]); DIRTY_A.push(a[j]); ICO_Q.push(a[j]); } }
   if(NUEVOS.length>4000)NUEVOS.splice(0,NUEVOS.length-4000);
   if(DIRTY_A.length>4000)DIRTY_A.splice(0,DIRTY_A.length-4000);
   schedule();
@@ -64691,7 +65684,7 @@ function start(){
   for(var i=0;i<INITS.length;i++){ try{ INITS[i].fn(); }catch(e){ warn(INITS[i].name,e); } }
   pass();
   try{ new MutationObserver(onMut).observe(document.body,{childList:true,subtree:true}); }catch(_e){}
-  setInterval(pass,4000);
+  setInterval(function(){ icoTodo=true; pass(); },4000);
   /* cambiar de vista a veces solo cambia clases (sin nodos nuevos): tras cualquier
      clic y tras las funciones que cambian de vista, otra pasada */
   document.addEventListener("click",function(){ luego(); },true);
