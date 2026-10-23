@@ -7206,7 +7206,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.89.1";
+var APP_VERSION="2.89.2";
 var BUILD_DATE="2026-10-23";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
@@ -32370,7 +32370,7 @@ window.nvRender=function(){
     +'</div>'
     +'<div class="nv-bar">'+bico("zap",14)+' Sprint de hoy: '+sprDone+' / '+sprTotal
       +'<div class="nv-track"><i style="width:'+(sprTotal?Math.round(sprDone/sprTotal*100):0)+'%"></i></div>'
-      +'<button onclick="bsOpen()" style="border:none;background:var(--c-money-fg,#065f46);color:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Continuar Sprint →</button>'
+      +'<button onclick="bsOpen()" style="border:none;background:var(--c-money-fg,#065f46);color:var(--c-money-bg,#fff);border-radius:8px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Continuar Sprint →</button>'
     +'</div>'
     +'<div class="nv-cols">'
       +'<div class="nv-col">'+colH("READY TO BILL",cols.rdy,"var(--c-money-bg,#ecfdf5)","var(--c-money-fg,#065f46)")+colBody("rdy",cols.rdy)+'</div>'
@@ -50141,6 +50141,42 @@ body.asp-shell .hdr,body.asp-shell header{padding-left:0}
 @media(max-width:900px){ body.asp-shell #aspShell .as-pin{display:none} }
 @media(prefers-reduced-motion:reduce){ body.asp-shell #aspShell{transition:none} }
 </style>
+<style id="aspenQuietoSkin">
+/* v2.89.2 — lo que nace porque llegaron datos (no porque tocaste algo) nace quieto. Ver aspenQuietoScript. */
+[data-quieta],[data-quieta]::after,[data-quieta]::before{animation:none!important}
+</style>
+<script id="aspenQuietoScript">
+/* ══ v2.89.2 · LA APP SOLO SE MUEVE CUANDO TU HACES ALGO ═══════════════════════════════
+   Sintoma (Alberto, 23 oct): «parpadea a veces la aplicacion». Causa medida: varias piezas tienen una
+   animacion de ENTRADA que arranca en opacidad 0 (tarjetas del calendario, cifras de Admin con su brillo,
+   la frase de las tarjetas, «Te necesita ahora») y la app las vuelve a crear cada vez que llega un cambio de
+   Firestore — de cualquiera, en cualquier aparato. Cada llegada de datos apagaba y volvia a encender todo.
+   Regla unica: lo que nace dentro de 0,9 s de un toque, una tecla o un cambio de pantalla (o en los primeros
+   segundos al abrir la app) entra con su animacion, como siempre. Lo que nace porque llegaron datos nace
+   quieto (atributo data-quieta → animation:none). No se toca ningun render ni ninguna animacion existente. */
+(function(){
+"use strict";
+if(window.__aspQuieto)return; window.__aspQuieto=true;
+var ENTRADA=".cal-tkt-mini,.kpi-card,.asp-c-frase,#aspCAhora,.zip-rcard,.zsub-page,.tkt-preview,.empty-state,.kpi-wrap,#techReminder";
+var VENTANA=900, ultimo=Date.now()+1500;
+function accion(){ ultimo=Date.now(); }
+["pointerdown","keydown","touchstart","hashchange","popstate"].forEach(function(n){ window.addEventListener(n,accion,true); });
+window.aspAccionUsuario=accion;
+function despierta(){ return Date.now()-ultimo<VENTANA; }
+function marca(n){
+  if(!n||n.nodeType!==1)return;
+  if(n.matches&&n.matches(ENTRADA))n.setAttribute("data-quieta","");
+  if(n.firstElementChild){ var l=n.querySelectorAll(ENTRADA); for(var i=0;i<l.length;i++)l[i].setAttribute("data-quieta",""); }
+}
+function arranca(){
+  new MutationObserver(function(ms){
+    if(despierta())return;
+    for(var i=0;i<ms.length;i++){ var a=ms[i].addedNodes; for(var j=0;j<a.length;j++)marca(a[j]); }
+  }).observe(document.documentElement,{childList:true,subtree:true});
+}
+arranca();
+})();
+</script>
 <script id="aspenShellScript">
 /* Ver el comentario del bloque de estilos. Borrar los dos = revertir. */
 (function(){
@@ -50236,6 +50272,24 @@ function pinta(){
   var host=document.getElementById("aspShell");
   if(!host)return;
   var lista=tabs(), html="", PRI=movil(lista);
+  /* v2.89.2 — LA BARRA YA NO SE REHACE ENTERA CADA VEZ QUE LLEGAN DATOS. El #tabBar se reescribe en cada
+     llegada de datos aunque ningun numero cambie, y aqui se tiraba la barra completa y se volvia a armar:
+     si eso pasaba entre apretar y soltar el mouse, el boton apretado ya no existia y el clic se perdia
+     («la barra se bloquea»). Ahora: si las pestanas, sus nombres, la fijacion y los iconos son los mismos,
+     solo se cambia quien esta activo y los contadores, en su sitio. */
+  var firma=(_aspFijada()?"P":"p")+"|"+((typeof lucide!=="undefined"&&lucide&&lucide.icons)?"L":"e")+"|"
+    +lista.map(function(t){ return t.id+":"+limpio(t)+":"+(PRI.indexOf(t.id)>=0?1:0)+":"+grupoDe(t) }).join(",");
+  if(host.__firma===firma&&host.querySelector(".as-i[data-tab]")){
+    var falta=false;
+    lista.forEach(function(t){
+      var b=host.querySelector('.as-i[data-tab="'+t.id+'"]'); if(!b){ falta=true; return; }
+      var on=t.classList.contains("on"); if(b.classList.contains("on")!==on)b.classList.toggle("on",on);
+      var sp=b.querySelector(".as-b"), v=badge(t)||"";
+      if(sp){ if(sp.hidden!==!v)sp.hidden=!v; if((sp.textContent||"")!==v)sp.textContent=v; }
+    });
+    if(!falta)return;
+  }
+  host.__firma=firma;
   html+='<div class="as-logo"><div class="as-word">ASPEN SPAS</div></div>';
   /* v2.33.2 — fijar la barra abierta. Va DENTRO de pinta() porque esta funcion
      rehace el innerHTML entero cada vez que cambia un contador: un boton puesto
@@ -50313,9 +50367,13 @@ function monta(){
      cambia -> la barra se entera sola. Sin esto el reskin se desincroniza. */
   try{
     var bar=document.getElementById("tabBar");
+    /* v2.89.2 — monta() corre dos veces (al cargar y a los 1,5 s): habia DOS observadores y cada cambio
+       armaba la barra dos veces. Uno solo. */
+    if(!window.__aspShellMO){
     var mo=new MutationObserver(function(){ pinta() });
     mo.observe(bar,{subtree:true,childList:true,characterData:true,
       attributes:true,attributeFilter:["class","style"]});
+    window.__aspShellMO=mo; }
   }catch(_e){}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta);
@@ -62091,7 +62149,7 @@ if(typeof _c3==='function'&&!_c3.__sw){
 })();
 </script>
 
-<!-- ══════ ACABADO · v2.89.1 (23 oct 2026) ══════
+<!-- ══════ ACABADO · v2.89.2 (23 oct 2026) ══════
      Las 20 sugerencias y las 200 propuestas de «Acabado de TECH-TICKETS», reversibles.
      Apagar sin borrar: localStorage.acabado="0" (o ?acabado=0) y recargar.
      Revertir del todo: borrar estos dos bloques (aspenAcabadoSkin + aspenAcabadoScript).
@@ -63643,7 +63701,9 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button[aria-pressed="true"]{border-color:var(--c-g,var(--ink));box-shadow:0 0 0 1px var(--c-g,var(--ink)) inset}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-grpbar button svg{color:var(--c-g,var(--i3));flex:0 0 auto}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp:not(.asp-c-grpOn){display:none!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp.asp-c-grpOn{animation:aspCEntra .35s var(--c-res) backwards;margin-bottom:18px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp.asp-c-grpOn{margin-bottom:18px!important}
+/* 2.89.2 — el grupo se anima solo cuando TU lo abres (antes se volvia a animar cada vez que llegaban datos) */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp.asp-c-grpOn.asp-c-grpAbre{animation:aspCEntra .35s var(--c-res) backwards}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .sl-cols{display:block!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp > .slc-g{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;gap:12px!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #slogList .asp-c-grp > .lbl{font-size:13px!important}
@@ -63814,7 +63874,8 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 /* ═══ 2.89.1 · auditoría: contraste y tamaño para tocar ═══ */
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg2 .day-lbl{color:var(--acd,#A85C1F)!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .cal-day.other .dn{color:var(--i3)!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5):not(.dark-mode):not(.theme-ember) :is(.wrap,#tktDetailBg .modal) .pf20-empty{color:#6b5d52!important}
+/* 2.89.2 — el tablero de Cobros es claro tambien en tema oscuro (como en 2.87.1): «No cases» va oscuro en los dos */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5):not(.theme-ember) :is(.wrap,#tktDetailBg .modal) .pf20-empty{color:#6b5d52!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #qbCustBack{color:var(--acd,#A85C1F)!important}
 /* .pf20 redefine --ink oscuro dentro de su bloque: en tema oscuro hay que dar el color a mano */
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(.wrap,#tktDetailBg .modal) .pf20-head :is(.pf20-title,.pf20-live,.pf20-sub,.pf20-kpi strong),body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember :is(.wrap,#tktDetailBg .modal) .pf20-head :is(.pf20-title,.pf20-live,.pf20-sub,.pf20-kpi strong){color:#ECECEC!important}
@@ -64575,8 +64636,11 @@ window.aspPorReportar=function(forzar){
     if(!t||t.source!=="dispatch"||visto[t.id])continue; visto[t.id]=1;
     var st=String(t.status||"").toLowerCase(); if(st==="canceled"||st==="cancelled")continue;
     var d=String(t.date||"").slice(0,10); if(!/^\d{4}-\d\d-\d\d$/.test(d)||d>hoy)continue;
-    try{ if(aspCerradaAMano(t)||aspTieneReporte(t))continue; }catch(_e){ if(t.fieldReportSubmitted)continue; }
-    var debe=d<hoy; if(!debe){ try{ debe=!!aspPideReporte(t); }catch(_e){} } if(!debe)continue;
+    /* v2.89.2 — UNA sola definicion de «falta reporte»: la de la app (aspPideReporte), la misma del «NEEDS
+       REPORT» del calendario y de «Cerradas sin reporte». La de 2.88.9 contaba TODA cita pasada sin reporte y
+       revivia citas a las que nadie fue (sin check-in ni cierre: _sweepStaleActive trae a memoria todas las
+       viejas abiertas) y las actas «↻ RESCHEDULED» que la oficina movio antes de la visita. */
+    var debe=false; try{ debe=!!aspPideReporte(t); }catch(_e){ debe=false; } if(!debe)continue;
     var dias=Math.max(0,Math.round((new Date(hoy+"T12:00:00")-new Date(d+"T12:00:00"))/864e5));
     out.push({id:String(t.id),cliente:t.customer||"—",dia:d,hora:t.arrival||t.time||"",techs:(t.techs||[]).slice(),dias:dias});
   }
@@ -64867,7 +64931,7 @@ mod("claraHojaContacto",function(){
     h+='<span class="asp-c-tel"><a href="tel:'+n+'" title="'+T("Call","Llamar")+'">'+ico("phone",16)+'<span>'+esc(t)+'</span></a><a class="asp-c-sms" href="sms:'+n+'" title="'+T("Send a text","Mandar mensaje")+'">'+ico("message-circle",13)+'<span>'+T("Text","Texto")+'</span></a></span>'; });
   c.innerHTML=h;
 });
-var LG={};
+var LG={}, LGabre={};
 mod("claraLogGrupos",function(){
   var sl=$("slogList"); if(!sl)return;
   var bar=sl.querySelector(":scope > .asp-c-grpbar");
@@ -64885,13 +64949,13 @@ mod("claraLogGrupos",function(){
     txt=txt.replace(/\s+/g," ").trim(); var k=txt.toLowerCase(); if(!k)return;
     var n=c.querySelectorAll(":scope > .slc-g > *").length, col=l.style.color||"var(--i3)", on=!!LG[k];
     var sv=l.querySelector("svg"); var icon=sv?sv.outerHTML:"";
-    cls(c,"asp-c-grp",true); cls(c,"asp-c-grpOn",on); setAttr(c,"data-c-grp",k);
+    cls(c,"asp-c-grp",true); cls(c,"asp-c-grpOn",on); cls(c,"asp-c-grpAbre",on&&Date.now()-(LGabre[k]||0)<700); setAttr(c,"data-c-grp",k);
     h+='<button type="button" data-c-grp="'+esc(k)+'" aria-pressed="'+(on?"true":"false")+'" style="--c-g:'+esc(col)+'">'+icon+'<span>'+esc(txt)+'</span><b>'+n+'</b></button>'; });
   if(bar.__h!==h){ bar.__h=h; bar.innerHTML=h; }
 });
 document.addEventListener("click",function(e){
   var b=e.target&&e.target.closest&&e.target.closest(".asp-c-grpbar button[data-c-grp]"); if(!b)return;
-  e.preventDefault(); e.stopPropagation(); var k=b.getAttribute("data-c-grp"); LG[k]=!LG[k]; schedule();
+  e.preventDefault(); e.stopPropagation(); var k=b.getAttribute("data-c-grp"); LG[k]=!LG[k]; LGabre[k]=LG[k]?Date.now():0; schedule();
 },true);
 
 /* ── 21 · el titulo de la pestana dice donde estas ────────────────────────── */
