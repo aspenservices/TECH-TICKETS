@@ -7206,8 +7206,8 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.89.0";
-var BUILD_DATE="2026-10-22";
+var APP_VERSION="2.89.1";
+var BUILD_DATE="2026-10-23";
 /* v2.73.2 selective merge — retained v2.73 AI/Billing + Payment Follow-up; restored
    v2.72.1 Route/date polish, calendar semantics, and size-bounded route geometry cache. */
 try{console.log("[Aspen] app v"+APP_VERSION+" · build "+BUILD_DATE);}catch(_e){}
@@ -12614,8 +12614,12 @@ function _jumpToReschedCustomer(name){
 // ─── PENDING PAYMENTS — AGING, METRICS, EMAIL HELPERS ────────────────────
 // Days since the alert was created (rounded down, never negative).
 function _alertAgeDays(ev){
-  if(!ev||!ev.createdAt||!ev.createdAt.toDate)return 0;
-  return Math.max(0,Math.floor((Date.now()-ev.createdAt.toDate().getTime())/86400000));
+  /* v2.89.1 — createdAt puede ser Timestamp, {seconds}, numero (ms) o texto: los casos que nacen de una
+     factura del Invoice Tracker traen numero, y aqui salian todos con 0 dias. */
+  if(!ev||!ev.createdAt)return 0;
+  var c=ev.createdAt, ms=(c&&typeof c.toDate==="function")?c.toDate().getTime():(c&&c.seconds)?Number(c.seconds)*1000:(typeof c==="number")?c:Date.parse(c);
+  if(!ms||isNaN(ms))return 0;
+  return Math.max(0,Math.floor((Date.now()-ms)/86400000));
 }
 // Pick the aging-bucket definition for a given day count.
 function _alertAgeBucket(days){
@@ -18331,7 +18335,7 @@ ${t.notes?`<div class="tkt-notes">"${esc(t.notes)}"</div>`:""}
 ${(t.videoLinks||[]).length?`<div style="margin-top:8px"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--ac);margin-bottom:4px">${icon("video",13,{style:"vertical-align:-2px"})} Video Links</div>${t.videoLinks.map(lk=>`<a href="${esc(lk)}" target="_blank" style="display:block;font-size:var(--fs-sm);color:var(--ac);word-break:break-all;padding:4px 0;text-decoration:underline">${esc(lk.length>60?lk.substring(0,60)+"...":lk)}</a>`).join("")}</div>`:""}
 ${(t.media||[]).length?`<div class="tkt-media">${t.media.filter(m=>m.type!=="pdf").map(m=>`<img src="${esc(m.url||m.data||"")}" loading="lazy" onclick="event.stopPropagation();_previewTktImg(this)" style="cursor:zoom-in">`).join("")}</div>${t.media.filter(m=>m.type==="pdf").length?`<div class="tkt-att">${t.media.filter(m=>m.type==="pdf").map(m=>`<a class="tkt-att-pdf" href="${esc(m.url||"#")}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${icon("file-text",13,{style:"vertical-align:-2px"})} ${esc(m.name||"PDF")}</a>`).join("")}</div>`:""}<button class="tkt-dl" onclick="dlZip(${i},${isDone?"done":"active"},event)">${icon("download",13,{style:"vertical-align:-2px"})} Download ZIP (${t.media.length})</button><button class="tkt-dl" style="background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg)" onclick="saveTktToICloud(${i},${isDone?"done":"active"},event)">${icon("cloud",13,{style:"vertical-align:-2px"})} Save to iCloud folder (${t.media.length})</button>`:""}
 ${_dailyQuickRow(t,isDone,i)}
-<div class="tkt-meta">Submitted: ${t.submitted||""}${t.completedAt?" · Completed: "+t.completedAt:""}</div>
+<div class="tkt-meta">Submitted: ${t.submitted||""}${t.completedAt?" · Completed: "+(typeof _aspFechaTxt==="function"?_aspFechaTxt(t.completedAt):t.completedAt):""}</div>
 ${!isDone?(isAdmin?`<div style="display:flex;gap:8px;margin-top:10px"><button class="tkt-done-btn" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="event.stopPropagation();markDone('${t.id}')">${icon("check",16,{color:"#fff"})}Completed</button><button onclick="event.stopPropagation();markResched('${t.id}')" style="flex:1;padding:12px;background:none;border:2px solid var(--ac);border-radius:10px;font-size:var(--fs-md);font-weight:700;color:var(--ac);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("rotate-ccw",16,{color:"var(--ac)"})}Reschedule</button></div>`:""):(isAdmin?`<div style="display:flex;gap:8px;margin-top:10px"><button onclick="event.stopPropagation();markResched('${t.id}')" style="flex:1;padding:11px;background:var(--acl);border:2px solid var(--ac);border-radius:9px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer" title="Re-open this completed ticket and send it back to the Service Log for a new date">${icon("rotate-ccw",15,{color:"var(--acd)"})}Reschedule</button><button onclick="event.stopPropagation();askDelete('${t.id}')" style="flex:1;padding:11px;background:none;border:1.5px solid var(--ln);border-radius:9px;font-size:var(--fs-sm);font-weight:600;color:var(--i3);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("trash-2",13,{color:"var(--i3)"})}Delete</button></div>`:`<button onclick="event.stopPropagation();askDelete('${t.id}')" style="margin-top:10px;padding:10px 20px;background:none;border:1.5px solid var(--ln);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--i3);width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">${icon("trash-2",13,{color:"var(--i3)"})}Delete Ticket</button>`)}</div></div>`}
 
 function copyTkt(isDone,i){
@@ -24156,7 +24160,7 @@ function _c360ExpandBodyHTML(t){
   // ── footer timestamps ──
   var foot=[];
   if(t.submitted)foot.push("Submitted: "+esc(String(t.submitted)));
-  if(t.completedAt)foot.push("Completed: "+esc(String(t.completedAt)));
+  if(t.completedAt)foot.push("Completed: "+esc(typeof _aspFechaTxt==="function"?_aspFechaTxt(t.completedAt):String(t.completedAt)));
   if(foot.length)h+='<div style="font-size:var(--fs-xs);color:var(--i3);margin-top:4px;margin-bottom:8px">'+foot.join("  \u00b7  ")+'</div>';
   h+='<button onclick="event.stopPropagation();openTktDetail(\''+idJS+'\')" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--acl);border:1.5px solid var(--ac);border-radius:9px;padding:9px;font-size:var(--fs-sm);font-weight:700;color:var(--acd);cursor:pointer">\u270F\uFE0F Open / edit full ticket</button>';
   return h;
@@ -55220,7 +55224,11 @@ function amount20(e){
   return _amount20Bruto(e);
 }
 function _amount20Bruto(e){try{return typeof window._alertAmount==='function'?window._alertAmount(e):Number((e.payload||{}).amount||e.amount||0)}catch(x){return Number((e.payload||{}).amount||e.amount||0)}}
-function age20(e){try{return typeof window._alertAgeDays==='function'?window._alertAgeDays(e):0}catch(x){return 0}}
+function age20(e){try{ /* v2.89.1 — dias desde que se MANDO la factura (lo que importa para cobrar); si no, desde el caso */
+  var i=(e&&e._invoice)||{},p=(e&&e.payload)||{},v=p.invoiceSentAt||i.sentAt||p.invoiceCreatedAt||i.createdAt;
+  var ms=v?((v&&typeof v.toDate==='function')?v.toDate().getTime():(v&&v.seconds)?Number(v.seconds)*1000:(typeof v==='number'?v:Date.parse(v))):0;
+  if(ms&&!isNaN(ms))return Math.max(0,Math.floor((Date.now()-ms)/864e5));
+  return typeof window._alertAgeDays==='function'?window._alertAgeDays(e):0}catch(x){return 0}}
 function reason20(e){
   var p=e.payload||{},r=String(p.reason||e.reason||'other').toLowerCase();
   var map={
@@ -55614,7 +55622,7 @@ function render20(){
   cols+=column20('IN COLLECTION PROCESS','Cases actively being worked','#2C8FA3',g.collection,sum20(g.collection),true);
   g.order.forEach(function(k){
     var x=g.map[k];if(!x)return;
-    cols+=column20(x.meta.icon+' '+x.meta.label,'Payment reason',x.meta.color,x.items,sum20(x.items),false);
+    cols+=column20(x.meta.icon+' '+x.meta.label,'',x.meta.color,x.items,sum20(x.items),false);
   });
   var outstanding=sum20(all);
   pg.innerHTML='<main class="pf20"><section class="pf20-head"><div class="pf20-top"><div><div class="pf20-title">Payment Follow-up Center</div>'
@@ -55622,6 +55630,12 @@ function render20(){
     +'<div class="pf20-head-actions"><button onclick="pf20Warranty()">🛡 Warranty calculator</button><button onclick="pf20Archive()">Invoice archive</button><button class="primary" onclick="pf20New()">+ New invoice</button></div></div>'
     +'<div class="pf20-kpis">'
     +'<div class="pf20-kpi"><b>Open cases</b><strong>'+all.length+'</strong><small>'+money20(outstanding)+' active</small></div>'
+    +(function(){ /* v2.89.1 — lo cobrado este mes y la factura abierta mas vieja */
+      var m0=new Date();m0.setDate(1);m0.setHours(0,0,0,0);var t0=m0.getTime(),cob=0,nCob=0,vieja=0;
+      try{invoices20().forEach(function(i){ var pa=Number(i.paidAt)||0; if(pa>=t0&&String((typeof window.itkDeriveInvoiceStatus==='function'?window.itkDeriveInvoiceStatus(i):i.status)||'').toLowerCase()==='paid'){cob+=Number(i.amount)||0;nCob++} })}catch(_e){}
+      all.forEach(function(e){var d=age20(e);if(d>vieja)vieja=d});
+      return '<div class="pf20-kpi pf20-kpi-cob"><b>Collected this month</b><strong>'+money20(cob)+'</strong><small>'+nCob+' paid invoice'+(nCob===1?'':'s')+'</small></div>'
+        +'<div class="pf20-kpi"><b>Oldest open</b><strong>'+vieja+'d</strong><small>Since the invoice was sent</small></div>'; })()
     +'<div class="pf20-kpi"><b>Collections</b><strong>'+g.collection.length+'</strong><small>Actively worked</small></div>'
     +'<div class="pf20-kpi"><b>No CC</b><strong>'+countReason20(all,'no_cc')+'</strong><small>Payment method needed</small></div>'
     +'<div class="pf20-kpi"><b>Declined</b><strong>'+countReason20(all,'declined')+'</strong><small>Retry PayTrace</small></div>'
@@ -55681,6 +55695,95 @@ window.addEventListener('aspen:invoice-data',function(){var pg=document.getEleme
 </script>
 
 
+<script id="aspenFechaTxtScript">
+/* v2.89.1 — una fecha guardada como Timestamp de Firestore ({seconds}/toDate) salia como «[object Object]» */
+window._aspFechaTxt=function(v){ try{ if(v==null||v==="")return ""; if(typeof v==="string")return v; var d=(typeof v.toDate==="function")?v.toDate():(v.seconds!=null)?new Date(Number(v.seconds)*1000):(typeof v==="number")?new Date(v):null; return d&&!isNaN(d)?d.toLocaleString():String(v) }catch(_e){ return "" } };
+</script>
+<script id="aspenCobradoScript">
+/* v2.89.1 — «Invoices» (archivo de facturas pagadas) rehecho: lo que cobramos, claro y completo.
+   Antes: lista de numero · cliente · monto, y el buscador se redibujaba entero en cada tecla (perdia el
+   foco despues de la primera letra). Ahora: cobrado este mes y el mes pasado, cuantas faltan en
+   QuickBooks, filtros, agrupado por mes con su total, y cada fila con fecha de pago, forma de pago y si
+   ya esta en QB. Mismo cajon (#pf12Drawer), mismo detalle (pf13ArchiveDetail). Seccion de Nela: ingles. */
+(function(){
+'use strict';
+var ST={q:'',f:'all'};
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
+function money(v){return Number(v||0).toLocaleString('en-US',{style:'currency',currency:'USD'})}
+function invoices(){try{return typeof window.itkGetAllInvoices==='function'?(window.itkGetAllInvoices()||[]):[]}catch(e){return[]}}
+function derive(i){try{return typeof window.itkDeriveInvoiceStatus==='function'?window.itkDeriveInvoiceStatus(i):String(i.status||'pending')}catch(e){return String(i.status||'pending')}}
+function ms(v){if(!v)return 0;if(typeof v.toDate==='function')return v.toDate().getTime();if(v.seconds)return Number(v.seconds)*1000;if(typeof v==='number')return v;var d=Date.parse(v);return isNaN(d)?0:d}
+function paidMs(i){return ms(i.paidAt)||ms(i.updatedAt)||ms(i.createdAt)}
+function method(i){var m=String(i.paymentMethod||'').toLowerCase();
+  if(!m)return '';if(m==='paytrace'||m==='card'||m==='cc'||m==='credit')return 'Card';if(m==='check'||m==='cheque')return 'Check';if(m==='cash')return 'Cash';if(m==='ach'||m==='bank')return 'ACH';
+  return m.charAt(0).toUpperCase()+m.slice(1)}
+function inQB(i){return !!(i.qbSynced||i.qbSyncedAt)}
+function monthKey(t){var d=new Date(t);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)}
+function monthName(k){var p=k.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'})}
+function day(t){return t?new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—'}
+function drawer(){var sh=document.getElementById('pf12Shade'),dr=document.getElementById('pf12Drawer');
+  if(!sh){sh=document.createElement('div');sh.id='pf12Shade';sh.className='pf10-shade';sh.onclick=function(){window.pf12Close&&window.pf12Close()};document.body.appendChild(sh)}
+  if(!dr){dr=document.createElement('aside');dr.id='pf12Drawer';dr.className='pf10-drawer';document.body.appendChild(dr)}return dr}
+function paid(){return invoices().filter(function(i){return derive(i)==='paid'}).sort(function(a,b){return paidMs(b)-paidMs(a)})}
+function filtered(all){
+  var t=ST.q.trim().toLowerCase(), m0=monthKey(Date.now());
+  return all.filter(function(i){
+    if(ST.f==='month'&&monthKey(paidMs(i))!==m0)return false;
+    if(ST.f==='noqb'&&inQB(i))return false;
+    if(!t)return true;
+    return [i.invoiceNumber,i.customerName,method(i),i.paymentRef,i.technician].join(' ').toLowerCase().indexOf(t)>=0;
+  });
+}
+function resumen(all){
+  var now=new Date(), m0=monthKey(now.getTime()), pm=new Date(now.getFullYear(),now.getMonth()-1,1), m1=monthKey(pm.getTime());
+  var a={n:0,s:0},b={n:0,s:0},q=0;
+  all.forEach(function(i){var k=monthKey(paidMs(i)),v=Number(i.amount)||0;if(k===m0){a.n++;a.s+=v}else if(k===m1){b.n++;b.s+=v}if(!inQB(i))q++});
+  return '<div class="asp-cob-kpis">'
+    +'<div class="asp-cob-k"><b>This month</b><strong>'+money(a.s)+'</strong><small>'+a.n+' paid</small></div>'
+    +'<div class="asp-cob-k"><b>'+esc(pm.toLocaleDateString('en-US',{month:'long'}))+'</b><strong>'+money(b.s)+'</strong><small>'+b.n+' paid</small></div>'
+    +'<div class="asp-cob-k'+(q?' warn':'')+'"><b>Not in QuickBooks</b><strong>'+q+'</strong><small>'+(q?'paid, still to enter':'all entered')+'</small></div>'
+    +'</div>';
+}
+function filas(all){
+  var rows=filtered(all);
+  if(!rows.length)return '<div class="asp-cob-empty">'+(ST.q||ST.f!=='all'?'Nothing matches.':'No paid invoices yet.')+'</div>';
+  var h='',cur='',tot={};
+  rows.forEach(function(i){var k=monthKey(paidMs(i));tot[k]=(tot[k]||0)+(Number(i.amount)||0)});
+  rows.slice(0,400).forEach(function(i){
+    var k=monthKey(paidMs(i));
+    if(k!==cur){cur=k;h+='<div class="asp-cob-mes"><span>'+esc(monthName(k))+'</span><b>'+money(tot[k])+'</b></div>'}
+    var m=method(i);
+    h+='<button type="button" class="asp-cob-row" onclick="pf13ArchiveDetail(\''+esc(String(i.id))+'\')">'
+      +'<span class="asp-cob-c"><b>'+esc(i.customerName||'—')+'</b><small>#'+esc(i.invoiceNumber||'—')+' · paid '+esc(day(paidMs(i)))+(i.technician?' · '+esc(i.technician):'')+'</small></span>'
+      +'<span class="asp-cob-tags">'+(m?'<i class="m">'+esc(m)+(i.paymentRef?' '+esc(i.paymentRef):'')+'</i>':'')+(inQB(i)?'<i class="ok">QB ✓</i>':'<i class="no">Not in QB</i>')+'</span>'
+      +'<span class="asp-cob-amt">'+money(i.amount||0)+'</span></button>';
+  });
+  return h;
+}
+function pinta(){var dr=document.getElementById('pf12Drawer');if(!dr)return;var all=paid();
+  var r=dr.querySelector('.asp-cob-res'),k=dr.querySelector('.asp-cob-sum');
+  if(k)k.innerHTML=resumen(all);
+  if(r)r.innerHTML=filas(all);
+  Array.prototype.forEach.call(dr.querySelectorAll('.asp-cob-f button'),function(b){b.setAttribute('aria-pressed',b.getAttribute('data-f')===ST.f?'true':'false')});
+}
+window.pf12Archive=function(q){
+  if(typeof q==='string')ST.q=q;
+  var dr=drawer();
+  dr.innerHTML='<div class="pf10-dh"><div><h2>Invoices · collected</h2><p>Paid invoices — search by customer, invoice #, method or tech</p></div><button class="pf10-x" onclick="pf12Close()">×</button></div>'
+    +'<div class="pf10-db asp-cob"><div class="asp-cob-sum"></div>'
+    +'<input class="asp-cob-q" type="search" value="'+esc(ST.q)+'" placeholder="Search paid invoices…" aria-label="Search paid invoices">'
+    +'<div class="asp-cob-f" role="group"><button type="button" data-f="all">All</button><button type="button" data-f="month">This month</button><button type="button" data-f="noqb">Not in QuickBooks</button></div>'
+    +'<div class="asp-cob-res"></div></div>';
+  var inp=dr.querySelector('.asp-cob-q');
+  inp.addEventListener('input',function(){ST.q=inp.value;var r=dr.querySelector('.asp-cob-res');if(r)r.innerHTML=filas(paid())});
+  dr.querySelector('.asp-cob-f').addEventListener('click',function(e){var b=e.target.closest('button[data-f]');if(!b)return;ST.f=b.getAttribute('data-f');pinta()});
+  pinta();
+  document.getElementById('pf12Shade').classList.add('on');dr.classList.add('on');
+};
+window.addEventListener('aspen:invoice-data',function(){var dr=document.getElementById('pf12Drawer');if(dr&&dr.classList.contains('on')&&dr.querySelector('.asp-cob'))pinta()});
+})();
+
+</script>
 <style id="pfv22SingleBoardGuard">
 #pg8>#cbTools,#pg8>#cabHeader,#pg8>#cabInline,#pg8>#alertsLinearView{display:none!important}
 #pg8>.pf20{display:block!important}
@@ -59896,6 +59999,114 @@ function monthOptions(){
 function monthPicker(){
   return '<label class="sc-mut sc-mpick">'+L("Mes","Month")+' <select id="scMonth">'+monthOptions().map(function(m){ return '<option value="'+m+'"'+(m===st.month?" selected":"")+'>'+h(monthLabel(m))+'</option>' }).join("")+'</select></label>';
 }
+/* ---------- v2.89.1 · PANEL DE MANAGER ----------
+   Arriba del bono por tecnico: el pulso del equipo (6 cifras), lo que necesita atencion hoy (con su boton)
+   y una tabla de todo el equipo con lo que la app ya sabe de cada tecnico: visitas de hoy y del mes,
+   reportes a tiempo, visitas sin reporte, fotos de la semana, uniforme, vueltas por partes, reagendadas y
+   tiempo promedio en sitio. Todo se calcula de lo que ya esta en memoria (tickets, marcas, fotos):
+   ningun listener nuevo. Tocar una fila abre el detalle del tecnico (el mismo de las tarjetas). */
+function mgrColor(n){ try{ var i=TECHS.indexOf(n); if(i>=0)return TECH_COLORS[i%TECH_COLORS.length] }catch(_e){} return "var(--i3)" }
+function mgrIni(n){ var p=String(n||"?").trim().split(/\s+/); return (p.length>1?p[0][0]+p[p.length-1][0]:String(n||"?").slice(0,2)).toUpperCase() }
+function mgrMin(a,b){ var re=/^(\d{1,2}):(\d{2})/, x=re.exec(String(a||"")), y=re.exec(String(b||"")); if(!x||!y)return 0;
+  var m=(+y[1]*60+ +y[2])-(+x[1]*60+ +x[2]); return (m>0&&m<12*60)?m:0 }
+function mgrHoras(m){ if(m==null)return "—"; var hh=Math.floor(m/60), mm=m%60; return hh?(hh+" h"+(mm?" "+mm+" min":"")):(mm+" min") }
+function mgrDatos(names,r){
+  var M=st.month, T=today(), P=pool(), F=facts(names,M), pr=[], out={};
+  try{ pr=(typeof window.aspPorReportar==="function")?(window.aspPorReportar(true)||[]):[] }catch(_e){}
+  names.forEach(function(t){
+    var row=r.rows[t]||{}, f=F[t]||{visits:0,late:[],unreported:[]}, hoy=0, mes=0, resch=0, mins=0, nmin=0;
+    P.forEach(function(k){
+      if(!k)return; var who=Array.isArray(k.techs)?k.techs:(k.tech?[k.tech]:[]); if(who.indexOf(t)<0)return;
+      var d=String(k.date||"").slice(0,10), st0=String(k.status||"").toLowerCase();
+      if(k.source==="dispatch"){ if(st0==="canceled"||st0==="cancelled")return; if(d===T)hoy++; if(d.slice(0,7)===M&&d<=T)mes++; return }
+      if(d.slice(0,7)!==M)return;
+      if(st0==="reschedule")resch++;
+      var mm=mgrMin(k.arrival,k.departure); if(mm){ mins+=mm; nmin++ }
+    });
+    var debe=pr.filter(function(v){ return (v.techs||[]).indexOf(t)>=0 }), vieja=debe.reduce(function(a,v){ return Math.max(a,v.dias||0) },0);
+    var vis=f.visits||0, delays=(f.late||[]).length+(f.unreported||[]).length, tc=critsOfType("tickets")[0], lim=tc?limitOf(tc,row[tc.id]):10;
+    var foto=null; critsOfType("photos").forEach(function(c){ if(foto)return; var wk=S.weekId(T), w=((row[c.id]||{}).weeks||[]).filter(function(z){ return z.weekId===wk })[0]; foto=w?w.state:"before" });
+    var uni=null; critsOfType("daily").forEach(function(c){ if(uni)return; var x=row[c.id]||{}, m=latestDaily(t,c.id,T);
+      uni={name:critName(c),misses:x.misses||0,tol:c.tol,hoy:m?(m.ok===false?"x":"ok"):((isWeekday(T)&&!isOff(t,T))?"none":"na")} });
+    var ret=null; critsOfType("events").forEach(function(c){ if(ret)return; var x=row[c.id]||{}; ret={n:x.listed||0,tol:c.tol} });
+    var perdidos=[]; (r.criteria||[]).forEach(function(c){ if(S.statusOf(row[c.id],c)==="lost")perdidos.push(critName(c)) });
+    out[t]={pay:row.pay||0,max:row.max||0,hoy:hoy,mes:mes,vis:vis,delays:delays,lim:lim,aTiempo:vis?Math.max(0,Math.round((vis-delays)/vis*100)):null,
+      debe:debe.length,vieja:vieja,foto:foto,uni:uni,ret:ret,resch:resch,prom:nmin?Math.round(mins/nmin):null,off:isOff(t,T),perdidos:perdidos};
+  });
+  return out;
+}
+function mgrTile(lab,val,sub,tono,btn){
+  return '<div class="sc-mk'+(tono?" "+tono:"")+'"><span class="sc-mk-l">'+h(lab)+'</span><b class="sc-mk-v">'+val+'</b><span class="sc-mk-s">'+sub+'</span>'+(btn||"")+'</div>' }
+function mgrFotoChip(s){
+  var m={clean:["ok",L("Aprobadas","Approved")],pending:["wait",L("Por revisar","To review")],open:["warn",L("Faltan","Due")],missing:["bad",L("No envió","Missing")],dirty:["bad",L("Rechazadas","Rejected")],off:["na",L("Libre","Off")],before:["na","—"]}[s]||["na","—"];
+  return '<span class="sc-chip2 '+m[0]+'">'+h(m[1])+'</span>' }
+function mgrHTML(r,cs,names){
+  if(!names.length||st.closed||st.month!==curMonth())return "";
+  var D=mgrDatos(names,r), T=today(), dow=new Date(T+"T12:00:00").getDay();
+  var tot={max:0,hoy:0,mes:0,vis:0,del:0,debe:0,vieja:0,fotoOk:0,fotoN:0,uniOk:0,uniN:0,full:0};
+  names.forEach(function(t){ var x=D[t]; tot.max+=x.max; tot.hoy+=x.hoy; tot.mes+=x.mes; tot.vis+=x.vis; tot.del+=x.delays; tot.debe+=x.debe; tot.vieja=Math.max(tot.vieja,x.vieja);
+    if(x.max>0&&x.pay===x.max)tot.full++;
+    if(x.foto&&x.foto!=="before"&&x.foto!=="off"){ tot.fotoN++; if(x.foto==="pending"||x.foto==="clean")tot.fotoOk++ }
+    if(x.uni&&x.uni.hoy!=="na"){ tot.uniN++; if(x.uni.hoy!=="none")tot.uniOk++ } });
+  var pct=tot.vis?Math.max(0,Math.round((tot.vis-tot.del)/tot.vis*100)):null, rev=pendingPhotos().length;
+  var H='<section class="sc-mgr" aria-label="'+h(L("Panel del equipo","Team control panel"))+'"><div class="sc-mgr-kpis">';
+  H+=mgrTile(L("Bono en juego","Bonus on track"),money(r.total),L("de","of")+" "+money(tot.max)+" · "+tot.full+" "+L("al 100%","at 100%"),r.total<tot.max?"":"ok");
+  H+=mgrTile(L("Visitas","Visits"),String(tot.mes),L("este mes","this month")+" · "+tot.hoy+" "+L("hoy","today"),"");
+  H+=mgrTile(L("Reportes a tiempo","Reports on time"),pct==null?"—":pct+"%",tot.del+" "+L(tot.del===1?"retraso":"retrasos",tot.del===1?"delay":"delays")+" "+L("este mes","this month"),pct==null?"":(pct>=90?"ok":pct>=75?"warn":"bad"));
+  H+=mgrTile(L("Por reportar","To report"),String(tot.debe),tot.debe?L("la más vieja hace ","oldest ")+tot.vieja+L(" días"," days ago"):L("todos al día","all up to date"),tot.debe?(tot.vieja>=4?"bad":"warn"):"ok",
+    tot.debe?'<button type="button" class="sc-mk-b" data-mgr="pr">'+h(L("Ver quién","See who"))+'</button>':"");
+  H+=mgrTile(L("Fotos del vehículo","Vehicle photos"),tot.fotoN?(tot.fotoOk+" / "+tot.fotoN):"—",L("enviadas esta semana","sent this week")+(rev?" · "+rev+" "+L("por revisar","to review"):""),tot.fotoN&&tot.fotoOk<tot.fotoN?(dow>=4||dow===0?"bad":"warn"):"ok",
+    rev?'<button type="button" class="sc-mk-b" data-v="photos">'+h(L("Revisar","Review"))+'</button>':"");
+  H+=mgrTile(L("Uniforme hoy","Uniform today"),tot.uniN?(tot.uniOk+" / "+tot.uniN):"—",L("marcados","marked"),tot.uniN&&tot.uniOk<tot.uniN?"warn":"ok",
+    tot.uniN&&tot.uniOk<tot.uniN?'<button type="button" class="sc-mk-b" data-v="today">'+h(L("Marcar","Mark"))+'</button>':"");
+  H+='</div>';
+  /* lo que necesita atencion, lo mas grave primero */
+  var A=[];
+  names.forEach(function(t){ var x=D[t];
+    if(x.debe)A.push([x.vieja>=4?3:2,t,x.debe+" "+L(x.debe===1?"visita sin reporte":"visitas sin reporte",x.debe===1?"visit without a report":"visits without a report")+" · "+L("la más vieja hace ","oldest ")+x.vieja+L(" días"," days ago"),'<button type="button" class="sc-att-b" data-mgr="pr">'+h(L("Ver","See"))+'</button>']);
+    if(x.delays&&x.delays>=x.lim-2)A.push([x.delays>x.lim?3:2,t,x.delays+" "+L("retrasos de","delays of")+" "+x.lim+(x.delays>x.lim?" — "+L("ya perdió el bono de tickets","ticket bonus lost"):" — "+L("cerca del límite","close to the limit")),""]);
+    if(x.foto==="missing")A.push([3,t,L("no envió las fotos del vehículo","did not send the vehicle photos"),""]);
+    else if(x.foto==="open"&&(dow>=4||dow===0))A.push([2,t,L("faltan las fotos del vehículo de esta semana","this week's vehicle photos are due"),""]);
+    if(x.perdidos.length)A.push([1,t,L("perdió","lost")+": "+x.perdidos.join(", "),""]);
+  });
+  var sinUni=names.filter(function(t){ return D[t].uni&&D[t].uni.hoy==="none" });
+  if(sinUni.length)A.push([1,"",(D[sinUni[0]].uni.name||L("Uniforme","Uniform"))+" "+L("sin marcar hoy","not marked today")+": "+sinUni.join(", "),'<button type="button" class="sc-att-b" data-v="today">'+h(L("Marcar","Mark"))+'</button>']);
+  if(rev)A.push([2,"",rev+" "+L(rev===1?"juego de fotos por revisar":"juegos de fotos por revisar",rev===1?"photo set to review":"photo sets to review"),'<button type="button" class="sc-att-b" data-v="photos">'+h(L("Revisar","Review"))+'</button>']);
+  /* una fila por tecnico con todo lo suyo (lo mas grave primero), y despues lo de todo el equipo */
+  var G={}, gl=[];
+  A.forEach(function(a){ if(!a[1]){ gl.push(a); return } var g=G[a[1]]||(G[a[1]]={t:a[1],s:0,txt:[],btn:""}); g.s=Math.max(g.s,a[0]); g.txt.push([a[0],a[2]]); if(a[3]&&!g.btn)g.btn=a[3] });
+  var filasA=Object.keys(G).map(function(k){ var g=G[k]; g.txt.sort(function(x,y){ return y[0]-x[0] }); return g }).sort(function(x,y){ return y.s-x.s||x.t.localeCompare(y.t) });
+  gl.sort(function(a,b){ return b[0]-a[0] });
+  H+='<div class="sc-mgr-att"><h3>'+h(L("Necesita tu atención","Needs your attention"))+'</h3>';
+  if(!filasA.length&&!gl.length)H+='<p class="sc-att-ok">✓ '+h(L("Todo en orden hoy.","Everything is in order today."))+'</p>';
+  else { H+='<ul>';
+    filasA.forEach(function(g){ H+='<li class="s'+g.s+'"><i></i><span class="sc-att-av" style="background:'+mgrColor(g.t)+'">'+h(mgrIni(g.t))+'</span><b>'+h(g.t)+'</b><span class="sc-att-t">'+g.txt.map(function(x){ return '<span class="sc-att-i s'+x[0]+'">'+h(x[1])+'</span>' }).join("")+'</span>'+g.btn+'</li>' });
+    gl.forEach(function(a){ H+='<li class="s'+a[0]+'"><i></i><span class="sc-att-t"><span class="sc-att-i">'+h(a[2])+'</span></span>'+a[3]+'</li>' });
+    H+='</ul>' }
+  H+='</div>';
+  /* la tabla del equipo */
+  var orden=S.rankByRisk(r.rows,cs);
+  H+='<div class="sc-mgr-tw"><table class="sc-mgr-t"><thead><tr><th>'+h(L("Técnico","Technician"))+'</th><th>'+h(L("Bono","Bonus"))+'</th><th>'+h(L("Hoy","Today"))+'</th><th>'+h(L("Visitas mes","Visits"))+'</th><th>'+h(L("A tiempo","On time"))+'</th><th>'+h(L("Por reportar","To report"))+'</th><th>'+h(L("Fotos semana","Photos"))+'</th><th>'+h(L("Uniforme","Uniform"))+'</th><th>'+h(L("Vueltas partes","Parts trips"))+'</th><th>'+h(L("Reagendadas","Rescheduled"))+'</th><th>'+h(L("Prom. en sitio","Avg on site"))+'</th></tr></thead><tbody>';
+  orden.forEach(function(t){ var x=D[t]; if(!x)return; var p=x.max?Math.round(x.pay/x.max*100):0;
+    var tA=x.aTiempo==null?"":(x.aTiempo>=90?"ok":x.aTiempo>=75?"warn":"bad");
+    H+='<tr data-card="'+h(t)+'" tabindex="0" role="button" aria-label="'+h(t)+'">'
+      +'<td><span class="sc-att-av" style="background:'+mgrColor(t)+'">'+h(mgrIni(t))+'</span><b>'+h(t)+'</b>'+(x.off?' <span class="sc-chip2 na">'+h(L("Libre hoy","Off today"))+'</span>':'')+'</td>'
+      +'<td><span class="sc-ring" style="--p:'+p+'"></span><b>'+money(x.pay)+'</b><small> / '+money(x.max)+'</small></td>'
+      +'<td>'+x.hoy+'</td><td>'+x.mes+'</td>'
+      +'<td><span class="sc-num '+tA+'">'+(x.aTiempo==null?"—":x.aTiempo+"%")+'</span><small> '+x.delays+"/"+x.lim+'</small></td>'
+      +'<td>'+(x.debe?'<span class="sc-num '+(x.vieja>=4?"bad":"warn")+'">'+x.debe+'</span><small> '+x.vieja+"d"+'</small>':'<span class="sc-num ok">0</span>')+'</td>'
+      +'<td>'+mgrFotoChip(x.foto)+'</td>'
+      +'<td>'+(x.uni?('<span class="sc-num '+(x.uni.misses>x.uni.tol?"bad":x.uni.misses===x.uni.tol&&x.uni.tol>0?"warn":"ok")+'">'+x.uni.misses+'</span><small>/'+x.uni.tol+'</small> '+(x.uni.hoy==="ok"?'<span class="sc-chip2 ok">✓</span>':x.uni.hoy==="x"?'<span class="sc-chip2 bad">✗</span>':x.uni.hoy==="none"?'<span class="sc-chip2 warn">?</span>':'')):'—')+'</td>'
+      +'<td>'+(x.ret?('<span class="sc-num '+(x.ret.n>x.ret.tol?"bad":"ok")+'">'+x.ret.n+'</span><small>/'+x.ret.tol+'</small>'):'—')+'</td>'
+      +'<td>'+x.resch+'</td><td>'+h(mgrHoras(x.prom))+'</td></tr>';
+  });
+  H+='</tbody></table></div></section>';
+  return H;
+}
+if(!window.__scMgrClick){ window.__scMgrClick=1;
+  document.addEventListener("click",function(e){ var b=e.target&&e.target.closest&&e.target.closest('#pg18 [data-mgr="pr"]'); if(!b)return; e.preventDefault(); e.stopPropagation();
+    try{ if(typeof window.aspPorReportarAbrir==="function")window.aspPorReportarAbrir(b) }catch(_e){} },true); }
+
 function vPanel(){
   var cr=currentResult(), r=cr.res, cs=r.criteria, names=Object.keys(r.rows);
   var order=st.sort==="name"?names.sort(byName):S.rankByRisk(r.rows,cs);
@@ -59903,6 +60114,8 @@ function vPanel(){
   var H='<div class="sc-phead"><div><h2>'+h(monthLabel(st.month))+(cr.closed?' <span class="sc-tag">'+L("Cerrado","Closed")+'</span>':"")+'</h2>'+monthPicker()+'</div>'+
     '<div class="sc-tot"><span class="sc-mut">'+L("Bonos del mes","Bonus this month")+'</span><b>'+money(r.total)+'</b><span class="sc-mut">'+full+' '+L("de","of")+' '+names.length+' '+L("al 100%","at 100%")+'</span></div></div>';
   if(!st.settings.programStart)H+='<div class="sc-warn">'+L("Falta la fecha de inicio del programa: sin ella, todo lo anterior a la herramienta cuenta en contra.","The program start date is not set: without it, everything before the tool counts against the techs.")+' <button type="button" class="sc-link" data-v="settings">'+L("Ponerla en Ajustes","Set it in Settings")+'</button></div>';
+  H+=mgrHTML(r,cs,names);
+  if(names.length&&!st.closed&&st.month===curMonth())H+='<h3 class="sc-mgr-h">'+h(L("Bono por técnico","Bonus by technician"))+'</h3>';
   H+='<div class="sc-ptools"><div class="sc-seg" role="group" aria-label="'+L("Ordenar","Sort")+'"><button type="button" data-sort="risk" class="'+(st.sort!=="name"?"on":"")+'">'+L("Más en riesgo primero","Most at risk first")+'</button><button type="button" data-sort="name" class="'+(st.sort==="name"?"on":"")+'">A–Z</button></div>'+
     '<button type="button" class="sc-btn sec" data-act="pdfall">📄 '+L("Reporte completo (PDF)","Full report (PDF)")+'</button></div>';
   if(!names.length)return H+'<div class="sc-card">'+L("Sin técnicos para este mes. Revisa los participantes en Ajustes.","No technicians for this month. Check the participants in Settings.")+'</div>';
@@ -60344,11 +60557,16 @@ function putDraft(dr){ dr.crit=dr.crit||"vehicle"; dr.key=draftKey(dr.tech,dr.cr
 
 function uploadOne(tech,wk,angle,blob,takenAtMs,critId){
   critId=critId||"vehicle";
-  var dir=critId==="vehicle"?"scorecard/vehicles/":"scorecard/"+slug(critId)+"/";
+  /* v2.89.1 — las reglas de Storage solo dejan escribir bajo tickets/ (por eso las fotos de partes viven en
+     tickets/_parts/). scorecard/... era rechazado: los tecnicos no podian mandar sus fotos y quedaban en la
+     bandeja del telefono. Ahora van a tickets/_scorecard/...; lo que quedo en la bandeja se manda solo. */
+  var dir=critId==="vehicle"?"tickets/_scorecard/vehicles/":"tickets/_scorecard/"+slug(critId)+"/";
   var path=dir+slug(tech)+"/"+wk+"/"+takenAtMs+(angle?"-"+angle:"")+".jpg";
   if(typeof storage==="undefined"||!storage)return Promise.reject(new Error("storage not ready"));
-  var ref=storage.ref(path);
-  return ref.put(blob,{contentType:"image/jpeg"}).then(function(){ return ref.getDownloadURL() }).then(function(url){
+  var ref=storage.ref().child(path);
+  var put=new Promise(function(res,rej){ var t=setTimeout(function(){ rej(new Error("upload timed out")) },60000);
+    Promise.resolve(ref.put(blob,{contentType:"image/jpeg"})).then(function(x){ clearTimeout(t); res(x) },function(e){ clearTimeout(t); rej(e) }) });
+  return put.then(function(){ return ref.getDownloadURL() }).then(function(url){
     return {angle:angle||"front",url:url,path:path,bytes:blob.size||0,takenAtMs:takenAtMs};
   });
 }
@@ -61873,7 +62091,7 @@ if(typeof _c3==='function'&&!_c3.__sw){
 })();
 </script>
 
-<!-- ══════ ACABADO · v2.89.0 (22 oct 2026) ══════
+<!-- ══════ ACABADO · v2.89.1 (23 oct 2026) ══════
      Las 20 sugerencias y las 200 propuestas de «Acabado de TECH-TICKETS», reversibles.
      Apagar sin borrar: localStorage.acabado="0" (o ?acabado=0) y recargar.
      Revertir del todo: borrar estos dos bloques (aspenAcabadoSkin + aspenAcabadoScript).
@@ -63351,13 +63569,14 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea:hover{color:var(--ink)}
 
 /* ── 14 · Diario: secciones por tecnico con tarjetas en rejilla ── */
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols{display:flex!important;flex-direction:column!important;gap:26px!important;overflow:visible!important;padding:0!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px!important;align-items:start;width:auto!important;min-width:0!important;max-width:none!important;flex:none!important;background:transparent!important;padding:0!important;border:0!important;box-shadow:none!important;height:auto!important;max-height:none!important;overflow:visible!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col > :not(.tkt){grid-column:1/-1}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-hdr{background:transparent!important;padding:0 2px!important;border:0!important;margin:0!important;gap:10px!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-name{font-size:21px!important;font-weight:800!important;letter-spacing:-.02em!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-cnt{background:var(--l-chip)!important;color:var(--i2)!important;font-size:13px!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-sep{justify-content:flex-start!important;margin:2px 2px -4px!important;padding:0!important}
+/* 2.89.1 — Diario en columnas verticales por técnico (como lo usa Alberto), con el aspecto nuevo */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols{display:flex!important;flex-direction:row!important;gap:18px!important;overflow-x:auto!important;padding:2px 2px 16px!important;align-items:flex-start!important;scroll-snap-type:x proximity}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col{display:flex!important;flex-direction:column!important;gap:12px!important;width:auto!important;min-width:270px!important;max-width:400px!important;flex:1 0 270px!important;
+  background:color-mix(in srgb,var(--ink) 3%,transparent)!important;border-radius:22px!important;padding:12px!important;border:0!important;box-shadow:none!important;height:auto!important;max-height:none!important;overflow:visible!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-hdr{position:sticky!important;top:0!important;z-index:5!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;padding:4px 6px 2px!important;border:0!important;margin:0!important;gap:10px!important;border-radius:0!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-name{font-size:19px!important;font-weight:800!important;letter-spacing:-.02em!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tech-col-cnt{background:var(--cd)!important;color:var(--i2)!important;font-size:13px!important;box-shadow:0 1px 2px rgba(33,23,18,.08)}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-sep{justify-content:flex-start!important;margin:4px 6px -4px!important;padding:0!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-line{display:none!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .day-lbl{background:none!important;padding:0!important;border:0!important;color:var(--i3)!important;font-size:13px!important;font-weight:600!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList .tkt{margin:0!important;background:var(--cd)!important}
@@ -63443,15 +63662,33 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tkt
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail.asp-c-lect .qb-cust-info-grid{background:var(--cd)!important}
 
 /* ── 18 · la hoja en una columna, facturacion plegada ── */
-@media (min-width:901px){ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #tktDetailBg .modal{max-width:880px!important} }
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:20px!important}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-top{order:0;min-width:0;max-width:100%} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colC{order:1} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colV{order:2} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colW{order:3} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-morebtn{order:4} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-acts{order:5}
+/* 2.89.1 — la hoja vuelve a un solo cuadro con 3 partes en computadora: Visita | Cliente | Trabajo,
+   con la dirección/teléfonos y el aviso arriba de las tres. En el teléfono, una columna. */
+@media (min-width:1100px){
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #tktDetailBg .modal{max-width:1320px!important;width:96vw!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid{display:grid!important;grid-template-columns:1.05fr 1fr 1.15fr!important;gap:18px 22px!important;align-items:start!important;
+    grid-template-areas:"ct ct ct" "top top top" "v c w" "more more more" "acts acts acts"!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .asp-c-contacto{grid-area:ct} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-top{grid-area:top;min-width:0}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colV{grid-area:v} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colC{grid-area:c} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colW{grid-area:w}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-morebtn{grid-area:more;justify-self:center} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-acts{grid-area:acts}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW){min-width:0!important;width:auto!important;max-width:none!important;display:flex!important;flex-direction:column!important;gap:14px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW) > .dtv2-colhead{margin:0 0 -4px 4px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW) > *:not(.dtv2-colhead){margin:0!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dt-sec{padding:16px 18px!important}
+  /* hay espacio: la facturación se ve completa (sin el botón de plegar) */
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW > .asp-c-fact{display:none!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colV .dt-sec textarea{min-height:120px}
+}
+@media (max-width:1099px){
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:20px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-top{order:0;min-width:0;max-width:100%} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colC{order:1} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colV{order:2} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-colW{order:3} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-morebtn{order:4} body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > .dtv2-acts{order:5}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW){width:100%!important;max-width:none!important;min-width:0!important;align-self:stretch!important;box-sizing:border-box}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colV > .dt-sec,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW > .asp-c-fact{width:100%!important;max-width:none!important;box-sizing:border-box}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW.asp-c-plegW > :not(.dtv2-colhead):not(.asp-c-fact){display:none!important}
+  /* teléfono: la base esconde facturación tras «More options»; abierta desde «Facturación» se ve */
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid:not(.dtv2-open) .dtv2-colW:not(.asp-c-plegW) > .dtv2-core{display:block!important}
+}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-top > *{min-width:0;max-width:100%}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid > :is(.dtv2-colV,.dtv2-colC,.dtv2-colW){width:100%!important;max-width:none!important;min-width:0!important;align-self:stretch!important;box-sizing:border-box}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colV > .dt-sec,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW > .asp-c-fact{width:100%!important;max-width:none!important;box-sizing:border-box}
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-colW.asp-c-plegW > :not(.dtv2-colhead):not(.asp-c-fact){display:none!important}
-/* teléfono: la base esconde facturación tras «More options»; abierta desde «Facturación» se ve */
-body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-grid:not(.dtv2-open) .dtv2-colW:not(.asp-c-plegW) > .dtv2-core{display:block!important}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact{display:flex!important;align-items:center;gap:14px;width:100%;padding:18px 20px;margin:0 0 12px;border:0;border-radius:var(--c-r);background:var(--cd);color:var(--ink);box-shadow:var(--c-sh);cursor:pointer;text-align:left;transition:transform .35s var(--c-res),box-shadow .25s ease}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact:hover{transform:translateY(-1px);box-shadow:var(--c-sh2)}
 body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-fact-t{font-size:16px!important;font-weight:700!important;flex:0 0 auto}
@@ -63483,7 +63720,7 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .ctl-tcol
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-ahora-t b{font-size:18px!important}
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aspCAhora li button{padding:8px 14px}
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg1 > #nvLaunch{float:none;margin:0 0 12px!important}
-  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col{grid-template-columns:1fr}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #aList > .tech-cols > .tech-col{width:86vw!important;min-width:86vw!important;max-width:86vw!important;flex-basis:86vw!important;scroll-snap-align:start}
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext{flex-direction:column!important;align-items:flex-start!important}
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #tdyNext h2{font-size:26px!important}
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .cal-hdr > :first-child{flex-wrap:wrap!important;row-gap:10px!important}
@@ -63494,6 +63731,104 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .ctl-tcol
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .dtv2-actbar button :is(svg,.asp-ico){display:none!important}
   #aspPrBtn.cero span{display:inline}
   body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-frase b{font-size:20px!important}
+}
+
+/* ═══ 2.89.1 · Cobros ═══ */
+/* las etiquetas de las cifras eran blancas (cabecera oscura de antes) y no se veían en la cabecera clara */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi b{color:var(--i3)!important;font-size:13px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi small{color:var(--i3)!important;font-size:13px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi strong{color:var(--ink)!important;font-size:24px!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi.pf20-kpi-cob{background:var(--c-success-bg,#E8F3EA)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-kpi.pf20-kpi-cob strong{color:var(--c-success-fg,#1E6B34)!important}
+/* la etiqueta que repite el nombre de la columna dentro de cada tarjeta */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-col .pf20-chips > .pf20-chip:first-child{display:none!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .pf20-colmeta:empty{display:none!important}
+/* archivo de cobrado */
+.asp-cob-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}
+.asp-cob-k{background:var(--bg,#F7F3EE);border-radius:14px;padding:12px 14px;min-width:0}
+.asp-cob-k b{display:block;font:600 13px var(--a-font,inherit);color:var(--i3,#8a8073)}
+.asp-cob-k strong{display:block;font:800 20px var(--a-font,inherit);letter-spacing:-.01em;color:var(--ink,#211712);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asp-cob-k small{display:block;font:500 13px var(--a-font,inherit);color:var(--i3,#8a8073)}
+.asp-cob-k.warn{background:var(--c-warning-bg,#FDF3E1)} .asp-cob-k.warn strong{color:var(--c-warning-fg,#8A5A0B)}
+.asp-cob-q{width:100%;height:42px;border:1px solid var(--ln,#E1D6CC);border-radius:12px;padding:0 14px;font:500 15px var(--a-font,inherit);background:var(--cd,#fff);color:var(--ink);box-sizing:border-box}
+.asp-cob-f{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}
+.asp-cob-f button{height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ln,#E1D6CC);background:var(--cd,#fff);color:var(--i2);font:600 13px var(--a-font,inherit);cursor:pointer}
+.asp-cob-f button[aria-pressed="true"]{background:var(--ink,#211712);border-color:var(--ink,#211712);color:var(--cd,#fff)}
+.asp-cob-mes{display:flex;justify-content:space-between;align-items:baseline;padding:16px 4px 6px;border-bottom:1px solid var(--ln,#E9DED5);font:700 13px var(--a-font,inherit);color:var(--i2);text-transform:uppercase;letter-spacing:.04em}
+.asp-cob-mes b{font:700 14px var(--a-font,inherit);color:var(--ink);letter-spacing:0;text-transform:none}
+.asp-cob-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 12px;align-items:center;width:100%;padding:11px 6px;border:0;border-bottom:1px solid var(--ln,#EFE6DE);background:none;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink)}
+.asp-cob-row:hover{background:var(--bg,#F7F2ED)}
+.asp-cob-c{min-width:0;display:flex;flex-direction:column;gap:2px}
+.asp-cob-c b{font:600 15px var(--a-font,inherit);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asp-cob-c small{font:500 13px var(--a-font,inherit);color:var(--i3,#8a8073)}
+.asp-cob-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.asp-cob-tags i{font:600 12px/1 var(--a-font,inherit);font-style:normal;padding:5px 8px;border-radius:999px;white-space:nowrap}
+.asp-cob-tags i.m{background:var(--bg,#F3EEE8);color:var(--i2)} .asp-cob-tags i.ok{background:var(--c-success-bg,#E8F3EA);color:var(--c-success-fg,#1E6B34)} .asp-cob-tags i.no{background:var(--c-warning-bg,#FDF3E1);color:var(--c-warning-fg,#8A5A0B)}
+.asp-cob-amt{font:700 15px "IBM Plex Mono",monospace;white-space:nowrap}
+.asp-cob-empty{padding:30px 6px;text-align:center;color:var(--i3);font:500 14px var(--a-font,inherit)}
+@media (max-width:600px){ .asp-cob-kpis{grid-template-columns:1fr 1fr} .asp-cob-row{grid-template-columns:minmax(0,1fr) auto} .asp-cob-tags{grid-column:1/-1;justify-content:flex-start} }
+
+/* ═══ 2.89.1 · Scores: panel de manager ═══ */
+.sc-mgr{display:flex;flex-direction:column;gap:18px;margin:6px 0 26px}
+.sc-mgr-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.sc-mk{position:relative;display:flex;flex-direction:column;gap:2px;padding:16px 16px 14px;border-radius:18px;background:var(--cd,#fff);box-shadow:0 1px 2px rgba(33,23,18,.05),0 10px 30px rgba(33,23,18,.07);min-width:0}
+.sc-mk::before{content:"";position:absolute;left:16px;right:16px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--ln,#E8DFD6)}
+.sc-mk.ok::before{background:var(--c-success-strong,#15803D)} .sc-mk.warn::before{background:var(--c-warning-strong,#D97706)} .sc-mk.bad::before{background:var(--c-danger-strong,#DC2626)}
+.sc-mk-l{font:600 13px var(--a-font,inherit);color:var(--i3,#8a8073)}
+.sc-mk-v{font:800 28px/1.1 var(--a-font,inherit);letter-spacing:-.02em;color:var(--ink,#211712);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-mk.bad .sc-mk-v{color:var(--c-danger-fg,#B42318)} .sc-mk.warn .sc-mk-v{color:var(--c-warning-fg,#8A5A0B)}
+.sc-mk-s{font:500 13px var(--a-font,inherit);color:var(--i2,#5c5148)}
+.sc-mk-b,.sc-att-b{align-self:flex-start;margin-top:8px;border:0;border-radius:999px;padding:6px 13px;background:var(--acl,#FBEBDD);color:var(--acd,#A85C1F);font:700 13px var(--a-font,inherit);cursor:pointer;transition:transform .3s cubic-bezier(.34,1.45,.64,1)}
+.sc-mk-b:hover,.sc-att-b:hover{transform:scale(1.05)}
+.sc-mgr-att{background:var(--cd,#fff);border-radius:20px;padding:18px 20px 10px;box-shadow:0 1px 2px rgba(33,23,18,.05),0 10px 30px rgba(33,23,18,.07)}
+.sc-mgr-att h3,.sc-mgr-h{margin:0 0 8px;font:800 19px var(--a-font,inherit);letter-spacing:-.01em;color:var(--ink,#211712)}
+.sc-mgr-h{margin:6px 0 10px}
+.sc-mgr-att ul{list-style:none;margin:0;padding:0}
+.sc-mgr-att li{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 0;border-top:1px solid var(--ln,#EFE6DE);font:500 15px var(--a-font,inherit);color:var(--ink)}
+.sc-mgr-att li:first-child{border-top:0}
+.sc-mgr-att li > i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--c-info-strong,#2563EB)}
+.sc-mgr-att li.s2 > i{background:var(--c-warning-strong,#D97706)} .sc-mgr-att li.s3 > i{background:var(--c-danger-strong,#DC2626)}
+.sc-mgr-att li .sc-att-t{flex:1;min-width:0;color:var(--i2,#5c5148);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-left:4px}
+.sc-att-i{display:inline-flex;align-items:center}
+.sc-att-i + .sc-att-i::before{content:"·";margin-right:8px;color:var(--i3,#8a8073)}
+.sc-att-i.s3{color:var(--c-danger-fg,#B42318);font-weight:600}
+.sc-mgr-att li .sc-att-b{margin:0 0 0 auto}
+.sc-att-ok{margin:4px 0 10px;font:600 15px var(--a-font,inherit);color:var(--c-success-fg,#1E6B34)}
+.sc-att-av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;font:700 12px var(--a-font,inherit);flex:0 0 auto;vertical-align:middle;margin-right:8px}
+.sc-mgr-tw{overflow-x:auto;background:var(--cd,#fff);border-radius:20px;box-shadow:0 1px 2px rgba(33,23,18,.05),0 10px 30px rgba(33,23,18,.07)}
+.sc-mgr-t{width:100%;border-collapse:collapse;min-width:980px}
+.sc-mgr-t th{position:sticky;top:0;background:var(--cd,#fff);text-align:left;padding:14px 12px 10px;font:600 13px var(--a-font,inherit);color:var(--i3,#8a8073);border-bottom:1px solid var(--ln,#EFE6DE);white-space:nowrap}
+.sc-mgr-t td{padding:12px;border-bottom:1px solid var(--ln,#F2EBE4);font:500 15px var(--a-font,inherit);color:var(--ink);white-space:nowrap;vertical-align:middle}
+.sc-mgr-t tbody tr{cursor:pointer;transition:background .15s ease}
+.sc-mgr-t tbody tr:hover{background:var(--bg,#F7F3EE)}
+.sc-mgr-t tbody tr:last-child td{border-bottom:0}
+.sc-mgr-t td small{font:500 13px var(--a-font,inherit);color:var(--i3,#8a8073)}
+.sc-num{font-weight:700} .sc-num.ok{color:var(--c-success-fg,#1E6B34)} .sc-num.warn{color:var(--c-warning-fg,#8A5A0B)} .sc-num.bad{color:var(--c-danger-fg,#B42318)}
+.sc-chip2{display:inline-block;padding:3px 9px;border-radius:999px;font:600 12px/1.4 var(--a-font,inherit)}
+.sc-chip2.ok{background:var(--c-success-bg,#E8F3EA);color:var(--c-success-fg,#1E6B34)} .sc-chip2.warn{background:var(--c-warning-bg,#FDF3E1);color:var(--c-warning-fg,#8A5A0B)}
+.sc-chip2.bad{background:var(--c-danger-bg,#FDECEA);color:var(--c-danger-fg,#B42318)} .sc-chip2.wait{background:var(--c-info-bg,#E8F0FE);color:var(--c-info-fg,#1E40AF)} .sc-chip2.na{background:var(--bg,#F3EEE8);color:var(--i3,#8a8073)}
+.sc-ring{display:inline-block;width:20px;height:20px;border-radius:50%;margin-right:8px;vertical-align:-4px;background:conic-gradient(var(--c-success-strong,#15803D) calc(var(--p)*1%),var(--ln,#E8DFD6) 0);-webkit-mask:radial-gradient(circle,transparent 5px,#000 6px);mask:radial-gradient(circle,transparent 5px,#000 6px)}
+@media (max-width:1200px){ .sc-mgr-kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:600px){ .sc-mgr-kpis{grid-template-columns:repeat(2,minmax(0,1fr))} .sc-mk-v{font-size:24px} .sc-mgr-att li{flex-wrap:wrap} }
+
+/* ═══ 2.89.1 · auditoría: contraste y tamaño para tocar ═══ */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg2 .day-lbl{color:var(--acd,#A85C1F)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #pg4 .cal-day.other .dn{color:var(--i3)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5):not(.dark-mode):not(.theme-ember) :is(.wrap,#tktDetailBg .modal) .pf20-empty{color:#6b5d52!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) #qbCustBack{color:var(--acd,#A85C1F)!important}
+/* .pf20 redefine --ink oscuro dentro de su bloque: en tema oscuro hay que dar el color a mano */
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(.wrap,#tktDetailBg .modal) .pf20-head :is(.pf20-title,.pf20-live,.pf20-sub,.pf20-kpi strong),body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember :is(.wrap,#tktDetailBg .modal) .pf20-head :is(.pf20-title,.pf20-live,.pf20-sub,.pf20-kpi strong){color:#ECECEC!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(.wrap,#tktDetailBg .modal) .pf20-head .pf20-kpi :is(b,small),body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember :is(.wrap,#tktDetailBg .modal) .pf20-head .pf20-kpi :is(b,small){color:#A9AEB8!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(.wrap,#tktDetailBg .modal) .pf20-kpi:not(.pf20-kpi-cob),body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember :is(.wrap,#tktDetailBg .modal) .pf20-kpi:not(.pf20-kpi-cob){background:rgba(255,255,255,.06)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(.wrap,#tktDetailBg .modal) .pf20-kpi.pf20-kpi-cob,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember :is(.wrap,#tktDetailBg .modal) .pf20-kpi.pf20-kpi-cob{background:rgba(34,197,94,.14)!important}
+body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(.wrap,#tktDetailBg .modal) .pf20-kpi.pf20-kpi-cob strong,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).theme-ember :is(.wrap,#tktDetailBg .modal) .pf20-kpi.pf20-kpi-cob strong{color:#86EFAC!important}
+@media (max-width:900px){
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-linea{min-height:32px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto a,body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-contacto .asp-c-sms{min-height:34px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .cal-tkt-mini > p .asp-c-sms{height:32px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-c-spa-ver{min-height:32px!important;display:inline-flex!important;align-items:center}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) .asp-a-mas{min-width:32px!important;min-height:32px!important}
+  body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5) :is(.wrap,#tktDetailBg .modal) #qbCustDetail a.qb-link{min-height:32px!important;display:inline-flex!important;align-items:center}
 }
 
 </style>
