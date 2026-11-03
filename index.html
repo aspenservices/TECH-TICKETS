@@ -7206,7 +7206,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.92.1";
+var APP_VERSION="2.92.2";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -12597,7 +12597,7 @@ function _repeatedReschedAlerts(){
   var pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
   var groups={};
   pool.forEach(function(t){
-    if(!t||!aspReagendo(t))return;
+    if(!t||!(typeof aspVueltaPendiente==="function"?aspVueltaPendiente(t):aspReagendo(t)))return;   // v2.92.2
     var k=_custGroupKey(t.customer);if(!k)return;
     if(!groups[k])groups[k]={key:k,name:t.customer||"",count:0,reasons:[],phone:"",last:0};
     groups[k].count++;
@@ -16917,7 +16917,7 @@ function _orphanRescheds(){
   try{
     var pool=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]);
     var orphans=pool.filter(function(r){
-      if(!aspReagendo(r))return false;
+      if(!(typeof aspVueltaPendiente==="function"?aspVueltaPendiente(r):aspReagendo(r)))return false;   // v2.92.2
       var hasOpen=(typeof active!=="undefined"?active:[]).some(function(d){
         return d&&d.source==="dispatch"&&!d.fieldReportSubmitted&&d.status!=="canceled"&&d.status!=="done"&&_custSameHousehold(d.customer,r.customer);
       });
@@ -18079,7 +18079,7 @@ function _reschedStale(){
   var out=[],N=3;                                            // reschedule older than 3 days = needs rebooking
   try{
     (Array.isArray(active)?active:[]).forEach(function(t){
-      if(!t||!aspReagendo(t))return;
+      if(!t||!(typeof aspVueltaPendiente==="function"?aspVueltaPendiente(t):aspReagendo(t)))return;   // v2.92.2: la vuelta sigue sin fecha
       var days=(typeof _pcDays==="function")?_pcDays(t):0;
       out.push({id:t.id,customer:t.customer||"?",days:days,tech:(t.techs&&t.techs[0])||"",stale:days>=N});
     });
@@ -19808,7 +19808,7 @@ function rndrSlog(){
   // populated "Ruck, Linda & Jim" in Customers.
   all.forEach(function(t){try{_enrichTicketWithExistingCustomer(t)}catch(_e){}});
   // ── Safety net: reschedule reports with NO open Service Log call ──
-  var _orphans=(typeof _orphanRescheds==="function")?_orphanRescheds():[];
+  var _orphans=[];   /* v2.92.2 — Alberto, 3 nov: «quítala, se ve muy cargado». El sanador (_runReschedHeal) sigue creando solo la vuelta que falte, y «Return visits to schedule» es el aviso con acción */
   var _orphanBanner="";
   if(_orphans.length){
     _orphanBanner='<div style="background:var(--c-warning-bg);border:1.5px solid var(--c-warning-strong);border-radius:12px;padding:14px;margin-bottom:16px">'+
@@ -67521,6 +67521,15 @@ window.aspVueltaCola=function(t,dia){
     case "ninguna":  return " · "+L("todavía sin vuelta","no return visit yet");
     default:         return " → "+L("por agendar","to schedule");
   }
+};
+
+/* v2.92.2 — ¿la vuelta de esta visita SIGUE pendiente? Lo que antes decía status "reschedule" mientras nadie la
+   cerraba. aspReagendo = «terminó en vuelta» (historia: KPI, Scores); esta = «todavía falta» (avisos). */
+window.aspVueltaPendiente=function(t){
+  try{ if(!t||typeof aspReagendo!=="function"||!aspReagendo(t))return false;
+    if(t.reschedOutcome)return false;                                   /* la oficina ya decidió */
+    var e=window.aspVueltaReal(t).estado; return e==="sinFecha"||e==="ninguna";
+  }catch(_e){ return false }
 };
 
 /* ── dos técnicos, un reporte: el segundo se suma al del primero ── */
