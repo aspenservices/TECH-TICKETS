@@ -1946,8 +1946,13 @@ details.adm-fold>.adm-fold-body{padding-top:12px;}
    Source Sans 3 solo se ven con el acabado o la vista simple apagados, o con el
    tema Aspen: solo entonces se piden (el acabado tambien las pide si se elige
    el tema Aspen despues). */
-(function(){try{var ls=localStorage,q=location.search||"";
-  if(/[?&](acabado|simple)=0\b/.test(q)||ls.getItem("acabado")==="0"||ls.getItem("simple")==="0"||ls.getItem("aspenTheme")==="aspen"){
+(function(){try{var ls=localStorage;
+  /* v2.92.3 — Alberto, 3 nov: el diseño final es para todos, siempre. Ningún interruptor guardado lo apaga:
+     quien lo tenía apagado vuelve solo. (Tema, letra, idioma, compacto y exterior son preferencias y se quedan.) */
+  ["simple","acabado","aspLimpia","aspHD","aspSkinOff","panelSkin","tktCompacta","llamadaPasos","idiomaCompleto","numerosCoherentes","oscuroParches","vaciosDisenados","pulidoRoute","aspenDensity","aspFs"].forEach(function(k){ try{ ls.removeItem(k) }catch(_e){} });
+  /* v2.92.4 — tema: solo claro / oscuro / auto (Alberto, 3 nov) */
+  var _t=ls.getItem("aspenTheme"); if(_t==="ember")ls.setItem("aspenTheme","dark"); else if(_t==="aspen")ls.setItem("aspenTheme","light");
+  if(ls.getItem("aspenTheme")==="aspen"){
     window.__aspFuentesExtra=1;
     document.write('<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">');}
 }catch(_e){}})();</script>
@@ -2912,7 +2917,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <!-- ASPEN TECH TICKETS v2.80.0 · integrated build (2.73.0 base + 2.74–2.79 production changes) · 2026-10-06 -->
 </head>
 <body>
-<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado (se apaga en el perfil) */try{if(localStorage.getItem("aspLimpia")!=="0")document.body.classList.add("asp-limpia")}catch(e){}</script>
+<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos */try{document.body.classList.add("asp-limpia")}catch(e){}</script>
 <!-- Offline status indicator (shown only when device is offline) -->
 <div id="onlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-dialog);background:var(--c-warning-strong);color:#fff;padding:6px 12px;font-size:var(--fs-sm);font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:8px">
   <span class="lucide-mount" data-lucide="wifi-off" data-size="15" data-color="#fff" style="display:inline-flex;align-items:center"></span><span>Offline Mode — Changes will sync when reconnected</span>
@@ -7206,7 +7211,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.92.2";
+var APP_VERSION="2.92.4";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -13646,7 +13651,8 @@ function _setTheme(mode){
 function _applyTheme(){
   try{
     var saved=localStorage.getItem("aspenTheme");
-    if(saved==="ember"||saved==="dark"||saved==="light"||saved==="aspen"){_setTheme(saved);return;}
+    if(saved==="ember")saved="dark"; else if(saved==="aspen")saved="light";   // v2.92.4: sin Ember ni Aspen (lo que quede guardado se lee como oscuro / claro)
+    if(saved==="dark"||saved==="light"){_setTheme(saved);return;}
     // No manual choice yet → follow the OS (light/dark only).
     var dark=(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
     _setTheme(dark?"dark":"light");
@@ -13664,7 +13670,7 @@ function _syncThemeBtn(mode){
 function toggleTheme(){
   if(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"){_setTheme("light");try{localStorage.setItem("aspenTheme","light")}catch(_e){}if(typeof toast==="function")toast("Light mode is fixed for technicians");return}
   var cur=_curTheme();
-  var next=(cur==="light")?"dark":(cur==="dark")?"ember":(cur==="ember")?"aspen":"light";
+  var next=(cur==="dark")?"light":"dark";   // v2.92.4: solo claro ↔ oscuro
   _setTheme(next);
   try{localStorage.setItem("aspenTheme",next)}catch(_e){}
   if(typeof toast==="function")toast(next==="ember"?"Ember Gold \u2728":next==="dark"?"Dark mode \u2713":next==="aspen"?"Aspen Brand \uD83C\uDF0A":"Light mode \u2713");
@@ -13723,6 +13729,7 @@ function _syncDensityBtn(compact){
   b.title=compact?"Compact view (tap for comfortable)":"Comfortable view (tap for compact)";
 }
 function toggleDensity(){
+  return;   /* v2.92.4 — sin vista compacta */
   var compact=!document.body.classList.contains("density-compact");
   document.body.classList.toggle("density-compact",compact);
   try{localStorage.setItem("aspenDensity",compact?"compact":"comfortable")}catch(_e){}
@@ -13731,6 +13738,7 @@ function toggleDensity(){
 }
 function _mountDensityToggle(){
   try{
+    return;   /* v2.92.4 — sin botón de vista compacta */
     var hdr=document.querySelector(".hdr"),anchor=document.getElementById("themeToggleBtn")||document.getElementById("lockBtn");
     if(!hdr||!anchor||document.getElementById("densityToggleBtn"))return;
     var b=document.createElement("button");
@@ -29878,6 +29886,7 @@ function toggleOutdoor(){
     document.body.classList.add("outdoor");try{localStorage.setItem("aspenOutdoor","1")}catch(_e){}
     if(typeof toast==="function")toast("Outdoor mode stays ON for field work \u2600\uFE0F");return;
   }
+  return;   /* v2.92.4 — la oficina no tiene modo exterior; los técnicos lo tienen fijo (arriba) */
   var on=!document.body.classList.contains("outdoor");
   document.body.classList.toggle("outdoor",on);
   try{localStorage.setItem("aspenOutdoor",on?"1":"0")}catch(_e){}
@@ -30158,7 +30167,8 @@ function _enforceTechUX(){
     }else{
       document.body.classList.remove("role-tech");
       if(tb)tb.style.display="";
-      if(ob)ob.style.display="";
+      if(ob)ob.style.display="none";   /* v2.92.4 */
+      if(currentUser){ document.body.classList.remove("outdoor"); try{localStorage.removeItem("aspenOutdoor")}catch(_e){} }
     }
   }catch(_e){}
 }
@@ -32194,7 +32204,7 @@ function renderDigest(p){
   el.style.display="";
   var uname=(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"";
   el.innerHTML='<div style="border:1.5px solid var(--ln,#e5e0d8);border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--card,#fff)">'
-    +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:13px">'+bico("sun",14)+TT(' Tu día'," Your day")+(uname?", "+esc3(uname):"")+'</b><span style="margin-left:auto;display:inline-flex;gap:2px;align-items:center"><button onclick="bsFs(1)" title="Letra normal" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:11px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsFs(2)" title="Letra mediana" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:12px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsFs(3)" title="Letra grande" style="border:1px solid var(--ln,#ddd);background:none;border-radius:6px;padding:1px 6px;font-size:14px;cursor:pointer;color:var(--i2,#5a5248);font-family:inherit">Aa</button><button onclick="bsSkinToggle()" title="Tema Aspen on/off" style="border:none;background:none;font-size:14px;cursor:pointer">🎨</button></span><button onclick="bsDigestHide()" title="Ocultar por hoy" style="border:none;background:none;color:var(--i3,#999);cursor:pointer;font-size:16px;line-height:1;margin-left:2px">×</button></div>'
+    +'<div style="display:flex;align-items:center;margin-bottom:4px"><b style="font-size:13px">'+bico("sun",14)+TT(' Tu día'," Your day")+(uname?", "+esc3(uname):"")+'</b><span style="margin-left:auto;display:inline-flex;gap:2px;align-items:center"></span><button onclick="bsDigestHide()" title="Ocultar por hoy" style="border:none;background:none;color:var(--i3,#999);cursor:pointer;font-size:16px;line-height:1;margin-left:2px">×</button></div>'
     +rows.join("")
     +(function(){try{var v=localStorage.getItem("aspVer");return v?'<div style="font-size:11px;color:var(--i3,#8a8073);margin-top:6px;text-align:right">'+esc3(v)+'</div>':"";}catch(e){return "";}})()
     +'</div>';
@@ -33406,10 +33416,10 @@ window.wkOpen=function(){
 };
 
 /* ── Launch button on Daily (injected; admin/organizer only) ── */
-function _applySkin(){try{var on=canUse()&&localStorage.getItem("aspSkinOff")!=="1";document.body.classList.toggle("aspSkin",!!on);}catch(e){}}
+function _applySkin(){try{var on=canUse();   /* v2.92.3 — sin apagar */document.body.classList.toggle("aspSkin",!!on);}catch(e){}}
 function _applyFs(){var n=1;try{n=parseInt(localStorage.getItem("aspFs")||"1",10);}catch(e){}document.body.classList.toggle("aspFs2",n===2);document.body.classList.toggle("aspFs3",n===3);}
-window.bsFs=function(n){try{localStorage.setItem("aspFs",String(n));}catch(e){}_applyFs();};
-window.bsSkinToggle=function(){try{localStorage.setItem("aspSkinOff",localStorage.getItem("aspSkinOff")==="1"?"0":"1");}catch(e){}_applySkin();};
+window.bsFs=function(){};   /* v2.92.4 — sin tamaños de letra */
+window.bsSkinToggle=function(){};   /* v2.92.3 */
 var _btnCache={n:-1,total:0};
 function renderBtn(){
   _applySkin();_applyFs();
@@ -61944,13 +61954,8 @@ body.asp-simple:not(#_q1):not(#_q2) #pg5 .zone-card-item h6{padding-right:48px!i
 "use strict";
 if(window.aspSimple)return;
 
-/* ?simple=1 / ?simple=0 en la direccion enciende o apaga sin consola (y lo recuerda). */
-try{
-  var q=/[?&]simple=([01])\b/.exec(location.search||"");
-  if(q){ if(q[1]==="0")localStorage.setItem("simple","0"); else localStorage.removeItem("simple"); }
-}catch(_e){}
+/* v2.92.3 — siempre encendida, para todos (ni la dirección ni un interruptor guardado la apagan) */
 var ON=true;
-try{ ON=localStorage.getItem("simple")!=="0"; }catch(_e){}
 
 function role(){
   try{
@@ -61961,7 +61966,7 @@ function role(){
 }
 
 var API={ on:ON, role:role, pass:function(){},
-  off:function(){ try{localStorage.setItem("simple","0")}catch(_e){} location.reload(); },
+  off:function(){},   /* v2.92.3 */
   turnOn:function(){ try{localStorage.removeItem("simple")}catch(_e){} location.reload(); } };
 window.aspSimple=API;
 if(!ON)return;
@@ -62099,13 +62104,9 @@ function profileItems(){
   h+='<div class="asp-pf-row" data-act="lang"><span>'+ico("languages")+T("Language","Idioma")+'</span><span class="asp-seg">'
     +'<button type="button" data-lang="es" aria-pressed="'+es+'">ES</button><button type="button" data-lang="en" aria-pressed="'+(!es)+'">EN</button></span></div>';
   h+='<button type="button" class="asp-pf-row" data-act="theme"><span>'+ico(dark?"sun":"moon")+T("Theme","Tema")+'</span><em>'+(dark?T("Dark","Oscuro"):T("Light","Claro"))+'</em></button>';
-  h+='<button type="button" class="asp-pf-row" data-act="outdoor"><span>'+ico("sun-medium")+T("Outdoor mode","Modo exterior")+'</span><em>'+(outdoor?T("On","Sí"):T("Off","No"))+'</em></button>';
-  h+='<button type="button" class="asp-pf-row" data-act="density"><span>'+ico("rows-3")+T("Compact view","Vista compacta")+'</span><em>'+(compact?T("On","Sí"):T("Off","No"))+'</em></button>';
-  if(typeof window.bsFs==="function")h+='<div class="asp-pf-row" data-act="size"><span>'+ico("type")+T("Text size","Tamaño de letra")+'</span><span class="asp-seg">'
-    +[1,2,3].map(function(n){return '<button type="button" data-fs="'+n+'" aria-pressed="'+(fs===n)+'" style="font-size:'+(10+n*2)+'px">Aa</button>';}).join("")+'</span></div>';
+  /* v2.92.4 — sin modo exterior, vista compacta ni tamaño de letra: la vista es la misma para todos */
   if(r==="office"&&typeof changeMyPIN==="function")h+='<button type="button" class="asp-pf-row" data-act="pin"><span>'+ico("key-round")+T("Change my PIN","Cambiar mi PIN")+'</span></button>';
   if($("syncBadge"))h+='<button type="button" class="asp-pf-row" data-act="sync"><span>'+ico("refresh-cw")+T("Sync status","Estado de sincronización")+'</span></button>';
-  if(u.role==="admin")h+='<button type="button" class="asp-pf-row" data-act="simple"><span>'+ico("layout")+T("Simple view","Vista simple")+'</span><em>'+T("On · turn off","Sí · apagar")+'</em></button>';
   h+='<button type="button" class="asp-pf-row asp-pf-out" data-act="logout"><span>'+ico("log-out")+T("Sign out","Salir")+'</span></button>';
   return h;
 }
@@ -62124,7 +62125,6 @@ function profileEl(){
       profileOpen(false);
       if(a==="pin"&&typeof changeMyPIN==="function")changeMyPIN();
       else if(a==="sync"){ var sb=$("syncBadge"); if(sb)sb.click(); }
-      else if(a==="simple")API.off();
       else if(a==="logout"&&typeof toggleAdmin==="function")toggleAdmin();
     });
   }
@@ -64606,16 +64606,11 @@ body.asp-limpia:not(#_c1):not(#_c2):not(#_c3):not(#_c4):not(#_c5).dark-mode :is(
 "use strict";
 if(window.aspAcabado)return;
 
-try{
-  var q=/[?&]acabado=([01])\b/.exec(location.search||"");
-  if(q){ if(q[1]==="0")localStorage.setItem("acabado","0"); else localStorage.removeItem("acabado"); }
-}catch(_e){}
-var ON=true;
-try{ ON=localStorage.getItem("acabado")!=="0"; }catch(_e){}
+var ON=true;   /* v2.92.3 — siempre encendido */
 if(!(window.aspSimple&&window.aspSimple.on))ON=false;
 
 var API={ on:ON, pass:function(){},
-  off:function(){ try{localStorage.setItem("acabado","0")}catch(_e){} location.reload(); },
+  off:function(){},   /* v2.92.3 */
   turnOn:function(){ try{localStorage.removeItem("acabado")}catch(_e){} location.reload(); } };
 window.aspAcabado=API;
 if(!ON)return;
@@ -64674,20 +64669,8 @@ mod("perfil",function(){
   if(th&&!m.querySelector('[data-aact="theme"]')){
     var row=el("div",{"class":"asp-pf-row","data-aact":"theme"},filaTema());
     th.parentNode.insertBefore(row,th);
-    var mas=el("button",{type:"button","class":"asp-pf-row asp-a-masTemas","data-aact":"moreThemes"},'<span>'+ico("droplets")+T("More themes","Más temas")+'</span><em>Ember · Aspen</em>');
-    row.parentNode.insertBefore(mas,th);
   }
-  /* v2.88.8 — «Vista limpia»: para todos los usuarios */
-  if(!m.querySelector('[data-aact="limpia"]')){
-    var lim=el("button",{type:"button","class":"asp-pf-row","data-aact":"limpia"},filaLimpia());
-    m.insertBefore(lim,m.querySelector('[data-act="logout"]')||null);
-  }
-  var simp=m.querySelector('[data-act="simple"]');
-  if(isAdmin()&&!m.querySelector('[data-aact="off"]')){
-    var off=el("button",{type:"button","class":"asp-pf-row","data-aact":"off"},'<span>'+ico("sparkles")+T("New finish (2.88)","Acabado nuevo (2.88)")+'</span><em>'+T("On · turn off","Sí · apagar")+'</em>');
-    var ref=simp?simp.nextSibling:m.querySelector('[data-act="logout"]');
-    m.insertBefore(off,ref||null);
-  }
+  /* v2.92.3 — sin filas para apagar el diseño (Vista limpia, Acabado 2.88, Vista simple): es el de todos, siempre */
 });
 document.addEventListener("click",function(ev){
   var t=ev.target; if(!t||!t.closest)return;
@@ -64696,10 +64679,6 @@ document.addEventListener("click",function(ev){
     var row=b.closest('[data-aact="theme"]'); if(row)row.innerHTML=filaTema(); return; }
   var r=t.closest('#aspProfile [data-aact]'); if(!r)return;
   var a=r.getAttribute("data-aact");
-  if(a==="off"){ API.off(); return; }
-  if(a==="limpia"){ ev.stopPropagation(); var on=!document.body.classList.contains("asp-limpia");
-    try{ localStorage.setItem("aspLimpia",on?"1":"0"); }catch(_e){}
-    cls(document.body,"asp-limpia",on); r.innerHTML=filaLimpia(); schedule(); return; }
   if(a==="moreThemes"){ var tb=$("themeToggleBtn"); if(tb)tb.click(); var row2=$("aspProfile")&&$("aspProfile").querySelector('[data-aact="theme"]'); if(row2)row2.innerHTML=filaTema(); }
 },true);
 /* ══ 82–84 · una fecha, una hora, un dinero ═══════════════════════════════════
@@ -65192,7 +65171,7 @@ mod("clientesTel",function(){
    Se prende con body.asp-limpia (perfil › «Vista limpia»; localStorage aspLimpia="0" la apaga).
    Estos modulos solo agregan clases y botones; el CSS de aspenLimpiaSkin decide que se ve.
    Ningun nodo se mueve ni se borra; ningun onclick cambia. Corren en la misma pasada: sin parpadeo. */
-function limpiaOn(){ try{ return localStorage.getItem("aspLimpia")!=="0"; }catch(_e){ return true; } }
+function limpiaOn(){ return true; }   /* v2.92.3 — no se apaga */
 function filaLimpia(){ var on=document.body.classList.contains("asp-limpia");
   return '<span>'+ico("sparkles")+T("Clean view","Vista limpia")+'</span><em>'+(on?T("On · turn off","Sí · apagar"):T("Off · turn on","No · prender"))+'</em>'; }
 init("limpia",function(){ cls(document.body,"asp-limpia",limpiaOn()); });
@@ -67417,7 +67396,7 @@ html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):no
 (function(){
   "use strict";
   var H=document.documentElement;
-  try{ if(localStorage.getItem("aspHD")==="0")H.classList.add("asp-hd-off"); }catch(_e){}
+  /* v2.92.3 — el HD no se apaga (antes: localStorage.aspHD="0") */
   function activo(){ return !H.classList.contains("asp-hd-off")&&document.body&&document.body.classList.contains("asp-limpia"); }
   window.aspHdActivo=activo;
 
