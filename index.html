@@ -2917,7 +2917,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <!-- ASPEN TECH TICKETS v2.80.0 · integrated build (2.73.0 base + 2.74–2.79 production changes) · 2026-10-06 -->
 </head>
 <body>
-<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos */try{document.body.classList.add("asp-limpia")}catch(e){}</script>
+<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos · v2.92.5: con el modo exterior (la vista de Alberto) */try{document.body.classList.add("asp-limpia");document.body.classList.add("outdoor")}catch(e){}</script>
 <!-- Offline status indicator (shown only when device is offline) -->
 <div id="onlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-dialog);background:var(--c-warning-strong);color:#fff;padding:6px 12px;font-size:var(--fs-sm);font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:8px">
   <span class="lucide-mount" data-lucide="wifi-off" data-size="15" data-color="#fff" style="display:inline-flex;align-items:center"></span><span>Offline Mode — Changes will sync when reconnected</span>
@@ -7211,7 +7211,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.92.4";
+var APP_VERSION="2.92.5";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -29873,7 +29873,7 @@ function _startSyncWatch(){
 
 /* ── 4) OUTDOOR HIGH-CONTRAST MODE — layers on top of any theme; persisted. ── */
 function _applyOutdoor(){
-  try{var on=localStorage.getItem("aspenOutdoor")==="1";document.body.classList.toggle("outdoor",on);_syncOutdoorBtn(on);}catch(_e){}
+  try{document.body.classList.add("outdoor");_syncOutdoorBtn(true);}catch(_e){}   /* v2.92.5 — fijo para todos */
 }
 function _syncOutdoorBtn(on){
   var b=document.getElementById("outdoorToggleBtn");if(!b)return;
@@ -29882,6 +29882,7 @@ function _syncOutdoorBtn(on){
   b.style.opacity=on?"1":"0.55";
 }
 function toggleOutdoor(){
+  document.body.classList.add("outdoor"); return;   /* v2.92.5 — fijo para todos */
   if(typeof currentUser!=="undefined"&&currentUser&&currentUser.role==="tech"){
     document.body.classList.add("outdoor");try{localStorage.setItem("aspenOutdoor","1")}catch(_e){}
     if(typeof toast==="function")toast("Outdoor mode stays ON for field work \u2600\uFE0F");return;
@@ -30168,7 +30169,7 @@ function _enforceTechUX(){
       document.body.classList.remove("role-tech");
       if(tb)tb.style.display="";
       if(ob)ob.style.display="none";   /* v2.92.4 */
-      if(currentUser){ document.body.classList.remove("outdoor"); try{localStorage.removeItem("aspenOutdoor")}catch(_e){} }
+      document.body.classList.add("outdoor");   /* v2.92.5 — la oficina también (era la vista de Alberto) */
     }
   }catch(_e){}
 }
