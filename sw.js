@@ -13,6 +13,8 @@ try{
   _msg.onBackgroundMessage(function(payload){
     try{
       var d=(payload&&payload.data)||{};
+      /* v2.93.0 — «estimado firmado» (signEstimate): tocarlo abre su ticket */
+      if(d.tkt){self.registration.showNotification(d.title||'Estimate signed',{body:d.body||'',tag:'est-'+d.tkt,renotify:true,vibrate:[100,50,100],data:{tkt:d.tkt}});return;}
       var title=d.title||('\uD83D\uDCAC '+(d.peer||'Mensaje'));
       var body=d.body||'Nuevo mensaje';
       self.registration.showNotification(title,{body:body,tag:'dm-'+(d.peer||'x'),renotify:true,vibrate:[100,50,100],data:{peer:d.peer||''}});
@@ -31,7 +33,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.92.5";  // 3 nov 2026 · el modo exterior (la vista de Alberto) fijo para todos · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.93.0";  // 9 nov 2026 · estimados firmados: copia del cliente, la oficina se entera, aviso abre el ticket · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell
@@ -292,6 +294,11 @@ self.addEventListener("message", function (event) {
 self.addEventListener('notificationclick',function(e){
   e.notification.close();
   var peer=(e.notification.data&&e.notification.data.peer)||'';
+  var tkt=(e.notification.data&&e.notification.data.tkt)||'';   /* v2.93.0 — aviso de estimado firmado */
+  if(tkt){e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
+    for(var i=0;i<cs.length;i++){var c=cs[i];if('focus' in c){c.focus();try{c.postMessage({type:'openTkt',id:tkt})}catch(_e){}return;}}
+    if(clients.openWindow)return clients.openWindow('./#t/'+encodeURIComponent(tkt));
+  }));return;}
   e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
     for(var i=0;i<cs.length;i++){var c=cs[i];
       if('focus' in c){c.focus();try{c.postMessage({type:'openDm',peer:peer})}catch(_e){}return;}

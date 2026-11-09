@@ -3020,7 +3020,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
     <div class="w-result" id="eWR" style="display:none"></div>
   </div>
   <div class="card"><div class="ph"><div class="lbl" style="margin:0">Parts / Services</div><div class="pc" id="ePCt">0 items</div></div><div id="ePL"></div><div id="ePT" class="ptr" style="display:none"><span id="ePTL">Total RDA</span><span class="v" id="ePTV"></span></div><button class="ab" onclick="openPk();estPicker=true">+ Add Part / Service</button></div>
-  <div class="card"><div class="lbl">Notes for Customer</div><textarea class="notes" id="eNotes" placeholder="Describe the work to be done..."></textarea></div>
+  <div class="card"><div class="lbl">Notes for Customer <span class="sub">(the customer sees this on the estimate and the signed PDF)</span></div><textarea class="notes" id="eNotes" placeholder="Only what the customer should read — e.g. the work we will do. No internal notes."></textarea></div>
   <div style="margin-bottom:14px"><button class="btn btn-send" style="width:100%" onclick="genEstimate()">👁 Generate Estimate</button></div>
   <div id="estPreviewArea"></div>
   <div style="text-align:center;margin-bottom:24px"><button onclick="resetEst();toast('Estimate cleared')" style="padding:10px 24px;background:none;border:1.5px solid var(--ln);border-radius:10px;color:var(--i3);font-size:var(--fs-base);font-weight:600">🔄 Clear & Start Over</button></div>
@@ -7211,7 +7211,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.92.5";
+var APP_VERSION="2.93.0";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -11156,8 +11156,13 @@ function _followUpDueInfo(dateStr){
 // work order (source:"dispatch", status:"pending"). This badge makes it
 // unmistakable on the card so the office schedules the return visit and the
 // tech knows to "Fill Field Report" to do the approved work.
+/* v2.93.0 — ¿el cliente aprobó un estimado en este ticket? La firma a distancia
+   (función signEstimate) escribía `approved`+`signedBy:"customer"` hasta el 9 nov 2026
+   y la app solo leía `approvedEstimate`. conPaquete: cuenta también el paquete
+   `estimate` que lleva el REPORTE (que no lleva la bandera de «por hacer»). */
+function _estAprobado(t,conPaquete){if(!t)return false;if(t.approvedEstimate)return true;if(t.approved===true&&t.signedBy==="customer")return true;return !!(conPaquete&&t.estimate&&t.estimate.approved===true);}
 function _approvedEstBadge(t){
-  if(!t||!t.approvedEstimate)return"";
+  if(!t||!_estAprobado(t))return"";
   if(t.fieldReportSubmitted)return""; // work already done — no longer "to do"
   // Defensive: the "to-do" badge only belongs on an OPEN work order/call. Never
   // show it on a finished or non-actionable ticket even if a flag leaks through.
@@ -20905,7 +20910,8 @@ async function shareLinkEstimate(){
       labor:lb?{amount:lb.amount,label:lb.label,free:lb.free||false}:null,
       tax:+tax.toFixed(2),taxRate:TAX_RATE,
       partsCost:+ptot.toFixed(2),total:+grand.toFixed(2),
-      notes,warrantyLabel:wl,
+      notes,notesForCustomer:true,warrantyLabel:wl,   /* v2.93.0 — la función solo muestra/imprime notas con esta marca */
+      sentBy:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"",   /* v2.93.0 — a quién avisar cuando firme */
       fromTicketId:(typeof _estFromTktId!=="undefined"?_estFromTktId:null)||null,
       signed:false,signatureData:null,signedAt:null,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -21878,16 +21884,48 @@ async function _signViaFunction(){
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({token:custEstToken,signatureData:custSigData,signedAt:new Date().toLocaleString()})
     });
+    /* v2.93.0 — vencido o inexistente: no se reintenta (antes giraba 5 veces y quedaba
+       en el buzón local). Y se guarda el link del PDF para darle su copia. */
+    if(r.status===410||r.status===404)return "expired";
     if(!r.ok)return false;
     var j=await r.json();
-    return !!(j&&j.ok);
+    if(j&&j.ok){window._custEstPdfUrl=j.pdfUrl||null;return true}
+    return false;
   }catch(_e){console.warn("[estimate] sign via function failed",_e);return false}
+}
+/* v2.93.0 — LA COPIA DEL CLIENTE. Antes, al reabrir su link solo decía «signed on…»
+   (y desde la firma respondía «expired»). Ahora ve su estimado firmado y baja el PDF. */
+function _estPdfBtnHTML(url){
+  return '<a href="'+esc(url)+'" target="_blank" rel="noopener" style="display:block;margin:16px auto 6px;max-width:320px;padding:14px 18px;background:var(--ac);color:#fff;border-radius:12px;font-size:var(--fs-md);font-weight:800;text-decoration:none;text-align:center">⬇ Download your copy (PDF)</a>';
+}
+function _estSignedCopyHTML(d){
+  if(!d.signed)return '<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div><div style="margin:20px 0;font-size:var(--fs-lg);color:var(--ac);font-weight:700">This link has expired.</div><div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">Thank you for choosing Aspen Spas</div></div>';
+  var m=function(n){return "$"+Number(n||0).toFixed(2)};
+  var h='<div class="est-preview" style="border-color:var(--ac)"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div>';
+  h+='<div style="text-align:center;margin:8px 0 6px"><div style="font-size:40px;line-height:1;color:var(--ac)">✓</div><div style="font-size:var(--fs-lg);color:var(--ac);font-weight:800;margin-top:4px">Signed and accepted</div>'+(d.signedAt?'<div style="font-size:var(--fs-sm);color:var(--i3)">Signed on '+esc(String(d.signedAt))+'</div>':'')+'</div>';
+  if(d.pdfUrl)h+=_estPdfBtnHTML(d.pdfUrl);
+  h+='<div style="font-size:var(--fs-md);margin:14px 0 4px"><b>'+esc(d.customer||"")+'</b></div>';
+  var _fa=[d.address,d.city,d.zip].filter(Boolean).map(function(x){return esc(String(x))}).join(", ");
+  if(_fa)h+='<div style="font-size:var(--fs-sm);color:var(--i2);margin-bottom:4px">'+_fa+'</div>';
+  h+='<div style="font-size:var(--fs-sm);color:var(--i3);margin-bottom:10px">'+esc(d.date||"")+((d.techs||[]).length?" · "+esc(d.techs.join(", ")):"")+'</div>';
+  if(d.warrantyLabel)h+='<div style="font-size:var(--fs-sm);padding:4px 8px;background:var(--acl);border-radius:6px;display:inline-block;color:var(--acd);font-weight:600;margin-bottom:12px">'+esc(d.warrantyLabel)+'</div>';
+  h+='<div style="border-top:1px solid #eee;padding-top:8px">';
+  (d.parts||[]).forEach(function(p){h+='<div class="est-row"><span>'+(p.qty||1)+'x '+esc(p.n||"")+'</span><span>'+m((p.ch||0)*(p.qty||1))+'</span></div>'});
+  h+='</div>';
+  if(d.labor)h+='<div class="est-row" style="color:var(--ac);font-weight:600"><span>'+esc(d.labor.label||"Labor")+'</span><span>'+(d.labor.free?"$0.00":m(d.labor.amount))+'</span></div>';
+  if(d.tax>0)h+='<div class="est-row" style="font-size:var(--fs-sm);color:var(--i2)"><span>Tax 9% (parts only)</span><span>'+m(d.tax)+'</span></div>';
+  h+='<div class="est-total"><span>ESTIMATED TOTAL</span><span>'+m(d.total)+'</span></div>';
+  if(d.notes)h+='<div style="margin-top:10px;padding:10px;background:#f9f9f6;border-radius:8px;font-size:var(--fs-base);color:var(--i2);font-style:italic">'+esc(d.notes)+'</div>';
+  h+='<div style="margin-top:14px;font-size:var(--fs-sm);color:var(--i3);text-align:center">Questions? Call us at <a href="tel:3147765050" style="color:var(--ac);font-weight:700">314-776-5050</a></div>';
+  h+='<div style="margin-top:8px;font-size:var(--fs-xs);color:#bbb;text-align:center">This is an estimate. Final charges may vary. Thank you for choosing Aspen Spas.</div></div>';
+  return h;
 }
 function _estThanksHTML(name){
   return '<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3>'
     +'<div class="est-sub">Service Estimate</div><div style="margin:20px 0"><span style="font-size:48px">\u2713</span></div>'
     +'<div style="font-size:var(--fs-lg);color:var(--ac);font-weight:700;margin-bottom:8px">Estimate Accepted!</div>'
     +'<div style="font-size:var(--fs-base);color:var(--i2)">Thank you'+(name?", "+esc(name):"")+'. Your technician has been notified.</div>'
+    +(window._custEstPdfUrl?_estPdfBtnHTML(window._custEstPdfUrl):'')   /* v2.93.0 — su copia firmada */
     +'<div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">You may close this page.</div></div>';
 }
 
@@ -21956,7 +21994,7 @@ async function loadCustEstimate(){
     }
     const d=_j.estimate;
     custEstName=d.customer||"";
-    if(d.signed||d.expired){document.getElementById("custEstContent").innerHTML=`<div class="est-preview" style="text-align:center;padding:30px 20px"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div><div style="margin:20px 0;font-size:var(--fs-lg);color:var(--ac);font-weight:700">${d.signed?"✓ This estimate has been signed and accepted.":"This link has expired."}</div>${d.signed?`<div style="font-size:var(--fs-base);color:var(--i3)">Signed on ${d.signedAt}</div>`:""}<div style="margin-top:16px;font-size:var(--fs-sm);color:#bbb">Thank you for choosing Aspen Spas</div></div>`;return true}
+    if(d.signed||d.expired){document.getElementById("custEstContent").innerHTML=_estSignedCopyHTML(d);return true}   /* v2.93.0 — su copia firmada */
 
     let h=`<div class="est-preview" style="border-color:var(--ac)"><h3>ASPEN SPAS</h3><div class="est-sub">Service Estimate</div>`;
     h+=`<div style="font-size:var(--fs-md);margin-bottom:4px"><b>${esc(d.customer)}</b></div>`;
@@ -22025,6 +22063,10 @@ async function submitCustSig(){
      La escritura directa desde el cliente (con sesión) se elimina como camino
      principal para no volver a tener ramas que fallan distinto en cada dispositivo. */
   var _ok=await _signViaFunctionRetry(5);
+  if(_ok==="expired"){   /* v2.93.0 — la página quedó abierta más allá de la fecha */
+    document.getElementById("custEstContent").innerHTML='<div class="empty" style="padding:60px 20px"><h3 style="font-size:var(--fs-xl);color:var(--r);margin-bottom:8px">This Estimate Has Expired</h3><p>Estimates are good for '+EST_EXPIRE_DAYS+' days. Give us a call and we will send you an updated one.</p><p style="margin-top:14px"><a href="tel:3147765050" style="color:var(--ac);font-weight:700">314-776-5050</a></p></div>';
+    return;
+  }
   if(_ok){
     document.getElementById("custEstContent").innerHTML=_estThanksHTML(custEstName);
     return;
@@ -22041,6 +22083,7 @@ async function submitCustSig(){
 async function _signViaFunctionRetry(maxTries){
   for(var i=0;i<(maxTries||5);i++){
     var ok=await _signViaFunction();
+    if(ok==="expired")return ok;   /* v2.93.0 */
     if(ok)return true;
     // backoff corto entre intentos (200ms, 400ms, 800ms…)
     await new Promise(function(r){setTimeout(r,200*Math.pow(2,i));});
@@ -26245,7 +26288,7 @@ function startTicketFrom(id){
     // parts the customer signed off on so the tech doesn't re-enter them and the
     // billed work matches the approved estimate. (Prices recompute live via the
     // warranty above — the Field Report is the source of truth for final billing.)
-    if(t.approvedEstimate){
+    if(_estAprobado(t)){   /* v2.93.0 — también los firmados a distancia */
       var _eparts=(t.estimate&&Array.isArray(t.estimate.parts)&&t.estimate.parts.length)?t.estimate.parts:(Array.isArray(t.parts)?t.parts:[]);
       if(_eparts.length){
         sel=_eparts.map(function(p){return{n:p.n||"",d:p.d||"",c:p.c||"",p:p.p||0,r:p.r||0,qty:p.qty||1,id:Date.now()+Math.floor(Math.random()*1e6)}});
@@ -26274,7 +26317,7 @@ function startEstimateFrom(id){
   setTimeout(()=>{
     document.getElementById("eCust").value=t.customer||"";
     document.getElementById("eDate").value=t.date||localDateStr();
-    document.getElementById("eNotes").value=t.notes||"";
+    document.getElementById("eNotes").value="";   /* v2.93.0 — antes copiaba t.notes (historial INTERNO de la cita): el cliente lo veía en su estimado y quedaba impreso en el PDF firmado */
     /* AUTOCOMPLETADO (v1.9.1): el ticket YA tiene teléfono, dirección, ciudad y ZIP,
        pero el estimado nacía vacío y el técnico los reescribía a mano desde el campo
        — con el riesgo de mandar el link con otro teléfono o sin dirección. Solo se
@@ -26970,6 +27013,7 @@ function qbCustRenderDetail(customers){
   h+='<button class="qb-cust-tab'+(qbCustTab==="info"?" on":"")+'" onclick="qbCustSetTab(\'info\')">Notes</button>';
   h+='<button class="qb-cust-tab'+(qbCustTab==="spa"?" on":"")+'" onclick="qbCustSetTab(\'spa\')">Spa Description</button>';
   h+='<button class="qb-cust-tab'+(qbCustTab==="photos"?" on":"")+'" onclick="qbCustSetTab(\'photos\')">Photos'+(_allPhotos.length?'<span class="qb-cust-tab-badge">'+_allPhotos.length+'</span>':'')+'</button>';
+  if(typeof _custEstTabBtn==="function")h+=_custEstTabBtn(c);   /* v2.93.0 — copia de cada estimado */
   h+='<button class="qb-cust-tab'+(qbCustTab==="history"?" on":"")+'" onclick="qbCustSetTab(\'history\')">Service History<span class="qb-cust-tab-badge">'+c.tickets.length+'</span></button>';
   var _c360PayBadge=0;try{_c360PayBadge=_c360PayInvoicesFor(c.name).filter(function(i){return _c360PayStatus(i)!=="paid"}).length+_c360PayAlertsFor(c.name).filter(function(a){return !a.resolvedAt&&a.resolved!==true}).length}catch(_e){}
   h+='<button class="qb-cust-tab payments'+(qbCustTab==="payments"?" on":"")+'" onclick="qbCustSetTab(\'payments\')">Payment Follow-up'+(_c360PayBadge?'<span class="qb-cust-tab-badge">'+_c360PayBadge+'</span>':'')+'</button>';
@@ -27026,6 +27070,8 @@ function qbCustRenderDetail(customers){
     // the same rules as the ticket form (gWT/gLabWT). Catches human error like
     // tickets marked N/W when the spa is clearly still under coverage.
     h+=_buildAutoWarrantyPanelHTML(spaDesc);
+  }else if(qbCustTab==="estimates"){
+    h+=(typeof _custEstTabHTML==="function")?_custEstTabHTML(c):"";
   }else if(qbCustTab==="history"){
     h+=_c360Render(sorted);
   }else if(qbCustTab==="payments"){
@@ -34028,7 +34074,7 @@ try{[["_aspVisitNotes",_aspVisitNotes],["_aspCleanTechNotes",_aspCleanTechNotes]
           lbl:T("Visita","Visit")+(v.length?(" \u00B7 "+v.join(" \u00B7 ")):""),
           txt:(t.notes||"").slice(0,220),tag:"visit",id:t.id});
       }
-      if(t.estimate||t.approvedEstimate)ev.push({ts:when+1,ico:"\uD83E\uDDFE",lbl:T("Estimado","Estimate"),txt:t.approvedEstimate?T("aprobado por el cliente","approved by customer"):"",tag:"est",id:t.id});
+      if(t.estimate||_estAprobado(t))ev.push({ts:when+1,ico:"\uD83E\uDDFE",lbl:T("Estimado","Estimate"),txt:_estAprobado(t,true)?T("aprobado por el cliente","approved by customer"):"",tag:"est",id:t.id});
     });
     if(_tlCache[k])ev=ev.concat(_tlCache[k]);
     else{
@@ -36370,7 +36416,8 @@ function rndrEstPending(){
     return true;
   });
   mine.sort(function(a,b){return _epBorn(b)-_epBorn(a)});
-  if(!mine.length){box.innerHTML="";return}
+  var _sg=(typeof _epSignedRows==="function")?_epSignedRows():"";   /* v2.93.0 — «Signed · last 60 days» */
+  if(!mine.length){box.innerHTML=_sg;return}
 
   var rows=mine.slice(0,12).map(function(e){
     var born=_epBorn(e), age=Date.now()-born;
@@ -36392,7 +36439,7 @@ function rndrEstPending(){
   box.innerHTML='<div class="ep-wrap"><div class="ep-h">Sent, not signed yet'
     +'<span class="ep-n">'+mine.length+'</span></div>'+rows
     +(mine.length>12?'<div class="ep-mt" style="padding-top:9px">'+(mine.length-12)+' more not shown</div>':'')
-    +'</div>';
+    +'</div>'+_sg;
 }
 
 /* Engancha el ciclo real del app: al entrar en modo estimado. */
@@ -36410,6 +36457,262 @@ function rndrEstPending(){
 })();
 </script>
 
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     v2.93.0 — ESTIMADOS FIRMADOS (9 nov 2026)
+     · «Signed» en la tarjeta de estimados (misma lectura de 60 que «Sent, not
+       signed yet»: sin escucha nueva).
+     · Pestaña «Estimates» en la ficha del cliente: copia de CADA estimado que
+       se le mandó (firmado, esperando o vencido), con su PDF y su firma.
+       Una lectura al abrir la pestaña (por las citas del cliente + los
+       estimados en frío), guardada 3 min. Sin escucha nueva.
+     · Aviso de «estimado firmado» (push de signEstimate): tocarlo abre el
+       ticket; con la app abierta sale igual.
+     Para quitarlo: borrar este bloque y el estilo aspenEst293Style. Las
+     llamadas de fuera preguntan typeof antes de usarlo.
+     ══════════════════════════════════════════════════════════════════════ -->
+<style id="aspenEst293Style">
+.ep-chip.s{background:var(--c-success-bg);color:var(--c-success-fg);border-color:var(--c-success-border)}
+.ep-chip.x{background:var(--bg);color:var(--i3);border-color:var(--ln)}
+.ep-wrap.ep-signed .ep-h .ep-n{background:var(--c-success-bg);color:var(--c-success-fg);border-color:var(--c-success-border)}
+.ce-intro{font-size:var(--fs-sm);color:var(--i3);margin:-4px 0 10px}
+.ce-empty{text-align:center;padding:34px 20px;color:var(--i3);font-size:var(--fs-base)}
+.ce-card{background:#fff;color:#1e1e1e;border-radius:12px;padding:20px 22px;max-width:640px;margin:8px auto;font-size:14px;line-height:1.45}
+.ce-card h4{margin:0;color:#134A63;font-size:20px;letter-spacing:.5px}
+.ce-card .ce-sub{color:#787878;font-size:12px;margin-bottom:12px}
+.ce-card .ce-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #f0f0f0}
+.ce-card .ce-tot{display:flex;justify-content:space-between;font-weight:800;color:#134A63;font-size:16px;padding-top:10px}
+.ce-card .ce-meta{color:#5a5a5a;font-size:12.5px}
+.ce-card .ce-note{margin-top:10px;padding:10px;background:#f9f9f6;border-radius:8px;font-style:italic;color:#444}
+.ce-card .ce-st{margin:12px 0 4px;padding:8px 10px;border-radius:8px;font-weight:700;font-size:13px}
+.ce-card .ce-sig{margin-top:6px;border:1px solid #eee;border-radius:8px;padding:6px;background:#fff;max-width:280px}
+.ce-card .ce-sig img{width:100%;height:auto;display:block}
+</style>
+<script id="aspenEst293Script">
+/* ── comunes ── */
+function _e293Find(tok){
+  var i,l;
+  for(var k in (window._custEstMem||{})){l=_custEstMem[k].list||[];for(i=0;i<l.length;i++)if(l[i].token===tok)return l[i];}
+  l=(typeof _epList!=="undefined"&&_epList)||[];for(i=0;i<l.length;i++)if(l[i].token===tok)return l[i];
+  return null;
+}
+function _e293Ms(e){
+  if(!e)return 0;
+  if(e.signedAtMs)return e.signedAtMs;
+  var x=Date.parse(String(e.signedAt||"").replace(",",""));
+  return isNaN(x)?((typeof _epBorn==="function")?_epBorn(e):0):x;
+}
+function _e293Money(n){return "$"+Number(n||0).toFixed(2)}
+function _e293Tech(){return typeof _isTechUser==="function"&&_isTechUser()}
+function _e293Chip(e){
+  var days=(typeof EST_EXPIRE_DAYS!=="undefined")?EST_EXPIRE_DAYS:60;
+  if(e.signed){var d=String(e.signedAt||"").split(",")[0];return '<span class="ep-chip s">\u2713 Signed'+(d?(' \u00b7 '+esc(d)):'')+'</span>'}
+  if(typeof _estIsExpired==="function"&&_estIsExpired(e))return '<span class="ep-chip x">Expired</span>';
+  var born=(typeof _epBorn==="function")?_epBorn(e):0;
+  return '<span class="ep-chip w">Waiting'+(born?(' \u00b7 '+_epAgo(born)):'')+'</span>';
+}
+function epSignedPdf(tok){
+  var e=_e293Find(tok);if(!e||!e.estimatePdfUrl){toast("No PDF on this estimate","warn");return}
+  previewAttachment(e.estimatePdfUrl,"pdf","Estimate - "+(e.customer||"")+".pdf");
+}
+function epSignedOpen(tok){
+  var e=_e293Find(tok);if(!e)return;
+  var at=e.attachedTo||{};
+  var id=at.returnVisit||at.appointment||at.coldTicket||e.fromTicketId||("est_"+tok);
+  if(typeof openTktDetail==="function")openTktDetail(id);
+}
+
+/* ── «Signed» en la tarjeta de estimados ── */
+function _epSignedRows(){
+  var list=((typeof _epList!=="undefined"&&_epList)||[]).filter(function(e){return e.signed&&(Date.now()-_e293Ms(e))<60*86400000});
+  if(!list.length)return "";
+  list.sort(function(a,b){return _e293Ms(b)-_e293Ms(a)});
+  var tech=_e293Tech();
+  var rows=list.slice(0,8).map(function(e){
+    var ms=_e293Ms(e);
+    return '<div class="ep-row">'
+      +'<div class="ep-nm">'+esc(e.customer||"\u2014")+'</div>'
+      +(tech?'':'<div class="ep-amt">'+_e293Money(e.total)+'</div>')
+      +'<span class="ep-chip s">\u2713 Signed'+(ms?(' \u00b7 '+_epAgo(ms)):'')+'</span>'
+      +(e.estimatePdfUrl?'<button type="button" class="ep-btn pri" onclick="epSignedPdf(\''+e.token+'\')">PDF</button>':'')
+      +'<button type="button" class="ep-btn" onclick="epSignedOpen(\''+e.token+'\')">Open ticket</button>'
+      +'<div class="ep-mt">'+esc((e.techs&&e.techs.length)?e.techs.join(", "):"no technician")+(e.sentBy?(' \u00b7 sent by '+esc(e.sentBy)):'')+'</div>'
+      +'</div>';
+  }).join("");
+  return '<div class="ep-wrap ep-signed"><div class="ep-h">Signed \u00b7 last 60 days<span class="ep-n">'+list.length+'</span></div>'+rows
+    +(list.length>8?'<div class="ep-mt" style="padding-top:9px">'+(list.length-8)+' more in each customer\u2019s file \u2192 Estimates</div>':'')
+    +'</div>';
+}
+
+/* ── Ficha del cliente → pestaña «Estimates» ── */
+var _custEstMem={}, _custEstCold={at:0,list:null};
+function _e293Key(name){
+  var n=String(name||"").trim();if(!n)return "";
+  return ((typeof _custGroupKey==="function")?_custGroupKey(n):"")||n.toLowerCase();
+}
+function _e293CustIds(key){
+  var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+  return all.filter(function(t){return t&&t.customer&&_e293Key(t.customer)===key}).map(function(t){return String(t.id)});
+}
+async function _custEstLoad(key,force){
+  var m=_custEstMem[key];
+  if(!force&&m&&m.list&&Date.now()-m.at<180000)return m.list;
+  var out={},ids=_e293CustIds(key),i,snap;
+  for(i=0;i<ids.length;i+=30){
+    snap=await db.collection("estimates").where("fromTicketId","in",ids.slice(i,i+30)).get();
+    snap.forEach(function(d){out[d.id]=Object.assign({token:d.id},d.data())});
+  }
+  if(force||!_custEstCold.list||Date.now()-_custEstCold.at>180000){
+    snap=await db.collection("estimates").where("fromTicketId","==",null).limit(300).get();
+    var l=[];snap.forEach(function(d){l.push(Object.assign({token:d.id},d.data()))});
+    _custEstCold={at:Date.now(),list:l};
+  }
+  _custEstCold.list.forEach(function(e){if(_e293Key(e.customer)===key)out[e.token]=e});
+  var list=Object.keys(out).map(function(k){return out[k]}).sort(function(a,b){return _epBorn(b)-_epBorn(a)});
+  _custEstMem[key]={at:Date.now(),list:list};
+  return list;
+}
+function _custEstTabBtn(c){
+  var m=_custEstMem[typeof selectedCustKey!=="undefined"?selectedCustKey:""];
+  var n=(m&&m.list)?m.list.length:0;
+  return '<button class="qb-cust-tab'+(qbCustTab==="estimates"?" on":"")+'" onclick="qbCustSetTab(\'estimates\')">Estimates'+(n?'<span class="qb-cust-tab-badge">'+n+'</span>':'')+'</button>';
+}
+function _custEstTabHTML(c){
+  var key=(typeof selectedCustKey!=="undefined"&&selectedCustKey)||_e293Key(c&&c.name);
+  setTimeout(function(){_custEstFill(key)},0);
+  var m=_custEstMem[key];
+  return '<div id="custEstBox" data-k="'+esc(key)+'">'+((m&&m.list)?_custEstListHTML(m.list):'<div class="ce-empty">Loading estimates\u2026</div>')+'</div>';
+}
+async function _custEstFill(key,force){
+  var box=document.getElementById("custEstBox");if(!box||box.getAttribute("data-k")!==key)return;
+  if(typeof db==="undefined"||!db){box.innerHTML='<div class="ce-empty">Not connected.</div>';return}
+  var had=_custEstMem[key]&&_custEstMem[key].list;
+  try{
+    var list=await _custEstLoad(key,force);
+    box=document.getElementById("custEstBox");if(!box||box.getAttribute("data-k")!==key)return;
+    var h=_custEstListHTML(list);if(box.__h!==h){box.__h=h;box.innerHTML=h}
+    if(!had&&list.length){   // el número en la pestaña, sin volver a pintar toda la ficha
+      var tb=Array.prototype.find.call(document.querySelectorAll(".qb-cust-tab"),function(b){return /qbCustSetTab\('estimates'\)/.test(b.getAttribute("onclick")||"")});
+      if(tb&&!tb.querySelector(".qb-cust-tab-badge"))tb.insertAdjacentHTML("beforeend",'<span class="qb-cust-tab-badge">'+list.length+'</span>');
+    }
+  }catch(e){
+    console.warn("[ficha estimados]",e);
+    box=document.getElementById("custEstBox");
+    if(box)box.innerHTML='<div class="ce-empty">Couldn\u2019t load the estimates. <button type="button" class="ep-btn" onclick="_custEstFill(\''+String(key).replace(/'/g,"\\'")+'\',true)">Try again</button></div>';
+  }
+}
+function _custEstListHTML(list){
+  if(!list.length)return '<div class="ce-empty">\uD83E\uDDFE No estimates sent to this customer yet.<br><span style="font-size:var(--fs-sm)">Every estimate texted from the app will keep a copy here \u2014 signed or not.</span></div>';
+  var sig=list.filter(function(e){return e.signed}).length;
+  var rows=list.map(function(e){
+    var born=_epBorn(e),dt=e.date||(born?new Date(born).toLocaleDateString():"");
+    var open=!e.signed&&!(typeof _estIsExpired==="function"&&_estIsExpired(e));
+    var nItems=(e.parts||[]).length;
+    return '<div class="ep-row">'
+      +'<div class="ep-nm">'+esc(dt||"\u2014")+'</div>'
+      +'<div class="ep-amt">'+_e293Money(e.total)+'</div>'
+      +_e293Chip(e)
+      +'<button type="button" class="ep-btn" onclick="custEstView(\''+e.token+'\')">View</button>'
+      +(e.signed&&e.estimatePdfUrl?'<button type="button" class="ep-btn pri" onclick="epSignedPdf(\''+e.token+'\')">PDF</button>':'')
+      +(open&&e.phone?'<button type="button" class="ep-btn pri" onclick="custEstResend(\''+e.token+'\')">Text again</button>':'')
+      +(open?'<button type="button" class="ep-btn" onclick="epCopy(\''+e.token+'\')">Copy link</button>':'')
+      +'<div class="ep-mt">'+nItems+' item'+(nItems===1?'':'s')+' \u00b7 '+esc((e.techs&&e.techs.length)?e.techs.join(", "):"no technician")+(e.sentBy?(' \u00b7 sent by '+esc(e.sentBy)):'')+'</div>'
+      +'</div>';
+  }).join("");
+  return '<div class="ep-wrap"><div class="ep-h">Estimates<span class="ep-n">'+list.length+'</span></div>'
+    +'<div class="ce-intro">Every estimate texted to this customer'+(sig?(' \u00b7 '+sig+' signed'):'')+'. Tap View for the full copy.</div>'+rows+'</div>';
+}
+function custEstResend(tok){
+  var e=_e293Find(tok);if(!e)return;
+  if(!e.phone){toast("No phone on this estimate","warn");return}
+  var msg="Aspen Spas Service Estimate for "+(e.customer||"")
+    +"\nEstimated total: $"+Number(e.total||0).toFixed(2)
+    +"\n\nThis is an estimate, not a final bill \u2014 the total may change if we find more work is needed."
+    +"\n\n"+_epLink(tok);
+  var href=(typeof _smsHref==="function")?_smsHref(e.phone,msg):("sms:"+String(e.phone).replace(/[^\d+]/g,"")+"?body="+encodeURIComponent(msg));
+  try{window.location.href=href}catch(_e){toast("Could not open Messages","err")}
+}
+function custEstView(tok){
+  var e=_e293Find(tok);if(!e)return;
+  var addr=[e.address,e.city,e.zip].filter(Boolean).join(", ");
+  var h='<div style="align-self:stretch;width:100%;overflow:auto"><div class="ce-card">'
+    +'<h4>ASPEN SPAS</h4><div class="ce-sub">Service Estimate</div>'
+    +'<div style="font-weight:800;font-size:16px">'+esc(e.customer||"")+'</div>'
+    +(e.phone?'<div class="ce-meta">'+esc(e.phone)+'</div>':'')
+    +(addr?'<div class="ce-meta">'+esc(addr)+'</div>':'')
+    +'<div class="ce-meta">'+esc([e.date,(e.techs||[]).join(", "),(e.estimatedHours?("Est. "+e.estimatedHours+"hr"):"")].filter(Boolean).join(" \u00b7 "))+'</div>'
+    +(e.warrantyLabel?'<div style="font-weight:700;color:#134A63;font-size:12.5px;margin-top:2px">'+esc(e.warrantyLabel)+'</div>':'')
+    +'<div style="margin-top:12px">';
+  (e.parts||[]).forEach(function(p){h+='<div class="ce-row"><span>'+(p.qty||1)+'x '+esc(p.n||"")+'</span><span>'+_e293Money((p.ch!=null?p.ch:(p.p||0))*(p.qty||1))+'</span></div>'});
+  if(e.labor)h+='<div class="ce-row"><span>'+esc(e.labor.label||"Labor")+'</span><span>'+(e.labor.free?"$0.00":_e293Money(e.labor.amount))+'</span></div>';
+  if(e.tax>0)h+='<div class="ce-row" style="color:#787878;font-size:12.5px"><span>Tax 9% (parts only)</span><span>'+_e293Money(e.tax)+'</span></div>';
+  h+='<div class="ce-tot"><span>ESTIMATED TOTAL</span><span>'+_e293Money(e.total)+'</span></div></div>';
+  if(e.notesForCustomer===true&&e.notes)h+='<div class="ce-note">'+esc(e.notes)+'</div>';
+  if(e.signed){
+    h+='<div class="ce-st" style="background:#eaf6ee;color:#1d6b3a">\u2713 Signed by the customer'+(e.signedAt?(' \u00b7 '+esc(String(e.signedAt))):'')+'</div>';
+    if(e.signatureData&&/^data:image\/(png|jpeg);base64,/.test(e.signatureData))h+='<div class="ce-sig"><img alt="Customer signature" src="'+e.signatureData+'"></div>';
+  }else if(typeof _estIsExpired==="function"&&_estIsExpired(e)){
+    h+='<div class="ce-st" style="background:#f3f3f3;color:#777">Expired \u2014 never signed</div>';
+  }else{
+    var b=_epBorn(e);
+    h+='<div class="ce-st" style="background:#fff6e5;color:#8a5a00">Waiting for the customer to sign'+(b?(' \u00b7 sent '+_epAgo(b)):'')+'</div>';
+  }
+  h+='<div class="ce-meta" style="margin-top:10px">'+(e.sentBy?('Sent by '+esc(e.sentBy)+' \u00b7 '):'')+'Link: '+esc(_epLink(tok))+'</div>';
+  h+='</div></div>';
+  var bg=document.getElementById("attPreviewBg"),body=document.getElementById("attPreviewBody");if(!bg||!body)return;
+  document.getElementById("attPreviewTitle").textContent="Estimate \u2014 "+(e.customer||"");
+  var cnt=document.getElementById("attPreviewCount");if(cnt)cnt.textContent="";
+  ["attNavPrev","attNavNext"].forEach(function(id){var x=document.getElementById(id);if(x)x.style.display="none"});
+  var op=document.getElementById("attPreviewOpen"),dl=document.getElementById("attPreviewDownload");
+  var pdf=e.signed&&e.estimatePdfUrl;
+  if(op){op.href=pdf||"#";op.style.display=pdf?"":"none"}
+  if(dl){dl.href=pdf||"#";dl.style.display=pdf?"":"none"}
+  try{if(typeof _attGal!=="undefined")_attGal.list=[]}catch(_e){}
+  body.innerHTML=h;
+  bg.classList.add("open");
+}
+/* La ventana de vista previa la comparten las fotos y los PDF: si «View» escondió
+   sus botones (estimado sin PDF), vuelven al abrir cualquier otra cosa. */
+(function(){
+  var f=window.previewAttachment;if(typeof f!=="function"||f.__e293)return;
+  window.previewAttachment=function(){
+    try{["attPreviewOpen","attPreviewDownload"].forEach(function(id){var x=document.getElementById(id);if(x)x.style.display=""})}catch(_e){}
+    return f.apply(this,arguments);
+  };
+  window.previewAttachment.__e293=1;
+})();
+
+/* ── El aviso de «estimado firmado» abre su ticket ── */
+(function(){
+  function abrir(id,n){
+    id=String(id||"");if(!id)return;n=n||0;
+    var all=[].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]);
+    var ok=all.some(function(t){return t&&String(t.id)===id});
+    if(ok&&typeof currentUser!=="undefined"&&currentUser&&typeof openTktDetail==="function"){try{openTktDetail(id)}catch(_e){}return}
+    if(n<40)setTimeout(function(){abrir(id,n+1)},500);
+  }
+  window._e293OpenTkt=abrir;
+  try{
+    if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",function(ev){
+      try{if(ev.data&&ev.data.type==="openTkt"&&ev.data.id)abrir(ev.data.id)}catch(_e){}
+    });
+  }catch(_e){}
+  /* Con la app ABIERTA el push no pasa por el service worker: se muestra aquí. */
+  try{
+    if(typeof firebase!=="undefined"&&firebase.messaging&&firebase.messaging.isSupported&&firebase.messaging.isSupported()){
+      firebase.messaging().onMessage(function(payload){
+        var d=(payload&&payload.data)||{};if(!d.tkt)return;   // solo los avisos de estimado
+        try{toast((d.title||"Estimate signed")+" \u2014 "+(d.body||""))}catch(_e){}
+        try{
+          if("Notification" in window&&Notification.permission==="granted"&&navigator.serviceWorker)
+            navigator.serviceWorker.getRegistration().then(function(reg){if(reg)reg.showNotification(d.title||"Estimate signed",{body:d.body||"",tag:"est-"+d.tkt,renotify:true,data:{tkt:d.tkt}})});
+        }catch(_e){}
+        try{if(typeof _epList!=="undefined"&&typeof rndrEstPending==="function")rndrEstPending()}catch(_e){}
+      });
+    }
+  }catch(_e){console.warn("[aviso estimado]",_e&&_e.message)}
+})();
+</script>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      CUSTOMER VIEW — DIRECTION C ("one visit at a time")
@@ -58511,7 +58814,7 @@ window._cdDeliverableDone=async function(id){if(!db||!id)return;var x=(typeof to
 window._cdOpen=async function(id){var x=(typeof todos!=="undefined"?todos:[]).find(function(a){return a.id===id});if(!x)return;var tid=x.linkedTicketId;if(x.deliverableType==="customer_report"&&tid&&typeof openReportModalById==="function"){openReportModalById(tid);return}if(tid&&typeof openTktDetail==="function"){openTktDetail(tid);return}if(tid&&typeof _dailyOfficeOpen==="function")_dailyOfficeOpen(tid)}
 window._cdAddOther=async function(ticketId){var t=ticket(ticketId)||{};var v=typeof promptDialog==="function"?await promptDialog(L("¿Qué falta enviar al cliente?","What still needs to be sent to the customer?"),""):prompt(L("¿Qué falta enviar al cliente?","What still needs to be sent to the customer?"),"");if(v===null)return;v=String(v||"").trim();if(!v)return;await _cdEnsure(ticketId,"other",{customer:t.customer||"",text:v,context:L("Agregado manualmente desde Service Review","Added manually from Service Review")})}
 function detectEstimateText(t){var parts=[t&&t.notes,t&&t.reportedIssue,t&&t.followUpNote,t&&t.reschedNote];var ed=document.getElementById("repNotesEdit");if(ed)parts.push(ed.value);try{if(t&&typeof buildCustomerReport==="function"){var r=buildCustomerReport(t,ed?ed.value:"");if(r){parts.push(r.textPlain,r.textShort)}}}catch(_e){}var s=parts.filter(Boolean).join(" ").toLowerCase();return /\b(estimate|estimates|quote|quotation|proposal|pricing)\b/.test(s)&&/\b(prepare|send|provide|requested|request|need|will|would like|price|repair|haul|replace)\b/.test(s)}
-async function detectForCurrent(){try{var t=(typeof _repCurrentTicket!=="undefined"&&_repCurrentTicket)||null;if(!t||!t.id)return;if(detectEstimateText(t)&&!t.approvedEstimate)await _cdEnsure(t.id,"estimate",{customer:t.customer||"",source:"service_review_auto",text:L("Preparar estimado y enviarlo a ","Prepare estimate and send it to ")+(t.customer||"Customer"),context:L("Detectado automáticamente en el Service Review","Automatically detected from Service Review")})}catch(e){console.warn("[deliverable detect]",e)}}
+async function detectForCurrent(){try{var t=(typeof _repCurrentTicket!=="undefined"&&_repCurrentTicket)||null;if(!t||!t.id)return;if(detectEstimateText(t)&&!_estAprobado(t,true))await _cdEnsure(t.id,"estimate",{customer:t.customer||"",source:"service_review_auto",text:L("Preparar estimado y enviarlo a ","Prepare estimate and send it to ")+(t.customer||"Customer"),context:L("Detectado automáticamente en el Service Review","Automatically detected from Service Review")})}catch(e){console.warn("[deliverable detect]",e)}}
 function reportStrip(){var body=document.getElementById("repModalBody");if(!body)return;var email=document.getElementById("repEmailInput");if(!email){var old=document.getElementById("cdReportStrip");if(old)old.remove();return}var t=(typeof _repCurrentTicket!=="undefined"&&_repCurrentTicket)||null;if(!t||!t.id)return;var el=document.getElementById("cdReportStrip");if(!el){el=document.createElement("div");el.id="cdReportStrip";var tabs=body.querySelector(".rep-tabs");if(tabs)tabs.insertAdjacentElement("afterend",el);else body.prepend(el)}var list=opens().filter(function(x){return String(x.linkedTicketId||"")===String(t.id)});/* v2.78.1 — rewrite the strip ONLY when its content changes. It lives inside #repModalBody,
    which the observer below watches: rewriting it every time re-fired the observer forever and
    froze the page as soon as the customer report was opened. */
@@ -58571,12 +58874,12 @@ body.dark-mode .cd-office-item{background:var(--c-ash-2);border-color:var(--ln)}
   function age(x){var ms=Number(x&&x.createdAtMs)||0;if(!ms&&x&&x.createdAt&&typeof x.createdAt.toMillis==='function')try{ms=x.createdAt.toMillis()}catch(_e){};return ms?Math.max(0,Math.floor((Date.now()-ms)/86400000)):0}
   function mentionsEstimate(t){if(!t)return false;var p=[t.notes,t.reportedIssue,t.followUpNote,t.reschedNote,t.customerNotes,t.internalNotes,t.workDone,t.servicePerformed];var s=p.filter(Boolean).join(' ').toLowerCase();return /\b(estimate|estimates|quote|quotation|proposal|pricing)\b/.test(s)&&/\b(prepare|send|provide|requested|request|need|will|would like|price|repair|haul|replace)\b/.test(s)}
   function hasEstimate(list){return list.some(function(x){return x.deliverableType==='estimate'})}
-  async function ensureAuto(id){var t=tkt(id),list=todosOpen(id);if(!t||t.approvedEstimate||hasEstimate(list)||!mentionsEstimate(t)||autoRequested[String(id)]||typeof _cdEnsure!=='function')return;autoRequested[String(id)]=1;try{var x=await _cdEnsure(id,'estimate',{customer:t.customer||'',source:'office_actions_auto',text:L('Preparar estimado y enviarlo a ','Prepare estimate and send it to ')+(t.customer||'Customer'),context:L('Detectado automáticamente al abrir Office Actions','Automatically detected when Office Actions opened')});if(x)fresh[String(id)]=x}catch(_e){} }
+  async function ensureAuto(id){var t=tkt(id),list=todosOpen(id);if(!t||_estAprobado(t,true)||hasEstimate(list)||!mentionsEstimate(t)||autoRequested[String(id)]||typeof _cdEnsure!=='function')return;autoRequested[String(id)]=1;try{var x=await _cdEnsure(id,'estimate',{customer:t.customer||'',source:'office_actions_auto',text:L('Preparar estimado y enviarlo a ','Prepare estimate and send it to ')+(t.customer||'Customer'),context:L('Detectado automáticamente al abrir Office Actions','Automatically detected when Office Actions opened')});if(x)fresh[String(id)]=x}catch(_e){} }
   window._cdOfficeTrack=async function(id,type){var t=tkt(id)||{};if(typeof _cdEnsure!=='function')return;var x=await _cdEnsure(id,type,{customer:t.customer||'',source:'office_actions_manual'});if(x)fresh[String(id)]=x;setTimeout(function(){inject(id)},40)};
   window._cdOfficeOther=async function(id){if(typeof _cdAddOther==='function'){await _cdAddOther(id);setTimeout(function(){inject(id)},120)}};
   window._cdOfficeOpen=function(delivId){if(typeof _cdOpen==='function')_cdOpen(delivId)};
   window._cdOfficeSent=async function(delivId,ticketId){if(typeof _cdDeliverableDone==='function')await _cdDeliverableDone(delivId);delete fresh[String(ticketId)];setTimeout(function(){inject(ticketId)},180)};
-  function html(id){var t=tkt(id)||{},list=todosOpen(id),det=mentionsEstimate(t)&&!hasEstimate(list)&&!t.approvedEstimate;var h='<div class="daily-office-sec cd-office-sec"><div class="cd-office-head"><h4>📤 '+L('Pendiente para enviar','Customer Deliverables')+'</h4><span class="cd-office-count">'+list.length+'</span></div>';
+  function html(id){var t=tkt(id)||{},list=todosOpen(id),det=mentionsEstimate(t)&&!hasEstimate(list)&&!_estAprobado(t,true);var h='<div class="daily-office-sec cd-office-sec"><div class="cd-office-head"><h4>📤 '+L('Pendiente para enviar','Customer Deliverables')+'</h4><span class="cd-office-count">'+list.length+'</span></div>';
     if(det)h+='<div class="cd-office-detected">⚠ '+L('Las notas indican que se necesita un estimado. Este pendiente seguirá abierto hasta que el estimado se envíe al cliente.','Service notes indicate an estimate is needed. This stays as an open work item until the estimate is sent to the customer.')+'</div>';
     if(!list.length)h+='<div class="cd-office-empty">✓ '+L('No hay nada pendiente registrado para enviar a este cliente.','Nothing pending is currently tracked for this customer.')+'</div>';
     list.forEach(function(x){var d=age(x),late=d>=2;h+='<div class="cd-office-item'+(late?' overdue':'')+'"><div class="cd-office-item-top"><div style="flex:1;min-width:0"><b>'+E(x.text||L('Pendiente para cliente','Customer deliverable'))+'</b><small>'+(d===0?L('Creado hoy','Created today'):d===1?L('Esperando 1 día','Waiting 1 day'):L('Esperando '+d+' días','Waiting '+d+' days'))+(x.createdBy?' · '+E(x.createdBy):'')+'</small></div><span class="cd-office-type">'+E(typeLabel(x))+'</span></div><div class="cd-office-actions"><button class="primary" onclick="_cdOfficeOpen(\''+E(String(x.id||'').replace(/'/g,"\\'"))+'\')">'+(x.deliverableType==='estimate'?L('Ver ticket','Open ticket'):L('Abrir','Open'))+'</button><button class="sent" onclick="_cdOfficeSent(\''+E(String(x.id||'').replace(/'/g,"\\'"))+'\',\''+E(String(id).replace(/'/g,"\\'"))+'\')">✓ '+L('Enviado','Sent')+'</button></div></div>'});
