@@ -2917,7 +2917,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <!-- ASPEN TECH TICKETS v2.80.0 · integrated build (2.73.0 base + 2.74–2.79 production changes) · 2026-10-06 -->
 </head>
 <body>
-<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos · v2.92.5: con el modo exterior (la vista de Alberto) */try{document.body.classList.add("asp-limpia");document.body.classList.add("outdoor")}catch(e){}</script>
+<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos · v2.92.5: con el modo exterior (la vista de Alberto) */try{document.body.classList.add("asp-limpia");document.body.classList.add("outdoor")}catch(e){}/* v2.93.1 — casco de app en pantallas táctiles: la página no hace scroll, lo hace body (ver aspenCasco2931) */try{(function(){var H=document.documentElement,off=false;try{off=localStorage.getItem("aspCasco")==="0"}catch(_e){}var t=false;try{t=window.matchMedia("(pointer:coarse)").matches}catch(_e){}if(t&&!off)H.classList.add("asp-casco");window._aspScrollEl=function(){return H.classList.contains("asp-casco")?document.body:(document.scrollingElement||document.documentElement)};window._aspScrollTo=function(o){var el=window._aspScrollEl();try{if(el===document.body)el.scrollTo(o);else window.scrollTo(o)}catch(_e){try{el.scrollTop=(o&&o.top)||0}catch(_x){}}};})()}catch(e){}</script>
 <!-- Offline status indicator (shown only when device is offline) -->
 <div id="onlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-dialog);background:var(--c-warning-strong);color:#fff;padding:6px 12px;font-size:var(--fs-sm);font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:8px">
   <span class="lucide-mount" data-lucide="wifi-off" data-size="15" data-color="#fff" style="display:inline-flex;align-items:center"></span><span>Offline Mode — Changes will sync when reconnected</span>
@@ -7211,7 +7211,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.93.0";
+var APP_VERSION="2.93.1";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -16005,7 +16005,7 @@ function resetForm(){
   // Clear any saved draft
   if(typeof clearDraft==="function")clearDraft();
 
-  window.scrollTo({top:0,behavior:"smooth"});
+  _aspScrollTo({top:0,behavior:"smooth"});   /* v2.93.1 — el contenedor que de verdad hace scroll */
 }
 function toast(m,t){if(t==="err"&&/^\s*error\s*$/i.test(String(m))){try{var _st=String(new Error().stack||"").split("\n").filter(function(x){return /\S/.test(x)&&!/^Error$/.test(x.trim())});var _f=(_st[1]||_st[0]||"").trim().replace(/^at\s+/,"").split(/[\s@(]/)[0];console.error("[toast Error origin v2.81]",_st.slice(0,6).join(" | "));if(_f)m="Error · "+_f}catch(_x){}}const e=document.getElementById("toast");e.textContent=(typeof _i18nStr==="function")?_i18nStr(m):m;e.className="toast show"+(t==="warn"?" warn":t==="err"?" err":"");setTimeout(()=>e.classList.remove("show"),2500)}
 // ─── Top activity bar — premium loading sweep (shown during the initial data load) ───
@@ -17290,7 +17290,7 @@ function editTkt(i,isDone){
   // Switch to ticket mode on new ticket tab
   setMode("ticket");
   showTab(0);
-  window.scrollTo({top:0,behavior:"smooth"});
+  _aspScrollTo({top:0,behavior:"smooth"});   /* v2.93.1 — el contenedor que de verdad hace scroll */
   toast("Editing: "+t.customer);
 }
 
@@ -30691,7 +30691,7 @@ async function openTechTool(key){
     if(_lb)_lb.style.display=_ttCurKey?"":"none";
     _ttUpdateLangBtn();
     if(_ttCurKey)_ttSyncToolLang();
-    try{window.scrollTo({top:0,behavior:"smooth"})}catch(_e){}
+    try{_aspScrollTo({top:0,behavior:"smooth"})}catch(_e){}
   }catch(e){console.error("[techTools]",e);toast("Could not open tool: "+((e&&e.message)||e),"err")}
 }
 function closeTechTool(){
@@ -36711,6 +36711,119 @@ function custEstView(tok){
       });
     }
   }catch(_e){console.warn("[aviso estimado]",_e&&_e.message)}
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     v2.93.1 — CASCO DE APP EN PANTALLAS TÁCTILES (iPhone, iPhone Duo, iPad)
+     9 nov 2026. En el iPhone Duo de Alberto (app del inicio) la barra de abajo
+     quedaba a media pantalla y el encabezado se perdía al bajar: la app hacía
+     scroll con la VENTANA y anclaba barra (fixed) y encabezado (sticky) al
+     «layout viewport» de iOS, que en las apps del inicio se desincroniza de lo
+     que se ve cuando la vista cambia de tamaño o de escala — el Duo lo hace en
+     cada pliegue y giro (y cambia de densidad 3 ↔ 2,8).
+     Ahora, en pantallas táctiles: la página no hace scroll; lo hace <body>, con
+     el alto EXACTO de lo visible (visualViewport). La barra va pegada (sticky)
+     al fondo de ese body, el encabezado arriba. Nada depende de ese rectángulo.
+     El zoom 1.08 del modo exterior pasa del body a sus hijos (mismo aspecto)
+     para que el alto del body sea el real.
+     Escritorio con mouse: no cambia nada. Apagar (solo pruebas):
+     localStorage.aspCasco="0" y recargar.
+     ══════════════════════════════════════════════════════════════════════ -->
+<style id="aspenCasco2931">
+html.asp-casco{height:100%;overflow:hidden;overscroll-behavior:none}
+html.asp-casco body{height:var(--asp-casco-h,100%);min-height:0!important;max-width:none;overflow-x:hidden;overflow-y:auto;
+  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+/* body es una columna: la barra va al fondo aunque la pantalla tenga poco contenido (margin-top:auto),
+   y nada se encoge para caber (flex-shrink:0): lo que no cabe, se baja con el dedo. */
+html.asp-casco body{display:flex;flex-direction:column}
+html.asp-casco body > *{flex-shrink:0}
+html.asp-casco body > .wrap,html.asp-casco body > .hdr{width:100%}   /* en columna, margin:0 auto encogería la página */
+html.asp-casco body.outdoor{zoom:1!important}
+html.asp-casco body.outdoor > *{zoom:1.08}
+@media(max-width:900px){
+  html.asp-casco body.asp-shell{padding-bottom:0;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  html.asp-casco body.asp-shell #aspShell{position:sticky!important;bottom:0!important;top:auto!important;left:auto!important;right:auto!important;margin-top:auto!important}
+  html.asp-casco.asp-teclado body.asp-shell #aspShell{display:none!important}
+}
+/* Hoy · «Por técnico» en pantallas táctiles anchas (Duo abierto, iPad): columnas que se acomodan,
+   sin media pantalla vacía debajo de un técnico con una sola parada. */
+@media(min-width:560px){
+  html.asp-casco #pg16 .tdy-cols{display:block;columns:258px;column-gap:12px}
+  html.asp-casco #pg16 .tdy-col{display:block;break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 12px}
+}
+</style>
+<script id="aspenCasco2931Script">
+(function(){
+  var H=document.documentElement; if(!H.classList.contains("asp-casco"))return;
+  var vv=window.visualViewport, ultimo=-1;
+  function escribiendo(){
+    var a=document.activeElement; if(!a||a===document.body)return false;
+    var tg=a.tagName;
+    if(tg==="TEXTAREA"||tg==="SELECT"||a.isContentEditable)return true;
+    return tg==="INPUT"&&!/^(button|submit|reset|checkbox|radio|range|color|file|image|hidden)$/i.test(a.type||"");
+  }
+  function alto(){ return (vv&&vv.height>100)?vv.height:window.innerHeight; }
+  function ajusta(){
+    var ih=window.innerHeight, vh=alto();
+    var kb=Math.max(0,ih-vh-(vv?vv.offsetTop:0));
+    var tecl=escribiendo()&&kb>120;                       /* teclado abierto: la barra se esconde */
+    if(H.classList.contains("asp-teclado")!==tecl)H.classList.toggle("asp-teclado",tecl);
+    var px=Math.round(vh*100)/100;
+    if(px!==ultimo){ ultimo=px; H.style.setProperty("--asp-casco-h",px+"px"); }
+    /* iOS puede dejar la ventana corrida (al revelar un campo): de vuelta a 0 cuando ya no hace falta */
+    if(!tecl&&vv&&vv.offsetTop===0&&(window.scrollY||0)!==0){ try{window.scrollTo(0,0)}catch(_e){} }
+    vigia();
+  }
+  var pend=0;
+  function pronto(){ if(pend)return; pend=(window.requestAnimationFrame||setTimeout)(function(){ pend=0; ajusta(); }); }
+  if(vv){ vv.addEventListener("resize",pronto); vv.addEventListener("scroll",pronto); }
+  ["resize","orientationchange","pageshow","focusin","focusout"].forEach(function(n){
+    window.addEventListener(n,function(){ pronto(); setTimeout(ajusta,350); },true);
+  });
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden){ pronto(); setTimeout(ajusta,400); } });
+  ajusta(); setTimeout(ajusta,600); setTimeout(ajusta,2500);
+
+  /* VIGÍA — si a pesar de todo la barra no queda al borde de lo visible, se anota en client_errors
+     (Admin → field errors) con las medidas del teléfono. Se confirma 1,5 s después (no en plena
+     animación de plegar) y se aceptan las dos formas en que un motor puede medir con zoom. */
+  var avisos=0, vistos={};
+  function vigia(){
+    if(avisos>=2||!(window.matchMedia&&matchMedia("(max-width:900px)").matches))return;
+    if(H.classList.contains("asp-teclado"))return;
+    var bar=document.getElementById("aspShell"); if(!bar||!bar.offsetParent)return;
+    var clave=Math.round(window.innerWidth)+"x"+Math.round(alto()); if(vistos[clave])return;
+    if(lejos(bar)<40)return;
+    vistos[clave]=1;
+    setTimeout(function(){
+      var d=lejos(bar); if(d<40)return;
+      avisos++;
+      try{
+        if(typeof db==="undefined"||!db)return;
+        var r=bar.getBoundingClientRect(), sa=false;
+        try{ sa=!!(navigator.standalone||matchMedia("(display-mode: standalone)").matches); }catch(_e){}
+        var m={ ventana:[innerWidth,innerHeight], vv:vv?[Math.round(vv.width),Math.round(vv.height),Math.round(vv.offsetTop),vv.scale]:null,
+          pantalla:[screen.width,screen.height], dpr:window.devicePixelRatio, barra:[Math.round(r.top),Math.round(r.bottom)],
+          body:[document.body.clientHeight,document.body.scrollTop,document.body.scrollHeight], doc:[document.documentElement.clientHeight,window.scrollY],
+          app:sa, orient:(screen.orientation&&screen.orientation.type)||"" };
+        db.collection("client_errors").add({
+          kind:"pantalla",
+          message:("Barra fuera de lugar "+Math.round(d)+" px · barra "+m.barra.join("-")+" · visible "+(m.vv?m.vv[1]+"+"+m.vv[2]:innerHeight)
+            +" · ventana "+innerWidth+"×"+innerHeight+" · pantalla "+screen.width+"×"+screen.height+" · dpr "+window.devicePixelRatio+(sa?" · app":" · safari")).slice(0,300),
+          source:"", line:0, stack:JSON.stringify(m).slice(0,800),
+          user:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"(not logged in)",
+          role:(typeof currentUser!=="undefined"&&currentUser&&currentUser.role)||"",
+          ua:String(navigator.userAgent||"").slice(0,160), online:!!navigator.onLine,
+          at:new Date().toISOString(), atMs:Date.now()
+        }).catch(function(){});
+      }catch(_e){}
+    },1500);
+  }
+  function lejos(bar){
+    var r=bar.getBoundingClientRect(), fin=(vv?vv.offsetTop:0)+alto();
+    var z=1; try{ z=parseFloat(getComputedStyle(bar).zoom)||1; }catch(_e){}
+    return Math.min(Math.abs(fin-r.bottom),Math.abs(fin-r.bottom*z));
+  }
 })();
 </script>
 
@@ -50616,7 +50729,7 @@ function pinta(){
      si eso pasaba entre apretar y soltar el mouse, el boton apretado ya no existia y el clic se perdia
      («la barra se bloquea»). Ahora: si las pestanas, sus nombres, la fijacion y los iconos son los mismos,
      solo se cambia quien esta activo y los contadores, en su sitio. */
-  var firma=(_aspFijada()?"P":"p")+"|"+((typeof lucide!=="undefined"&&lucide&&lucide.icons)?"L":"e")+"|"
+  var firma=(_aspFijada()?"P":"p")+((window.matchMedia&&matchMedia("(max-width:900px)").matches)?"m":"d")+"|"   /* v2.93.1 — al plegar/desplegar se rehace con su orden */+((typeof lucide!=="undefined"&&lucide&&lucide.icons)?"L":"e")+"|"
     +lista.map(function(t){ return t.id+":"+limpio(t)+":"+(PRI.indexOf(t.id)>=0?1:0)+":"+grupoDe(t) }).join(",");
   if(host.__firma===firma&&host.querySelector(".as-i[data-tab]")){
     var falta=false;
@@ -50713,6 +50826,10 @@ function monta(){
     mo.observe(bar,{subtree:true,childList:true,characterData:true,
       attributes:true,attributeFilter:["class","style"]});
     window.__aspShellMO=mo; }
+    /* v2.93.1 — el módulo «barraOrden» reordena los botones para escritorio; al volver a teléfono la barra
+       se quedaba con ese orden (Daily y Report cambiados) porque nada la rehacía. */
+    if(!window.__aspShellMQ&&window.matchMedia){ window.__aspShellMQ=1; var mqP=matchMedia("(max-width:900px)"), rp=function(){ try{ pinta() }catch(_e){} };
+      if(mqP.addEventListener)mqP.addEventListener("change",rp); else if(mqP.addListener)mqP.addListener(rp); }
   }catch(_e){}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",monta);
@@ -65105,6 +65222,10 @@ mod("themeColor",function(){
 /* 207 · dejar hacer zoom. El bloqueo evitaba que el iPhone acercara al tocar un
    campo de letra chica; los campos van a 16 px en el telefono (CSS). */
 init("zoom",function(){
+  /* v2.93.1 — DE VUELTA EL CANDADO (regla de julio «app nativa»). Quitarlo dejaba que iOS cambiara la
+     escala de la página (al pellizcar, al tocar un campo, al plegar el Duo) y lo anclado a la pantalla
+     perdía su sitio. */
+  return;
   var m=document.querySelector('meta[name="viewport"]'); if(!m)return;
   var c=m.getAttribute("content")||"";
   var n=c.replace(/,\s*maximum-scale=[^,]*/i,"").replace(/,\s*user-scalable=no/i,"");
@@ -66623,7 +66744,7 @@ mod("calendario",function(){
   /* 146 · la Ruta abre con la hora actual a la vista (una vez por dia) */
   var now=pg.querySelector(".ctl-now");
   if(now&&vis(now)){ var key=new Date().toDateString(); if(pg.__aNow!==key){ pg.__aNow=key;
-    setTimeout(function(){ try{ var r=now.getBoundingClientRect(); if(r.top>window.innerHeight-120||r.top<80)if(!(window.aspHdAhora&&window.aspHdAhora(now)))window.scrollBy({top:r.top-260,behavior:"auto"}); }catch(_e){} },60); } }
+    setTimeout(function(){ try{ var r=now.getBoundingClientRect(); if(r.top>window.innerHeight-120||r.top<80)if(!(window.aspHdAhora&&window.aspHdAhora(now)))(window._aspScrollEl?_aspScrollEl():document.scrollingElement).scrollBy({top:r.top-260,behavior:"auto"}); }catch(_e){} },60); } }
   /* 145 · en el telefono, el mes abre con el dia de hoy elegido (su lista sale abajo) */
   if(isPhone()&&pg.querySelector(".cal-grid")&&typeof calSelectDay==="function"&&typeof calSelectedDate!=="undefined"&&!calSelectedDate&&!pg.__aDia){
     pg.__aDia=1; var d=new Date(), iso=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
@@ -67706,8 +67827,8 @@ html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):no
 
   /* 19 · la línea de la cabecera aparece solo cuando el contenido pasa por debajo */
   var bajo=false;
-  function mira(){ var b=(window.scrollY||document.documentElement.scrollTop||0)>4; if(b!==bajo){ bajo=b; H.classList.toggle("asp-hd-bajo",b); } }
-  window.addEventListener("scroll",mira,{passive:true}); mira();
+  function mira(){ var el=window._aspScrollEl?_aspScrollEl():null; var b=((el&&el.scrollTop)||window.scrollY||document.documentElement.scrollTop||0)>4; if(b!==bajo){ bajo=b; H.classList.toggle("asp-hd-bajo",b); } }
+  window.addEventListener("scroll",mira,{passive:true}); try{document.body.addEventListener("scroll",mira,{passive:true})}catch(_e){} mira();   /* v2.93.1 */
 
   /* 16 · el salto a «ahora» de la Ruta. Antes bajaba lo justo para ver la línea roja y dejaba la fila de
      técnicos o las cifras cortadas bajo la cabecera. Ahora escoge, entre las posiciones donde nada queda
@@ -67716,16 +67837,16 @@ html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):no
   window.aspHdAhora=function(now){
     if(!activo()||!now)return false;
     var hdr=document.querySelector(".hdr"), hh=hdr?Math.round(hdr.getBoundingClientRect().height):0;
-    var y=window.scrollY||0, r=now.getBoundingClientRect();
+    var SC=window._aspScrollEl?_aspScrollEl():(document.scrollingElement||document.documentElement), y=(SC===document.body?SC.scrollTop:window.scrollY)||0, r=now.getBoundingClientRect();   /* v2.93.1 */
     if(r.top>=hh+40&&r.top<=window.innerHeight-120)return true;   /* ya se ve: no se mueve nada */
-    var max=Math.max(0,(document.scrollingElement||document.documentElement).scrollHeight-window.innerHeight);
+    var max=Math.max(0,SC===document.body?SC.scrollHeight-SC.clientHeight:(document.scrollingElement||document.documentElement).scrollHeight-window.innerHeight);
     var quiere=Math.min(max,Math.max(0,y+r.top-260));
     var filas=[].slice.call(document.querySelectorAll(FILAS)).map(function(e){ var b=e.getBoundingClientRect(); return b.height>0?[b.top+y,b.bottom+y]:null; }).filter(Boolean);
     var entero=function(d){ return filas.every(function(f){ return f[1]-d<=hh+0.5||f[0]-d>=hh-0.5; }); };
     var pos=[0,max,quiere]; filas.forEach(function(f){ pos.push(Math.ceil(f[1]-hh),Math.floor(f[0]-hh)); });
     var mejor=0, dist=Infinity;
     pos.forEach(function(d){ if(d<0||d>max||!entero(d))return; var k=Math.abs(d-quiere); if(k<dist){ dist=k; mejor=d; } });
-    window.scrollTo({top:mejor,behavior:"auto"});
+    if(SC===document.body)SC.scrollTo({top:mejor,behavior:"auto"}); else window.scrollTo({top:mejor,behavior:"auto"});
     return true;
   };
 })();
