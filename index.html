@@ -7211,7 +7211,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.93.1";
+var APP_VERSION="2.93.2";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -68019,6 +68019,128 @@ window.aspSumarReportes=function(X,nuevo){
 };
 })();
 
+</script>
+<style id="aspenRuta2932">
+/* ═══ v2.93.2 — Calendar · Route en pantallas angostas (Duo cerrado 382, iPhone 390) ═══════════════
+   La Route pone a todos los técnicos lado a lado (carriles de 200+ px): en un teléfono el tablero mide
+   ~4 pantallas y al deslizar se quedaba a medias, con un técnico partido a cada lado y las horas fuera.
+   Debajo de 560: un técnico por pantalla (todo el ancho menos las horas), el deslizar se detiene técnico
+   por técnico, las horas se quedan fijas, fila de nombres para saltar y los que no tienen paradas en una
+   línea. 560 o más: sin cambios. Borrar este bloque y aspenRuta2932Script = revertir. */
+#calGrid .asp-r1-chips,#calGrid .asp-r1-libres{display:none}
+@media(max-width:559px){
+  html:not(#_r1) #calGrid .ctl-scroll{container-type:inline-size;scroll-snap-type:x mandatory;scroll-padding-left:39px;overscroll-behavior-x:contain}
+  html:not(#_r1) #calGrid .ctl-scroll .ctl-head{padding-left:0}
+  html:not(#_r1) #calGrid .ctl-scroll .ctl-head::before{content:"";flex:0 0 34px;align-self:stretch;position:sticky;left:0;z-index:4;background:var(--asp-r1-fondo,var(--bg));box-shadow:5px 0 0 var(--asp-r1-fondo,var(--bg))}
+  html:not(#_r1) #calGrid .ctl-scroll .ctl-body > .ctl-hours{position:sticky;left:0;z-index:4;background:var(--asp-r1-fondo,var(--bg));box-shadow:5px 0 0 var(--asp-r1-fondo,var(--bg))}
+  html:not(#_r1) #calGrid .ctl-scroll .ctl-body > .ctl-lane,
+  html:not(#_r1) #calGrid .ctl-scroll .ctl-head > .ctl-tcol{flex:0 0 auto!important;width:var(--asp-r1-w,300px)!important;width:calc(100cqw - 39px)!important;min-width:0!important;max-width:none!important;scroll-snap-align:start;scroll-snap-stop:always}
+  html:not(#_r1) #calGrid .ctl-scroll .asp-r1-vacio{display:none!important}
+  #calGrid .asp-r1-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 0 8px;margin:0}
+  #calGrid .asp-r1-chips::-webkit-scrollbar{display:none}
+  #calGrid .asp-r1-chips button{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--ln);background:var(--cd);color:var(--ink);font-family:inherit;font-weight:700;font-size:13px;line-height:1;cursor:pointer;white-space:nowrap}
+  #calGrid .asp-r1-chips button b{font-weight:800;font-size:11.5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--acl);color:var(--acd);display:inline-flex;align-items:center;justify-content:center}
+  #calGrid .asp-r1-chips button.on{background:var(--ink);border-color:var(--ink);color:var(--cd)}
+  #calGrid .asp-r1-chips button.on b{background:rgba(255,255,255,.18);color:inherit}
+  #calGrid .asp-r1-libres{display:block;font-size:12.5px;color:var(--i3);margin:-2px 0 10px;line-height:1.35}
+}
+</style>
+<script id="aspenRuta2932Script">
+(function(){
+  "use strict";
+  if(window.__aspRuta2932)return; window.__aspRuta2932=true;
+  var MQ=null; try{ MQ=window.matchMedia("(max-width:559px)") }catch(_e){}
+  var L=function(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } };
+  var esc=function(x){ return String(x==null?"":x).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]}) };
+  var elegido="";   // técnico que se está viendo; se conserva al repintar y al plegar
+
+  function partes(){
+    var g=document.getElementById("calGrid"), sc=g&&g.querySelector(".ctl-scroll");
+    if(!sc)return null;
+    var heads=Array.prototype.slice.call(sc.querySelectorAll(".ctl-head .ctl-tcol"));
+    var lanes=Array.prototype.slice.call(sc.querySelectorAll(".ctl-body .ctl-lane"));
+    var info=lanes.map(function(l,i){
+      var nm=String(heads[i]&&heads[i].textContent||"").replace(/\s*\(\d+\)\s*$/,"").trim();
+      return { l:l, h:heads[i], name:nm, n:l.querySelectorAll(".ctl-slot").length, un:/^(unassigned|sin asignar)/i.test(nm) };
+    });
+    return { g:g, sc:sc, info:info, vis:info.filter(function(x){ return !x.l.classList.contains("asp-r1-vacio") }) };
+  }
+  function destino(p,x){ var v0=p.vis[0]; return v0 ? Math.max(0,x.l.offsetLeft-v0.l.offsetLeft) : 0 }
+  function actual(p){
+    var sl=p.sc.scrollLeft, k=0, best=1e9;
+    p.vis.forEach(function(x,i){ var d=Math.abs(destino(p,x)-sl); if(d<best){ best=d; k=i } });
+    return k;
+  }
+  function marca(p,k){
+    var row=p.g.querySelector(".asp-r1-chips"); if(!row)return;
+    var bs=row.querySelectorAll("button");
+    Array.prototype.forEach.call(bs,function(b,i){ b.classList.toggle("on",i===k) });
+    var b=bs[k]; if(!b)return;
+    if(b.offsetLeft<row.scrollLeft)row.scrollLeft=b.offsetLeft-4;           // el nombre activo siempre a la vista
+    else if(b.offsetLeft+b.offsetWidth>row.scrollLeft+row.clientWidth)row.scrollLeft=b.offsetLeft+b.offsetWidth-row.clientWidth+4;
+  }
+  function ve(p,k,suave){
+    var x=p.vis[k]; if(!x)return;
+    elegido=x.name;
+    var left=destino(p,x);
+    try{ if(suave)p.sc.scrollTo({left:left,behavior:"smooth"}); else p.sc.scrollLeft=left; }catch(_e){ p.sc.scrollLeft=left }
+    marca(p,k);
+  }
+  function restaura(p){
+    if(!p||!p.vis.length||!(MQ&&MQ.matches))return;                        // 560 o más: el tablero de siempre, no se mueve
+    var k=0; p.vis.forEach(function(x,i){ if(elegido&&x.name===elegido)k=i });
+    ve(p,k,false);
+  }
+
+  function arma(){
+    var p=partes(); if(!p)return;
+    try{ p.g.style.setProperty("--asp-r1-fondo",getComputedStyle(document.body).backgroundColor) }catch(_e){}
+    try{ p.g.style.setProperty("--asp-r1-w",Math.max(160,p.sc.clientWidth-39)+"px") }catch(_e){}  // solo si el teléfono no entiende cqw (iOS < 16)
+    var llenos=p.info.filter(function(x){ return x.n>0 });
+    var ocultar=llenos.length>0;                                               // si nadie tiene paradas, se ve como antes
+    p.info.forEach(function(x){ var v=ocultar&&x.n===0; x.l.classList.toggle("asp-r1-vacio",v); if(x.h)x.h.classList.toggle("asp-r1-vacio",v) });
+    p=partes();
+    Array.prototype.forEach.call(p.g.querySelectorAll(".asp-r1-chips,.asp-r1-libres"),function(e){ e.remove() });
+    if(p.vis.length>1){
+      var row=document.createElement("div"); row.className="asp-r1-chips"; row.setAttribute("role","tablist");
+      row.innerHTML=p.vis.map(function(x,i){ return '<button type="button" role="tab" data-k="'+i+'">'+esc(x.name)+' <b>'+x.n+'</b></button>' }).join("");
+      row.addEventListener("click",function(ev){
+        var b=ev.target&&ev.target.closest&&ev.target.closest("button[data-k]"); if(!b)return;
+        var q=partes(); if(q)ve(q,+b.getAttribute("data-k"),true);
+      });
+      p.sc.parentNode.insertBefore(row,p.sc);
+    }
+    var libres=p.info.filter(function(x){ return x.n===0&&!x.un }).map(function(x){ return x.name });
+    if(ocultar&&libres.length){
+      var li=document.createElement("div"); li.className="asp-r1-libres";
+      li.textContent=L("Sin paradas: ","No stops: ")+libres.join(", ");
+      p.sc.parentNode.insertBefore(li,p.sc);
+    }
+    var raf=0;
+    p.sc.addEventListener("scroll",function(){
+      if(raf)return;
+      raf=requestAnimationFrame(function(){ raf=0; var q=partes(); if(!q||!q.vis.length)return; var k=actual(q); elegido=q.vis[k].name; marca(q,k) });
+    },{passive:true});
+    restaura(p);
+  }
+
+  /* al plegar / girar cambia el ancho de los carriles → las tarjetas cambian de alto: se vuelven a apilar */
+  var tRes=0;
+  function reacomoda(){
+    var p=partes(); if(!p||!p.sc.offsetParent)return;
+    try{ p.g.style.setProperty("--asp-r1-w",Math.max(160,p.sc.clientWidth-39)+"px") }catch(_e){}
+    try{ if(typeof _layoutTimelineLanes==="function"&&typeof _CAL_END!=="undefined")_layoutTimelineLanes((_CAL_END-_CAL_START)*_CAL_HPX,8) }catch(_e){}
+    restaura(p);
+  }
+  window.addEventListener("resize",function(){ clearTimeout(tRes); tRes=setTimeout(reacomoda,180) });
+  try{ if(MQ){ if(MQ.addEventListener)MQ.addEventListener("change",reacomoda); else if(MQ.addListener)MQ.addListener(reacomoda); } }catch(_e){}
+
+  if(typeof window.rndrCal==="function"){
+    var _rc=window.rndrCal;
+    window.rndrCal=function(){ var r=_rc.apply(this,arguments); try{ arma() }catch(e){ try{console.warn("[route angosta]",e)}catch(_x){} } return r };
+  }
+  try{ arma() }catch(_e){}
+})();
 </script>
 </body>
 </html>
