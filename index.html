@@ -7278,7 +7278,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.93.6";
+var APP_VERSION="2.93.7";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -36846,12 +36846,18 @@ html.asp-casco body.outdoor > *{zoom:1.08}
     return tg==="INPUT"&&!/^(button|submit|reset|checkbox|radio|range|color|file|image|hidden)$/i.test(a.type||"");
   }
   function alto(){ return (vv&&vv.height>100)?vv.height:window.innerHeight; }
+  /* v2.93.7 — alto visible SIN teclado, por ancho de pantalla (girar o plegar cambia el ancho) */
+  var completo={};
   function ajusta(){
-    var ih=window.innerHeight, vh=alto();
-    var kb=Math.max(0,ih-vh-(vv?vv.offsetTop:0));
-    var tecl=escribiendo()&&kb>120;                       /* teclado abierto: la barra se esconde */
+    var vh=alto(), w=Math.round(window.innerWidth), esc=escribiendo();
+    /* v2.93.7 — teclado = se escribe y lo visible es bastante más bajo que sin teclado. NO se resta
+       visualViewport.offsetTop: iOS corre la vista para seguir el cursor y eso no cierra el teclado. */
+    if(!esc)completo[w]=vh; else completo[w]=Math.max(completo[w]||window.innerHeight,vh);
+    var tecl=esc&&(completo[w]-vh)>120;                   /* teclado abierto: la barra se esconde */
     if(H.classList.contains("asp-teclado")!==tecl)H.classList.toggle("asp-teclado",tecl);
-    var px=Math.round(vh*100)/100;
+    /* mientras se escribe, el body conserva el alto completo: iOS corre la vista (como en cualquier página)
+       y debajo siempre hay app — nunca una franja vacía. Sin teclado, el alto exacto de lo visible. */
+    var px=Math.round((tecl?completo[w]:vh)*100)/100;
     if(px!==ultimo){ ultimo=px; H.style.setProperty("--asp-casco-h",px+"px"); }
     /* iOS puede dejar la ventana corrida (al revelar un campo): de vuelta a 0 cuando ya no hace falta */
     if(!tecl&&vv&&vv.offsetTop===0&&(window.scrollY||0)!==0){ try{window.scrollTo(0,0)}catch(_e){} }

@@ -33,7 +33,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.93.6";  // 11 nov 2026 · Cobro del 2.º técnico (½ de la hora adicional, con el clic «Bill 2nd tech») · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.93.7";  // 11 nov 2026 · Teclado del iPhone: la barra ya no sale a media pantalla ni queda franja vacía al escribir · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell
