@@ -3163,12 +3163,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--ac);cursor:pointer"><input type="checkbox" id="slCcReq" style="width:18px;height:18px"> Request CC</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--r);cursor:pointer"><input type="checkbox" id="slRepeat" style="width:18px;height:18px"> Repeat</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-danger-strong);cursor:pointer"><input type="checkbox" id="slUrgent" style="width:18px;height:18px"> 🔥 Urgent</label>
+          <label class="asp-r15-cas" style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-warning-strong);cursor:pointer" title="Emergency — labor billed at 1.5× (TC $225 · $150/hr)"><input type="checkbox" id="slRate15" style="width:18px;height:18px"> ⚡ Rate 1.5×</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-purple-strong);cursor:pointer"><input type="checkbox" id="slNewSpa" style="width:18px;height:18px"> ✨ New Spa</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--c-info-strong);cursor:pointer"><input type="checkbox" id="slCheck" style="width:18px;height:18px"> Check</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:600;color:var(--c-money-strong);cursor:pointer"><input type="checkbox" id="slCredit" style="width:18px;height:18px"> Credit</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-success-strong);cursor:pointer"><input type="checkbox" id="slPaid" style="width:18px;height:18px"> 💰 Paid</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--r);cursor:pointer" title="Customer must pay BEFORE the tech does any work"><input type="checkbox" id="slPBS" style="width:18px;height:18px"> 💳 Payment before service</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--c-warning-fg);cursor:pointer" title="This job needs an extra technician (2-person job)"><input type="checkbox" id="slNeed2" style="width:18px;height:18px"> 👥 Needs 2nd tech</label>
+          <label class="asp-t2-cas" style="display:flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--ink);cursor:pointer" title="Bill the 2nd technician at half the additional hour ($50/hr) for the visit time"><input type="checkbox" id="slTech2" style="width:18px;height:18px"> 👥 Bill 2nd tech</label>
           <span style="display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-base);font-weight:700;color:var(--ac)" title="How many of the technician's 4 daily positions this job takes (4 = whole day)">⏱ Day slots:
             <span style="display:inline-flex;gap:4px"><button type="button" id="slSlot1" onclick="slSetSlots(1)" class="sl-slot-btn on">1</button><button type="button" id="slSlot2" onclick="slSetSlots(2)" class="sl-slot-btn">2</button><button type="button" id="slSlot3" onclick="slSetSlots(3)" class="sl-slot-btn">3</button><button type="button" id="slSlot4" onclick="slSetSlots(4)" class="sl-slot-btn">4</button></span>
           </span>
@@ -6965,6 +6967,65 @@ const extraDecimal=+(extraQuarters1*0.25).toFixed(2);
 return{amount:amt1,tc:150,extra:extraDecimal,extraAmt:extraAmt1,hours:+hrs.toFixed(2),mins:billMins,rawMins:rawMins,rawHours:+rawHrs.toFixed(2),label:lbl1,free:false};
 }
 
+/* v2.93.5 — RATE 1.5× (emergencia). Un ticket con rate15:true cobra la mano de obra a ×1.5:
+   TC $150→$225 (cubre la 1.ª hora), cada 15 min $25→$37.50 ($100/hr→$150/hr), 2.ª visita $100→$150.
+   Lo gratis sigue gratis; las piezas no cambian. Un solo punto de verdad: calcLabor recibe la tarifa
+   del ticket como 6.º argumento. Spec: docs/superpowers/specs/2026-11-10-rate15-design.md */
+var ASP_R15_SUF=" · ⚡1.5×";
+function aspRate15(t){ return (t&&t.rate15===true)?1.5:1; }
+function aspRate15Texto(s){ s=String(s==null?"":s); if(s.indexOf(ASP_R15_SUF)>=0)return s; var M={"150":"225","100":"150","50":"75","25":"37.50"}; return s.replace(/\$(150|100|50|25)(?![\d.])/g,function(_m,n){ return "$"+M[n]; })+ASP_R15_SUF; }
+function aspRate15TextoQuita(s){ s=String(s==null?"":s); if(s.indexOf(ASP_R15_SUF)<0)return s; var M={"225":"150","150":"100","75":"50","37.50":"25"}; return s.split(ASP_R15_SUF).join("").replace(/\$(225|150|75|37\.50)(?![\d.])/g,function(_m,n){ return "$"+M[n]; }); }
+function _aspR15c(x){ return Math.round((Number(x)||0)*100)/100; }
+function _aspR15Es(lb){ return !!lb&&(lb.rate15===true||String(lb.label||"").indexOf(ASP_R15_SUF)>=0); }   /* lo guardado viejo no trae la bandera: la etiqueta lo dice */
+function aspRate15Aplica(lb){ if(!lb||lb.free||!(Number(lb.amount)>0)||_aspR15Es(lb))return lb; var o={},k; for(k in lb)o[k]=lb[k];
+  o.amount=_aspR15c(lb.amount*1.5); o.tc=_aspR15c((lb.tc||0)*1.5); o.extraAmt=_aspR15c((lb.extraAmt||0)*1.5); o.label=aspRate15Texto(lb.label); o.rate15=true; if(Number(lb.tech2Amt)>0)o.tech2Amt=_aspR15c(lb.tech2Amt*1.5); return o; }
+function aspRate15Quita(lb){ if(!_aspR15Es(lb))return lb; var o={},k; for(k in lb)o[k]=lb[k];
+  o.amount=_aspR15c(lb.amount/1.5); o.tc=_aspR15c((lb.tc||0)/1.5); o.extraAmt=_aspR15c((lb.extraAmt||0)/1.5); o.label=aspRate15TextoQuita(lb.label); o.rate15=false; if(Number(lb.tech2Amt)>0)o.tech2Amt=_aspR15c(lb.tech2Amt/1.5); return o; }
+/* tarifa del ticket que se está reportando en el formulario (el destino fijado al abrirlo) */
+function aspRate15Form(){ try{ var id=(typeof _formTarget!=="undefined"&&_formTarget&&(_formTarget.editDocId||_formTarget.dispatchId))||(typeof editingDocId!=="undefined"?editingDocId:null); if(!id)return 1;
+  var L=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]); for(var i=0;i<L.length;i++)if(L[i]&&L[i].id===id)return aspRate15(L[i]); }catch(_e){} return 1; }
+var _aspCalcLaborBase=calcLabor;
+calcLabor=function(arr,dep,optVisit,optWarType,optNoLabor,optRate,optTech2){ var r=_aspCalcLaborBase.apply(this,arguments); if(optTech2>0)r=aspTech2Aplica(r,optWarType); return (optRate===1.5)?aspRate15Aplica(r):r; };
+/* el veredicto de cobro dice lo que hace el dinero (la lógica interna compara los textos normales y no se toca) */
+var _aspBillingFor15=_billingFor;
+_billingFor=function(t){ var b=_aspBillingFor15.apply(this,arguments);
+  try{ if(b&&aspRate15(t)===1.5&&!b.laborFree){ var o={},k; for(k in b)o[k]=b[k]; o.labor=aspRate15Texto(b.labor); if(/\$(150|100)(?![\d.])/.test(String(b.bottom||"")))o.bottom=aspRate15Texto(b.bottom); return o; } }catch(_e){}
+  return b; };
+/* sello: la oficina ve la tarifa, el técnico solo que es emergencia (nunca dinero) */
+function aspRate15Sello(t,corto,clase,estilo){ if(!t||t.rate15!==true)return ""; var of=(typeof isAdmin!=="undefined"&&isAdmin);
+  var es=(typeof APP_LANG!=="undefined"&&APP_LANG==="es"); var txt=of?(corto?"\u26A1 1.5\u00d7":"\u26A1 Rate 1.5\u00d7"):(es?"\u26A1 Emergencia":"\u26A1 Emergency");
+  return '<span class="asp-r15-sello'+(clase?" "+clase:"")+'"'+(estilo?' style="'+estilo+'"':"")+' title="'+(of?"Emergency \u2014 labor at 1.5\u00d7":(es?"Emergencia":"Emergency"))+'">'+txt+'</span>'; }
+window.aspRate15Sello=aspRate15Sello; window.aspRate15=aspRate15;
+
+/* v2.93.6 — 2.º TÉCNICO. Con el clic tech2Bill y 2+ técnicos en el ticket se cobra UN técnico extra a la mitad de la
+   hora adicional ($12.50 por cuarto de hora = $50/hr), por el mismo tiempo cobrable de la visita y sin TC. Se suma
+   ANTES del 1.5× (así el ⚡ lo escala a $75/hr). Gratis si la mano de obra es gratis o la garantía es «solo TC».
+   Spec: docs/superpowers/specs/2026-11-11-tecnico2-design.md */
+function aspTech2(t){ try{ if(!t||t.tech2Bill!==true)return 0; var L=(Array.isArray(t.techs)?t.techs:[]).filter(function(x){ return x&&String(x).trim(); }); return L.length>=2?1:0; }catch(_e){ return 0; } }
+function _aspHM(m){ m=Math.round(Number(m)||0); var h=Math.floor(m/60), mm=m%60; return h?(h+"h"+(mm?String(mm).padStart(2,"0"):"")):(mm+"min"); }
+var ASP_T2_RX=/ \+ 2nd tech [^·]*?(?= · ⚡|$)/;
+function _aspT2Es(lb){ return !!lb&&Number(lb.tech2Amt)>0; }
+function aspTech2Aplica(lb,wt){ if(!lb||lb.free||!(Number(lb.amount)>0)||_aspT2Es(lb))return lb;
+  if(wt==="tc-only"||/TC \$\d+ only/.test(String(lb.label||"")))return lb;   /* la garantía cubre las horas: el 2.º también */
+  var q=Math.round((Number(lb.mins)||0)/15); if(q<=0)return lb;
+  var r15=_aspR15Es(lb), amt=_aspR15c(q*(r15?18.75:12.5)), o={},k; for(k in lb)o[k]=lb[k];
+  o.tech2Mins=q*15; o.tech2Amt=amt; o.amount=_aspR15c(Number(lb.amount)+amt);
+  var parte=" + 2nd tech "+_aspHM(q*15)+" × $"+(r15?"75":"50"), L=String(lb.label||"");
+  o.label=r15?L.split(ASP_R15_SUF).join("")+parte+ASP_R15_SUF:L+parte; return o; }
+function aspTech2Quita(lb){ if(!_aspT2Es(lb))return lb; var o={},k; for(k in lb)o[k]=lb[k];
+  o.amount=_aspR15c(Number(lb.amount)-Number(lb.tech2Amt)); o.label=String(lb.label||"").replace(ASP_T2_RX,""); o.tech2Amt=0; o.tech2Mins=0; return o; }
+function aspTech2Cola(t){ return aspTech2(t)===1?" + 2nd tech $"+((t&&t.rate15===true)?"75":"50")+"/hr":""; }
+function aspTech2Form(){ try{ var id=(typeof _formTarget!=="undefined"&&_formTarget&&(_formTarget.editDocId||_formTarget.dispatchId))||(typeof editingDocId!=="undefined"?editingDocId:null); if(!id)return 0;
+  var L=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]); for(var i=0;i<L.length;i++)if(L[i]&&L[i].id===id)return aspTech2(L[i]); }catch(_e){} return 0; }
+/* el veredicto de cobro nombra al 2.º técnico (antes del sufijo del ⚡) */
+var _aspBillingForT2=_billingFor;
+_billingFor=function(t){ var b=_aspBillingForT2.apply(this,arguments);
+  try{ if(b&&!b.laborFree&&aspTech2(t)===1&&/\$\d+\/hr/.test(String(b.labor||""))){ var o={},k; for(k in b)o[k]=b[k]; var x=String(b.labor), suf=x.indexOf(ASP_R15_SUF)>=0;
+    o.labor=x.split(ASP_R15_SUF).join("")+" + 2nd tech $"+(suf?"75":"50")+"/hr"+(suf?ASP_R15_SUF:""); return o; } }catch(_e){}
+  return b; };
+window.aspTech2=aspTech2; window.aspTech2Aplica=aspTech2Aplica; window.aspTech2Quita=aspTech2Quita; window.aspTech2Cola=aspTech2Cola; window.aspTech2Form=aspTech2Form;
+ window.aspRate15Texto=aspRate15Texto; window.aspRate15Aplica=aspRate15Aplica; window.aspRate15Quita=aspRate15Quita; window.aspRate15Form=aspRate15Form;
+
 // Visit toggle — 1=1st Visit, 2=2nd Visit, 3=CM, 4=Repeat, 5=Delivery
 function setVisit(v){visitNum=v;
 document.getElementById("visitBtn1").className="wb yes"+(v===1?" on-y":"");
@@ -7029,14 +7090,20 @@ async function saveTimeOff(){if(!db)return;try{await db.collection("config").doc
 function _techsOffOn(ds){
   if(!ds||!TIMEOFF.length)return [];
   var out=[];
-  TIMEOFF.forEach(function(e){if(e&&e.tech&&e.start&&e.end&&ds>=e.start&&ds<=e.end)out.push({tech:e.tech,note:e.note||""});});
+  TIMEOFF.forEach(function(e){if(e&&e.tech&&e.tech!=="*"&&e.start&&e.end&&ds>=e.start&&ds<=e.end)out.push({tech:e.tech,note:e.note||""});});
+  var _c=aspCierreDe(ds); if(_c&&!_c.half){ _aspTecnicosVisibles().forEach(function(t){ if(!out.some(function(o){return o.tech===t}))out.push({tech:t,note:"Office closed"+(_c.note?" — "+_c.note:""),cierre:true}); }); } /* v2.93.4 cierre */
   return out;
 }
 function _isTechOff(tech,ds){
   if(!tech||!ds)return false;
-  for(var i=0;i<TIMEOFF.length;i++){var e=TIMEOFF[i];if(e&&e.tech===tech&&e.start&&e.end&&ds>=e.start&&ds<=e.end)return true;}
+  for(var i=0;i<TIMEOFF.length;i++){var e=TIMEOFF[i];if(e&&e.tech!=="*"&&e.tech===tech&&e.start&&e.end&&ds>=e.start&&ds<=e.end)return true;}
+  var _c=aspCierreDe(ds); if(_c&&!_c.half)return true; /* v2.93.4 cierre */
   return false;
 }
+/* v2.93.4 — cierre de la oficina: entrada de TIMEOFF con tech:"*" (half:true = cerrado desde las 12:00). Si hay dos, gana el día completo. */
+function aspCierreDe(ds){ if(!ds||!TIMEOFF||!TIMEOFF.length)return null; var best=null; for(var i=0;i<TIMEOFF.length;i++){ var e=TIMEOFF[i]; if(e&&e.tech==="*"&&e.start&&e.end&&ds>=e.start&&ds<=e.end){ var c={half:!!e.half,desde:"12:00",note:String(e.note||""),id:e.id}; if(!best||(best.half&&!c.half))best=c; } } return best; }
+function _aspTecnicosVisibles(){ try{ return TECHS.filter(function(t){ return !(typeof HIDDEN_TECHS!=="undefined"&&HIDDEN_TECHS.has(t)); }); }catch(_e){ return []; } }
+window.aspCierreDe=aspCierreDe;
 function openTimeOffMgr(){
   if(typeof isAdmin!=="undefined"&&!isAdmin){if(typeof toast==="function")toast("Time off is managed by office staff","warn");return;}
   var sel=document.getElementById("toTech");
@@ -7078,7 +7145,7 @@ function rndrTimeOffList(){
   list.forEach(function(e){
     var past=e.end<today;
     var range=e.start===e.end?fmt(e.start):fmt(e.start)+" – "+fmt(e.end);
-    h+='<div class="to-item"'+(past?' style="opacity:.55"':'')+'><div class="to-it-main"><div class="to-it-tech">🌴 '+esc(e.tech)+(past?' <span style="font-size:11px;color:var(--i3)">(past)</span>':'')+'</div><div class="to-it-dates">'+range+'</div>'+(e.note?'<div class="to-it-note">'+esc(e.note)+'</div>':'')+'</div><button class="to-del" onclick="delTimeOff(\''+e.id+'\')">Remove</button></div>';
+    h+='<div class="to-item"'+(past?' style="opacity:.55"':'')+'><div class="to-it-main"><div class="to-it-tech">'+(e.tech==="*"&&typeof aspCierreEtiqueta==="function"?aspCierreEtiqueta(e):'🌴 '+esc(e.tech))+(past?' <span style="font-size:11px;color:var(--i3)">(past)</span>':'')+'</div><div class="to-it-dates">'+range+'</div>'+(e.note?'<div class="to-it-note">'+esc(e.note)+'</div>':'')+'</div><button class="to-del" onclick="delTimeOff(\''+e.id+'\')">Remove</button></div>';
   });
   el.innerHTML=h;
 }
@@ -7211,7 +7278,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.93.2";
+var APP_VERSION="2.93.6";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -7842,7 +7909,7 @@ function _metricsMoney(t){
   try{
     var parts=Array.isArray(t.parts)?t.parts:[];
     var pt=parts.reduce(function(sm,p){return sm+((((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1))},0);
-    var lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):undefined),t.noLabor||false):null;
+    var lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):undefined),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0)):null;
     return pt+(lb?(lb.amount||0):0);
   }catch(_e){return Number(t.total)||0;}
 }
@@ -15362,7 +15429,7 @@ function pk(i){if(!_f[i])return;if(estPicker){eSel.push({..._f[i],qty:1,id:Date.
 
 // ═══ PARTS RENDER ═══
 function rndr(){sel=sel.filter(p=>p&&typeof p==="object"&&p.n);const el=document.getElementById("pL"),ct=document.getElementById("pCt"),tr=document.getElementById("pT"),tv=document.getElementById("pTV"),tl=document.getElementById("pTL");ct.textContent=sel.length+" item"+(sel.length!==1?"s":"");if(!sel.length){el.innerHTML="";tr.style.display="none";if(typeof scheduleDraftSave==="function")scheduleDraftSave();return}const wt=gWT();el.innerHTML=sel.map((p,i)=>{const pr=gPr(p),rt=gRet(p),sh=wt==="half"&&p.c!=="Service",pc=gPCFor(p);return`<div class="pi"><div class="pi-info"><div class="pi-n">${esc(p.n)}</div><div class="pi-d">${esc(p.d)} · <b>${esc(p.c)}</b></div>${sh?`<div class="pi-og">Retail: $${(rt*p.qty).toFixed(2)}</div>`:""}</div><div class="qw"><button class="qb" onclick="chg(${i},-1)">−</button><span class="qv">${p.qty}</span><button class="qb" onclick="chg(${i},1)">+</button></div><div class="pp ${pc}">$${(pr*p.qty).toFixed(2)}</div><button class="prm" onclick="rem(${i})">×</button></div>`}).join("");
-const ptot=sel.reduce((s,p)=>s+gPr(p)*p.qty,0);const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value);const lbAmt=lb?lb.amount:0;const grand=ptot+lbAmt;
+const ptot=sel.reduce((s,p)=>s+gPr(p)*p.qty,0);const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value,undefined,undefined,undefined,(typeof aspRate15Form==="function"?aspRate15Form():1),(typeof aspTech2Form==="function"?aspTech2Form():0));const lbAmt=lb?lb.amount:0;const grand=ptot+lbAmt;
 let lh="";if(lb&&lb.free)lh=`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:var(--fs-base);color:var(--c-info-strong);font-weight:600"><span>${lb.label}</span><span>$0.00</span></div>`;else if(lb)lh=`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:var(--fs-base);color:var(--ac);font-weight:600"><span>${lb.label}</span><span>$${lb.amount.toFixed(2)}</span></div>`;
 tr.style.display="flex";tr.style.flexDirection="column";tl.textContent="";tv.innerHTML=lh+`<div style="display:flex;justify-content:space-between;width:100%"><span>${gPL()}</span><span style="color:var(--br);font-weight:700">$${grand.toFixed(2)}</span></div>`;if(typeof scheduleDraftSave==="function")scheduleDraftSave()}
 function chg(i,d){if(!sel[i])return;sel[i].qty=Math.min(99,Math.max(1,(sel[i].qty||1)+d));rndr();if(typeof _autoSyncPart90==="function")_autoSyncPart90()}
@@ -15594,7 +15661,7 @@ async function submitTkt(st){
     const validParts=sel.filter(p=>p&&typeof p==="object"&&p.n);
     const ptot=validParts.reduce((s,p)=>s+(gPr(p)||0)*(p.qty||1),0);
     const totR=validParts.reduce((s,p)=>s+(p.p||0)*(p.qty||1),0);
-    const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value);
+    const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value,undefined,undefined,undefined,(typeof aspRate15Form==="function"?aspRate15Form():1),(typeof aspTech2Form==="function"?aspTech2Form():0));
     const grand=(ptot||0)+(lb?lb.amount||0:0);
 
     // Warranty Override Log (Batch 3 #1): record if office overrode & actually changed the warranty.
@@ -15616,7 +15683,7 @@ async function submitTkt(st){
       departure:document.getElementById("fDep").value||"",
       parts:validParts.map(p=>({n:p.n||"",d:p.d||"",c:p.c||"",p:p.p||0,r:gRet(p)||0,qty:p.qty||1,ch:gPr(p)||0})),
       total:grand||0,partsCost:ptot||0,
-      labor:lb?{amount:lb.amount||0,label:lb.label||"",tc:lb.tc||0,extra:lb.extra||0,extraAmt:lb.extraAmt||0,hours:lb.hours||0,mins:lb.mins||0}:null,
+      labor:lb?{amount:lb.amount||0,label:lb.label||"",tc:lb.tc||0,extra:lb.extra||0,extraAmt:lb.extraAmt||0,hours:lb.hours||0,mins:lb.mins||0,tech2Amt:lb.tech2Amt||0,tech2Mins:lb.tech2Mins||0}:null,
       totalRda:totR||0,
       notes:document.getElementById("fNotes").value.trim()||"",
       videoLinks:videoLinks&&videoLinks.length?[...videoLinks]:null,
@@ -16843,6 +16910,8 @@ async function _autoCreateReschedDispatch(srcDocId,srcData){
       reschedAvailability:srcData.reschedAvailability||"",
       reschedUrgent:!!srcData.reschedUrgent,
       isUrgent:(!!srcData.reschedUrgent)||base.isUrgent||false,
+      rate15:!!(srcData&&srcData._mover&&(base.rate15===true||srcData.rate15===true)),
+      tech2Bill:!!(srcData&&srcData._mover&&(base.tech2Bill===true||srcData.tech2Bill===true)),   /* v2.93.6 */   /* v2.93.5 — nadie fue: es la misma cita */
       reschedQueue:((srcData.reschedBlocker==="part"||srcData.reschedBlocker==="tech2"||srcData.reschedBlocker==="equip")?"waiting":"ready"),
       techsSuggested:(srcData.techs||[]).slice(0,3),
       // ── el reporte previo, ENTERO, para que el proximo tecnico lo lea
@@ -17471,6 +17540,7 @@ function _dailyTags3(t,w,warMismatch){
   if(t.visitNum===5)t1.push('<span class="tkt-tag" style="background:var(--c-info-bg);color:var(--c-info-fg);font-weight:700;display:inline-flex;align-items:center;gap:4px">'+ic("package",11,{color:"var(--c-info-fg)"})+'Delivery</span>');
   if(t.visitNum===6)t1.push('<span class="tkt-tag" style="background:var(--acl,var(--acl));color:var(--acd,var(--acd));font-weight:800">\uD83D\uDE9A Spa Move</span>');
   if(t.isUrgent)t1.push('<span class="tkt-tag" style="background:var(--c-danger-strong);color:#fff;font-weight:800">\uD83D\uDD25 URGENT</span>');
+  if(t.rate15===true&&typeof aspRate15Sello==="function")t1.push(aspRate15Sello(t,false,"tkt-tag","background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800"));   /* v2.93.5 */
   if(t.isNewSpa)t1.push('<span class="tkt-tag" style="background:var(--c-purple-strong);color:#fff;font-weight:800">\u2728 NEW SPA</span>');
   var _chm=_chemChip(t); if(_chm)t1.push(_chm);
   if(t.needsOtherTech)t1.push('<span class="tkt-tag" style="background:var(--c-warning-bg);color:var(--c-warning-fg);font-weight:800" title="'+esc(t.needsOtherTechReason||'Needs an extra technician \u2014 2-person job')+'">\uD83D\uDC65 Needs 2nd tech</span>');
@@ -17528,7 +17598,7 @@ function _covDetail(t){
     laborTxt=b.laborFree?L2("GRATIS","FREE")
       :(/TC only/i.test(b.labor)?L2("solo TC (horas extra cubiertas)","TC only (extra hrs covered)")
       :/verify/i.test(b.labor)?L2("verificar","verify")
-      :L2("se cobra (TC $150 + $100/hr)","chargeable (TC $150 + $100/hr)"));
+      :(t&&t.rate15===true?L2("se cobra ⚡1.5× (TC $225 + $150/hr","chargeable ⚡1.5× (TC $225 + $150/hr")+(typeof aspTech2Cola==="function"?aspTech2Cola(t):"")+")":L2("se cobra (TC $150 + $100/hr","chargeable (TC $150 + $100/hr")+(typeof aspTech2Cola==="function"?aspTech2Cola(t):"")+")"));   /* v2.93.5 */
     if(!b.partsFree&&!b.laborFree)tone="warn";
   } else { partsTxt=L2("ver ticket","see ticket"); laborTxt=L2("ver ticket","see ticket"); tone="muted"; }
   var bg=tone==="ok"?"var(--c-success-bg)":tone==="warn"?"var(--c-warning-bg)":"var(--bg)";
@@ -18332,7 +18402,7 @@ function _dailyAIReviewLaunch(t,isDone){
 
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
-  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false);
+  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   const timeOnSiteMin=_visitMins(t.arrival,t.departure)||0; // AUDIT FIX Jun 2026: NaN-safe; equal times = 0, not a 24h wrap
   const timeOnSite=timeOnSiteMin?fmtTime(timeOnSiteMin):"";
   // Billable hours = time on site rounded to the nearest 15-min increment, shown in
@@ -18380,7 +18450,7 @@ ${!isDone?(isAdmin?`<div style="display:flex;gap:8px;margin-top:10px"><button cl
 function copyTkt(isDone,i){
   const t=isDone?done[i]:active[i];if(!t)return;
   const w=t.warranty||{};
-  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false);
+  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   const partsTotal=(t.parts||[]).reduce((s,p)=>s+((p.ch!=null?p.ch:p.p)*p.qty),0);
   const laborAmt=lb?lb.amount:0;
   const timeMin=_visitMins(t.arrival,t.departure)||0; // AUDIT FIX Jun 2026: NaN-safe; equal times = 0, not a 24h wrap
@@ -18815,7 +18885,7 @@ async function undoAIImprove(){
 // ── Build the report content ────────────────────────────────────────────────
 function buildCustomerReport(t,notesOverride){
   const w=t.warranty||{};
-  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false);
+  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   // Use override notes if provided (e.g. user-edited or AI-improved version),
   // otherwise fall back to the raw technician notes saved on the ticket.
   const notesToUse=(notesOverride!==undefined&&notesOverride!==null)?notesOverride:_reportNarrative(t);
@@ -19768,7 +19838,7 @@ function _slogOpenCalls(idx){
   idx=idx||_buildFieldReportIndex();
   return [...active,...done].filter(function(t){
     return t.source==="dispatch"&&(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted
-      &&t.status!=="canceled"&&!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id));
+      &&t.status!=="canceled"&&!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id))&&!(typeof aspEnHold==="function"&&aspEnHold(t)); /* v2.93.3 hold */
   });
 }
 
@@ -19879,7 +19949,7 @@ function rndrSlog(){
   // lifecycle — even after it gets a tech/date via Program now (which would
   // otherwise drop it out of `all`'s no-techs filter and make it "disappear").
   var _reschedSrc=[...active,...done].filter(function(t){
-    return t.autoFromResched&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"&&t.status!=="reschedule"&&!t.fieldReportSubmitted&&!_slServed(t); // v2.73.0 E5: a moved call never waits
+    return t.autoFromResched&&t.source==="dispatch"&&t.status!=="canceled"&&t.status!=="done"&&t.status!=="reschedule"&&!t.fieldReportSubmitted&&!_slServed(t)&&!(typeof aspEnHold==="function"&&aspEnHold(t)); /* v2.93.3 hold */ // v2.73.0 E5: a moved call never waits
   });
   if(slogZone!=="all")_reschedSrc=_reschedSrc.filter(function(t){return (effectiveZone(t)||"No Zone")===slogZone});
   if(slogChemOnly)_reschedSrc=_reschedSrc.filter(_isChemTicket);
@@ -20481,6 +20551,8 @@ async function slCreateCall(){
       ccOnFile:ccFile,ccRequested:ccReq,paid:paid,paidAt:paid?new Date().toLocaleString():null,
       isRepeat:document.getElementById("slRepeat").checked,
       isUrgent:(document.getElementById("slUrgent")||{}).checked||false,
+      rate15:(document.getElementById("slRate15")||{}).checked||false,
+      tech2Bill:(document.getElementById("slTech2")||{}).checked||false,   /* v2.93.6 */   /* v2.93.5 */
       isNewSpa:(document.getElementById("slNewSpa")||{}).checked||false,
       payCheck:document.getElementById("slCheck").checked,
       payCredit:document.getElementById("slCredit").checked,
@@ -20528,7 +20600,7 @@ async function slCreateCall(){
     }
     // Reset the form
     document.getElementById("slRepeat").checked=false;
-    var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;
+    var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slR15=document.getElementById("slRate15");if(_slR15)_slR15.checked=false;var _slT2=document.getElementById("slTech2");if(_slT2)_slT2.checked=false;
     var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;
     document.getElementById("slCheck").checked=false;
     document.getElementById("slCredit").checked=false;
@@ -22642,7 +22714,8 @@ function calDayCell(d,ds,tkts,today,isOther){
   const isSel=ds===calSelectedDate;
   const maxShow=3;
   let events="";
-  var _offDay=(typeof _techsOffOn==="function")?_techsOffOn(ds):[];
+  var _offDay=((typeof _techsOffOn==="function")?_techsOffOn(ds):[]).filter(function(o){return !o.cierre}); /* v2.93.4 cierre */
+  if(typeof aspCierreChip==="function")events+=aspCierreChip(ds);
   if(_offDay.length)events+='<div class="cal-off">'+_offDay.map(function(o){return '<span class="cal-off-chip" title="Off'+(o.note?(": "+esc(o.note)):"")+'">🌴 '+esc(o.tech)+'</span>'}).join("")+'</div>';
   if(tkts.length){
     const sorted=tkts.slice().sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));
@@ -22661,7 +22734,7 @@ function calDayCell(d,ds,tkts,today,isOther){
       const _zc=ZONE_COLORS[_z]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
       const _zoneChip=_z?'<span class="ev-zone" style="background:'+_zc.bg+';color:'+_zc.text+'">'+esc(_z)+'</span>':'';
       const _warChip=(typeof _warrantyMiniChip==="function")?(_warrantyMiniChip(t)||""):"";
-      let _fl="";if(t.isUrgent)_fl+="🔥";if(t.isNewSpa)_fl+="✨";if(t.isRepeat)_fl+="🔄";
+      let _fl="";if(t.isUrgent)_fl+="🔥";if(t.rate15===true)_fl+="⚡";if(t.isNewSpa)_fl+="✨";if(t.isRepeat)_fl+="🔄";
       const _flags=_fl?'<span class="ev-flags">'+_fl+'</span>':'';
       const _meta=(_zoneChip||_warChip)?'<div class="ev-meta">'+_zoneChip+_warChip+'</div>':'';
       events+='<div class="cal-event'+(isDone?" done":"")+(t.isUrgent?" ev-urgent":"")+'" onclick="event.stopPropagation();openTktDetail(\''+t.id+'\')" style="border-left:3px solid '+col+'" title="'+title.replace(/"/g,'&quot;')+'"><div class="ev-top">'+timeStr+'<span class="ev-name">'+name+'</span>'+_flags+'</div>'+_meta+'</div>';
@@ -23802,6 +23875,8 @@ function _visitWarrantyEditorHTML(t){
   var v=Number(t.visitNum)||1;
   var w=t.warranty||{};
   var labels={1:"<b>1st Visit</b> \u2014 TC $150 + $100/hr additional",2:"<b>2nd Visit</b> \u2014 $100/hr only (no TC)",3:"<b>CM</b> \u2014 chemical maintenance \u00b7 labor free (courtesy), parts &amp; chemicals charged",4:"<b>Repeat</b> \u2014 our fix \u00b7 parts &amp; labor free (chemicals/supplies still charged)",5:"<b>Delivery</b>",6:"<b>\uD83D\uDE9A Spa Move</b>"};
+  if(typeof aspTech2==="function"&&aspTech2(t)===1){ labels[1]+=" + 2nd tech $50/hr"; labels[2]+=" + 2nd tech $50/hr"; }   /* v2.93.6 */
+  if(t.rate15===true&&typeof aspRate15Texto==="function"){ labels[1]=aspRate15Texto(labels[1]); labels[2]=aspRate15Texto(labels[2]); }   /* v2.93.5 */
   var idJS=String(t.id||"").replace(/'/g,"\\'");
   var h='<div class="dt-sec"><div class="dt-sec-t">\uD83E\uDDFE Visit &amp; Warranty <span style="font-weight:600;color:var(--i3);text-transform:none;letter-spacing:0">(billing inputs)</span></div>';
   // Visit Type
@@ -24166,7 +24241,7 @@ function _c360ExpandBodyHTML(t){
   var idJS=String(t.id||"").replace(/'/g,"\\'");
   var w=t.warranty||{};
   var vLbl=(Number(t.visitNum)===6)?"\uD83D\uDE9A Spa Move":(Number(t.visitNum)===5)?"\uD83D\uDCE6 Delivery":(Number(t.visitNum)===4)?"Repeat":(Number(t.visitNum)===3)?"CM":(Number(t.visitNum)===2)?"2nd Visit":"1st Visit";
-  var lb=null;try{lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(w,t):undefined),t.noLabor||false):null;}catch(_le){lb=null;}
+  var lb=null;try{lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(w,t):undefined),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0)):null;}catch(_le){lb=null;}
   var partsTotal=parts.reduce(function(sm,p){return sm+((((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1))},0);
   var laborAmt=lb?(lb.amount||0):0;
   function rw(lbl,val){return '<div style="display:flex;gap:8px;font-size:var(--fs-sm);margin-bottom:3px"><span style="color:var(--i3);min-width:88px">'+lbl+'</span><span style="color:var(--ink);font-weight:600;flex:1;min-width:0">'+val+'</span></div>';}
@@ -24785,6 +24860,7 @@ function openTktDetail(id){
     if(t.ccRequested)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:#fef3cd;color:#856404">'+icon("credit-card",12,{color:"#856404"})+'Request CC</span>');
     if(t.isRepeat)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:var(--c-danger-bg);color:var(--c-danger-fg)">⚠ Repeat</span>');
     if(t.isUrgent)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:800;background:var(--c-danger-strong);color:#fff">🔥 Urgent</span>');
+    if(t.rate15===true&&typeof aspRate15Sello==="function")_flagBadges.push(aspRate15Sello(t,false,"","display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:800;background:var(--c-warning-bg);color:var(--c-warning-fg)"));   /* v2.93.5 */
     if(t.isNewSpa)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:800;background:var(--c-purple-strong);color:#fff">✨ New Spa</span>');
     if(t.payCheck)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:var(--c-info-bg);color:var(--c-info-fg)">Pay: Check</span>');
     if(t.payCredit)_flagBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:var(--fs-sm);font-weight:700;background:var(--c-money-bg);color:var(--c-money-fg)">Pay: Credit</span>');
@@ -24808,6 +24884,8 @@ function openTktDetail(id){
     h+='<label class="dt-chip" style="--chip-c:var(--ac);--chip-bg:var(--acl)"><input type="checkbox" id="dtCcReq" '+(t.ccRequested?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Request CC</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--r);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ↻ Repeat</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-danger-strong);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtUrgent" '+(t.isUrgent?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> 🔥 Urgent</label>';
+    h+='<label class="dt-chip asp-r15-chip" style="--chip-c:var(--c-warning-strong);--chip-bg:var(--c-warning-bg)"><input type="checkbox" id="dtRate15" '+(t.rate15===true?'checked':'')+' onchange="aspRate15Chip(\''+t.id+'\',this)"> ⚡ Rate 1.5×</label>';   /* v2.93.5 */
+    h+='<label class="dt-chip asp-t2-chip"><input type="checkbox" id="dtTech2" '+(t.tech2Bill===true?'checked':'')+' onchange="aspTech2Chip(\''+t.id+'\',this)"> 👥 Bill 2nd tech</label>'+((t.tech2Bill===true&&typeof aspTech2==="function"&&aspTech2(t)===0)?'<span class="asp-t2-falta">'+L2("⚠ Falta el 2.º técnico en el ticket","⚠ 2nd tech missing on the ticket")+'</span>':'');   /* v2.93.6 */
     h+='<label class="dt-chip" style="--chip-c:var(--c-purple-strong);--chip-bg:var(--c-purple-bg)"><input type="checkbox" id="dtNewSpa" '+(t.isNewSpa?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ✨ New Spa</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-info-strong);--chip-bg:var(--c-info-bg)"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Check</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-money-strong);--chip-bg:var(--c-money-bg)"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Credit</label>';
@@ -25245,6 +25323,8 @@ function _isChemWaterChange(t){
   var isChem=(typeof _isChemTicket==="function"&&_isChemTicket(t))||Number(t.visitNum||1)===3;
   return isChem&&hasWC;
 }
+/* v2.93.5 — el saludo sale de la hora del aparato al abrir el mensaje (misma regla que el saludo de inicio) */
+function aspSaludoHora(d){ var h=(d||new Date()).getHours(); return h<12?"Good morning":h<18?"Good afternoon":"Good evening"; }
 // Build the appointment notification SMS body
 function buildAppointmentSMS(t,techs,date,arrival){
   var techList=(techs||[]).filter(Boolean);
@@ -25257,7 +25337,7 @@ function buildAppointmentSMS(t,techs,date,arrival){
       ?"on "+_fmtMD(date)+" we will be sending "+techNames+" to perform the water change included as part of your Chemical Maintenance program"
       :"we have availability to send "+techNames+" to service your spa on "+_fmtMD(date);
   if(arrival)actionLine+=" between "+_arrivalWindow(arrival);
-  var body="Good afternoon,\n\nMy name is "+SERVICE_MGR_NAME+",\n"+SERVICE_MGR_TITLE+" at Aspen Spas.\nI am reaching out to let you know that "+actionLine+".\n\nTo confirm your appointment, there is no need to call us — simply replying by text message to "+SERVICE_MGR_PHONE+" is enough.\n\nIf this date or time does not work for you, please let us know by text message at the same number, and we will be glad to reschedule for a day that fits your availability.\n\nOnce your appointment is confirmed, our technician will contact you with a reminder call before heading to your home.\nPlease note that if the technician is unable to arrive within the scheduled window, you will be notified in advance of a delayed arrival or a possible rescheduling of your appointment.\n\nWe appreciate your patience and look forward to servicing your spa.\nKind regards,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
+  var body=aspSaludoHora()+",\n\nMy name is "+SERVICE_MGR_NAME+",\n"+SERVICE_MGR_TITLE+" at Aspen Spas.\nI am reaching out to let you know that "+actionLine+".\n\nTo confirm your appointment, there is no need to call us — simply replying by text message to "+SERVICE_MGR_PHONE+" is enough.\n\nIf this date or time does not work for you, please let us know by text message at the same number, and we will be glad to reschedule for a day that fits your availability.\n\nOnce your appointment is confirmed, our technician will contact you with a reminder call before heading to your home.\nPlease note that if the technician is unable to arrive within the scheduled window, you will be notified in advance of a delayed arrival or a possible rescheduling of your appointment.\n\nWe appreciate your patience and look forward to servicing your spa.\nKind regards,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
   return body;
 }
 // Did the assignment meaningfully change? (techs added, date set/changed, or arrival set/changed)
@@ -25745,7 +25825,7 @@ let _slogMapCat="unassigned",_slogMapInstance=null,_slogMapMarkers=[],_slogMapTo
 function _slogMapTickets(cat,idx){
   idx=idx||_buildFieldReportIndex();
   var served=function(t){return !!(idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id))};
-  var pool=[].concat(active,done).filter(function(t){return t&&t.source==="dispatch"&&t.status!=="canceled"});
+  var pool=[].concat(active,done).filter(function(t){return t&&t.source==="dispatch"&&t.status!=="canceled"&&!(typeof aspEnHold==="function"&&aspEnHold(t))}); /* v2.93.3 hold */
   if(cat==="unassigned")return pool.filter(function(t){return(!t.techs||!t.techs.length)&&!t.fieldReportSubmitted&&!served(t)});
   if(cat==="assigned")return pool.filter(function(t){return t.techs&&t.techs.length&&!t.fieldReportSubmitted&&!served(t)});
   if(cat==="reported")return pool.filter(function(t){return t.fieldReportSubmitted===true||served(t)});
@@ -27254,7 +27334,7 @@ async function custCreateTicket(){
   var allNotes=custTkts.sort(function(a,b){return(b.date||"").localeCompare(a.date||"")}).filter(function(t){return t.notes}).map(function(t){return(t.date||"")+" · "+((t.techs||[]).join(", ")||"—")+"\n"+t.notes}).join("\n\n---\n\n");
   try{await db.collection("tickets").add({customer:c.name,date:fmtD(new Date()),techs:[],workTypes:["Service Call"],warranty:{has:null,model:"",year:0,type:"rda",label:"N/W"},visitNum:1,noLabor:false,arrival:"",departure:"",parts:[],total:0,partsCost:0,totalRda:0,notes:allNotes,phone:c.phone,phone2:c.phone2,email:c.email,address:c.address,city:c.city,zip:c.zip,zone:c.zone,media:[],videoLinks:null,source:"dispatch",status:"pending",createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:Date.now(),submitted:new Date().toLocaleString()});toast("Ticket created for "+c.name+" ✓");showTab(5)}catch(e){toast("Error: "+e.message,"err")}
 }
-function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;if(typeof slSetSlots==="function")try{slSetSlots(1)}catch(_e){}var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();if(typeof _slResetPresets==="function")_slResetPresets();slClearMedia();toast("Form cleared")}
+function slClearForm(){document.getElementById("slCustName").value="";document.getElementById("slCustPhone").value="";var _p2=document.getElementById("slCustPhone2");if(_p2)_p2.value="";var _em=document.getElementById("slCustEmail");if(_em)_em.value="";document.getElementById("slCustAddr").value="";document.getElementById("slCustCity").value="";document.getElementById("slCustZip").value="";document.getElementById("slNotes").value="";var _slRc=document.getElementById("slReported");if(_slRc)_slRc.value="";document.getElementById("slZoneBadge").style.display="none";document.getElementById("slCcFile").checked=false;document.getElementById("slCcReq").checked=false;document.getElementById("slRepeat").checked=false;var _slU=document.getElementById("slUrgent");if(_slU)_slU.checked=false;var _slR15=document.getElementById("slRate15");if(_slR15)_slR15.checked=false;var _slT2=document.getElementById("slTech2");if(_slT2)_slT2.checked=false;var _slN=document.getElementById("slNewSpa");if(_slN)_slN.checked=false;document.getElementById("slCheck").checked=false;document.getElementById("slCredit").checked=false;var _sp=document.getElementById("slPaid");if(_sp)_sp.checked=false;var _spbs=document.getElementById("slPBS");if(_spbs)_spbs.checked=false;var _sn2=document.getElementById("slNeed2");if(_sn2)_sn2.checked=false;if(typeof slSetSlots==="function")try{slSetSlots(1)}catch(_e){}var sd=document.getElementById("slSpaDesc");if(sd)sd.value="";slResetWarranty();if(typeof _slResetPresets==="function")_slResetPresets();slClearMedia();toast("Form cleared")}
 function showCustSuggest(prefix){
   var input=document.getElementById(prefix+"CustName");
   var dd=document.getElementById(prefix+"CustSuggest");
@@ -30050,7 +30130,7 @@ function _billingRowsFor(dateStr){
         var lb=null;
         try{
           sel=Array.isArray(t.parts)?t.parts:[];
-          lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false);
+          lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
         }catch(_e){}
         var labor=lb&&typeof lb.amount==="number"?lb.amount:0;
         partsOut=+parts.toFixed(2);laborOut=+labor.toFixed(2);totalOut=+(parts+labor+tax).toFixed(2);
@@ -31090,13 +31170,13 @@ function showTicketDetail(p,i){
   function invBreakdown(t,c){
     if(c.covered)return "";
     var lb=null;
-    try{lb=calcLabor(t.arrival,t.departure,Number(t.visitNum)||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty((t&&t.warranty)||{},t):"none"),t.noLabor||false);}catch(e){}
+    try{lb=calcLabor(t.arrival,t.departure,Number(t.visitNum)||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty((t&&t.warranty)||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));}catch(e){}
     var tc=(lb&&!lb.free)?(Number(lb.tc)||0):0;
-    var lab=(lb&&!lb.free)?(Number(lb.extraAmt)||0):0;
+    var lab=(lb&&!lb.free)?(Number(lb.extraAmt)||0):0; var t2=(lb&&!lb.free)?(Number(lb.tech2Amt)||0):0;
     var parts=0;try{parts=(t.parts||[]).reduce(function(s,p){return s+(((p.ch!=null?p.ch:p.p)||0)*(p.qty||0));},0);}catch(e){}
-    if(!tc&&!lab&&!parts)return "";
+    if(!tc&&!lab&&!t2&&!parts)return "";
     function row(l,v){return '<div class="ent-bd-row'+(v?"":" muted")+'"><span>'+l+'</span><span class="bd-v">'+money(v)+'</span></div>';}
-    return '<div class="ent-breakdown">'+row("Trip Charge",tc)+row("Labor",lab)+row("Parts",parts)+'</div>';
+    return '<div class="ent-breakdown">'+row("Trip Charge",tc)+row("Labor",lab)+(t2?row("2nd Tech",t2):"")+row("Parts",parts)+'</div>';
   }
   function photosCard(t){
     var media=Array.isArray(t.media)?t.media:[];
@@ -31143,7 +31223,7 @@ function showTicketDetail(p,i){
     var vis=VLABEL[Number(t.visitNum)]||"1st visit";
     var works=(t.workTypes||[]);
     var workStr=works.length?(works.slice(0,3).join(" \u00b7 ")+(works.length>3?" +"+(works.length-3):"")):(Number(t.visitNum)===3?"Chemical maintenance":Number(t.visitNum)===5?"Spa delivery":"");
-    var urg=t.isUrgent?'<span class="tc-urg">\uD83D\uDD25 URGENT</span>':'';
+    var urg=t.isUrgent?'<span class="tc-urg">\uD83D\uDD25 URGENT</span>':''; if(t.rate15===true&&typeof aspRate15Sello==="function")urg+=aspRate15Sello(t,true,"tc-urg asp-r15-p","");   /* v2.93.5 */
     var rep=(Number(t.visitNum)===4||t.isRepeat)?'<span class="ent-chip rep">\u21A9\uFE0F Repeat</span>':'';
     var rd=qbReady(t),vd=verdict(t),nMedia=(Array.isArray(t.media)?t.media.length:0),bh=billHrsShort(t);
     return '<div class="ent-card" onclick="_aspenEntExpand(this,\''+id+'\')">'
@@ -31553,7 +31633,7 @@ function moneyFor(t){
   var lb=null,_s;
   try{
     _s=sel;sel=Array.isArray(t.parts)?t.parts:[];
-    lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false);
+    lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   }catch(e){}finally{try{sel=_s;}catch(e2){}}
   var labor=lb&&typeof lb.amount==="number"?lb.amount:0;
   return{parts:+parts.toFixed(2),labor:+labor.toFixed(2),tax:tax,total:+(parts+labor+tax).toFixed(2)};
@@ -33927,6 +34007,7 @@ try{[["_aspVisitNotes",_aspVisitNotes],["_aspCleanTechNotes",_aspCleanTechNotes]
     for(var i=1;i<=21;i++){
       var d=new Date(today.getTime()+i*864e5), ds=iso(d), dow=d.getDay();
       if(dow===0)continue;                                  // domingo cerrado
+      var _ci=(typeof aspCierreDe==="function")?aspCierreDe(ds):null; if(_ci&&!_ci.half)continue;   /* v2.93.4 cierre */
       if(notBefore&&ds<notBefore)continue;                  // la parte aún no llega
       var load=byDate[ds]||0;
       if(load>=8)continue;                                  // día lleno
@@ -33935,6 +34016,7 @@ try{[["_aspVisitNotes",_aspVisitNotes],["_aspCleanTechNotes",_aspCleanTechNotes]
       if(z>0){score+=z*14;why.push(z+" "+T("parada"+(z>1?"s":"")+" más en zona "+zone,"more stop"+(z>1?"s":"")+" in zone "+zone))}
       score+=Math.max(0,(6-load))*4;
       if(load===0)why.push(T("día libre","open day"));
+      if(_ci&&_ci.half)why.push(T("solo mañana (cierra 12:00)","morning only (closes 12:00)"));   /* v2.93.4 cierre */
       var off=[];try{if(typeof _techsOffOn==="function")off=_techsOffOn(ds)||[]}catch(e){}
       var offNames=off.map(function(o){return o.tech});
       var sugFree=sug.filter(function(nm){return nm&&offNames.indexOf(nm)<0});
@@ -34341,7 +34423,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   function report(t){var c=[t.aiReportNotes,t.servicePerformed,t.report,t.summary];try{c.push(typeof _aspVisitNotes==='function'?_aspVisitNotes(t):'')}catch(_){}for(var i=0;i<c.length;i++){if(typeof c[i]!=='string')continue;var s=_v7Txt(c[i]);if(s&&_v7HasMeat(s))return _v7Clean(s)}var pooled=_v7PoolFor(t);if(pooled)return pooled;try{if(typeof _aspCleanTechNotes==='function'){var cl=String(_aspCleanTechNotes(t.notes||'')||'').trim();if(cl){var e=_v7Entry(cl,t);if(e)return _v7Clean(e)}}}catch(_){}var raw=(typeof _aspCleanTechNotes==='function')?'':String(t.notes||'').trim();/* v2.88.3 — con el limpiador al alcance, las notas crudas ya no van al papel */if(raw){var e2=_v7Entry(raw,t);if(e2)return _v7Clean(e2)}return''}
   function isDone(t){if(!t)return false;var st=String(t.status||'').toLowerCase();return (_v7D().indexOf(t)>=0)||/done|complete|completed/.test(st)||!!(t.completedAt||t.fieldReportSubmitted)}
   function isVisit(t){if(!t)return false;var st=String(t.status||'').toLowerCase();if(/cancel/.test(st))return false;return true}
-  function total(t){try{var ex=Number(t.total||0);if(ex>0)return ex;var p=(t.parts||[]).reduce(function(s,x){return s+Number((((x.ch!=null)?x.ch:x.p)||0)*(x.qty||1))},0),l=0;if(typeof calcLabor==='function'){var w=t.warranty||{},b=calcLabor(t.arrival,t.departure,t.visitNum||1,typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(w,t):undefined,t.noLabor||false);l=Number(b&&b.amount||0)}return p+l}catch(_){return Number(t.total||0)||0}}
+  function total(t){try{var ex=Number(t.total||0);if(ex>0)return ex;var p=(t.parts||[]).reduce(function(s,x){return s+Number((((x.ch!=null)?x.ch:x.p)||0)*(x.qty||1))},0),l=0;if(typeof calcLabor==='function'){var w=t.warranty||{},b=calcLabor(t.arrival,t.departure,t.visitNum||1,typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(w,t):undefined,t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));l=Number(b&&b.amount||0)}return p+l}catch(_){return Number(t.total||0)||0}}
   function dparts(s){try{var d=new Date(String(s||'')+'T00:00:00');if(isNaN(d))throw 0;return{m:d.toLocaleDateString('en-US',{month:'short'}),d:d.getDate(),y:d.getFullYear()}}catch(_){return{m:'',d:s||'—',y:''}}}
   function counts(t){var m=Array.isArray(t.media)?t.media:[];return{photos:(t.photoUrls||[]).filter(Boolean).length+m.filter(function(x){return x&&x.type!=='pdf'&&(x.url||x.data||x.dataUrl)}).length,pdfs:m.filter(function(x){return x&&x.type==='pdf'}).length}}
   function work(t){var a=(t.workTypes||[]).filter(function(x){return x&&!/^service call$/i.test(x)});return a.join(', ')||'Technician Visit'}
@@ -34763,7 +34845,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   function duration(m){if(!m)return 'Not recorded';return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'}
   function parts(t){return Array.isArray(t.parts)?t.parts:[]}
   function partTotal(t){return parts(t).reduce(function(s,p){var q=N(p.qty||1),u=N(p.ch!=null?p.ch:p.p);return s+q*u},0)}
-  function labor(t){try{if(typeof calcLabor==='function'){var r=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(t.warranty||{},t):undefined),!!t.noLabor);return r||{}}}catch(_){}return{amount:N(t.laborCharge||t.labor||0),label:t.laborLabel||''}}
+  function labor(t){try{if(typeof calcLabor==='function'){var r=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(t.warranty||{},t):undefined),!!t.noLabor,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));return r||{}}}catch(_){}return{amount:N(t.laborCharge||t.labor||0),label:t.laborLabel||''}}
   function charges(t){var l=labor(t),pt=partTotal(t),trip=N(t.tripCharge||t.serviceCallCharge||0),tax=N(t.tax||t.salesTax||0),laborAmt=N(l.amount),total=N(t.total||t.amountCollected||t.collected||0);if(!total)total=pt+laborAmt+trip+tax;var paid=N(t.amountCollected||t.collected||t.paidAmount||0);if(!paid&&t.paid===true)paid=total;var bal=N(t.balanceDue);if(!bal)bal=Math.max(0,total-paid);return{parts:pt,labor:laborAmt,trip:trip,tax:tax,total:total,paid:paid,balance:bal,laborLabel:l.label||''}}
   function customer(t){return{name:t.customer||((document.getElementById('custName')||{}).value)||'Customer',phone:t.phone||((document.getElementById('custPhone')||document.getElementById('custMainPhone')||{}).value)||'',email:t.email||((document.getElementById('custEmail')||{}).value)||'',address:t.address||((document.getElementById('custAddr')||document.getElementById('custAddress')||{}).value)||'',spa:t.spaDesc||t.spaModel||t.model||'',serial:t.serial||t.serialNumber||''}}
   function workStatus(t){if(t.status==='canceled')return'Canceled';if(t.paid===true)return'Completed · Paid';return'Completed'}
@@ -51394,6 +51476,7 @@ function pinta(){
   H+='<div class="tdy-h"><h1>'+L2("Hoy","Today")+'</h1>'
     +'<div class="tdy-sub">'+esc2(fechaLarga())+(lista.length?' &middot; '+lista.length+' '
       +L2(lista.length===1?"parada":"paradas",lista.length===1?"stop":"stops"):'')+'</div></div>';
+  try{ if(typeof aspCierreFranja==="function"){ var _hd=new Date(); H+=aspCierreFranja(_hd.getFullYear()+"-"+String(_hd.getMonth()+1).padStart(2,"0")+"-"+String(_hd.getDate()).padStart(2,"0")); } }catch(_c){} /* v2.93.4 cierre */
 
   /* ── siguiente parada: UNA FRANJA, no un cartel ──
      v2.36.0 — antes era un heroe con el volcado del spa dentro y ocupaba
@@ -51486,6 +51569,7 @@ function pinta(){
            t.urgent hizo que esta pastilla NUNCA se renderizara. Cuarenta lineas
            mas arriba, en este mismo archivo, otro bloque ya lo hacia bien. */
         if(t.urgent||t.isUrgent) estado+='<span class="tdy-p urg">'+L2("Urgente","Urgent")+'</span>';
+        if(t.rate15===true&&typeof aspRate15Sello==="function") estado+=aspRate15Sello(t,true,"tdy-p asp-r15-p","");   /* v2.93.5 */
         /* v2.60.0 — avisos que el tecnico necesita ANTES de tocar el timbre. El
            tablero Daily ya los calcula; Today no los mostraba, asi que se podia
            manejar hasta la casa, hacer solo un trabajo de dos personas y cobrar
@@ -57787,7 +57871,7 @@ function unassigned(t){return !!(isDispatch(t)&&alive(t)&&!(t.techs&&t.techs.len
 function needs2(t){return !!(isDispatch(t)&&alive(t)&&t.needsOtherTech)}
 function returnNoDate(t){return !!(isDispatch(t)&&alive(t)&&!String(t.date||"").trim()&&continuation(t))}
 function attentionItems(k){
-  var a=pool().filter(isDispatch);
+  var a=pool().filter(isDispatch).filter(function(t){ return !(typeof aspEnHold==="function"&&aspEnHold(t)); }); /* v2.93.3 hold */
   if(k==="report")return allPool().filter(isDispatch).filter(needsReport).filter(function(t){ return typeof aspReporteReciente!=="function"||aspReporteReciente(t) });   /* v2.92.1 */
   if(k==="unassigned")return a.filter(unassigned);
   if(k==="payfirst")return a.filter(payFirst);
@@ -58310,7 +58394,7 @@ A.loadTeamActivity=async function(ticketId){var box=document.getElementById("ops
 /* #11 — Universal Customer Timeline (service + reschedules + payment + warranty). */
 function dateLabel(ms){if(!ms)return"";try{return new Date(ms).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}catch(_e){return""}}
 function universalTimeline(tkts){tkts=(tkts||[]).slice();if(!tkts.length)return"";var name=tkts[0].customer||"",key=K(name),items=[];var desc="";for(var i=0;i<tkts.length;i++){if(tkts[i].spaDesc){desc=tkts[i].spaDesc;break}}try{var p=desc&&_parseSpaDescription(desc);if(p&&p.delivered)items.push({ts:p.delivered.getTime(),type:"service",title:L("Spa entregado","Spa delivered"),sub:(p.model||"")+(p.series?(" · "+p.series):"")+(p.serial?(" · Serial #"+p.serial):"")})}catch(_e){}
-  tkts.forEach(function(t){var dt=dayTs(t.date)||ticketTs(t),type=t.autoFromResched?"resched":"service",title=t.autoFromResched?L("Visita de regreso","Return visit"):L("Visita de servicio","Service visit"),sub=[];if(t.date)sub.push(t.date);if(t.techs&&t.techs.length)sub.push(t.techs.join(", "));if(t.autoFromResched)sub.push(t.date?L("reagendada","re-booked"):L("esperando fecha","waiting for date"));else if(t.fieldReportSubmitted||t.status==="done"||t.status==="complete")sub.push(L("completada","completed"));if(t.qbCopied)sub.push("QB ✓");items.push({ts:dt||Date.now(),type:type,title:title,sub:sub.join(" · ")});if(t.followUpDate)items.push({ts:dayTs(t.followUpDate),type:"service",title:L("Follow-up programado","Follow-up scheduled"),sub:t.followUpDate+(t.followUpNote?(" · "+t.followUpNote):"")})});
+  tkts.forEach(function(t){var dt=dayTs(t.date)||ticketTs(t),type=t.autoFromResched?"resched":"service",title=t.autoFromResched?L("Visita de regreso","Return visit"):L("Visita de servicio","Service visit"),sub=[];if(t.date)sub.push(t.date);if(t.techs&&t.techs.length)sub.push(t.techs.join(", "));if(window.aspEnHold&&aspEnHold(t))sub.push("On hold");else if(t.autoFromResched)sub.push(t.date?L("reagendada","re-booked"):L("esperando fecha","waiting for date"));else if(t.fieldReportSubmitted||t.status==="done"||t.status==="complete")sub.push(L("completada","completed"));if(t.qbCopied)sub.push("QB ✓");items.push({ts:dt||Date.now(),type:type,title:title,sub:sub.join(" · ")});if(t.followUpDate)items.push({ts:dayTs(t.followUpDate),type:"service",title:L("Follow-up programado","Follow-up scheduled"),sub:t.followUpDate+(t.followUpNote?(" · "+t.followUpNote):"")})});
   try{if(typeof crossAppEvents!=="undefined"&&Array.isArray(crossAppEvents))crossAppEvents.forEach(function(e){if(K(e.customerName||e.customer||"")!==key)return;var tt=Number(e.createdAtMs||e.updatedAtMs)||tsVal(e.createdAt)||tsVal(e.updatedAt)||dayTs(e.date);var amt=Number(e.amount||e.balance||0);items.push({ts:tt||Date.now(),type:"payment",title:L("Payment follow-up","Payment follow-up")+(e.invoiceNumber?(" · #"+e.invoiceNumber):""),sub:(amt?money(amt):"")+(e.status?(" · "+e.status):"")})})}catch(_e){}
   try{if(typeof WAR_LOG!=="undefined"&&Array.isArray(WAR_LOG))WAR_LOG.forEach(function(w){if(K(w.customer||"")!==key)return;items.push({ts:tsVal(w.when)||Date.now(),type:"warranty",title:L("Warranty override","Warranty override"),sub:(w.fromLabel||"?")+" → "+(w.toLabel||"?")+(w.reason?(" · "+w.reason):"")})})}catch(_e){}
   items=items.filter(function(x){return x.ts}).sort(function(a,b){return a.ts-b.ts});var rows=items.slice(-40).map(function(x){return '<div class="ops275-tl-item '+x.type+'"><span class="ops275-tl-dot"></span><div class="ops275-tl-date">'+H(dateLabel(x.ts))+'</div><div class="ops275-tl-title">'+H(x.title)+'</div>'+(x.sub?'<div class="ops275-tl-sub">'+H(x.sub)+'</div>':'')+'</div>'}).join("");return '<div class="ops275-universal"><div class="ops275-universal-h"><b>🧭 '+H(L("Timeline universal del cliente","Universal Customer Timeline"))+'</b><span>'+items.length+' '+H(L("eventos","events"))+'</span></div>'+chainHTML(tkts)+'<div class="ops275-timeline">'+rows+'</div></div>'}
@@ -59655,7 +59739,7 @@ var RAZONES={
 };
 function razonTxt(r){ var v=RAZONES[r]; return v?L(v[0],v[1]):String(r||""); }
 var FALTA=[["none","✅",["Nada — solo fecha","Nothing — just a date"]],["part","📦",["Una parte","A part"]],["tech2","👥",["2º técnico","2nd tech"]],["access","🔑",["Acceso del cliente","Customer access"]],["equip","🛠",["Equipo especial","Special equipment"]]];
-var CUANDO=[["week",["Esta semana","This week"]],["next",["Próxima semana","Next week"]],["callus",["El cliente llama","Customer will call"]],["urgent",["🔥 Urgente","🔥 Urgent"]]];
+var CUANDO=[["week",["Esta semana","This week"]],["next",["Próxima semana","Next week"]],["callus",["El cliente llama","Customer will call"]],["winter",["Después del invierno","After winter"]],["urgent",["🔥 Urgente","🔥 Urgent"]]]; /* v2.93.3 hold: winter */
 
 /* ── 15 · el cobro de la vuelta (solo oficina: los tecnicos nunca ven dinero) ── */
 function cobroTxt(t,m){
@@ -59690,7 +59774,7 @@ function dialogo(ctx){
         +'<div class="asp-vu-fecha"><label><span>'+E(L("Día","Day"))+'</span><input type="date" id="aspVuFecha" min="'+hoyIso()+'"></label><label><span>'+E(L("Hora","Time"))+'</span><input type="time" id="aspVuHora"></label></div>'
         +'<div class="asp-vu-ch asp-vu-tecs" data-q="tec">'+techs.map(function(n){ var on=t&&(t.techs||[]).indexOf(n)>=0; return '<button type="button" data-vu-tec="'+E(n)+'"'+(on?' aria-pressed="true"':'')+'>'+E(n)+'</button>'; }).join("")+'</div>'
         +'<div class="asp-vu-ch" data-q="sin"><button type="button" data-vu-sinfecha="1">'+E(L("Todavía sin fecha","No date yet"))+'</button></div>'
-        +'<div class="asp-vu-sinf" hidden><div class="asp-vu-q"><b>3</b><span>'+E(L("¿Cuándo puede el cliente?","When can the customer?"))+'</span></div><div class="asp-vu-ch" data-q="c">'+CUANDO.slice(0,3).map(function(c){ return '<button type="button" data-vu-cuando="'+c[0]+'">'+E(L(c[1][0],c[1][1]))+'</button>'; }).join("")+'</div></div>';
+        +'<div class="asp-vu-sinf" hidden><div class="asp-vu-q"><b>3</b><span>'+E(L("¿Cuándo puede el cliente?","When can the customer?"))+'</span></div><div class="asp-vu-ch" data-q="c">'+CUANDO.filter(function(c){ return c[0]!=="urgent"; }).map(function(c){ return '<button type="button" data-vu-cuando="'+c[0]+'">'+E(L(c[1][0],c[1][1]))+'</button>'; }).join("")+'</div></div>';
     }else{
       h+='<div class="asp-vu-q"><b>2</b><span>'+E(L("¿Qué hace falta para volver?","What's needed to go back?"))+'</span></div><div class="asp-vu-ch" data-q="f">'+FALTA.map(function(f){ return '<button type="button" data-vu-falta="'+f[0]+'">'+f[1]+' '+E(L(f[2][0],f[2][1]))+'</button>'; }).join("")+'</div>'
         +'<div class="asp-vu-parte" hidden><label><span>'+E(L("¿Qué parte?","Which part?"))+'</span><input type="text" id="aspVuParte" placeholder="'+E(L("ej. bomba 2 vel","e.g. 2-speed pump"))+'"></label><label><span>'+E(L("Llega el…","Arrives on…"))+'</span><input type="date" id="aspVuLlega"></label></div>'
@@ -59790,13 +59874,14 @@ async function alCrear(o){
       msg=(m==="mover")?L("Cita movida — está en «Vueltas por agendar»","Appointment moved — it's in «Return visits to schedule»")
          :(m==="otra")?L("Otra visita creada — está en «Vueltas por agendar»","Another visit created — it's in «Return visits to schedule»")
          :L("Vuelta creada — está en «Vueltas por agendar»","Return visit created — it's in «Return visits to schedule»");
+      if(info.availability==="winter"||info.blocker==="part")msg=L("Vuelta creada — está en «On hold»","Return visit created — it's in «On hold»"); /* v2.93.3 hold */
       /* «no pudimos terminar» solo es verdad si alguien fue: a una cita movida no se le manda ese texto (la tarjeta tiene «Text») */
       try{ if(m==="noterminada"&&typeof _aspOfrecerSMSReagendo==="function")_aspOfrecerSMSReagendo(o.src,info); }catch(_e){}
     }
   }catch(e){ console.warn("[vuelta alCrear]",e); msg=msg||L("Vuelta creada","Return visit created"); }
   try{ refreshAll(); if(typeof rndrSlog==="function")rndrSlog(); }catch(_e){}
   if(o.foto)barraDeshacer(msg,o.foto,newId); else toast(msg);
-  if(!(m==="mover"&&info.newDate)&&oficina())setTimeout(function(){ abrirBandeja(); },200);
+  if(!(m==="mover"&&info.newDate)&&oficina()&&!(info.availability==="winter"||info.blocker==="part"))setTimeout(function(){ abrirBandeja(); },200); /* v2.93.3 hold */
 }
 
 /* ── 6 · LA BANDEJA: una sola, en el Registro, en tres grupos ── */
@@ -59882,7 +59967,7 @@ function bandeja(lista){
   return h+'</div></div>';
 }
 function pendientes(){
-  return pool().filter(function(t){ return t&&t.autoFromResched&&t.source==="dispatch"&&!String(t.date||"").trim()&&t.status!=="canceled"&&t.status!=="done"&&t.status!=="reschedule"&&!t.fieldReportSubmitted; });
+  return pool().filter(function(t){ return t&&t.autoFromResched&&t.source==="dispatch"&&!String(t.date||"").trim()&&t.status!=="canceled"&&t.status!=="done"&&t.status!=="reschedule"&&!t.fieldReportSubmitted&&!(typeof aspEnHold==="function"&&aspEnHold(t)); }); /* v2.93.3 hold */
 }
 function repetidas(){ return pendientes().concat(pool().filter(function(t){ return t&&esVuelta(t)&&abierta(t)&&String(t.date||"").trim(); }))
   .filter(function(t){ return (typeof aspVueltaN==="function")&&aspVueltaN(t)>=3; }); }
@@ -68140,6 +68225,736 @@ window.aspSumarReportes=function(X,nuevo){
     window.rndrCal=function(){ var r=_rc.apply(this,arguments); try{ arma() }catch(e){ try{console.warn("[route angosta]",e)}catch(_x){} } return r };
   }
   try{ arma() }catch(_e){}
+})();
+</script>
+<style id="aspenHold2933">
+/* ═══ v2.93.3 — ON HOLD en el Service Log ═══════════════════════════════════════════════════
+   Tickets que se atienden después (después del invierno, esperando parte o cover, el cliente pidió
+   esperar). Entran: el técnico con «Después del invierno» al reagendar, una vuelta que espera parte,
+   o la oficina con «Poner en hold». Salen SOLO a mano. Mientras tanto no cuentan en nada de lo de ahora.
+   Regla única: aspEnHold(t). Borrar este bloque + aspenHold2933Script (y los filtros marcados
+   «v2.93.3 hold» en el archivo) = revertir. */
+#aspHold{margin:18px 0 6px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);overflow:hidden}
+#aspHold .asp-hold-h{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:10px 14px;cursor:pointer;color:var(--c-info-fg);font-weight:800;font-size:var(--fs-sm,13px);letter-spacing:.4px;text-transform:uppercase}
+#aspHold .asp-hold-h:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
+#aspHold .asp-hold-n{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--c-info-bg);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+#aspHold .asp-hold-sub{color:var(--i3);font-weight:600;text-transform:none;letter-spacing:0}
+#aspHold .asp-hold-chev{margin-left:auto;display:inline-flex;transition:transform .18s}
+#aspHold .asp-hold-h[aria-expanded="true"] .asp-hold-chev{transform:rotate(180deg)}
+#aspHold .asp-hold-b{padding:0 12px 12px;border-top:1px solid var(--ln)}
+#aspHold .asp-hold-g{margin-top:12px}
+#aspHold .asp-hold-gt{font-size:12px;font-weight:800;color:var(--i2);margin:0 0 8px;display:flex;gap:6px;align-items:center}
+#aspHold .asp-hold-gt b{color:var(--i3);font-weight:700}
+#aspHold .asp-hold-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+#aspHold .asp-hold-card{background:var(--cd);border:1px solid var(--ln);border-left:3px solid var(--c-info-strong);border-radius:12px;padding:10px 11px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+#aspHold .asp-hold-card.hoy{border-left-color:var(--c-success-strong)}
+#aspHold .asp-hold-ct{display:flex;align-items:center;gap:6px;justify-content:space-between}
+#aspHold .asp-hold-ct b{font-size:var(--fs-md,14px);color:var(--ink);line-height:1.25}
+#aspHold .asp-hold-urg{font-size:11px;font-weight:800;color:var(--c-danger-strong);white-space:nowrap}
+#aspHold .asp-hold-r{font-size:13px;font-weight:700;color:var(--c-info-fg)}
+#aspHold .asp-hold-llega{color:var(--i2);font-weight:600}
+#aspHold .asp-hold-llega.hoy{color:var(--c-success-strong);font-weight:800}
+#aspHold .asp-hold-d{font-size:12px;color:var(--i3)}
+#aspHold .asp-hold-li{font-size:12px;color:var(--i2);display:flex;align-items:center;gap:4px}
+#aspHold .asp-hold-li.gris{color:var(--i3)}
+#aspHold .asp-hold-acc{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#aspHold .asp-hold-acc button,#aspHold .asp-hold-tel{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ln);background:var(--cd);color:var(--ink);font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;text-decoration:none}
+#aspHold .asp-hold-acc .asp-hold-sacar{background:var(--c-info-bg);border-color:transparent;color:var(--c-info-fg)}
+#aspHold .asp-hold-acc button:disabled{opacity:.55;cursor:default}
+#aspHoldDeshacer{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:calc(84px + env(safe-area-inset-bottom));z-index:2147483000;transform:translateY(20px);opacity:0;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);box-sizing:border-box;padding:11px 12px 11px 18px;border-radius:12px;background:#211712;color:#fbf6ef;box-shadow:0 12px 34px rgba(0,0,0,.3);font-size:14px;font-weight:650;transition:opacity .2s ease,transform .2s ease}
+#aspHoldDeshacer.on{opacity:1;transform:none}
+#aspHoldDeshacer button{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 13px;border-radius:8px;border:0;background:#fbf6ef;color:#211712;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
+#aspHoldDeshacer i{font-style:normal;font-variant-numeric:tabular-nums;opacity:.6;font-size:12px}
+.asp-hold-poner-w{margin:10px 0}
+html:not(#_h1) .asp-hold-poner{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--ln);background:var(--cd);color:var(--c-info-fg);font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+#slogList .asp-vu-tacc .asp-hold-poner.asp-hold-mini{min-height:36px;padding:0 10px;font-size:12.5px;border-radius:8px!important}
+.asp-hold-franja{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--c-info-bg);color:var(--c-info-fg);border:1px solid var(--c-info-strong);display:flex;flex-direction:column;gap:8px}
+.asp-hold-franja .asp-hold-ft{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;font-weight:600}
+.asp-hold-franja .asp-hold-ft b{font-weight:900;letter-spacing:.5px}
+.asp-hold-franja .asp-hold-fa{display:flex;gap:8px;flex-wrap:wrap}
+.asp-hold-franja .asp-hold-fa button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:8px;border:0;background:var(--c-info-strong);color:#fff;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.asp-hold-franja .asp-hold-fa button+button{background:var(--cd);color:var(--c-info-fg);border:1px solid var(--c-info-strong)}
+.asp-hold-dlg .asp-hold-cita{margin:0 0 10px;padding:8px 10px;border-radius:12px;background:var(--c-warning-bg);color:var(--c-warning-fg);font-size:13px;font-weight:650;display:flex;gap:6px;align-items:center}
+.asp-hold-aviso{margin:4px 0 10px;padding:8px 10px;border-radius:12px;background:var(--c-info-bg);color:var(--c-info-fg);font-size:13px;font-weight:700;display:flex;gap:6px;align-items:center}
+.asp-hold-aviso[hidden]{display:none}
+.asp-hold-volvio{display:inline-flex;align-items:center;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--c-info-bg);color:var(--c-info-fg);font-size:11px;font-weight:800;white-space:nowrap;vertical-align:middle}
+</style>
+<script id="aspenHold2933Script">
+(function(){
+  "use strict";
+  if(window.__aspHold2933)return; window.__aspHold2933=true;
+  var L=function(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } };
+
+  var RAZONES=[["winter",["Después del invierno","After winter"]],["part",["Esperando parte","Waiting on part"]],["cover",["Esperando cover","Waiting on cover"]],["wait",["El cliente pidió esperar","Customer asked to wait"]],["other",["Otro","Other"]]];
+  window.aspHoldRazones=RAZONES;
+  function razonTxt(k){ for(var i=0;i<RAZONES.length;i++)if(RAZONES[i][0]===k)return L(RAZONES[i][1][0],RAZONES[i][1][1]); return L("Otro","Other"); }
+
+  function esperaParte(t){ return ((t.reschedBlocker==="part")||/part/i.test(String(t.reschedReason||"")))&&!t.partArrivedAt; }
+
+  /* LA regla. Un ticket está en hold si sigue abierto, sin fecha, y:
+     la oficina lo puso (y no lo sacó después) · o es una vuelta «después del invierno» · o una vuelta que espera parte.
+     Ponerle fecha, reportarlo o cancelarlo lo saca solo; «Sacar de hold» lo saca a mano. */
+  window.aspEnHold=function(t){
+    if(!t||t.source!=="dispatch")return false;
+    var st=String(t.status||"");
+    if(st==="canceled"||st==="cancelled"||st==="done"||st==="complete"||st==="reschedule")return false;
+    if(t.fieldReportSubmitted)return false;
+    if(String(t.date||"").trim())return false;
+    var dentro=Number(t.holdAtMs)||0, fuera=Number(t.holdOutAtMs)||0;
+    if(dentro&&dentro>fuera)return true;
+    if(fuera)return false;
+    if(!t.autoFromResched)return false;
+    if(t.reschedAvailability==="winter")return true;
+    return esperaParte(t);
+  };
+
+  window.aspHoldInfo=function(t){
+    t=t||{};
+    var dentro=Number(t.holdAtMs)||0, fuera=Number(t.holdOutAtMs)||0;
+    if(dentro&&dentro>fuera){
+      var r=t.holdReason||"other";
+      return {razon:r, etiqueta:razonTxt(r), que:String(t.holdWhat||""), llega:String(t.holdEta||"").slice(0,10), desdeMs:dentro, quien:String(t.holdBy||""), deTecnico:false};
+    }
+    var pv=t.priorVisit||{}, who=(pv.techs||[]).join(", ");
+    if(t.reschedAvailability==="winter")
+      return {razon:"winter", etiqueta:razonTxt("winter"), que:"", llega:"", desdeMs:Number(t.reschedAtMs)||0, quien:who, deTecnico:true};
+    return {razon:"part", etiqueta:razonTxt("part"), que:String(t.reschedBlockerPart||""), llega:String(t.reschedNotBefore||"").slice(0,10), desdeMs:Number(t.reschedAtMs)||0, quien:who, deTecnico:true};
+  };
+
+  /* ── utilidades ── */
+  function oficina(){ try{ return !!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")); }catch(_e){ return false; } }
+  function quien(){ try{ return String((currentUser&&(currentUser.name||currentUser.email))||""); }catch(_e){ return ""; } }
+  function E(x){ return String(x==null?"":x).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function ic(n,sz){ try{ return (typeof icon==="function")?icon(n,sz||14):""; }catch(_e){ return ""; } }
+  function dos(n){ return (n<10?"0":"")+n; }
+  function hoyIso(){ var d=new Date(); return d.getFullYear()+"-"+dos(d.getMonth()+1)+"-"+dos(d.getDate()); }
+  function MDY(){ var d=new Date(); return dos(d.getMonth()+1)+"/"+dos(d.getDate())+"/"+d.getFullYear(); }
+  function es(){ try{ return L("a","b")==="a"; }catch(_e){ return false; } }
+  function diaIso(iso){ try{ return new Date(String(iso).slice(0,10)+"T12:00:00").toLocaleDateString(es()?"es-US":"en-US",{month:"short",day:"numeric"}); }catch(_e){ return String(iso); } }
+  function diaMs(ms){ try{ return ms?new Date(ms).toLocaleDateString(es()?"es-US":"en-US",{month:"short",day:"numeric"}):""; }catch(_e){ return ""; } }
+  function todos(){ var v={}, out=[]; try{ [].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]).forEach(function(t){ if(t&&t.id&&!v[t.id]){ v[t.id]=1; out.push(t); } }); }catch(_e){} return out; }
+  function byId(id){ var p=todos(); for(var i=0;i<p.length;i++)if(p[i].id===id)return p[i]; return null; }
+  function refresca(){ setTimeout(function(){ try{ if(typeof refreshAll==="function")refreshAll(); }catch(_e){} try{ if(typeof rndrSlog==="function")rndrSlog(); }catch(_e){} },250); }
+  function volvio(t){ return !!(t&&!String(t.date||"").trim()&&(Number(t.holdOutAtMs)||Number(t.partArrivedAtMs)||t.partArrivedAt)&&!window.aspEnHold(t)); }
+
+  /* ── SALIR (solo a mano) ── */
+  window.aspSacarHold=async function(id,como){
+    var t=byId(id); if(!t||typeof db==="undefined"||!db)return false;
+    var who=quien(), linea=(como==="part")?"✅ Part arrived — out of hold":(como==="cover")?"✅ Cover arrived — out of hold":"▶ OUT OF HOLD";
+    var nn=String(t.notes||""); nn=(nn?nn+"\n\n":"")+MDY()+" "+linea+" ("+who+")";
+    try{
+      await db.collection("tickets").doc(id).update({holdOutAt:new Date().toLocaleString(),holdOutAtMs:Date.now(),holdOutBy:who,notes:nn});
+      try{ if(typeof _audit==="function")_audit("hold-out",{ticketId:id,note:como||"out"}); }catch(_a){}
+      toast(L("Salió de hold — ","Out of hold — ")+(t.customer||""));
+      refresca(); return true;
+    }catch(e){ toast(L("No se pudo: ","Could not: ")+e.message,"err"); return false; }
+  };
+
+  /* ── LA SECCIÓN, al final del Service Log ── */
+  var ORDEN=["winter","part","cover","wait","other"];
+  function abierto(){ try{ return localStorage.getItem("aspHoldAbierto")==="1"; }catch(_e){ return false; } }
+  function tarjeta(t){
+    var f=window.aspHoldInfo(t), sc={}; try{ sc=(typeof _slCust==="function"?_slCust(t):{})||{}; }catch(_e){}
+    var hoy=f.llega&&f.llega<=hoyIso();
+    var razon=E(f.etiqueta)+(f.que?" · "+E(f.que):"")+(f.llega?' · <span class="asp-hold-llega'+(hoy?" hoy":"")+'">'+E(hoy?L("llega hoy","arrives today"):L("llega el ","arrives ")+diaIso(f.llega))+'</span>':"");
+    var desde=f.desdeMs?L("desde ","since ")+diaMs(f.desdeMs)+(f.quien?" · "+E(f.quien):""):(f.quien?E(f.quien):"");
+    var tel=sc.phone||t.phone||"", dir=sc.addrLine||"";
+    var llego=(f.razon==="part"||f.razon==="cover")?'<button type="button" class="asp-hold-llego" data-hold-acc="llego">'+ic("package-check",16)+' '+E(f.razon==="cover"?L("Llegó el cover","Cover arrived"):L("Llegó la parte","Part arrived"))+'</button>':"";
+    return '<div class="slc asp-hold-card'+(hoy?" hoy":"")+'" data-hold-id="'+E(t.id)+'" role="button" tabindex="0">'
+      +'<div class="asp-hold-ct"><b>'+E(t.customer||"—")+'</b>'+(t.isUrgent?'<span class="asp-hold-urg">'+E(L("Urgente","Urgent"))+'</span>':'')+'</div>'
+      +'<div class="asp-hold-r">'+razon+'</div>'
+      +(desde?'<div class="asp-hold-d">'+desde+'</div>':'')
+      +(tel?'<div class="asp-hold-li">'+ic("phone",16)+' '+E(tel)+'</div>':'')
+      +(dir?'<div class="asp-hold-li gris">'+ic("map-pin",16)+' '+E(dir)+'</div>':'')
+      +'<div class="asp-hold-acc"><button type="button" class="asp-hold-sacar" data-hold-acc="sacar">'+ic("play",16)+' '+E(L("Sacar de hold","Take out of hold"))+'</button>'+llego
+      +(tel?'<a class="asp-hold-tel" href="tel:'+E(String(tel).replace(/[^\d+]/g,""))+'" aria-label="'+E(L("Llamar","Call"))+'">'+ic("phone",16)+'</a>':'')+'</div></div>';
+  }
+  function pinta(){
+    var el=document.getElementById("slogList"); if(!el)return;
+    var vieja=document.getElementById("aspHold"); if(vieja)vieja.remove();
+    if(!oficina())return;
+    var q=(document.getElementById("searchSlog")||{}).value||"", idx=null;
+    try{ idx=(typeof _buildFieldReportIndex==="function")?_buildFieldReportIndex():null; }catch(_e){}
+    var lista=todos().filter(function(t){
+      if(!window.aspEnHold(t))return false;
+      if(idx&&idx.servedDispatchIds&&idx.servedDispatchIds.has(t.id))return false;
+      try{ if(q&&typeof tktMatchesSearch==="function"&&!tktMatchesSearch(t,q))return false; }catch(_e){}
+      return true;
+    });
+    if(!lista.length)return;
+    var G={}; lista.forEach(function(t){ var r=window.aspHoldInfo(t).razon; if(ORDEN.indexOf(r)<0)r="other"; (G[r]=G[r]||[]).push(t); });
+    var ab=abierto(), h='<section id="aspHold" class="asp-hold">'
+      +'<button type="button" class="asp-hold-h" aria-expanded="'+(ab?"true":"false")+'" aria-controls="aspHoldB">'+ic("circle-pause",16)+'<span class="asp-hold-tt">On hold</span><b class="asp-hold-n">'+lista.length+'</b>'
+      +'<span class="asp-hold-sub">'+E(L("se atienden después","to handle later"))+'</span><span class="asp-hold-chev">'+ic("chevron-down",16)+'</span></button>'
+      +'<div id="aspHoldB" class="asp-hold-b"'+(ab?'':' hidden')+'>';
+    ORDEN.forEach(function(r){
+      var l=G[r]; if(!l)return;
+      l.sort(function(a,b){
+        var fa=window.aspHoldInfo(a), fb=window.aspHoldInfo(b);
+        if(r==="part"||r==="cover")return String(fa.llega||"9999").localeCompare(String(fb.llega||"9999"))||(fa.desdeMs-fb.desdeMs);
+        return (fa.desdeMs||9e15)-(fb.desdeMs||9e15);
+      });
+      h+='<div class="asp-hold-g" data-hold-grupo="'+r+'"><div class="asp-hold-gt">'+E(razonTxt(r))+' <b>'+l.length+'</b></div><div class="asp-hold-grid">'+l.map(tarjeta).join("")+'</div></div>';
+    });
+    el.insertAdjacentHTML("beforeend",h+'</div></section>');
+  }
+  /* «Volvió de hold»: en la bandeja y en las tarjetas por zona, mientras sigue sin fecha */
+  function marcaVolvio(){
+    var el=document.getElementById("slogList"); if(!el||!oficina())return;
+    Array.prototype.forEach.call(el.querySelectorAll(".asp-vu-card[data-vu-id], .zone-card-item"),function(c){
+      if(c.querySelector(".asp-hold-volvio"))return;
+      var id=c.getAttribute("data-vu-id")||((/openTktDetail\('([^']+)'\)/.exec(c.getAttribute("onclick")||"")||[])[1]);
+      var t=id&&byId(id); if(!volvio(t))return;
+      var s=document.createElement("span"); s.className="asp-hold-volvio"; s.textContent=L("Volvió de hold","Back from hold");
+      var cab=c.querySelector(".asp-vu-th")||c.firstElementChild||c; cab.appendChild(s);
+    });
+  }
+  function despuesDeSlog(){ try{ pinta(); }catch(e){ try{console.warn("[hold] sección",e)}catch(_x){} } try{ marcaVolvio(); }catch(e){ try{console.warn("[hold] volvió",e)}catch(_x){} } }
+  if(typeof window.rndrSlog==="function"){
+    var _rs=window.rndrSlog;
+    window.rndrSlog=function(){
+      var r=_rs.apply(this,arguments);
+      despuesDeSlog();
+      setTimeout(function(){ if(!document.getElementById("aspHold")||!document.querySelector("#slogList .asp-hold-volvio"))despuesDeSlog(); },0);   /* otros pasan después y repintan */
+      return r;
+    };
+  }
+
+  /* clics de la sección (uno solo, delegado) */
+  document.addEventListener("click",function(e){
+    var h=e.target.closest&&e.target.closest("#aspHold .asp-hold-h");
+    if(h){ var b=document.getElementById("aspHoldB"), ab=h.getAttribute("aria-expanded")!=="true"; h.setAttribute("aria-expanded",ab?"true":"false"); if(b)b.hidden=!ab; try{ localStorage.setItem("aspHoldAbierto",ab?"1":"0"); }catch(_e){} return; }
+    var card=e.target.closest&&e.target.closest("#aspHold .asp-hold-card"); if(!card)return;
+    if(e.target.closest("a"))return;
+    var id=card.getAttribute("data-hold-id"), acc=e.target.closest("[data-hold-acc]");
+    if(acc){
+      e.stopPropagation(); acc.disabled=true;
+      var t=byId(id), f=window.aspHoldInfo(t);
+      if(acc.getAttribute("data-hold-acc")==="llego"){
+        if(f.deTecnico&&typeof window.slPartArrived==="function")window.slPartArrived(id).then(refresca);
+        else window.aspSacarHold(id,f.razon);
+      }else window.aspSacarHold(id,"out");
+      return;
+    }
+    try{ openTktDetail(id); }catch(_e){}
+  });
+  document.addEventListener("keydown",function(e){ if(e.key!=="Enter")return; var c=e.target.closest&&e.target.closest("#aspHold .asp-hold-card"); if(c&&e.target===c){ try{ openTktDetail(c.getAttribute("data-hold-id")); }catch(_e){} } });
+
+  /* ── ENTRAR: «Poner en hold» (oficina) ── */
+  function sePuede(t){
+    if(!t||t.source!=="dispatch"||t.fieldReportSubmitted)return false;
+    var st=String(t.status||""); if(st==="canceled"||st==="cancelled"||st==="done"||st==="complete"||st==="reschedule")return false;
+    return !window.aspEnHold(t);
+  }
+  var CLAVES=["date","arrival","techs","notes","holdAt","holdAtMs","holdReason","holdNote","holdWhat","holdEta","holdBy","holdPrev","holdOutAt","holdOutAtMs","holdOutBy"];
+  function foto(t){ var f={}; CLAVES.forEach(function(k){ if(Object.prototype.hasOwnProperty.call(t,k))f[k]=JSON.parse(JSON.stringify(t[k])); }); return f; }
+  function borra(){ return firebase.firestore.FieldValue.delete(); }
+  async function deshacer(id,f){
+    try{
+      var u={}; CLAVES.forEach(function(k){ u[k]=Object.prototype.hasOwnProperty.call(f,k)?f[k]:borra(); });
+      await db.collection("tickets").doc(id).update(u);
+      try{ if(typeof _audit==="function")_audit("hold-undo",{ticketId:id}); }catch(_a){}
+      toast(L("Deshecho — todo quedó como estaba","Undone — everything is back as it was")); refresca();
+    }catch(e){ toast(L("No se pudo deshacer: ","Could not undo: ")+e.message,"err"); }
+  }
+  function barraDeshacer(msg,id,f){
+    var old=document.getElementById("aspHoldDeshacer"); if(old)old.remove();
+    var b=document.createElement("div"); b.id="aspHoldDeshacer"; b.setAttribute("role","status");
+    b.innerHTML='<span>'+E(msg)+'</span><button type="button">'+E(L("Deshacer","Undo"))+' <i>10</i></button>';
+    document.body.appendChild(b); requestAnimationFrame(function(){ b.classList.add("on"); });
+    var n=10, iv=setInterval(function(){ n--; var i=b.querySelector("i"); if(i)i.textContent=String(n); if(n<=0){ clearInterval(iv); quita(); } },1000);
+    function quita(){ b.classList.remove("on"); setTimeout(function(){ b.remove(); },250); }
+    b.querySelector("button").onclick=async function(){ clearInterval(iv); this.disabled=true; await deshacer(id,f); quita(); };
+  }
+  function enIngles(k){ for(var i=0;i<RAZONES.length;i++)if(RAZONES[i][0]===k)return RAZONES[i][1][1]; return "Other"; }
+
+  window.aspPonerHold=function(id){
+    var t=byId(id); if(!t||!oficina()||!sePuede(t))return Promise.resolve(false);
+    return new Promise(function(resolve){
+      var cita=String(t.date||"").trim(), techs=(t.techs||[]).filter(Boolean);
+      var h='<div class="asp-vu-dlg asp-hold-dlg" id="aspHoldDlg" role="dialog" aria-modal="true" aria-labelledby="aspHoldDlgT">'
+        +'<div class="asp-vu-dh"><span class="asp-vu-di">'+ic("circle-pause",16)+'</span><div><h3 id="aspHoldDlgT">'+E(L("Poner en hold","Put on hold"))+'</h3>'
+        +'<p class="asp-vu-dc">'+E(t.customer||"")+'</p><p>'+E(L("Sale de las listas de ahora y de la ruta. Solo regresa cuando tú lo saques.","It leaves today's lists and the route. It only comes back when you take it out."))+'</p></div></div>'
+        +(cita||techs.length?'<p class="asp-hold-cita">'+ic("calendar-x",16)+' '+E((cita?L("Tiene cita el ","It's booked on ")+diaIso(cita)+(t.arrival?" "+t.arrival:""):L("Tiene técnico","It has a tech"))+(techs.length?" · "+techs.join(", "):"")+": "+L("sale del calendario y de la ruta.","it leaves the calendar and the route."))+'</p>':'')
+        +'<div class="asp-vu-q"><b>1</b><span>'+E(L("¿Por qué?","Why?"))+'</span></div><div class="asp-vu-ch" data-q="hr">'
+        +RAZONES.map(function(r){ return '<button type="button" data-hold-razon="'+r[0]+'" aria-pressed="false">'+E(L(r[1][0],r[1][1]))+'</button>'; }).join("")+'</div>'
+        +'<div class="asp-vu-parte asp-hold-que" hidden><label><span>'+E(L("¿Qué?","What?"))+'</span><input type="text" id="aspHoldQue" placeholder="'+E(L("ej. bomba 2 vel · cover 7x7","e.g. 2-speed pump · 7x7 cover"))+'"></label>'
+        +'<label><span>'+E(L("Llega el…","Arrives on…"))+'</span><input type="date" id="aspHoldLlega"></label></div>'
+        +'<label class="asp-vu-nota"><span>'+E(L("Nota (opcional)","Note (optional)"))+'</span><textarea id="aspHoldNota" rows="2"></textarea></label>'
+        +'<div class="asp-vu-pie"><button type="button" class="asp-vu-no asp-hold-no">'+E(L("Cancelar","Cancel"))+'</button><button type="button" class="asp-vu-si asp-hold-si">'+E(L("Poner en hold","Put on hold"))+'</button></div></div>';
+      var bg=document.createElement("div"); bg.className="asp-vu-bg"; bg.innerHTML=h; document.body.appendChild(bg);
+      requestAnimationFrame(function(){ bg.classList.add("on"); });
+      var box=bg.querySelector("#aspHoldDlg"), razon="";
+      function fin(v){ bg.classList.remove("on"); setTimeout(function(){ bg.remove(); },180); document.removeEventListener("keydown",tecla,true); resolve(v); }
+      function tecla(e){ if(e.key==="Escape"){ e.preventDefault(); fin(false); } }
+      document.addEventListener("keydown",tecla,true);
+      bg.addEventListener("click",function(e){ if(e.target===bg)fin(false); });
+      box.addEventListener("click",async function(e){
+        var b=e.target.closest&&e.target.closest("button"); if(!b)return;
+        if(b.hasAttribute("data-hold-razon")){
+          razon=b.getAttribute("data-hold-razon");
+          Array.prototype.forEach.call(box.querySelectorAll("[data-hold-razon]"),function(x){ x.setAttribute("aria-pressed",x===b?"true":"false"); });
+          box.querySelector(".asp-hold-que").hidden=!(razon==="part"||razon==="cover");
+          return;
+        }
+        if(b.classList.contains("asp-hold-no")){ fin(false); return; }
+        if(!b.classList.contains("asp-hold-si"))return;
+        var nota=(box.querySelector("#aspHoldNota").value||"").trim();
+        if(!razon){ toast(L("Elige por qué","Pick why"),"warn"); return; }
+        if(razon==="other"&&!nota){ toast(L("Escribe por qué (con «Otro» es obligatorio)","Write why (required with «Other»)"),"warn"); box.querySelector("#aspHoldNota").focus(); return; }
+        var conQue=(razon==="part"||razon==="cover");
+        var que=conQue?(box.querySelector("#aspHoldQue").value||"").trim():"", llega=conQue?(box.querySelector("#aspHoldLlega").value||"").trim():"";
+        b.disabled=true;
+        var ok=await guarda(t,{razon:razon,nota:nota,que:que,llega:llega});
+        if(ok)fin(true); else b.disabled=false;
+      });
+      setTimeout(function(){ var b0=box.querySelector("[data-hold-razon]"); if(b0)b0.focus(); },60);
+    });
+  };
+  async function guarda(t,o){
+    if(typeof db==="undefined"||!db)return false;
+    var who=quien(), f=foto(t);
+    var nn=String(t.notes||""); nn=(nn?nn+"\n\n":"")+MDY()+" ⏸ ON HOLD — "+enIngles(o.razon)+(o.que?": "+o.que:"")+(o.nota?" — "+o.nota:"")+" ("+who+")";
+    var u={holdAt:new Date().toLocaleString(),holdAtMs:Date.now(),holdReason:o.razon,holdNote:o.nota,holdWhat:o.que,holdEta:o.llega,holdBy:who,notes:nn,holdOutAt:borra(),holdOutAtMs:borra(),holdOutBy:borra()};
+    var techs=(t.techs||[]).filter(Boolean);
+    if(String(t.date||"").trim()||techs.length){ u.date=""; u.arrival=""; u.techs=[]; u.holdPrev={date:t.date||"",arrival:t.arrival||"",techs:techs.slice()}; }
+    try{
+      await db.collection("tickets").doc(t.id).update(u);
+      try{ if(typeof _audit==="function")_audit("hold-in",{ticketId:t.id,note:o.razon}); }catch(_a){}
+      try{ if(typeof closeTktDetail==="function")closeTktDetail(); }catch(_e){}
+      barraDeshacer(L("En hold — ","On hold — ")+(t.customer||""),t.id,f);
+      refresca(); return true;
+    }catch(e){ toast(L("No se pudo: ","Could not: ")+e.message,"err"); return false; }
+  }
+
+  /* hoja del ticket: «Poner en hold» en la fila de acciones, o la franja ON HOLD arriba */
+  function franja(t){
+    var f=window.aspHoldInfo(t), hoy=f.llega&&f.llega<=hoyIso();
+    var txt=E(f.etiqueta)+(f.que?" · "+E(f.que):"")+(f.llega?" · "+E(hoy?L("llega hoy","arrives today"):L("llega el ","arrives ")+diaIso(f.llega)):"")+(f.desdeMs?" · "+E(L("desde ","since ")+diaMs(f.desdeMs))+(f.quien?" · "+E(f.quien):""):"");
+    var llego=(f.razon==="part"||f.razon==="cover")?'<button type="button" data-hold-acc="llego">'+ic("package-check",16)+' '+E(f.razon==="cover"?L("Llegó el cover","Cover arrived"):L("Llegó la parte","Part arrived"))+'</button>':"";
+    return '<div class="asp-hold-franja" data-hold-id="'+E(t.id)+'"><div class="asp-hold-ft">'+ic("circle-pause",16)+'<b>ON HOLD</b><span>'+txt+'</span></div>'
+      +'<div class="asp-hold-fa"><button type="button" data-hold-acc="sacar">'+ic("play",16)+' '+E(L("Sacar de hold","Take out of hold"))+'</button>'+llego+'</div></div>';
+  }
+  if(typeof window.openTktDetail==="function"){
+    var _od=window.openTktDetail;
+    window.openTktDetail=function(id){
+      var r=_od.apply(this,arguments);
+      try{
+        if(!oficina())return r;
+        var body=document.getElementById("tktDetailBody"), t=byId(id); if(!body||!t)return r;
+        Array.prototype.forEach.call(body.querySelectorAll(".asp-hold-franja,.asp-hold-poner-w"),function(x){ x.remove(); });
+        if(window.aspEnHold(t)){ body.insertAdjacentHTML("afterbegin",franja(t)); return r; }
+        if(!sePuede(t))return r;
+        var w=document.createElement("div"); w.className="asp-hold-poner-w dtv2-core";
+        w.innerHTML='<button type="button" class="asp-hold-poner" data-hold-id="'+E(id)+'">'+ic("circle-pause",16)+' '+E(L("Poner en hold","Put on hold"))+'</button>';
+        var acts=body.querySelector(".dtv2-acts"); (acts||body).appendChild(w);
+      }catch(e){ try{console.warn("[hold] hoja",e)}catch(_x){} }
+      return r;
+    };
+  }
+  /* botón en las tarjetas de la bandeja de vueltas */
+  function botonesBandeja(){
+    if(!oficina())return;
+    Array.prototype.forEach.call(document.querySelectorAll("#aspVuBandeja .asp-vu-card[data-vu-id]"),function(c){
+      if(c.querySelector(".asp-hold-poner"))return;
+      var id=c.getAttribute("data-vu-id"), t=byId(id); if(!sePuede(t))return;
+      var row=c.querySelector(".asp-vu-tacc"); if(!row){ row=document.createElement("div"); row.className="asp-vu-tacc"; c.appendChild(row); }
+      row.insertAdjacentHTML("beforeend",'<button type="button" class="asp-hold-poner asp-hold-mini" data-hold-id="'+E(id)+'" aria-label="'+E(L("Poner en hold","Put on hold"))+'">'+ic("circle-pause",16)+' Hold</button>');
+    });
+  }
+  var _dS=despuesDeSlog; despuesDeSlog=function(){ _dS(); try{ botonesBandeja(); }catch(e){ try{console.warn("[hold] bandeja",e)}catch(_x){} } };
+  document.addEventListener("click",function(e){
+    var p=e.target.closest&&e.target.closest(".asp-hold-poner");
+    if(p){ e.preventDefault(); e.stopPropagation(); window.aspPonerHold(p.getAttribute("data-hold-id")); return; }
+    var fa=e.target.closest&&e.target.closest(".asp-hold-franja [data-hold-acc]");
+    if(fa){
+      var fr=fa.closest(".asp-hold-franja"), id=fr.getAttribute("data-hold-id"), t=byId(id), f=window.aspHoldInfo(t), pr;
+      fa.disabled=true;
+      if(fa.getAttribute("data-hold-acc")==="llego"&&f.deTecnico&&typeof window.slPartArrived==="function")pr=window.slPartArrived(id);
+      else pr=window.aspSacarHold(id,fa.getAttribute("data-hold-acc")==="llego"?f.razon:"out");
+      Promise.resolve(pr).then(function(){ setTimeout(function(){ try{ openTktDetail(id); }catch(_e){} },500); });
+    }
+  },true);
+
+  /* ── diálogo de reagendar (técnico y oficina): avisa cuándo la vuelta va a On hold ── */
+  document.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("#aspVuDlg [data-vu-cuando], #aspVuDlg [data-vu-falta]"); if(!b)return;
+    setTimeout(function(){
+      var dlg=document.getElementById("aspVuDlg"); if(!dlg)return;
+      var c=dlg.querySelector('[data-vu-cuando][aria-pressed="true"]'), f=dlg.querySelector('[data-vu-falta][aria-pressed="true"]');
+      var inv=c&&c.getAttribute("data-vu-cuando")==="winter", parte=f&&f.getAttribute("data-vu-falta")==="part";
+      var txt=inv?L("Va a On hold — la oficina lo agenda después del invierno.","Goes to On hold — the office schedules it after winter.")
+             :parte?L("Va a On hold hasta que llegue la parte.","Goes to On hold until the part arrives."):"";
+      var a=dlg.querySelector(".asp-hold-aviso");
+      if(!txt){ if(a)a.hidden=true; return; }
+      if(!a){ a=document.createElement("p"); a.className="asp-hold-aviso"; a.setAttribute("role","status"); var nota=dlg.querySelector(".asp-vu-nota"); if(nota)nota.parentNode.insertBefore(a,nota); else dlg.appendChild(a); }
+      a.innerHTML=ic("circle-pause",16)+" "+E(txt); a.hidden=false;
+    },0);
+  });
+})();
+</script>
+<style id="aspenCierre2934">
+/* ═══ v2.93.4 — CIERRE DE LA OFICINA (feriado / medio día desde las 12:00) ════════════════════
+   Una entrada de Time Off con tech:"*". La regla (aspCierreDe, _isTechOff, _techsOffOn) está junto
+   a la del time off; aquí: el formulario, la lista de citas en conflicto, el freno y la vista.
+   Borrar este bloque + aspenCierre2934Script (y los parches marcados «v2.93.4 cierre») = revertir. */
+/* las dos fechas (From / To) se cortaban a la derecha en pantallas angostas: el input de fecha no se encogía */
+#timeOffBg .to-row2>div{min-width:0}
+#timeOffBg .to-row2 input[type="date"]{min-width:0;max-width:100%}
+.to-form label.to-half{display:flex;align-items:center;gap:9px;margin:0 0 10px;text-transform:none;letter-spacing:0;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+.to-form label.to-half[hidden]{display:none}
+.to-form .to-half input{width:20px;height:20px;margin:0;flex:0 0 auto;accent-color:var(--ac)}
+.cal-off-chip.asp-cierre-chip{background:var(--c-info-bg);color:var(--c-info-fg);font-weight:800}
+.ctl-lane .asp-cierre-tarde{position:absolute;left:0;right:0;bottom:0;z-index:1;pointer-events:none;border-top:2px dashed var(--c-warning-strong,#C98A17);
+  background-image:repeating-linear-gradient(45deg,transparent,transparent 9px,rgba(146,64,14,.07) 9px,rgba(146,64,14,.07) 18px)}
+.ctl-lane .asp-cierre-tarde span{position:sticky;top:8px;display:block;width:max-content;max-width:92%;margin:8px auto 0;padding:5px 12px;border-radius:999px;background:var(--c-warning-bg);color:var(--c-warning-fg);
+  border:1.5px solid var(--c-warning-strong,#C98A17);font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#calGrid .asp-cierre-ruta{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:11px 14px;border-radius:12px;background:var(--c-warning-bg);color:var(--c-warning-fg);border:1.5px solid var(--c-warning-strong,#C98A17);font-size:14px;font-weight:700;line-height:1.35}
+#calGrid .asp-cierre-ruta b{font-weight:900}
+#pg16 .asp-cierre-hoy{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:12px 14px;border-radius:12px;background:var(--c-warning-bg);color:var(--c-warning-fg);border:1.5px solid var(--c-warning-strong,#C98A17);font-size:15px;font-weight:700;line-height:1.35}
+#pg16 .asp-cierre-hoy b{font-weight:900}
+#toConflictos{margin:0 0 16px;padding:12px;border-radius:12px;border:1px solid var(--c-warning-strong,#C98A17);background:var(--c-warning-bg);color:var(--c-warning-fg)}
+#toConflictos.ok{border-color:var(--ln);background:var(--bg);color:var(--i2)}
+#toConflictos b{display:block;font-size:13px;font-weight:800;margin-bottom:6px}
+#toConflictos button{display:flex;width:100%;text-align:left;gap:8px;align-items:center;min-height:40px;margin:6px 0 0;padding:6px 10px;border-radius:8px;border:1px solid var(--ln);background:var(--cd);color:var(--ink);font-family:inherit;font-size:13px;font-weight:650;cursor:pointer}
+#toConflictos button span{color:var(--i3);font-weight:600;margin-left:auto;white-space:nowrap}
+</style>
+<script id="aspenCierre2934Script">
+(function(){
+  "use strict";
+  if(window.__aspCierre2934)return; window.__aspCierre2934=true;
+  var L=function(es,en){ try{ return (typeof L2==="function")?L2(es,en):en }catch(_e){ return en } };
+  function E(x){ return String(x==null?"":x).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function es(){ try{ return L("a","b")==="a"; }catch(_e){ return false; } }
+  function dia(ds){ try{ return new Date(String(ds).slice(0,10)+"T12:00:00").toLocaleDateString(es()?"es-US":"en-US",{month:"short",day:"numeric"}); }catch(_e){ return String(ds); } }
+  function mins(h){ var m=/^\s*(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)?/i.exec(String(h||"")); if(!m)return null; var hh=+m[1], mm=+m[2], ap=(m[3]||"").toLowerCase(); if(ap.charAt(0)==="p"&&hh<12)hh+=12; if(ap.charAt(0)==="a"&&hh===12)hh=0; return hh*60+mm; }
+  var CORTE=12*60;
+  function tarde(h){ var v=mins(h); return v!==null&&v>=CORTE; }
+  function todos(){ var v={}, out=[]; try{ [].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]).forEach(function(t){ if(t&&t.id&&!v[t.id]){ v[t.id]=1; out.push(t); } }); }catch(_e){} return out; }
+
+  /* nombre del cierre en la lista del Time Off */
+  window.aspCierreEtiqueta=function(e){
+    return "🏢 "+E(L("Toda la oficina","Whole office"))+' <span class="to-cierre-tipo">· '+E(e&&e.half?L("medio día (desde 12:00)","half day (from 12:00)"):L("día completo","full day"))+'</span>';
+  };
+
+  /* ── el formulario: «Toda la oficina» + «Medio día» ── */
+  function arma(){
+    var sel=document.getElementById("toTech"); if(!sel)return;
+    if(!sel.querySelector('option[value="*"]')){
+      var o=document.createElement("option"); o.value="*"; o.textContent="🏢 "+L("Toda la oficina (feriado)","Whole office (holiday)");
+      sel.insertBefore(o,sel.firstChild);
+    }
+    var w=document.getElementById("toHalfW");
+    if(!w){
+      w=document.createElement("label"); w.id="toHalfW"; w.className="to-half";
+      w.innerHTML='<input type="checkbox" id="toHalf"> <span>'+E(L("Medio día — cerrado desde las 12:00","Half day — closed from 12:00"))+'</span>';
+      var fila=sel.closest(".to-row"); if(fila&&fila.parentNode)fila.parentNode.insertBefore(w,fila.nextSibling); else sel.parentNode.appendChild(w);
+      sel.addEventListener("change",muestra);
+    }
+    muestra();
+  }
+  function muestra(){
+    var sel=document.getElementById("toTech"), w=document.getElementById("toHalfW"); if(!sel||!w)return;
+    w.hidden=sel.value!=="*"; if(w.hidden){ var c=document.getElementById("toHalf"); if(c)c.checked=false; }
+  }
+  if(typeof window.openTimeOffMgr==="function"){
+    var _om=window.openTimeOffMgr;
+    window.openTimeOffMgr=function(){ var r=_om.apply(this,arguments); try{ arma(); var c=document.getElementById("toConflictos"); if(c)c.remove(); }catch(e){ try{console.warn("[cierre] form",e)}catch(_x){} } return r; };
+  }
+
+  /* ── guardar un cierre (el de técnico sigue igual) ── */
+  if(typeof window.addTimeOff==="function"){
+    var _add=window.addTimeOff;
+    window.addTimeOff=function(){
+      var sel=document.getElementById("toTech");
+      if(!sel||sel.value!=="*")return _add.apply(this,arguments);
+      var start=(document.getElementById("toStart")||{}).value||"", end=(document.getElementById("toEnd")||{}).value||"";
+      var note=((document.getElementById("toNote")||{}).value||"").trim(), half=!!(document.getElementById("toHalf")||{}).checked;
+      if(!start||!end){ toast(L("Pon las dos fechas","Pick both dates"),"warn"); return; }
+      if(end<start){ toast(L("La fecha final es antes de la inicial","End date is before start date"),"warn"); return; }
+      TIMEOFF.push({id:"to_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),tech:"*",start:start,end:end,note:note,half:half});
+      TIMEOFF.sort(function(a,b){ return (a.start||"").localeCompare(b.start||""); });
+      saveTimeOff();
+      var nt=document.getElementById("toNote"); if(nt)nt.value="";
+      rndrTimeOffList();
+      try{ rndrCal(); }catch(_e){}
+      toast(half?L("Cierre de medio día agregado","Half-day closure added"):L("Cierre de la oficina agregado","Office closure added"),"ok");
+      conflictos(start,end,half);
+    };
+  }
+  /* citas ya agendadas en el cierre (medio día: solo las de las 12:00 en adelante) */
+  function conflictos(start,end,half){
+    var old=document.getElementById("toConflictos"); if(old)old.remove();
+    var lista=todos().filter(function(t){
+      if(t.source!=="dispatch"||t.fieldReportSubmitted)return false;
+      var st=String(t.status||""); if(st==="canceled"||st==="cancelled"||st==="done"||st==="complete")return false;
+      var d=String(t.date||"").slice(0,10); if(!d||d<start||d>end)return false;
+      return !half||tarde(t.arrival);
+    }).sort(function(a,b){ return (String(a.date)+(a.arrival||"")).localeCompare(String(b.date)+(b.arrival||"")); });
+    var box=document.createElement("div"); box.id="toConflictos"; box.setAttribute("role","status");
+    if(!lista.length){ box.className="ok"; box.innerHTML="<b>✓ "+E(L("No hay citas agendadas en esos días.","No appointments are booked on those days."))+"</b>"; }
+    else{
+      box.innerHTML="<b>⚠ "+E(lista.length+" "+L(lista.length===1?"cita ya está agendada ahí — muévela:":"citas ya están agendadas ahí — muévelas:",lista.length===1?"appointment is already booked then — move it:":"appointments are already booked then — move them:"))+"</b>"
+        +lista.map(function(t){ return '<button type="button" data-cierre-tkt="'+E(t.id)+'">'+E(t.customer||"—")+'<span>'+E(dia(t.date)+(t.arrival?" "+t.arrival:"")+((t.techs||[]).length?" · "+t.techs.join(", "):""))+'</span></button>'; }).join("");
+    }
+    var form=document.querySelector("#timeOffBg .to-form"); if(form&&form.parentNode)form.parentNode.insertBefore(box,form.nextSibling);
+  }
+  /* ── QUE TODOS LO VEAN ── */
+  window.aspCierreChip=function(ds){
+    var c=window.aspCierreDe&&window.aspCierreDe(ds); if(!c)return "";
+    var t=c.half?L("🏢 Cierra 12:00","🏢 Closes 12:00"):L("🏢 Cerrado","🏢 Closed");
+    return '<div class="cal-off"><span class="cal-off-chip asp-cierre-chip" title="'+E((c.half?L("Medio día — cerrado desde las 12:00","Half day — closed from 12:00"):L("Oficina cerrada","Office closed"))+(c.note?": "+c.note:""))+'">'+E(t)+'</span></div>';
+  };
+  window.aspCierreFranja=function(ds){
+    var c=window.aspCierreDe&&window.aspCierreDe(ds); if(!c)return "";
+    var txt=c.half?L("La oficina cierra hoy a las 12:00","Office closes at 12:00 today"):L("La oficina está cerrada hoy","Office closed today");
+    return '<div class="asp-cierre-hoy" role="status"><span aria-hidden="true">🏢</span><div><b>'+E(txt)+'</b>'+(c.note?' \u2014 '+E(c.note):'')+'</div></div>';
+  };
+  /* Ruta: franja arriba en un día de cierre — también cuando ese día no hay citas («No tickets for this day») */
+  function franjaRuta(c){
+    var g=document.getElementById("calGrid"); if(!g)return;
+    var v=g.querySelector(".asp-cierre-ruta"); if(v)v.remove();
+    var vista=""; try{ vista=calView; }catch(_e){}
+    if(!c||vista!=="timeline")return;
+    var txt=c.half?L("La oficina cierra a las 12:00 este día","The office closes at 12:00 this day"):L("Oficina cerrada — nadie trabaja este día","Office closed — nobody works this day");
+    g.insertAdjacentHTML("afterbegin",'<div class="asp-cierre-ruta" role="status"><span aria-hidden="true">🏢</span><div><b>'+E(txt)+'</b>'+(c.note?' \u2014 '+E(c.note):'')+'</div></div>');
+  }
+  /* Ruta, medio día: se raya la tarde de TODAS las columnas desde la línea de las 12 */
+  function tardeRuta(){
+    var ds=""; try{ ds=calSelectedDate; }catch(_e){}
+    var c=ds&&window.aspCierreDe&&window.aspCierreDe(ds);
+    franjaRuta(c);
+    var lanes=document.querySelectorAll("#calGrid .ctl-body .ctl-lane");
+    Array.prototype.forEach.call(lanes,function(l){ var v=l.querySelector(".asp-cierre-tarde"); if(v&&!(c&&c.half))v.remove(); });
+    if(!c||!c.half)return;
+    var top=0; try{ top=(12-_CAL_START)*_CAL_HPX; }catch(_e){ return; }
+    var txt=L("🏢 Cerrado desde las 12:00","🏢 Closed from 12:00")+(c.note?" \u2014 "+c.note:"");
+    Array.prototype.forEach.call(lanes,function(l){
+      if(l.querySelector(".asp-cierre-tarde"))return;
+      var d=document.createElement("div"); d.className="asp-cierre-tarde"; d.style.top=top+"px";
+      var sp=document.createElement("span"); sp.textContent=txt; d.appendChild(sp); l.appendChild(d);
+    });
+  }
+  if(typeof window.rndrCal==="function"){
+    var _rc=window.rndrCal;
+    window.rndrCal=function(){ var r=_rc.apply(this,arguments); try{ tardeRuta(); }catch(e){ try{console.warn("[cierre] ruta",e)}catch(_x){} } setTimeout(function(){ try{ tardeRuta(); }catch(_e){} },0); return r; };
+  }
+
+  /* ── EL FRENO: corre antes que el de los técnicos ── */
+  window.aspFrenaCierre=function(ds,hora,que){
+    ds=String(ds||"").slice(0,10); if(!ds||typeof window.aspCierreDe!=="function")return false;
+    var c=window.aspCierreDe(ds); if(!c)return false;
+    var d=dia(ds), n=c.note?" ("+c.note+")":"";
+    if(!c.half){
+      toast(L("La oficina está cerrada el "+d+n+". Quita el cierre en Time Off si de verdad hay que agendarlo.","The office is closed on "+d+n+". Remove the closure in Time Off if this really must be scheduled."),"warn");
+      try{ if(typeof _audit==="function")_audit("cierre-freno",{note:(que||"")+" "+ds}); }catch(_a){}
+      return true;
+    }
+    if(!String(hora||"").trim()){   /* se deja, pero el aviso va DESPUÉS del «✓» de la acción para que no lo tape */
+      setTimeout(function(){ toast(L("Ojo: la oficina cierra a las 12:00 el "+d+n+" — agéndalo en la mañana.","Heads up: the office closes at 12:00 on "+d+n+" — book it in the morning."),"warn"); },1600);
+      return false;
+    }
+    if(tarde(hora)){
+      toast(L("La oficina cierra a las 12:00 el "+d+n+". Pon una hora de la mañana o quita el cierre en Time Off.","The office closes at 12:00 on "+d+n+". Pick a morning time or remove the closure in Time Off."),"warn");
+      try{ if(typeof _audit==="function")_audit("cierre-freno",{note:(que||"")+" "+ds+" "+hora}); }catch(_a){}
+      return true;
+    }
+    return false;
+  };
+  function tkt(id){ var p=todos(); for(var i=0;i<p.length;i++)if(p[i].id===id)return p[i]; return null; }
+  function arrastrado(){ try{ return tkt(typeof dragTktId!=="undefined"?dragTktId:null); }catch(_e){ return null; } }
+  function frenoEn(nombre,saca){
+    var f=window[nombre]; if(typeof f!=="function")return;
+    window[nombre]=function(){
+      try{ var d=saca.apply(null,arguments); if(d&&d.ds&&window.aspFrenaCierre(d.ds,d.hora,nombre))return; }catch(e){ try{console.warn("[cierre] "+nombre,e)}catch(_x){} }
+      return f.apply(this,arguments);
+    };
+  }
+  frenoEn("calDropOnTech",function(e,tech,ds){ var t=arrastrado(); return {ds:ds,hora:t&&t.arrival}; });
+  frenoEn("calDropOnDay",function(e,ds){ var t=arrastrado(); return {ds:ds,hora:t&&t.arrival}; });
+  frenoEn("_boardReassign",function(id){ var t=tkt(id); return t&&{ds:t.date,hora:t.arrival}; });
+  frenoEn("slToggleTech",function(id,tech){ var t=tkt(id); if(!t||(t.techs||[]).indexOf(tech)>=0)return null; return {ds:t.date,hora:t.arrival}; });   /* quitar a alguien sí se deja */
+  frenoEn("saveDetailEdits",function(id){
+    var f=document.getElementById("dtDate"), a=document.getElementById("dtArrival"), t=tkt(id);
+    var ds=f?String(f.value||"").slice(0,10):""; if(!ds)ds=(t&&t.date)||"";
+    return {ds:ds,hora:a?a.value:(t&&t.arrival)};
+  });
+  frenoEn("itkTriage",function(tok,dest,opts){ opts=opts||{}; return {ds:opts.date||"",hora:opts.time||opts.arrival||""}; });
+  frenoEn("slCreateCall",function(){ var f=document.getElementById("slDate"); return {ds:f?f.value:"",hora:""}; });
+  /* «Program now» y «Move appointment» guardan dentro de un onclick: se frenan en captura */
+  document.addEventListener("click",function(ev){
+    var b=ev.target&&ev.target.closest&&ev.target.closest("#_pnOk, #aspVuOk"); if(!b)return;
+    var ds="", hora="", que="";
+    if(b.id==="_pnOk"){ var f=document.getElementById("_pnDate"), h=document.getElementById("_pnTime"); ds=f?f.value:""; hora=h?h.value:""; que="Program now"; }
+    else{ var g=document.querySelector("#aspVuDlg #aspVuFecha"), hh=document.querySelector("#aspVuDlg #aspVuHora"); ds=g?g.value:""; hora=hh?hh.value:""; que="Move appointment"; }
+    if(ds&&window.aspFrenaCierre(ds,hora,que)){ ev.preventDefault(); ev.stopImmediatePropagation(); }
+  },true);
+
+  document.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("#toConflictos [data-cierre-tkt]"); if(!b)return;
+    var id=b.getAttribute("data-cierre-tkt");
+    try{ closeTimeOffMgr(); }catch(_e){}
+    setTimeout(function(){ try{ openTktDetail(id); }catch(_e){} },150);
+  });
+})();
+</script>
+<!-- v2.93.5 — Rate 1.5× (emergencia): marca, sellos y aviso del sábado. Spec: docs/superpowers/specs/2026-11-10-rate15-design.md -->
+<style id="aspenRate2935">
+/* sellos ⚡: el mismo par de colores de aviso que usa la app (fondo claro + texto oscuro), como «Urgente» usa el rojo */
+html:not(#_r1) .asp-r15-sello{background:var(--c-warning-bg)!important;color:var(--c-warning-fg)!important}
+html:not(#_r1) #pg16 .tdy-p.asp-r15-p{background:var(--c-warning-bg)!important;color:var(--c-warning-fg)!important}
+#aspR15Barra{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:24px;z-index:2147483000;transform:translateY(20px);opacity:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;max-width:calc(100vw - 32px);box-sizing:border-box;padding:11px 12px 11px 18px;border-radius:14px;background:#211712;color:#fbf6ef;box-shadow:0 12px 34px rgba(0,0,0,.3);font-size:14px;font-weight:650;transition:opacity .2s ease,transform .2s ease,bottom .2s ease}
+#aspR15Barra.on{opacity:1;transform:none}
+html body > #aspR15Barra{zoom:1!important}   /* el modo exterior agranda todo 8 %: esta barra se mide sola y no debe salirse */
+#aspR15Barra .asp-r15-bt{flex:1 1 220px;min-width:0;line-height:1.35}
+#aspR15Barra .asp-r15-bb{display:flex;gap:8px;flex:0 0 auto}
+#aspR15Barra button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 13px;border-radius:10px;border:0;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
+#aspR15Barra button[data-r15="si"]{background:#F59E0B;color:#211712}
+#aspR15Barra button[data-r15="no"]{background:transparent;color:#fbf6ef;box-shadow:inset 0 0 0 1.5px rgba(251,246,239,.5)}
+#aspR15Barra button:disabled{opacity:.6;cursor:default}
+@media(max-width:600px){ #aspR15Barra{bottom:calc(84px + env(safe-area-inset-bottom));padding:11px 12px} #aspR15Barra .asp-r15-bb{width:100%} #aspR15Barra button{flex:1 1 0;justify-content:center} }
+@media(prefers-reduced-motion:reduce){ #aspR15Barra{transition:none} }
+</style>
+<script id="aspenRate2935Script">
+(function(){
+  "use strict";
+  function L(es,en){ try{ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }catch(_e){ return en; } }
+  function todos(){ var v={}, out=[]; try{ [].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]).forEach(function(t){ if(t&&t.id&&!v[t.id]){ v[t.id]=1; out.push(t); } }); }catch(_e){} return out; }
+  function tkt(id){ var p=todos(); for(var i=0;i<p.length;i++)if(p[i].id===id)return p[i]; return null; }
+  function quien(){ try{ return (currentUser&&currentUser.name)||""; }catch(_e){ return ""; } }
+
+  /* ── poner / quitar la marca (y, si ya hay reporte guardado, el total guardado) ── */
+  window.aspRate15Set=async function(id,on){
+    on=!!on; var t=tkt(id); if(!t||typeof db==="undefined"||!db)return;
+    if((t.rate15===true)===on)return;
+    var upd={rate15:on,rate15At:new Date().toLocaleString(),rate15By:quien()};
+    if(on)upd.isUrgent=true;
+    var lb=t.labor;
+    if(lb&&typeof lb==="object"&&!lb.free&&Number(lb.amount)>0&&t.total!=null&&t.total!==""&&!isNaN(Number(t.total))){
+      var nuevo=on?aspRate15Aplica(lb):aspRate15Quita(lb);
+      if(nuevo!==lb){ upd.labor=nuevo; upd.total=Math.round((Number(t.total)-Number(lb.amount)+Number(nuevo.amount))*100)/100; }
+    }
+    var antes={}, k; for(k in upd)antes[k]=t[k];
+    try{ for(k in upd)t[k]=upd[k]; }catch(_e){}   /* la pantalla no espera al servidor */
+    try{ await db.collection("tickets").doc(id).update(upd); }
+    catch(err){   /* no se guardó: la pantalla vuelve a como estaba y se avisa (si no, la oficina vería ⚡ que no existe) */
+      try{ for(k in antes){ if(antes[k]===undefined)delete t[k]; else t[k]=antes[k]; } }catch(_e){}
+      try{ console.warn("[rate15]",err); toast(L("No se guardó el ⚡ Rate 1.5× — revisa la conexión y vuelve a intentar","⚡ Rate 1.5× not saved — check the connection and try again"),"err"); }catch(_t){}
+      try{ var ch=document.getElementById("dtRate15"); if(ch)ch.checked=(t.rate15===true); if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
+      return;
+    }
+    try{ if(typeof _audit==="function")_audit("rate15",{note:id+" "+(on?"on":"off")}); }catch(_a){}
+    try{ toast(on?L("⚡ Rate 1.5× — la mano de obra se cobra a 1.5×","⚡ Rate 1.5× — labor billed at 1.5×"):L("Tarifa normal","Normal rate")); }catch(_t){}
+    try{ if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
+  };
+  window.aspRate15Chip=function(id,el){ var on=!!(el&&el.checked); if(on){ var u=document.getElementById("dtUrgent"); if(u)u.checked=true; } return window.aspRate15Set(id,on); };
+
+  /* ── textos con dinero que dependen de la casilla / del ticket del formulario ── */
+  function marcaTexto(el){ if(!el)return; var w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null), n, L2=[]; while((n=w.nextNode()))L2.push(n);
+    L2.forEach(function(n){ if(/\$(150|100)(?![\d.])/.test(n.nodeValue))n.nodeValue=aspRate15Texto(n.nodeValue); }); }
+  var _up=window.slUpWR;
+  if(typeof _up==="function"){ window.slUpWR=function(){ var r=_up.apply(this,arguments); try{ var c=document.getElementById("slRate15"); if(c&&c.checked)marcaTexto(document.getElementById("slWResult")); }catch(_e){} return r; }; }
+  var _sv=window.setVisit;
+  if(typeof _sv==="function"){ window.setVisit=function(v){ var r=_sv.apply(this,arguments); try{ if((v===1||v===2)&&aspRate15Form()===1.5)marcaTexto(document.getElementById("visitInfo")); }catch(_e){} return r; }; }
+  /* ── sábado (opción C): al agendar en sábado un ticket sin ⚡, la oficina decide en una barra (no frena) ── */
+  function E(x){ return String(x==null?"":x).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function oficina(){ try{ return !!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")); }catch(_e){ return false; } }
+  function sab(ds){ ds=String(ds||"").slice(0,10); if(!/^\d{4}-\d{2}-\d{2}$/.test(ds))return false; return new Date(ds+"T12:00:00").getDay()===6; }
+  function dia(ds){ try{ return new Date(ds+"T12:00:00").toLocaleDateString(L("es-US","en-US"),{weekday:"short",month:"short",day:"numeric"}); }catch(_e){ return ds; } }
+  window.aspRate15Candidatos=function(antes,lista){ antes=antes||{};
+    return (lista||[]).filter(function(t){ if(!t||!t.id)return false; var ds=String(t.date||"").slice(0,10);
+      if(!sab(ds)||t.rate15===true||t.rate15No===ds)return false;
+      if(/^(canceled|cancelled|complete|completed|done)$/i.test(String(t.status||"")))return false;
+      return !Object.prototype.hasOwnProperty.call(antes,t.id)||antes[t.id]!==ds; }); };
+  var visto={};
+  function foto(){ var m={}; todos().forEach(function(t){ m[t.id]=String(t.date||"").slice(0,10); }); return m; }
+  function revisa(antes){ var c=window.aspRate15Candidatos(antes,todos()).filter(function(t){ return !visto[t.id+"|"+String(t.date).slice(0,10)]; });
+    if(!c.length)return; var t=c[0]; visto[t.id+"|"+String(t.date).slice(0,10)]=1; barra(t); }
+  function vigila(){ if(!oficina())return; var antes=foto(); [800,2000,4000,7000].forEach(function(ms){ setTimeout(function(){ try{ revisa(antes); }catch(e){ try{console.warn("[rate15] sábado",e)}catch(_x){} } },ms); }); }
+  function barra(t){
+    var old=document.getElementById("aspR15Barra"); if(old)old.remove();
+    var ds=String(t.date).slice(0,10), b=document.createElement("div"); b.id="aspR15Barra"; b.setAttribute("role","status");
+    b.innerHTML='<span class="asp-r15-bt"><b>'+E(t.customer||"—")+'</b> · '+E(L("agendado el ","scheduled on ")+dia(ds))+'. '+E(L("¿Es emergencia a 1.5×?","Emergency at 1.5×?"))+'</span>'
+      +'<span class="asp-r15-bb"><button type="button" data-r15="si">\u26A1 '+E(L("Sí, cobrar 1.5×","Yes, bill 1.5×"))+'</button><button type="button" data-r15="no">'+E(L("No, normal","No, normal"))+'</button></span>';
+    document.body.appendChild(b); levanta(b); requestAnimationFrame(function(){ b.classList.add("on"); });
+    var to=setTimeout(quita,20000), hecho=false, iv=setInterval(function(){ levanta(b); },400);   /* si sale la barra de «Deshacer», esta se sube */
+    function quita(){ clearTimeout(to); clearInterval(iv); b.classList.remove("on"); setTimeout(function(){ try{ b.remove(); }catch(_e){} },250); }
+    b.addEventListener("click",function(e){ var x=e.target.closest&&e.target.closest("[data-r15]"); if(!x||hecho)return; hecho=true;
+      [].forEach.call(b.querySelectorAll("button"),function(y){ y.disabled=true; });
+      var p;
+      if(x.getAttribute("data-r15")==="si")p=window.aspRate15Set(t.id,true);
+      else{ try{ t.rate15No=ds; }catch(_e){} p=db.collection("tickets").doc(t.id).update({rate15No:ds}); }
+      Promise.resolve(p).then(quita,function(err){ try{console.warn("[rate15]",err)}catch(_x){} quita(); });
+    });
+  }
+  /* la barra va encima de lo que haya abajo: la barra de la app (#aspShell / .bottom-nav), las de «Deshacer» y el aviso (toast) */
+  function levanta(b){ var tope=innerHeight-24;
+    ["#aspShell",".bottom-nav","#aspVuDeshacer.on","#aspHoldDeshacer.on","#toast.show"].forEach(function(q){ var x=document.querySelector(q); if(!x||x===b)return;
+      var cs=getComputedStyle(x); if(cs.display==="none"||cs.visibility==="hidden"||+cs.opacity===0)return;
+      var r=x.getBoundingClientRect(); if(r.height<1||r.top<innerHeight*0.5||r.top>=innerHeight)return;
+      tope=Math.min(tope,r.top-10); });
+    var v=Math.max(0,Math.round(innerHeight-tope))+"px"; if(b.style.bottom!==v)b.style.bottom=v; }
+  function vigilaEn(nombre){ var f=window[nombre]; if(typeof f!=="function")return; window[nombre]=function(){ try{ vigila(); }catch(_e){} return f.apply(this,arguments); }; }
+  ["calDropOnTech","calDropOnDay","saveDetailEdits","itkTriage","slCreateCall","_slotPick"].forEach(vigilaEn);
+  document.addEventListener("click",function(ev){ var b=ev.target&&ev.target.closest&&ev.target.closest("#_pnOk, #aspVuOk"); if(b)try{ vigila(); }catch(_e){} },true);
+
+  document.addEventListener("change",function(e){
+    var c=e.target; if(!c||c.id!=="slRate15")return;
+    if(c.checked){ var u=document.getElementById("slUrgent"); if(u)u.checked=true; }
+    try{ if(typeof window.slUpWR==="function")window.slUpWR(); }catch(_e){}
+  });
+})();
+</script>
+<!-- v2.93.6 — Cobro del 2.º técnico: el clic «👥 Bill 2nd tech», el total guardado y los textos. Spec: docs/superpowers/specs/2026-11-11-tecnico2-design.md -->
+<style id="aspenTec2936">
+html:not(#_r1) .asp-t2-falta{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;font-size:var(--fs-sm);font-weight:700;background:var(--c-warning-bg);color:var(--c-warning-fg)}
+</style>
+<script id="aspenTec2936Script">
+(function(){
+  "use strict";
+  function L(es,en){ try{ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }catch(_e){ return en; } }
+  function tkt(id){ try{ var p=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]); for(var i=0;i<p.length;i++)if(p[i]&&p[i].id===id)return p[i]; }catch(_e){} return null; }
+  function quien(){ try{ return (currentUser&&currentUser.name)||""; }catch(_e){ return ""; } }
+  var SUF=(typeof ASP_R15_SUF!=="undefined")?ASP_R15_SUF:" \u00b7 \u26A11.5\u00d7";
+
+  /* ── poner / quitar el clic (y, si ya hay reporte guardado, el total guardado) ── */
+  window.aspTech2Set=async function(id,on){
+    on=!!on; var t=tkt(id); if(!t||typeof db==="undefined"||!db)return;
+    if((t.tech2Bill===true)===on)return;
+    var upd={tech2Bill:on,tech2At:new Date().toLocaleString(),tech2By:quien()};
+    var lb=t.labor, cuenta=aspTech2(Object.assign({},t,{tech2Bill:true}))===1;
+    if(cuenta&&lb&&typeof lb==="object"&&!lb.free&&Number(lb.amount)>0&&t.total!=null&&t.total!==""&&!isNaN(Number(t.total))){
+      var nuevo=on?aspTech2Aplica(lb):aspTech2Quita(lb);
+      if(nuevo!==lb){ upd.labor=nuevo; upd.total=Math.round((Number(t.total)-Number(lb.amount)+Number(nuevo.amount))*100)/100; }
+    }
+    var antes={}, k; for(k in upd)antes[k]=t[k];
+    try{ for(k in upd)t[k]=upd[k]; }catch(_e){}
+    try{ await db.collection("tickets").doc(id).update(upd); }
+    catch(err){
+      try{ for(k in antes){ if(antes[k]===undefined)delete t[k]; else t[k]=antes[k]; } }catch(_e){}
+      try{ console.warn("[tech2]",err); toast(L("No se guardó «Bill 2nd tech» — revisa la conexión y vuelve a intentar","«Bill 2nd tech» not saved — check the connection and try again"),"err"); }catch(_t){}
+      try{ var ch=document.getElementById("dtTech2"); if(ch)ch.checked=(t.tech2Bill===true); if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
+      return;
+    }
+    try{ if(typeof _audit==="function")_audit("tech2Bill",{note:id+" "+(on?"on":"off")}); }catch(_a){}
+    try{ toast(on?(cuenta?L("👥 Se cobra el 2.º técnico ($50/hr)","👥 2nd tech billed ($50/hr)"):L("👥 Marcado — falta el 2.º técnico en el ticket","👥 Marked — 2nd tech missing on the ticket")):L("2.º técnico sin cobrar","2nd tech not billed"),on&&!cuenta?"warn":""); }catch(_t){}
+    try{ if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
+  };
+  window.aspTech2Chip=function(id,el){ return window.aspTech2Set(id,!!(el&&el.checked)); };
+
+  /* ── textos con tarifas: el 2.º técnico se nombra donde ya se nombra la hora ── */
+  function textos(el,fn){ if(!el)return; var w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null), n, L2=[]; while((n=w.nextNode()))L2.push(n); L2.forEach(fn); }
+  var _up=window.slUpWR;
+  if(typeof _up==="function"){ window.slUpWR=function(){ var r=_up.apply(this,arguments);
+    try{ var c=document.getElementById("slTech2"); if(c&&c.checked){ var r15=!!((document.getElementById("slRate15")||{}).checked);
+      textos(document.getElementById("slWResult"),function(n){ n.nodeValue=n.nodeValue.replace(/(\(TC \$\d+ \+ \$\d+\/hr)\)/,"$1 + 2nd tech $"+(r15?"75":"50")+"/hr)"); }); } }catch(_e){}
+    return r; }; }
+  var _sv=window.setVisit;
+  if(typeof _sv==="function"){ window.setVisit=function(v){ var r=_sv.apply(this,arguments);
+    try{ if((v===1||v===2)&&aspTech2Form()===1){ var hecho=false; textos(document.getElementById("visitInfo"),function(n){ if(hecho||!/\$\d+\/hr/.test(n.nodeValue))return; hecho=true;
+      var s=n.nodeValue, had=s.indexOf(SUF)>=0; n.nodeValue=s.split(SUF).join("")+" + 2nd tech $"+(had?"75":"50")+"/hr"+(had?SUF:""); }); } }catch(_e){}
+    return r; }; }
+  document.addEventListener("change",function(e){ var c=e.target; if(!c||c.id!=="slTech2")return; try{ if(typeof window.slUpWR==="function")window.slUpWR(); }catch(_e){} });
 })();
 </script>
 </body>
