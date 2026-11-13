@@ -2917,7 +2917,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
 <!-- ASPEN TECH TICKETS v2.80.0 · integrated build (2.73.0 base + 2.74–2.79 production changes) · 2026-10-06 -->
 </head>
 <body>
-<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos · v2.92.5: con el modo exterior (la vista de Alberto) */try{document.body.classList.add("asp-limpia");document.body.classList.add("outdoor")}catch(e){}/* v2.93.1 — casco de app en pantallas táctiles: la página no hace scroll, lo hace body (ver aspenCasco2931) */try{(function(){var H=document.documentElement,off=false;try{off=localStorage.getItem("aspCasco")==="0"}catch(_e){}var t=false;try{t=window.matchMedia("(pointer:coarse)").matches}catch(_e){}if(t&&!off)H.classList.add("asp-casco");window._aspScrollEl=function(){return H.classList.contains("asp-casco")?document.body:(document.scrollingElement||document.documentElement)};window._aspScrollTo=function(o){var el=window._aspScrollEl();try{if(el===document.body)el.scrollTo(o);else window.scrollTo(o)}catch(_e){try{el.scrollTop=(o&&o.top)||0}catch(_x){}}};})()}catch(e){}</script>
+<script>/* v2.88.8 — vista limpia: la clase va antes del primer pintado · v2.92.3: siempre, para todos · v2.92.5: con el modo exterior (la vista de Alberto) */try{document.body.classList.add("asp-limpia");document.body.classList.add("outdoor")}catch(e){}/* v2.93.1 — casco de app en pantallas táctiles: la página no hace scroll, lo hace body (ver aspenCasco2931) */try{(function(){var H=document.documentElement,off=false;try{off=localStorage.getItem("aspCasco")==="0"}catch(_e){}var t=false;try{t=window.matchMedia("(pointer:coarse)").matches}catch(_e){}/* v2.93.8 — el casco solo donde hacía falta (iPhone Duo, iPad). En los iPhone normales el scroll en body se sentía trabado: vuelven al scroll de la ventana. Duo cerrado = margen lateral seguro en vertical (la columna de la hora); abierto / iPad = lado corto de 560 o más. Una vez visto, queda anotado (aspCasco=1). */var on=false;try{on=localStorage.getItem("aspCasco")==="1"}catch(_e){}window._aspEsDuo=function(){try{var iw=window.innerWidth||0,ih=window.innerHeight||0;if(!iw||!ih)return false;if(Math.min(iw,ih)>=560)return true;if(ih<=iw)return false;var pr=document.createElement("div");pr.style.cssText="position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;padding-right:env(safe-area-inset-right,0px);padding-left:env(safe-area-inset-left,0px)";(document.body||H).appendChild(pr);var cs=getComputedStyle(pr),m=(parseFloat(cs.paddingRight)||0)+(parseFloat(cs.paddingLeft)||0);pr.parentNode.removeChild(pr);return m>20}catch(_e){return false}};if(t&&!off&&!on&&window._aspEsDuo()){on=true;try{localStorage.setItem("aspCasco","1")}catch(_e){}}if(t&&!off&&on)H.classList.add("asp-casco");window._aspScrollEl=function(){return H.classList.contains("asp-casco")?document.body:(document.scrollingElement||document.documentElement)};window._aspScrollTo=function(o){var el=window._aspScrollEl();try{if(el===document.body)el.scrollTo(o);else window.scrollTo(o)}catch(_e){try{el.scrollTop=(o&&o.top)||0}catch(_x){}}};})()}catch(e){}</script>
 <!-- Offline status indicator (shown only when device is offline) -->
 <div id="onlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-dialog);background:var(--c-warning-strong);color:#fff;padding:6px 12px;font-size:var(--fs-sm);font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:8px">
   <span class="lucide-mount" data-lucide="wifi-off" data-size="15" data-color="#fff" style="display:inline-flex;align-items:center"></span><span>Offline Mode — Changes will sync when reconnected</span>
@@ -7278,7 +7278,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.93.7";
+var APP_VERSION="2.93.9";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -14495,25 +14495,44 @@ function rndrVideoLinks(){
 function remMedia(i){try{URL.revokeObjectURL(mediaFiles[i].url)}catch(e){}mediaFiles.splice(i,1);rndrMedia()}
 function rndrMedia(){const g=document.getElementById("mGrid");let h=mediaFiles.map((m,i)=>`<div class="media-wrap"><img class="media-thumb" loading="lazy" decoding="async" src="${m.url}"><button class="media-x" onclick="remMedia(${i})">×</button></div>`).join("");if(mediaFiles.length<8)h+=`<label class="media-add"><span class="ico"><span class="lucide-mount" data-lucide="camera" data-size="22" data-color="currentColor"></span></span><span>Add</span><input type="file" accept="image/*" multiple class="media-input" onchange="addMedia(event)"></label>`;g.innerHTML=h;if(typeof mountLucideIcons==='function')mountLucideIcons(g);}
 
+/* v2.93.8 — TODA foto que entra a la app sale en JPG de 200 KB o menos (pedido de Alberto: no llenar el almacenamiento).
+   Es el único paso por donde pasan las fotos de tickets, llamadas, partes y Scores. La foto se abre UNA vez; si no
+   cabe, baja primero la calidad y después el tamaño. HEIC en una computadora (Chrome no lo abre): se convierte con
+   heic2any, que se descarga solo cuando hace falta. */
+var ASP_FOTO_MAX=200000;
+function _aspFotoAbre(file){
+  return new Promise(function(res,rej){
+    var u=URL.createObjectURL(file),img=new Image(),t=setTimeout(function(){ rej(new Error("img timeout")) },30000);
+    img.onload=function(){ clearTimeout(t); res({img:img,libera:function(){ try{URL.revokeObjectURL(u)}catch(_e){} }}) };
+    img.onerror=function(){ clearTimeout(t); try{URL.revokeObjectURL(u)}catch(_e){} rej(new Error("img err")) };
+    img.src=u;
+  });
+}
+function _aspHeic(file){
+  var carga=window.heic2any?Promise.resolve():new Promise(function(res,rej){ var sc=document.createElement("script");
+    sc.src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"; sc.onload=res; sc.onerror=function(){ rej(new Error("heic2any no cargó")) }; document.head.appendChild(sc) });
+  return carga.then(function(){ return window.heic2any({blob:file,toType:"image/jpeg",quality:0.9}) }).then(function(b){ return Array.isArray(b)?b[0]:b });
+}
+function _aspFotoBlob(c,q){ return new Promise(function(res,rej){ try{ c.toBlob(function(b){ b?res(b):rej(new Error("blob err")) },"image/jpeg",q) }catch(e){ rej(e) } }) }
 function compressPhoto(file,maxW=1200,quality=0.72){
-  // Returns a Blob (better than base64 for Storage upload). Higher quality since Storage isn't size-limited like Firestore.
-  return new Promise((res,rej)=>{
-    const img=new Image();
-    img.onload=()=>{
-      const c=document.createElement("canvas"),r=Math.min(1,maxW/img.width);
-      c.width=img.width*r;c.height=img.height*r;
-      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-      c.toBlob(function(blob){
-        if(!blob){rej("blob err");return}
-        // Also produce a base64 fallback so we have it if Storage upload fails
-        const fr=new FileReader();
-        fr.onload=function(){res({blob:blob,dataUrl:fr.result,type:"photo"})};
-        fr.onerror=()=>rej("fr err");
-        fr.readAsDataURL(blob);
-        URL.revokeObjectURL(img.src);
-      },"image/jpeg",quality);
-    };
-    img.onerror=()=>rej("img err");img.src=URL.createObjectURL(file);
+  var esHeic=/hei[cf]/i.test((file&&file.type)||"")||/\.hei[cf]$/i.test((file&&file.name)||"");
+  return _aspFotoAbre(file).catch(function(e){ if(!esHeic)throw e; return _aspHeic(file).then(_aspFotoAbre) }).then(async function(a){
+    try{
+      var img=a.img, W0=img.naturalWidth||img.width, H0=img.naturalHeight||img.height;
+      if(!W0||!H0)throw new Error("img vacía");
+      var w=Math.min(W0,maxW), q=quality, c=document.createElement("canvas"), blob=null;
+      for(var i=0;i<24;i++){
+        c.width=Math.max(1,Math.round(w)); c.height=Math.max(1,Math.round(H0*w/W0));
+        var x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height);   /* PNG con transparencia: fondo blanco, no negro */
+        x.drawImage(img,0,0,c.width,c.height);
+        blob=await _aspFotoBlob(c,q);
+        while(blob.size>ASP_FOTO_MAX&&q>0.5){ q=Math.round((q-0.1)*100)/100; blob=await _aspFotoBlob(c,q) }
+        if(blob.size<=ASP_FOTO_MAX||w<=320)break;
+        w=w*0.8; q=Math.min(quality,0.72);
+      }
+      var dataUrl=await new Promise(function(res,rej){ var fr=new FileReader(); fr.onload=function(){ res(fr.result) }; fr.onerror=function(){ rej(new Error("fr err")) }; fr.readAsDataURL(blob) });
+      return {blob:blob,dataUrl:dataUrl,type:"photo"};
+    } finally { a.libera() }
   });
 }
 
@@ -18476,7 +18495,7 @@ function copyTkt(isDone,i){
   if(t.notes)txt+=`\nNotes: ${t.notes}\n`;
   if((t.videoLinks||[]).length){txt+=`\nVideo Links:\n`;t.videoLinks.forEach(lk=>{txt+=`  ${lk}\n`})}
   txt+=`\nSubmitted: ${t.submitted||""}`;
-  if(t.completedAt)txt+=`\nCompleted: ${t.completedAt}`;
+  if(t.completedAt)txt+=`\nCompleted: ${typeof _aspFechaTxt==="function"?_aspFechaTxt(t.completedAt):t.completedAt}`;
   navigator.clipboard.writeText(txt).then(()=>toast("Copied to clipboard ✓")).catch(()=>{
     const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);toast("Copied ✓")});
 }
@@ -22779,7 +22798,7 @@ function dayProgressHTML(tkts){
   if(canceled)stats+='<span class="dp-sep">·</span><span class="dp-stat">'+canceled+' canceled</span>';
   return '<div class="day-progress">'+stats+'<div class="dp-bar"><div class="dp-fill" style="width:'+pct+'%"></div></div></div>';
 }
-function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';h+=dayProgressHTML(tkts);if(typeof _techsOffOn==="function"){var _offDD=_techsOffOn(sel);if(_offDD.length)h+='<div class="cal-day-off">🌴 Off today: '+_offDD.map(function(o){return esc(o.tech)+(o.note?" ("+esc(o.note)+")":"")}).join(", ")+'</div>';}if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),var(--ac));color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div class="empty-state"><div class="es-ico">'+icon("calendar-days",28,{color:"var(--i3)"})+'</div><h3>No tickets for this day</h3><p>Drop a ticket here to schedule it, or pick another day from the calendar.</p></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
+function rndrCalDay(sel,byDate){const tkts=(byDate[sel]||[]).sort((a,b)=>(a.arrival||"99:99").localeCompare(b.arrival||"99:99"));let h='<div style="padding:8px;min-height:200px" ondragover="event.preventDefault();this.style.background=\'var(--c-warning-bg)\'" ondragleave="this.style.background=\'\'" ondrop="this.style.background=\'\';calDropOnDay(event,\''+sel+'\')">';h+=dayProgressHTML(tkts);if(typeof _techsOffOn==="function"){var _offDD=_techsOffOn(sel);if(_offDD.length)h+='<div class="cal-day-off">🌴 '+((typeof fmtD==="function"&&sel===fmtD(new Date()))?'Off today':'Off this day')+': '+_offDD.map(function(o){return esc(o.tech)+(o.note?" ("+esc(o.note)+")":"")}).join(", ")+'</div>';}if(tkts.length){h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button onclick="openRouteMap(\''+sel+'\')" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg,var(--ac),var(--ac));color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 6px rgba(212,119,44,.25)">'+icon("map",17,{color:"#fff"})+'View Route Map ('+tkts.length+' stop'+(tkts.length===1?"":"s")+')</button></div>'}if(!tkts.length)h+='<div class="empty-state"><div class="es-ico">'+icon("calendar-days",28,{color:"var(--i3)"})+'</div><h3>No tickets for this day</h3><p>Drop a ticket here to schedule it, or pick another day from the calendar.</p></div>';else tkts.forEach(t=>{h+=calTktCard(t)});h+=`</div>`;document.getElementById("calGrid").innerHTML=h}
 // Collapsed-state per-tech for the mobile accordion layout. Persists across
 // re-renders within the session so toggling one section doesn't reset others.
 let _calTeamCollapsed=new Set();
@@ -24775,13 +24794,14 @@ function openTktDetail(id){
   if(_zT)_subT.push('<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:'+_zcT.text+';display:inline-block;flex-shrink:0"></span>'+esc(_zT)+'</span>');
   if(_dT)_subT.push('<span>'+(t.arrival?esc(t.arrival)+' \u00b7 ':'')+esc(_dT)+'</span>');
   document.getElementById("tktDetailTitle").innerHTML=
-    '<span data-cust360="'+esc(t.customer||"")+'" onclick="open360ByName(this.dataset.cust360)" title="'+L2("Abrir Customer 360","Open Customer 360")+'" style="display:inline-flex;align-items:center;gap:12px;min-width:0;cursor:pointer">'
+    '<span data-cust360="'+esc(t.customer||"")+'" onclick="open360ByName(this.dataset.cust360)" title="'+L2("Abrir Customer 360","Open Customer 360")+'" style="display:inline-flex;align-items:center;gap:12px;min-width:0;max-width:100%;cursor:pointer">'
     +_avatarHTML(t.customer,46)
     +'<span style="display:flex;flex-direction:column;min-width:0;gap:2px">'
       +'<span style="font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--br);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.customer||"Ticket")+'</span>'
-      +(_subT.length?'<span style="font-size:12px;font-weight:600;color:var(--i2);display:flex;flex-wrap:wrap;gap:3px 10px">'+_subT.join("")+'</span>':'')
+      +'<span style="font-size:12px;font-weight:600;color:var(--i2);display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px">'+_subT.join("")
+        +'<span class="asp-dt-360" aria-hidden="true" style="color:var(--ac);font-size:13px;font-weight:800;white-space:nowrap">\uD83D\uDC64 360 \u203a</span>'   /* v2.93.9 — antes iba al lado del nombre y quedaba cortado detrás de la «×» */
+      +'</span>'
     +'</span>'
-    +'<span aria-hidden="true" style="margin-left:6px;color:var(--ac);font-size:13px;font-weight:800;flex:none;white-space:nowrap">\uD83D\uDC64 360 \u203a</span>'
     +'</span>';
   const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
   const _city=effectiveCity(t);
@@ -24885,7 +24905,7 @@ function openTktDetail(id){
     h+='<label class="dt-chip" style="--chip-c:var(--r);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtRepeat" '+(t.isRepeat?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ↻ Repeat</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-danger-strong);--chip-bg:var(--c-danger-bg)"><input type="checkbox" id="dtUrgent" '+(t.isUrgent?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> 🔥 Urgent</label>';
     h+='<label class="dt-chip asp-r15-chip" style="--chip-c:var(--c-warning-strong);--chip-bg:var(--c-warning-bg)"><input type="checkbox" id="dtRate15" '+(t.rate15===true?'checked':'')+' onchange="aspRate15Chip(\''+t.id+'\',this)"> ⚡ Rate 1.5×</label>';   /* v2.93.5 */
-    h+='<label class="dt-chip asp-t2-chip"><input type="checkbox" id="dtTech2" '+(t.tech2Bill===true?'checked':'')+' onchange="aspTech2Chip(\''+t.id+'\',this)"> 👥 Bill 2nd tech</label>'+((t.tech2Bill===true&&typeof aspTech2==="function"&&aspTech2(t)===0)?'<span class="asp-t2-falta">'+L2("⚠ Falta el 2.º técnico en el ticket","⚠ 2nd tech missing on the ticket")+'</span>':'');   /* v2.93.6 */
+    h+='<label class="dt-chip asp-t2-chip"><input type="checkbox" id="dtTech2" '+(t.tech2Bill===true?'checked':'')+' onchange="aspTech2Chip(\''+t.id+'\',this)"> 👥 Bill 2nd tech</label>'+((t.tech2Bill===true&&typeof aspTech2==="function"&&aspTech2(t)===0)?'<span class="asp-t2-falta" data-t2f="'+t.id+'">'+L2("⚠ Falta el 2.º técnico en el ticket","⚠ 2nd tech missing on the ticket")+'</span>':'');   /* v2.93.6 */
     h+='<label class="dt-chip" style="--chip-c:var(--c-purple-strong);--chip-bg:var(--c-purple-bg)"><input type="checkbox" id="dtNewSpa" '+(t.isNewSpa?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> ✨ New Spa</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-info-strong);--chip-bg:var(--c-info-bg)"><input type="checkbox" id="dtCheck" '+(t.payCheck?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Check</label>';
     h+='<label class="dt-chip" style="--chip-c:var(--c-money-strong);--chip-bg:var(--c-money-bg)"><input type="checkbox" id="dtCredit" '+(t.payCredit?'checked':'')+' onchange="dtUpdateCC(\''+t.id+'\')"> Credit</label>';
@@ -24928,8 +24948,8 @@ function openTktDetail(id){
     // (Nela needs these too when coordinating from the office: she may send
     // "On The Way" on a tech's behalf, or "Reschedule" / "No Answer" etc.)
     h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">';
-    h+='<a href="tel:'+_phClean+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
-    h+='<a href="'+_smsHref(_tpl.onway)+'" style="flex:1;min-width:140px;padding:12px 14px;background:var(--c-success-strong);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
+    h+='<a href="tel:'+_phClean+'" class="asp-dt-cta" style="flex:1 1 auto;min-width:140px;padding:12px 14px;background:var(--ac);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("phone",16,{color:"#fff"})+'Call Customer</a>';
+    h+='<a href="'+_smsHref(_tpl.onway)+'" class="asp-dt-cta" style="flex:1 1 auto;min-width:140px;padding:12px 14px;background:var(--c-success-strong);color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+icon("message-circle",16,{color:"#fff"})+'Text "On The Way"</a>';
     h+='</div>';
     h+='<a href="'+_smsHref(_tpl.review)+'" title="Text the customer a professional Google review request" style="display:block;margin:0 0 8px;padding:12px 14px;background:#B5733A;color:#fff;border-radius:10px;font-size:var(--fs-md);font-weight:700;text-decoration:none;text-align:center">\u2b50 Ask for a Google review</a>';
     // Quick ETA variants of "On The Way" — tech taps a time and the SMS says
@@ -36828,6 +36848,14 @@ html.asp-casco body.outdoor > *{zoom:1.08}
   html.asp-casco body.asp-shell #aspShell{position:sticky!important;bottom:0!important;top:auto!important;left:auto!important;right:auto!important;margin-top:auto!important}
   html.asp-casco.asp-teclado body.asp-shell #aspShell{display:none!important}
 }
+/* v2.93.8 — Duo cerrado: la columna de la hora y la señal (margen seguro derecho, ~90 pt) quedaba vacía.
+   En vertical la app usa todo el ancho; una pastilla translúcida detrás de la hora evita que se encime con el texto. */
+@media(max-width:900px) and (orientation:portrait){
+  html.asp-casco body.asp-shell{padding-left:0;padding-right:0}
+}
+#aspDuoReloj{position:fixed;top:72px;right:20px;width:70px;height:88px;border-radius:24px;z-index:2147483000;pointer-events:none;display:none;
+  background:rgba(250,248,244,.86);background:color-mix(in srgb,var(--bg,#faf8f4) 86%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html.asp-duo-cerrado #aspDuoReloj{display:block}
 /* Hoy · «Por técnico» en pantallas táctiles anchas (Duo abierto, iPad): columnas que se acomodan,
    sin media pantalla vacía debajo de un técnico con una sola parada. */
 @media(min-width:560px){
@@ -61926,16 +61954,27 @@ function renderGuide(){
   g.innerHTML=H+'</div>';
 }
 function shootNow(){
-  var a=G.labs[G.step].k, inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.setAttribute("capture","environment");
-  inp.onchange=function(){
-    var f=inp.files&&inp.files[0]; if(!f)return;
+  /* v2.93.8 — los técnicos tomaban la foto y nunca aparecía «Lista». El input vivía fuera de la página (iOS puede no
+     avisar cuando vuelve la cámara) — ahora va DENTRO, como la cámara del ticket, que sí funciona. Además: tope de
+     45 s con mensaje, y lo que falle se anota en client_errors (Admin → field errors) con el tipo y peso de la foto. */
+  var a=G.labs[G.step].k, viejo=document.getElementById("scCamInput"); if(viejo)try{ viejo.parentNode.removeChild(viejo) }catch(_e){}
+  var inp=document.createElement("input"); inp.type="file"; inp.id="scCamInput"; inp.accept="image/*"; inp.setAttribute("capture","environment");
+  inp.style.cssText="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
+  document.body.appendChild(inp);
+  var visto=false;
+  var llega=function(){
+    var f=inp.files&&inp.files[0]; if(!f||visto)return; visto=true;
     var takenAtMs=Date.now(); G.busy=true; renderGuide();
-    compress200(f).then(function(blob){
+    var tope=new Promise(function(_r,rej){ setTimeout(function(){ rej(new Error("tardó más de 45 s")) },45000) });
+    Promise.race([compress200(f),tope]).then(function(blob){
       G.shots[a]={blob:blob,takenAtMs:takenAtMs,bytes:blob.size};
       return putDraft({tech:G.tech,crit:G.crit.id,weekId:G.wk,shots:G.shots}).catch(function(e){ console.warn("[scorecard] draft",e) });
-    }).catch(function(e){ console.warn("[scorecard] photo",e); say(L("No se pudo procesar la foto","Could not process the photo"),"err") })
-      .then(function(){ G.busy=false; renderGuide() });
+    }).catch(function(e){ console.warn("[scorecard] photo",e); say(L("No se pudo procesar la foto. Intenta otra vez.","Could not process the photo. Try again."),"err");
+      try{ if(typeof db!=="undefined"&&db)db.collection("client_errors").add({kind:"foto-scores",message:("Foto de Scores no procesó: "+String(e&&e.message||e)+" · "+(f.type||"sin tipo")+" · "+Math.round((f.size||0)/1024)+" KB").slice(0,300),
+        source:"",line:0,stack:"",user:G.tech||"",role:"tech",ua:String(navigator.userAgent||"").slice(0,160),online:!!navigator.onLine,at:new Date().toISOString(),atMs:Date.now()}).catch(function(){}) }catch(_e){} })
+      .then(function(){ G.busy=false; renderGuide(); try{ inp.parentNode.removeChild(inp) }catch(_e){} });
   };
+  inp.addEventListener("change",llega); inp.addEventListener("input",llega);
   inp.click();
 }
 function sendSet(){
@@ -65164,7 +65203,7 @@ function after(fn){ AFTER.push(fn); }
 function temaActual(){ try{ return localStorage.getItem("aspenTheme")||"auto"; }catch(_e){ return "auto"; } }
 function filaTema(){
   var t=temaActual(), extra=(t==="ember"||t==="aspen");
-  var opts=[["light",T("Light","Claro")],["dark",T("Dark","Oscuro")],["auto",T("Auto","Automático")]];
+  var opts=[["light",T("Light","Claro")],["dark",T("Dark","Oscuro")],["auto",T("Auto","Auto")]];
   return '<span>'+ico("palette")+T("Theme","Tema")+'</span><span class="asp-seg asp-aseg">'
     +opts.map(function(o){ return '<button type="button" data-atheme="'+o[0]+'" aria-pressed="'+(t===o[0])+'">'+esc(o[1])+'</button>'; }).join("")
     +'</span>'+(extra?'<em class="asp-a-temax">'+esc(t==="ember"?"Ember":"Aspen")+'</em>':'');
@@ -68811,7 +68850,9 @@ html:not(#_r1) .asp-r15-sello{background:var(--c-warning-bg)!important;color:var
 html:not(#_r1) #pg16 .tdy-p.asp-r15-p{background:var(--c-warning-bg)!important;color:var(--c-warning-fg)!important}
 #aspR15Barra{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:24px;z-index:2147483000;transform:translateY(20px);opacity:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;max-width:calc(100vw - 32px);box-sizing:border-box;padding:11px 12px 11px 18px;border-radius:14px;background:#211712;color:#fbf6ef;box-shadow:0 12px 34px rgba(0,0,0,.3);font-size:14px;font-weight:650;transition:opacity .2s ease,transform .2s ease,bottom .2s ease}
 #aspR15Barra.on{opacity:1;transform:none}
-html body > #aspR15Barra{zoom:1!important}   /* el modo exterior agranda todo 8 %: esta barra se mide sola y no debe salirse */
+html body > #aspR15Barra{zoom:1!important}
+/* v2.93.8 — iPhone normal (sin casco): el 8 % del modo exterior va en el body entero y la barra se pegaba al borde */
+html:not(.asp-casco) body.outdoor > #aspR15Barra{max-width:calc((100vw - 32px)/1.08)}   /* el modo exterior agranda todo 8 %: esta barra se mide sola y no debe salirse */
 #aspR15Barra .asp-r15-bt{flex:1 1 220px;min-width:0;line-height:1.35}
 #aspR15Barra .asp-r15-bb{display:flex;gap:8px;flex:0 0 auto}
 #aspR15Barra button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 13px;border-radius:10px;border:0;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
@@ -68961,6 +69002,73 @@ html:not(#_r1) .asp-t2-falta{display:inline-flex;align-items:center;gap:4px;padd
       var s=n.nodeValue, had=s.indexOf(SUF)>=0; n.nodeValue=s.split(SUF).join("")+" + 2nd tech $"+(had?"75":"50")+"/hr"+(had?SUF:""); }); } }catch(_e){}
     return r; }; }
   document.addEventListener("change",function(e){ var c=e.target; if(!c||c.id!=="slTech2")return; try{ if(typeof window.slUpWR==="function")window.slUpWR(); }catch(_e){} });
+})();
+</script>
+<script id="aspenDuo2938">
+/* v2.93.8 — Duo cerrado (vertical, con margen lateral seguro): clase asp-duo-cerrado + pastilla detrás de la hora.
+   Y detección tardía: si el teléfono resulta ser un Duo/iPad y el casco no está puesto (p. ej. se abrió girado),
+   se anota y se recarga UNA vez para ponerlo. */
+(function(){
+  var H=document.documentElement, coarse=false; try{ coarse=window.matchMedia("(pointer:coarse)").matches }catch(_e){}
+  if(!coarse)return;
+  function margen(){ try{ var pr=document.createElement("div"); pr.style.cssText="position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;padding-right:env(safe-area-inset-right,0px)";
+    document.body.appendChild(pr); var m=parseFloat(getComputedStyle(pr).paddingRight)||0; document.body.removeChild(pr); return m }catch(_e){ return 0 } }
+  function mira(){
+    var casco=H.classList.contains("asp-casco");
+    if(!casco){ var off=false; try{ off=localStorage.getItem("aspCasco")==="0" }catch(_e){}
+      if(!off&&window._aspEsDuo&&window._aspEsDuo()){ try{ localStorage.setItem("aspCasco","1"); if(!sessionStorage.getItem("aspCascoRec")){ sessionStorage.setItem("aspCascoRec","1"); var a=document.activeElement; if(!a||!/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))location.reload() } }catch(_e){} }
+      return; }
+    var cerrado=window.innerHeight>window.innerWidth&&window.innerWidth<=900&&margen()>20;
+    if(H.classList.contains("asp-duo-cerrado")!==cerrado)H.classList.toggle("asp-duo-cerrado",cerrado);
+    if(cerrado&&!document.getElementById("aspDuoReloj")){ var d=document.createElement("div"); d.id="aspDuoReloj"; d.setAttribute("aria-hidden","true"); H.appendChild(d) }
+  }
+  var t=0; function pronto(){ clearTimeout(t); t=setTimeout(mira,250) }
+  window.addEventListener("resize",pronto); window.addEventListener("orientationchange",pronto); window.addEventListener("pageshow",pronto);
+  mira(); setTimeout(mira,1200);
+})();
+</script>
+<style id="aspenUso2939">
+/* v2.93.9 — revisión de uso */
+/* hoja del ticket: «Call Customer» / «Text "On The Way"» en una línea; si no caben los dos, cada uno toma su fila */
+#tktDetailBg .asp-dt-cta{white-space:nowrap}
+/* hoja del ticket: la etiqueta y su dato separados («Address1842 South…» salía pegado) */
+.tp-row{gap:12px}
+.tp-row > span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
+/* Daily: List / Board / Grid se cortaban 5 px por abajo (la caja medía menos que sus botones) */
+body.asp-limpia #aspLensBar .apl-lenses{height:42px;box-sizing:border-box}   /* 34 de los botones + 3+3 de relleno + borde; la geometría sigue fija (v2.26.1) */
+</style>
+<script id="aspenUso2939Script">
+/* v2.93.9 — 2.º técnico: si el clic «Bill 2nd tech» está puesto y DESPUÉS del reporte se agrega o se quita el segundo
+   nombre, el total guardado se ajusta solo (antes había que quitar y poner el clic). Y el aviso «falta el 2.º técnico»
+   se pone o se quita en el momento, sin cerrar la hoja. Sin listeners nuevos: corre después de guardar técnicos. */
+(function(){
+  "use strict";
+  function tkt(id){ try{ var p=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]); for(var i=0;i<p.length;i++)if(p[i]&&p[i].id===id)return p[i]; }catch(_e){} return null; }
+  function L(es,en){ try{ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }catch(_e){ return en; } }
+  window.aspTech2Cuadra=async function(id){
+    var t=tkt(id); if(!t||t.tech2Bill!==true||typeof aspTech2!=="function")return false;
+    var cuenta=aspTech2(t)===1;
+    try{ var ch=document.getElementById("dtTech2"); if(ch&&window._dtOpenTktId===id){ var lab=ch.closest("label"), f=document.querySelector('.asp-t2-falta');
+      if(!cuenta&&!f&&lab){ f=document.createElement("span"); f.className="asp-t2-falta"; f.setAttribute("data-t2f",id); f.textContent=L("⚠ Falta el 2.º técnico en el ticket","⚠ 2nd tech missing on the ticket"); lab.parentNode.insertBefore(f,lab.nextSibling); }
+      else if(cuenta&&f)f.parentNode.removeChild(f); } }catch(_e){}
+    var lb=t.labor; if(!lb||typeof lb!=="object"||lb.free||!(Number(lb.amount)>0)||t.total==null||t.total===""||isNaN(Number(t.total)))return false;
+    var tiene=Number(lb.tech2Amt)>0; if(tiene===cuenta)return false;
+    var nuevo=cuenta?aspTech2Aplica(lb):aspTech2Quita(lb); if(nuevo===lb)return false;
+    var upd={labor:nuevo,total:Math.round((Number(t.total)-Number(lb.amount)+Number(nuevo.amount))*100)/100}, antes={labor:t.labor,total:t.total};
+    t.labor=upd.labor; t.total=upd.total;
+    try{ await db.collection("tickets").doc(id).update(upd); }
+    catch(err){ t.labor=antes.labor; t.total=antes.total; try{ console.warn("[tech2 cuadra]",err); }catch(_e){} return false; }
+    try{ toast(cuenta?L("👥 2.º técnico sumado al total","👥 2nd tech added to the total"):L("👥 2.º técnico quitado del total","👥 2nd tech removed from the total")); }catch(_t){}
+    try{ if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
+    return true;
+  };
+  function despues(nombre,idDe){ var f=window[nombre]; if(typeof f!=="function")return;
+    window[nombre]=function(){ var a=arguments, id=idDe(a), r=f.apply(this,a);
+      /* no se espera a la promesa: guardar puede quedarse esperando el diálogo del SMS de la cita. Cuadrar es idempotente. */
+      [1200,4500].forEach(function(ms){ setTimeout(function(){ try{ window.aspTech2Cuadra(id); }catch(_e){} },ms); });
+      return r; }; }
+  despues("saveDetailEdits",function(a){ return a[0]; });
+  despues("slToggleTech",function(a){ return a[0]; });
 })();
 </script>
 </body>
