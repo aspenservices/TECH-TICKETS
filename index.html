@@ -7251,6 +7251,13 @@ try{
 // ═══ AUTH ═══
 let currentUser=null; // {name,pin,role}
 let allUsers=[]; // from Firestore
+/* v2.94.0 — junta calle, ciudad y ZIP sin repetir lo que la calle ya trae (muchas direcciones vienen completas) */
+function aspUneDir(address,city,zip,sepZip){
+  var a=String(address||"").trim(), low=a.toLowerCase(), out=a, c=String(city||"").trim(), z=String(zip||"").trim();
+  if(c&&low.indexOf(c.toLowerCase())<0)out+=(out?", ":"")+c;
+  if(z&&low.indexOf(z.toLowerCase())<0)out+=(out?(sepZip==null?", ":sepZip):"")+z;
+  return out;
+}
 
 /* ═══ SESIÓN DE PERSONAL · v1.10.0 ═══════════════════════════════════════════
    Hoy TODO el mundo (técnicos y clientes) entra con la misma sesión anónima, así
@@ -7278,7 +7285,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.93.9";
+var APP_VERSION="2.94.0";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -19870,7 +19877,7 @@ function _slCust(t){
     var phone=t.phone||c.phone||"";
     var address=t.address||c.address||"";
     var city=t.city||c.city||"";
-    return {phone:phone,addrLine:address?address+(city?", "+city:""):""};
+    return {phone:phone,addrLine:address?aspUneDir(address,city):""};
   }catch(_e){return {phone:(t&&t.phone)||"",addrLine:(t&&t.address)||""};}
 }
 function rndrSlog(){
@@ -21512,7 +21519,7 @@ function _coachCard(c){
   var phLink=ph?'<a href="tel:'+ph+'" style="color:var(--ac);text-decoration:none;font-weight:700">'+esc(c.phone)+'</a>':'<span style="color:var(--i3)">No phone</span>';
   var problem=c.problem?('<div class="co-problem">'+esc(c.problem)+'</div>'):'';
   if(c.status==="pending"){
-    var addr=c.address?(esc(c.address)+(c.city?(", "+esc(c.city)):"")):"";
+    var addr=c.address?esc(aspUneDir(c.address,c.city)):"";
     var head='<div class="co-head"><div><div class="co-name">'+esc(c.customer||"—")+'</div><div class="co-sub">'+phLink+(addr?(' · '+addr):'')+'</div></div>'+typePill+'</div>';
     return '<div class="coach-card cs-amber"><div class="crail"></div><div class="cbody">'+head+problem
       +'<div class="co-sched-row"><input type="date" id="coDate_'+c.id+'" class="co-inp"><input type="time" id="coTime_'+c.id+'" class="co-inp" value="10:00">'
@@ -23419,7 +23426,7 @@ function _calVisitaReagendada(t,lnk){
   var r=lk.byId[rid];
   return !!(r&&(aspReagendo(r)||r.reschedDispatchId));
 }
-function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted&&!aspCitaMovida(t);const _isTechView=currentUser&&currentUser.role==="tech";
+function calTktCard(t){const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};const isDone=t.status==="done";const isCanceled=t.status==="canceled";const stRowClass=isCanceled?" st-row-canceled":"";const _stb=statusBadge(t);const _city=effectiveCity(t);const fullAddr=aspUneDir(t.address,_city,t.zip," ");   /* v2.94.0 — sin repetir la ciudad */const dragAttr=IS_TOUCH?'':' draggable="true" ondragstart="calDragStart(event,\''+t.id+'\')"';const canDismiss=currentUser&&currentUser.role==="admin"&&t.source==="dispatch"&&!t.fieldReportSubmitted&&!aspCitaMovida(t);const _isTechView=currentUser&&currentUser.role==="tech";
   // NEEDS REPORT state: tech checked in AND out but has not filed the field report yet.
   // Highlights the card in amber so it doesn't get lost in the calendar.
   // v2.2.0: solo cuenta la evidencia de ESTA visita, no la heredada de otra.
@@ -24805,7 +24812,7 @@ function openTktDetail(id){
     +'</span>';
   const zone=effectiveZone(t);const zc=ZONE_COLORS[zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
   const _city=effectiveCity(t);
-  const fullAddr=(t.address||"")+(_city?", "+_city:"")+(t.zip?" "+t.zip:"");
+  const fullAddr=aspUneDir(t.address,_city,t.zip," ");   /* v2.94.0 — sin repetir la ciudad */
   const mapsUrl=fullAddr?"https://maps.apple.com/?q="+encodeURIComponent(fullAddr):"";
   // Check-In / Check-Out panel — appears at the very top of the ticket detail
   // for any ticket dated >= CHECKIN_REQUIRED_FROM_DATE (defined in Check-in
@@ -26981,7 +26988,7 @@ function qbCustRenderDetail(customers){
   c.tickets.forEach(function(t){(t.media||[]).forEach(function(m){if(m&&m.type!=="pdf"&&m.url){_allPhotos.push({url:m.url,date:t.date||"",tech:(t.techs||[]).join(", ")||"",wt:(t.workTypes||[]).join(", ")||""});}});});
   _allPhotos.sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   let spaDesc="";sorted.forEach(t=>{if(t.spaDesc&&t.spaDesc.length>spaDesc.length)spaDesc=t.spaDesc});
-  const fullAddr=(c.address||"")+(c.city?", "+c.city:"")+(c.zip?" "+c.zip:"");
+  const fullAddr=aspUneDir(c.address,c.city,c.zip," ");   /* v2.94.0 — sin repetir la ciudad */
   const hasPhone2=!!(c.phone2&&c.phone2.trim());
   const zc=ZONE_COLORS[c.zone]||{bg:"var(--c-ash-2)",text:"var(--i2)"};
 
@@ -34295,7 +34302,7 @@ try{[["_aspVisitNotes",_aspVisitNotes],["_aspCleanTechNotes",_aspCleanTechNotes]
      ═══════════════════════════════════════════════════════════════════════ -->
 <style id="customerUltraTechV7CleanStyle">
 /* CUSTOMER V7 CLEAN — one render only, theme-aware, no duplicate panels */
-#pg6 .v7-customer-grid{display:grid;grid-template-columns:minmax(300px,.92fr) minmax(430px,1.35fr);gap:16px;padding:16px;align-items:start}
+#pg6 .v7-customer-grid{display:flex;flex-wrap:wrap;gap:16px;padding:16px;align-items:flex-start}#pg6 .v7-customer-grid>*{flex:.92 1 300px;min-width:0}#pg6 .v7-customer-grid>.v7-panel.visits{flex:1.35 1 520px}
 #pg6 .v7-panel{min-width:0;background:var(--cd);border:1px solid var(--ln);border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(50,35,20,.07)}
 #pg6 .v7-panel-head{display:flex;align-items:flex-start;gap:12px;padding:15px 17px;border-bottom:1px solid var(--ln);background:linear-gradient(180deg,color-mix(in srgb,var(--cd) 96%,var(--ac) 4%),var(--cd))}
 #pg6 .v7-panel-accent{width:4px;align-self:stretch;border-radius:999px;background:var(--ac)}
@@ -34316,7 +34323,7 @@ try{[["_aspVisitNotes",_aspVisitNotes],["_aspCleanTechNotes",_aspCleanTechNotes]
 #pg6 .v7-note-text{font-size:13px;line-height:1.58;color:var(--ink);white-space:pre-line;word-break:break-word}
 #pg6 .v7-visit-list{display:flex;flex-direction:column;gap:12px}
 #pg6 .v7-visit{border:1px solid var(--ln);border-radius:14px;background:var(--cd);padding:14px;box-shadow:0 2px 10px rgba(50,35,20,.04)}
-#pg6 .v7-visit-top{display:grid;grid-template-columns:78px minmax(115px,.45fr) minmax(240px,1fr) auto;gap:14px;align-items:start}
+#pg6 .v7-visit-top{display:grid;grid-template-columns:78px minmax(90px,.45fr) minmax(160px,1fr) auto;gap:14px;align-items:start}
 #pg6 .v7-date{text-align:center;border-right:1px solid var(--ln);padding-right:12px}
 #pg6 .v7-date .mo{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:900;color:var(--i3)}
 #pg6 .v7-date .dy{font-size:25px;font-weight:950;color:var(--ink);line-height:1}
@@ -34343,7 +34350,7 @@ try{[["_aspVisitNotes",_aspVisitNotes],["_aspCleanTechNotes",_aspCleanTechNotes]
 #pg6 .qb-cust-tab[data-tab="history"],#pg6 .qb-cust-tab[onclick*="history"]{display:none!important}
 /* theme-aware polish */
 body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 .v7-note-card{box-shadow:0 10px 30px rgba(0,0,0,.22)}
-@media(max-width:1100px){#pg6 .v7-customer-grid{grid-template-columns:1fr}#pg6 .v7-visit-top{grid-template-columns:72px minmax(110px,.4fr) 1fr auto}}
+@media(max-width:1100px){#pg6 .v7-customer-grid{grid-template-columns:1fr}#pg6 .v7-customer-grid>*,#pg6 .v7-customer-grid>.v7-panel.visits{flex-basis:100%}#pg6 .v7-visit-top{grid-template-columns:72px minmax(110px,.4fr) 1fr auto}}
 @media(max-width:720px){#pg6 .v7-customer-grid{padding:10px;gap:10px}#pg6 .v7-panel-body{padding:11px}#pg6 .v7-visit-top{grid-template-columns:64px 1fr;gap:10px}#pg6 .v7-date{grid-row:1/3}#pg6 .v7-report{grid-column:2}#pg6 .v7-total{grid-column:2;text-align:left;display:flex;gap:7px;align-items:baseline}.v7-chips,.v7-actions,.v7-expanded,.v7-proof{margin-left:0!important}#pg6 .v7-actions{display:grid;grid-template-columns:1fr 1fr}#pg6 .v7-actions button{width:100%}#pg6 .v7-actions .send{grid-column:1/-1;margin-left:0}}
 
 .v7-sp-btn{font-size:11px;font-weight:600;color:#5a6b7d;background:transparent;border:1px solid #d8e0e8;border-radius:6px;padding:5px 9px;cursor:pointer;margin-right:8px;white-space:nowrap}
@@ -34505,7 +34512,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   var _v7Busy=false,_v7Sig='';
   function _v7Pause(){try{if(window.__v7Observer)window.__v7Observer.disconnect()}catch(_){}}
   function _v7Resume(){try{var r=document.getElementById('pg6');if(window.__v7Observer&&r)window.__v7Observer.observe(r,{childList:true,subtree:true})}catch(_){}}
-  function render(){var _pg6=document.getElementById('pg6');if(!_pg6||!_pg6.classList.contains('show'))return;if(_v7Busy)return;if(typeof qbCustTab!=='undefined'&&qbCustTab!=='info')return;var tb=document.querySelector('#pg6 .qb-cust-tab-body');if(!tb)return;tabs();var tkts=selectedTickets().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))}),ns=notes(tkts);_v7Pool=ns||[];var vis=_v7Dedup(tkts.filter(isVisit));var _sig=String((typeof selectedCustKey!=='undefined'?selectedCustKey:(window.selectedCustKey||'')))+'|'+vis.length+'|'+((ns||[]).length)+'|'+tkts.length;if(_sig===_v7Sig&&document.getElementById('v7GeneralInfo'))return;_v7Busy=true;_v7Sig=_sig;_v7Pause();cleanup(tb);var h='<div id="v7GeneralInfo" class="v7-customer-grid"><section class="v7-panel"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Notes & Scheduling</div><div class="v7-sub">Read-only customer communication and administrative history</div></div><span class="v7-count">'+ns.length+'</span></div><div class="v7-panel-body">'+(ns.length?ns.map(noteHTML).join(''):'<div class="v7-empty">No administrative notes were found for this customer.</div>')+'</div></section><section class="v7-panel visits\'+(v7SPOnly()?\' v7-sp-only\':\'\')+\'"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Technician Visits</div><div class="v7-sub">Completed field reports with customer-ready proof of work</div></div><span class="v7-count">'+vis.length+'</span></div><div class="v7-panel-body">'+(vis.length?'<div class="v7-visit-list">'+vis.map(visitHTML).join('')+'</div>':'<div class="v7-empty">No visits recorded for this customer.<br><button class="v7-find" onclick="v7FindReportCustomer()">Open a customer with a completed report</button></div>')+'</div></section></div>';tb.insertAdjacentHTML('afterbegin',h);try{_v7Wire(tb)}catch(_){}setTimeout(function(){try{_v7Wire(document)}catch(_){}_v7Resume();_v7Busy=false},120)}
+  function render(){var _pg6=document.getElementById('pg6');if(!_pg6||!_pg6.classList.contains('show'))return;if(_v7Busy)return;if(typeof qbCustTab!=='undefined'&&qbCustTab!=='info')return;var tb=document.querySelector('#pg6 .qb-cust-tab-body');if(!tb)return;tabs();var tkts=selectedTickets().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))}),ns=notes(tkts);_v7Pool=ns||[];var vis=_v7Dedup(tkts.filter(isVisit));var _sig=String((typeof selectedCustKey!=='undefined'?selectedCustKey:(window.selectedCustKey||'')))+'|'+vis.length+'|'+((ns||[]).length)+'|'+tkts.length;if(_sig===_v7Sig&&document.getElementById('v7GeneralInfo'))return;_v7Busy=true;_v7Sig=_sig;_v7Pause();cleanup(tb);var h='<div id="v7GeneralInfo" class="v7-customer-grid"><section class="v7-panel"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Notes & Scheduling</div><div class="v7-sub">Read-only customer communication and administrative history</div></div><span class="v7-count">'+ns.length+'</span></div><div class="v7-panel-body">'+(ns.length?ns.map(noteHTML).join(''):'<div class="v7-empty">No administrative notes were found for this customer.</div>')+'</div></section><section class="v7-panel visits'+(v7SPOnly()?' v7-sp-only':'')+'"><div class="v7-panel-head"><span class="v7-panel-accent"></span><div><div class="v7-title">Technician Visits</div><div class="v7-sub">Completed field reports with customer-ready proof of work</div></div><span class="v7-count">'+vis.length+'</span></div><div class="v7-panel-body">'+(vis.length?'<div class="v7-visit-list">'+vis.map(visitHTML).join('')+'</div>':'<div class="v7-empty">No visits recorded for this customer.<br><button class="v7-find" onclick="v7FindReportCustomer()">Open a customer with a completed report</button></div>')+'</div></section></div>';tb.insertAdjacentHTML('afterbegin',h);try{_v7Wire(tb)}catch(_){}setTimeout(function(){try{_v7Wire(document)}catch(_){}_v7Resume();_v7Busy=false},120)}
   window.v7RenderCustomer=render;
   function wrap(name){var f=window[name];if(typeof f!=='function'||f._v7)return;window[name]=function(){var r=f.apply(this,arguments);clearTimeout(window.__v7Timer2);window.__v7Timer2=setTimeout(render,120);return r};window[name]._v7=1}
   wrap('rndrCust');wrap('qbCustSelect');wrap('qbCustSetTab');
@@ -51382,7 +51389,7 @@ function tel(t){
   }catch(_e){ return "" }
 }
 function dir(t){
-  return [t.address,t.city,t.zip].filter(function(x){return String(x||"").trim()}).join(", ").trim();
+  return aspUneDir(t.address,t.city,t.zip);   /* v2.94.0 — sin repetir la ciudad */
 }
 /* v2.36.0 — `spaDesc` NO es un modelo corto: en produccion es un volcado de
    600+ caracteres (jets, bombas, pack, cabinet...) y pintado entero llenaba
@@ -51423,7 +51430,7 @@ function tina(t){
 }
 /* Direccion en una linea corta: calle y ciudad, sin el codigo postal. */
 function dirCorta(t){
-  return [t.address,t.city].filter(function(x){return String(x||"").trim()}).join(", ").trim();
+  return aspUneDir(t.address,t.city);   /* v2.94.0 — sin repetir la ciudad */
 }
 /* Los tecnicos asignados a una parada. Sin asignar = su propio grupo. */
 function tecnicos(t){
@@ -57963,7 +57970,7 @@ function renderAttentionList(){
   if(!_dailyAttentionMode)return;var el=document.getElementById("aList");if(!el)return;var items=attentionItems(_dailyAttentionMode),q=String((document.getElementById("searchActive")||{}).value||"").trim();if(q&&typeof tktMatchesSearch==="function")items=items.filter(function(t){return tktMatchesSearch(t,q)});if(_dailyPriorityMode)items.sort(function(a,b){var d=pscore(b)-pscore(a);return d||ptime(a).localeCompare(ptime(b))});var m=attentionMeta(_dailyAttentionMode);
   var h='<div class="daily-attn-view"><div class="daily-attn-view-head"><h3>'+m.ico+' '+E(D(m.es,m.en))+'</h3><span>'+items.length+' '+D(items.length===1?"caso":"casos",items.length===1?"case":"cases")+'</span><button class="daily-attn-clear" onclick="_dailyClearAttention()">× '+D("Cerrar filtro","Clear filter")+'</button></div>';
   if(!items.length)h+='<div class="empty-state"><h3>'+D("Nada pendiente aquí","Nothing pending here")+'</h3></div>';
-  items.forEach(function(t){var x=attnWhy(t,_dailyAttentionMode),addr=[t.address,t.city,t.zip].filter(Boolean).join(", ");h+='<div class="daily-attn-row" style="--attn-c:'+m.c+'" onclick="if(typeof openTktDetail===\'function\')openTktDetail(\''+E(String(t.id||"").replace(/'/g,"\\'"))+'\')"><div><div class="nm">'+E(t.customer||"—")+'</div><div class="sub">'+E(addr||t.phone||"")+'</div></div><div class="why">'+E(x.why)+'</div><div class="meta">'+E(x.meta||D("Sin fecha","No date"))+'</div><button class="daily-attn-open" type="button">'+D("Abrir","Open")+' ›</button></div>'});h+='</div>';el.innerHTML=h;
+  items.forEach(function(t){var x=attnWhy(t,_dailyAttentionMode),addr=aspUneDir(t.address,t.city,t.zip);h+='<div class="daily-attn-row" style="--attn-c:'+m.c+'" onclick="if(typeof openTktDetail===\'function\')openTktDetail(\''+E(String(t.id||"").replace(/'/g,"\\'"))+'\')"><div><div class="nm">'+E(t.customer||"—")+'</div><div class="sub">'+E(addr||t.phone||"")+'</div></div><div class="why">'+E(x.why)+'</div><div class="meta">'+E(x.meta||D("Sin fecha","No date"))+'</div><button class="daily-attn-open" type="button">'+D("Abrir","Open")+' ›</button></div>'});h+='</div>';el.innerHTML=h;
 }
 
 /* #4 — Today's 4-slot technician timeline. */
@@ -59823,11 +59830,23 @@ function dialogo(ctx){
     requestAnimationFrame(function(){ bg.classList.add("on"); });
     var box=bg.querySelector(".asp-vu-dlg"), st={r:"",f:"",c:"",tec:(t&&t.techs||[]).slice(),sin:false};
     function marca(q,b){ Array.prototype.forEach.call(box.querySelectorAll('[data-q="'+q+'"] button'),function(x){ x.setAttribute("aria-pressed",x===b?"true":"false"); }); }
+    /* v2.93.10 — lo que falta para enviar se dice Y se señala: el aviso, la pregunta o el campo en rojo, y el
+       diálogo se mueve hasta ahí. Antes solo había un toast, que quedaba debajo del diálogo y nadie lo veía. */
+    function avisa(msg,sel){
+      try{ toast(msg,"warn"); }catch(_e){}
+      var el=sel?box.querySelector(sel):null; if(!el)return;
+      el.setAttribute("aria-invalid","true"); el.classList.add("asp-vu-mal");
+      try{ el.scrollIntoView({block:"center"}); }catch(_e){}
+      if(/^(INPUT|TEXTAREA)$/.test(el.tagName)){ try{ el.focus({preventScroll:true}); }catch(_e){ try{ el.focus(); }catch(_e2){} } }
+    }
+    function limpia(el){ if(el&&el.getAttribute&&el.getAttribute("aria-invalid")==="true"){ el.removeAttribute("aria-invalid"); el.classList.remove("asp-vu-mal"); } }
+    box.addEventListener("input",function(e){ limpia(e.target); });
     function fin(v){ bg.classList.remove("on"); setTimeout(function(){ bg.remove(); },180); document.removeEventListener("keydown",tecla,true); resolve(v); }
     function tecla(e){ if(e.key==="Escape"){ e.preventDefault(); fin(null); } }
     document.addEventListener("keydown",tecla,true);
     box.addEventListener("click",function(e){
       var b=e.target.closest&&e.target.closest("button"); if(!b)return;
+      try{ limpia(b.closest("[data-q]")); }catch(_e){}
       if(b.hasAttribute("data-vu-razon")){ st.r=b.getAttribute("data-vu-razon"); marca("r",b); return; }
       if(b.hasAttribute("data-vu-falta")){ st.f=b.getAttribute("data-vu-falta"); marca("f",b); var pw=box.querySelector(".asp-vu-parte"); if(pw)pw.hidden=(st.f!=="part"); if(st.f==="part")setTimeout(function(){ var i=box.querySelector("#aspVuParte"); if(i)i.focus(); },30); return; }
       if(b.hasAttribute("data-vu-cuando")){ st.c=b.getAttribute("data-vu-cuando"); marca("c",b); return; }
@@ -59836,19 +59855,19 @@ function dialogo(ctx){
       if(b.classList.contains("asp-vu-no")){ fin(null); return; }
       if(b.classList.contains("asp-vu-si")){
         var nota=(box.querySelector("#aspVuNota").value||"").trim();
-        if(!st.r){ toast(L("Elige por qué","Pick why"),"warn"); return; }
-        if(st.r==="Other"&&!nota){ toast(L("Escribe qué pasó (con «Otro» es obligatorio)","Write what happened (required with «Other»)"),"warn"); var ta=box.querySelector("#aspVuNota"); if(ta)ta.focus(); return; }
+        if(!st.r){ avisa(L("Elige por qué (pregunta 1)","Pick why (question 1)"),'[data-q="r"]'); return; }
+        if(st.r==="Other"&&!nota){ avisa(L("Escribe qué pasó (con «Otro» es obligatorio)","Write what happened (required with «Other»)"),"#aspVuNota"); return; }
         var out={reason:st.r,note:nota,modo:m,needsOtherTech:false,blocker:"",blockerPart:"",notBefore:"",availability:"",urgent:false};
         if(m==="mover"){
           var fd=(box.querySelector("#aspVuFecha").value||"").trim();
-          if(fd&&fd<hoyIso()){ toast(L("Esa fecha ya pasó","That date already passed"),"warn"); return; }
-          if(!fd&&!st.sin){ toast(L("Pon la nueva fecha o toca «Todavía sin fecha»","Pick the new date or tap «No date yet»"),"warn"); return; }
+          if(fd&&fd<hoyIso()){ avisa(L("Esa fecha ya pasó","That date already passed"),"#aspVuFecha"); return; }
+          if(!fd&&!st.sin){ avisa(L("Pon la nueva fecha o toca «Todavía sin fecha»","Pick the new date or tap «No date yet»"),"#aspVuFecha"); return; }
           if(fd){ out.newDate=fd; out.newTime=(box.querySelector("#aspVuHora").value||"").trim(); out.newTechs=st.tec.slice(); }
           else { out.availability=st.c||""; }
           out.blocker=(st.r==="Parts not available")?"part":"none";
         }else{
           out.blocker=st.f||""; out.availability=st.c||""; out.urgent=(st.c==="urgent"); out.needsOtherTech=(st.f==="tech2");
-          if(st.f==="part"){ var pn=(box.querySelector("#aspVuParte").value||"").trim(); if(!pn){ toast(L("¿Qué parte falta?","Which part is missing?"),"warn"); box.querySelector("#aspVuParte").focus(); return; } out.blockerPart=pn; out.notBefore=(box.querySelector("#aspVuLlega").value||"").trim(); }
+          if(st.f==="part"){ var pn=(box.querySelector("#aspVuParte").value||"").trim(); if(!pn){ avisa(L("Escribe qué parte falta","Write which part is missing"),"#aspVuParte"); return; } out.blockerPart=pn; out.notBefore=(box.querySelector("#aspVuLlega").value||"").trim(); }
         }
         fin(out);
       }
@@ -66022,7 +66041,11 @@ mod("claraSpa",function(){
 function fraseCifras(nodos,lab,val,salta){ var p=[];
   Array.prototype.forEach.call(nodos,function(k){ if(salta&&salta(k))return; var v=(k.querySelector(val)||{}).textContent, l=(k.querySelector(lab)||{}).textContent; if(!v)return;
     l=String(l||"").trim(); if(/^(hours|horas)$/i.test(l))l=T("on site","en sitio");
-    p.push('<span><b>'+esc(v.trim())+'</b> '+esc(l.toLowerCase())+'</span>'); }); return p.join(""); }
+    l=l.toLowerCase(); if(v.trim()==="1"&&UNO[l])l=UNO[l];   /* v2.94.0 — «1 parada», no «1 paradas» */
+    p.push('<span><b>'+esc(v.trim())+'</b> '+esc(l)+'</span>'); }); return p.join(""); }
+var UNO={paradas:"parada",stops:"stop",reportes:"reporte",reports:"report",tickets:"ticket",citas:"cita",visitas:"visita",visits:"visit",
+  "técnicos":"técnico",technicians:"technician","días":"día",days:"day",clientes:"cliente",customers:"customer",
+  trabajos:"trabajo",jobs:"job",llamadas:"llamada",calls:"call",pendientes:"pendiente",abiertas:"abierta",abiertos:"abierto"};
 mod("claraHoy",function(){
   if(!claraOn())return; var k=document.querySelector("#pg16 .tdy-kpis"); if(!k)return;
   var f=k.previousElementSibling; if(!f||!f.classList.contains("asp-c-frase")){ f=document.createElement("div"); f.className="asp-c-frase"; k.parentNode.insertBefore(f,k); }
@@ -67509,7 +67532,8 @@ html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):no
 html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .asp-c-linea{gap:5px!important}
 html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .asp-c-linea > svg{margin-left:0!important;flex:none!important}
 html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .qb-cust-side-meta > #qbCustCount{white-space:nowrap!important;flex:none!important}
-html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .qb-cust-side-meta > select.qb-cust-sort{min-width:0!important;flex:0 1 auto!important}
+html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .qb-cust-side-meta > select.qb-cust-sort{min-width:0!important;flex:1 0 auto!important;max-width:100%!important}
+html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .qb-cust-side-meta{flex-wrap:wrap!important;row-gap:8px!important}
 @media (min-width:701px){ html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) #tktDetailBg .dtv2-colC > div:has(> a.asp-l-sec) > *{flex:1 1 auto!important} }
 html:not(.asp-hd-off) body.asp-limpia:not(#_h1):not(#_h2):not(#_h3):not(#_h4):not(#_h5):not(#_h6):not(#_h7):not(#_h8) .asp-vu-same > b{display:block!important;margin-bottom:2px}
 
@@ -69071,5 +69095,460 @@ body.asp-limpia #aspLensBar .apl-lenses{height:42px;box-sizing:border-box}   /* 
   despues("slToggleTech",function(a){ return a[0]; });
 })();
 </script>
+<style id="aspenAviso29310">
+/* v2.93.10 — el aviso (toast) encima de lo que lo tape: un diálogo abierto lo dejaba invisible.
+   Los :not(#…) le ganan a la capa «acabado» (3 ids), que fija el aviso abajo con !important. */
+html:not(#_v1):not(#_v2):not(#_v3):not(#_v4) #toast.asp-toast-sobre{z-index:2147483600!important;top:max(14px,env(safe-area-inset-top,0px))!important;bottom:auto!important}
+/* lo que falta en el diálogo de reagendar */
+.asp-vu-ch.asp-vu-mal{outline:2px solid var(--c-danger-strong,#C0492F);outline-offset:5px;border-radius:12px}
+.asp-vu-dlg input.asp-vu-mal,.asp-vu-dlg textarea.asp-vu-mal{border-color:var(--c-danger-strong,#C0492F)!important;box-shadow:0 0 0 3px var(--c-danger-bg,#F6E3DE)}
+</style>
+<script id="aspenAviso29310Script">
+/* v2.93.10 — Cada vez que aparece un aviso, se mira si algo lo tapa (un diálogo, una hoja). Si lo tapan, sube arriba
+   y por encima de todo. Mira el elemento del aviso, no la función: así vale para cualquier código que avise. */
+(function(){
+  "use strict";
+  function tapado(t){
+    var r=t.getBoundingClientRect(); if(!r.width||!r.height)return false;
+    var pe=t.style.pointerEvents; t.style.pointerEvents="auto";
+    var x=null; try{ x=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); }catch(_e){}
+    t.style.pointerEvents=pe;
+    return !!(x&&x!==t&&!t.contains(x));
+  }
+  function mira(t){
+    if(!t.classList.contains("show")){ if(t.classList.contains("asp-toast-sobre"))t.classList.remove("asp-toast-sobre"); return; }
+    if(t.classList.contains("asp-toast-sobre"))return;
+    if(tapado(t))t.classList.add("asp-toast-sobre");
+  }
+  function arma(){
+    var t=document.getElementById("toast"); if(!t||t.__aspSobre)return; t.__aspSobre=1;
+    try{ new MutationObserver(function(){ mira(t); }).observe(t,{attributes:true,attributeFilter:["class"],childList:true,characterData:true,subtree:true}); }catch(_e){}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arma); else arma();
+})();
+</script>
+<style id="aspCalSkin">
+/* ══ CALENDARIO DE iCLOUD (v2.94.0) ══════════════════════════════════
+   La tarjeta de Admin › Settings y la ventanita de pasos del perfil.     */
+/* dentro de su fila de Settings la tarjeta conserva el marco de las demás; sin esto el texto pegaba al borde */
+.admBItemBody>#aspCalCard{padding:12px}
+#aspCalCard .acal-intro{font-size:var(--fs-sm);color:var(--i2);margin:0 0 12px;line-height:1.45}
+#aspCalCard .acal-row{border:1px solid var(--ln);border-radius:12px;padding:6px 12px;margin-bottom:8px;background:var(--cd)}
+#aspCalCard .acal-row.on{border-color:var(--ac);padding-bottom:12px}
+#aspCalCard .acal-top{display:flex;align-items:center;gap:10px}
+#aspCalCard .acal-who{flex:1 1 auto;min-width:0}
+#aspCalCard .acal-who b{display:block;font-size:var(--fs-base);color:var(--ink)}
+#aspCalCard .acal-who span{font-size:var(--fs-xs);color:var(--i3)}
+#aspCalCard .acal-sw{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:var(--fs-sm);font-weight:700;color:var(--i2);cursor:pointer}
+#aspCalCard .acal-sw input{width:20px;height:20px;margin:0;accent-color:var(--ac);cursor:pointer}
+#aspCalCard .acal-mas{margin-top:6px;padding-top:10px;border-top:1px dashed var(--ln)}
+#aspCalCard .acal-lbl{font-size:var(--fs-xs);font-weight:700;color:var(--i3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+#aspCalCard .acal-techs{display:flex;flex-wrap:wrap;gap:6px}
+#aspCalCard .acal-techs label{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border:1px solid var(--ln);border-radius:999px;font-size:var(--fs-sm);cursor:pointer}
+#aspCalCard .acal-techs label.si{border-color:var(--ac);background:var(--c-ash-2,#f3eee6);font-weight:700}
+#aspCalCard .acal-techs label.off{opacity:.45;cursor:default}
+#aspCalCard .acal-techs input{margin:0;accent-color:var(--ac)}
+#aspCalCard .acal-nota{font-size:var(--fs-xs);color:var(--i3);margin-top:6px}
+#aspCalCard .acal-err{color:var(--danger,#C84B42);font-weight:600}
+#aspCalCard .acal-pie{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+#aspCalCard .acal-visto{flex:1 1 160px;font-size:var(--fs-xs);color:var(--i3)}
+#aspCalCard .acal-btn{min-height:40px;padding:8px 12px;border:1px solid var(--ln);border-radius:8px;background:var(--cd);color:var(--ink);font:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer}
+#aspCalCard .acal-btn:hover{background:var(--c-ash-2,#f3eee6)}
+#aspCalCard[aria-busy="true"]{opacity:.6}
+/* en modo oscuro las casillas nativas salían blancas: que el navegador las pinte oscuras */
+body.dark-mode #aspCalCard,body.dark-mode #aspCalPasos{color-scheme:dark}
+#aspCalPasos{position:fixed;inset:0;z-index:1000030;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,16,10,.45)}
+#aspCalPasos[hidden]{display:none!important}
+#aspCalPasos .acal-dlg{width:100%;max-width:440px;max-height:calc(100dvh - 32px);overflow:auto;padding:18px 18px 14px;border-radius:16px;background:var(--cd,#fff);color:var(--ink,#1f1a15);box-shadow:0 18px 50px rgba(0,0,0,.25)}
+#aspCalPasos h3{margin:0 0 4px;font-size:var(--fs-md)}
+#aspCalPasos input{width:100%;box-sizing:border-box;margin:8px 0 0;padding:8px;border:1px solid var(--ln);border-radius:8px;font:inherit;font-size:var(--fs-xs)}
+#aspCalPasos ol{margin:10px 0 14px;padding-left:20px;font-size:var(--fs-sm);line-height:1.45}
+#aspCalPasos li{margin-bottom:6px}
+#aspCalPasos .acal-ok{width:100%;min-height:44px;padding:12px;border:0;border-radius:10px;background:var(--br);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+</style>
+<script id="aspCalScript">
+/* ══ CALENDARIO DE iCLOUD (v2.94.0) ══════════════════════════════════
+   Alberto decide quién lo tiene y de qué técnicos ve citas cada persona.
+   SEGURIDAD: los enlaces NO viven en Firestore al alcance de la app (config/* lo puede leer
+   cualquier sesión, también la anónima de los clientes). Los guarda la función calendarFeed
+   (calendar_settings/main, solo la lee el Admin SDK) y los entrega a quien entra con su PIN:
+   «lista/poner/tecnicos/nuevo» solo a un admin, «mio» a cada quien (su propio enlace).
+   Cada llamada lleva la sesión del personal (Authorization: Bearer <ID token>).
+   El iPhone pide el .ics con su clave (GET ?k=) cada cierto tiempo: es de SOLO LECTURA
+   (mover el evento en el iPhone no toca la app). La función anota cuándo lo pidió.
+   Aquí: la fila «iCloud Calendar» de Admin › Settings (solo admin) y la fila
+   «Add my appointments to my Calendar» del perfil (solo a quien esté encendido).
+   Cero onSnapshot y cero lecturas de Firestore: todo se pide a la función al abrir.     */
+(function(){
+  "use strict";
+  var FN="https://us-central1-tech-tickets-a9485.cloudfunctions.net/calendarFeed";
+  var FEED="us-central1-tech-tickets-a9485.cloudfunctions.net/calendarFeed?k=";
+  var cache=null, cacheMs=0, leyendo=null, vistos={};
+  var mio=null, mioMs=0, pidiendo=null;                  // el enlace propio (perfil), para cualquiera del personal
+
+  function L(es,en){ try{ return (typeof L2==="function")?L2(es,en):en; }catch(_e){ return en; } }
+  function sesion(){ try{ return (typeof firebase!=="undefined"&&firebase.auth&&firebase.auth().currentUser)||null; }catch(_e){ return null; } }
+  function yo(){ try{ return (typeof currentUser!=="undefined"&&currentUser)||null; }catch(_e){ return null; } }
+  function esAdmin(){ var u=yo(); return !!(u&&u.role==="admin"); }
+  function usuarios(){ try{ return (typeof allUsers!=="undefined"&&Array.isArray(allUsers))?allUsers:[]; }catch(_e){ return []; } }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function aviso(m,t){ try{ if(typeof toast==="function") toast(m,t); }catch(_e){} }
+
+  /* ── datos: todo por la función ─────────────────────────────────────── */
+  function falla(codigo,status){ var e=new Error(codigo); e.code=codigo; e.status=status||0; return e; }
+  function api(accion,datos){
+    var u=sesion();
+    if(!u||typeof u.getIdToken!=="function") return Promise.reject(falla("login",401));
+    return u.getIdToken().then(function(t){
+      var ctl=("AbortController" in window)?new AbortController():null;
+      var to=setTimeout(function(){ try{ ctl&&ctl.abort(); }catch(_e){} },20000);
+      return fetch(FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},
+                       body:JSON.stringify(Object.assign({accion:accion},datos||{})),signal:ctl?ctl.signal:undefined})
+        .then(function(r){
+          clearTimeout(to);
+          return r.json().catch(function(){ return {}; }).then(function(j){
+            if(!r.ok) throw falla((j&&j.error)||"http",r.status);
+            return j||{};
+          });
+        },function(){ clearTimeout(to); throw falla("red",0); });  // sin internet, o la función aún no está subida
+    },function(){ throw falla("login",401); });
+  }
+  /* lo que la persona necesita saber cuando algo sale mal */
+  function porque(e){
+    var c=(e&&e.code)||"";
+    if(c==="red") return L("No se pudo hablar con la función del calendario. Revisa el internet; si es la primera vez, ¿ya está subida la función calendarFeed?",
+                           "Could not reach the calendar function. Check the internet; if this is the first time, has the calendarFeed function been deployed?");
+    if(c==="login"||c==="staff") return L("Tu sesión de personal no está activa: sal y vuelve a entrar con tu PIN.",
+                                          "Your staff session is not active: sign out and sign back in with your PIN.");
+    if(c==="admin") return L("Solo un admin puede cambiar esto.","Only an admin can change this.");
+    return L("La función del calendario respondió con un error","The calendar function answered with an error")+(e&&e.status?" ("+e.status+")":"")+".";
+  }
+  function leer(){
+    if(leyendo) return leyendo;
+    leyendo=api("lista").then(function(j){
+      leyendo=null;
+      cache={people:(j.people&&typeof j.people==="object")?j.people:{}}; cacheMs=Date.now();
+      vistos=(j.vistos&&typeof j.vistos==="object")?j.vistos:{};
+      var u=yo(), p=u&&cache.people[u.name]; mio=(p&&p.on===true&&p.token)?p.token:""; mioMs=Date.now();
+      return cache;
+    },function(e){ leyendo=null; throw e; });
+    return leyendo;
+  }
+  /* la función guarda y contesta cómo quedó la persona (y cuándo lo revisó, si está encendida) */
+  function guarda(accion,nombre,datos){
+    return api(accion,Object.assign({nombre:nombre},datos||{})).then(function(j){
+      var p=j.persona||{};
+      if(!cache) cache={people:{}};
+      cache.people[nombre]=p; cacheMs=Date.now();
+      if(p.token&&j.visto!==undefined) vistos[p.token]=j.visto;
+      var u=yo(); if(u&&u.name===nombre){ mio=(p.on===true&&p.token)?p.token:""; mioMs=Date.now(); }
+      return p;
+    });
+  }
+  function poner(nombre,on){ return guarda("poner",nombre,{on:!!on}); }          // apagar y encender NO cambia el enlace
+  function tecnicos(nombre,techs){ return guarda("tecnicos",nombre,{techs:(techs||[]).slice()}); }
+  function nuevo(nombre){ return guarda("nuevo",nombre).then(function(p){ return p.token; }); }
+  function miEnlace(){
+    if(pidiendo) return pidiendo;
+    pidiendo=api("mio").then(function(j){ pidiendo=null; mio=String(j.token||""); mioMs=Date.now(); return mio; },
+                              function(e){ pidiendo=null; mioMs=Date.now(); throw e; });   // si falla, no reintenta en cada apertura
+    return pidiendo;
+  }
+  function url(t){ return "https://"+FEED+t; }
+  function webcal(t){ return "webcal://"+FEED+t; }
+  window.aspCal={leer:leer,poner:poner,tecnicos:tecnicos,nuevo:nuevo,mio:miEnlace,url:url,webcal:webcal};
+
+  function copia(t){
+    function viejo(){
+      var ta=document.createElement("textarea"), ok=false;
+      ta.value=t; ta.setAttribute("readonly","");
+      ta.style.cssText="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try{ ta.setSelectionRange(0,t.length); }catch(_e){}
+      try{ ok=document.execCommand("copy"); }catch(_e){}
+      ta.remove(); return ok;
+    }
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText)
+        return navigator.clipboard.writeText(t).then(function(){ return true; },function(){ return viejo(); });
+    }catch(_e){}
+    return Promise.resolve(viejo());
+  }
+
+  /* ── cuándo lo pidió su iPhone por última vez ──────────────────────── */
+  function hace(ms){
+    var m=Math.max(0,Math.floor((Date.now()-ms)/60000));
+    if(m<1) return L("Lo revisó hace un momento","Checked just now");
+    if(m<60) return L("Lo revisó hace "+m+" min","Checked "+m+" min ago");
+    var h=Math.floor(m/60);
+    if(h<48) return L("Lo revisó hace "+h+" h","Checked "+h+" h ago");
+    var d=Math.floor(h/24); return L("Lo revisó hace "+d+" días","Checked "+d+" days ago");
+  }
+  function vistoTxt(t){
+    if(!t) return "";
+    var v=vistos[t];
+    if(v===undefined) return "";
+    if(v==="err") return L("No se pudo saber cuándo lo revisó","Could not tell when it was last checked");
+    if(v===null) return L("Nunca lo ha revisado","Never checked");
+    return hace(v);
+  }
+
+  /* ── la tarjeta (Admin › Settings) ─────────────────────────────────── */
+  function gente(){ return usuarios().filter(function(u){ return u&&u.name&&!u.hidden; }); }
+  function tecnicosVisibles(){
+    var s={};
+    try{ (TECHS||[]).forEach(function(t){ if(!(HIDDEN_TECHS&&HIDDEN_TECHS.has&&HIDDEN_TECHS.has(t))) s[t]=1; }); }catch(_e){}
+    gente().forEach(function(u){ if(u.role==="tech") s[u.name]=1; });
+    return Object.keys(s).sort(function(a,b){ return a.localeCompare(b); });
+  }
+  function rolTxt(r){ return r==="admin"?"Admin":r==="organizer"?L("Organizador","Organizer"):r==="viewer"?L("Solo lectura","Viewer"):L("Técnico","Tech"); }
+  function chip(k,txt,si,off){
+    return '<label class="'+(si?"si":"")+(off?" off":"")+'"><input type="checkbox" data-acal-tech="'+esc(k)+'"'+(si?" checked":"")+(off?" disabled":"")+'>'+esc(txt)+'</label>';
+  }
+  function pinta(){
+    var c=document.getElementById("aspCalCard"); if(!c||!cache) return;
+    var ts=tecnicosVisibles(), h="";
+    h+='<p class="acal-intro">'+esc(L(
+      "Las citas de la app aparecen en el Calendario del iPhone de quien enciendas aquí. Es de solo lectura: si mueven el evento en el iPhone la app no cambia, y cuando la app cambia el calendario se pone al día solo. Cada quien lo agrega desde su perfil: «Agregar mis citas a mi Calendario».",
+      "App appointments show up in the iPhone Calendar of whoever you turn on here. It is read-only: moving the event on the iPhone does not change the app, and when the app changes the calendar catches up on its own. Each person adds it from their profile: «Add my appointments to my Calendar»."))+'</p>';
+    gente().forEach(function(u){
+      var p=cache.people[u.name]||{}, on=p.on===true, techs=Array.isArray(p.techs)?p.techs:[], todos=techs.indexOf("*")>=0;
+      h+='<div class="acal-row'+(on?" on":"")+'" data-acal-row="'+esc(u.name)+'">';
+      h+='<div class="acal-top"><div class="acal-who"><b>'+esc(u.name)+'</b><span>'+esc(rolTxt(u.role))+'</span></div>';
+      h+='<label class="acal-sw"><input type="checkbox" data-acal-on'+(on?" checked":"")+'><span>'+esc(on?L("Encendido","On"):L("Apagado","Off"))+'</span></label></div>';
+      if(on){
+        var opciones=ts.slice(); techs.forEach(function(t){ if(t!=="*"&&opciones.indexOf(t)<0) opciones.push(t); });
+        h+='<div class="acal-mas"><div class="acal-lbl">'+esc(L("Ve citas de","Sees appointments of"))+'</div><div class="acal-techs">';
+        h+=chip("*",L("Todos","Everyone"),todos,false);
+        opciones.forEach(function(t){ h+=chip(t,t,!todos&&techs.indexOf(t)>=0,todos); });
+        h+='</div>';
+        if(!todos&&!techs.length) h+='<div class="acal-nota">'+esc(L("Nada marcado: solo verá sus propias citas.","Nothing ticked: they only see their own appointments."))+'</div>';
+        h+='<div class="acal-pie"><span class="acal-visto" data-acal-visto title="'+esc(L("La última vez que su iPhone pidió el calendario","The last time their iPhone fetched the calendar"))+'">'+esc(vistoTxt(p.token))+'</span>';
+        h+='<button type="button" class="acal-btn" data-acal-copiar>'+esc(L("Copiar enlace","Copy link"))+'</button>';
+        h+='<button type="button" class="acal-btn" data-acal-nuevo>'+esc(L("Enlace nuevo","New link"))+'</button></div></div>';
+      }
+      h+='</div>';
+    });
+    c.innerHTML=h;
+    cuenta();
+  }
+  function cuenta(){
+    var n=document.querySelector('.admBItem[data-id="aspCalCard"] [data-acal-n]'); if(!n||!cache) return;
+    var k=Object.keys(cache.people).filter(function(x){ return cache.people[x]&&cache.people[x].on===true; }).length;
+    n.textContent=String(k); n.style.display=k?"":"none";
+  }
+  function cargar(){
+    var c=document.getElementById("aspCalCard"); if(!c) return;
+    if(!cache) c.innerHTML='<p class="acal-intro">'+esc(L("Cargando…","Loading…"))+'</p>';
+    leer().then(pinta,function(e){
+      console.warn("[aspCal] leer",e);
+      c.innerHTML='<p class="acal-intro acal-err" role="alert">'+esc(L("No se pudo leer la configuración del calendario.","Could not read the calendar settings."))+' '+esc(porque(e))+'</p>';
+    });
+  }
+  function hazlo(pr,msg){
+    var c=document.getElementById("aspCalCard");
+    if(c){ c.setAttribute("aria-busy","true"); Array.prototype.forEach.call(c.querySelectorAll("input,button"),function(e){ e.disabled=true; }); }
+    return pr.then(function(){
+      if(c) c.removeAttribute("aria-busy");
+      pinta(); if(msg) aviso(msg);
+    },function(e){
+      console.warn("[aspCal] guardar",e);
+      if(c) c.removeAttribute("aria-busy");
+      aviso(L("No se pudo guardar","Could not save")+". "+porque(e),"err");
+      pinta();                                               // vuelve a como está guardado (la casilla no se queda mintiendo)
+      return leer().then(pinta,function(){});
+    });
+  }
+  function enCambio(e){
+    var t=e.target, row=t&&t.closest&&t.closest("[data-acal-row]"); if(!row||!cache) return;
+    var n=row.getAttribute("data-acal-row");
+    if(t.hasAttribute("data-acal-on")){
+      hazlo(poner(n,t.checked), t.checked
+        ? L("Calendario encendido para "+n+". Lo agrega desde su perfil.","Calendar on for "+n+". They add it from their profile.")
+        : L("Calendario apagado para "+n+": su calendario se vacía en la próxima actualización.","Calendar off for "+n+": their calendar empties on its next refresh."));
+      return;
+    }
+    if(t.hasAttribute("data-acal-tech")){
+      var k=t.getAttribute("data-acal-tech"), p=cache.people[n]||{};
+      var cur=(Array.isArray(p.techs)?p.techs:[]).filter(function(x){ return x!=="*"; });
+      var nuevos=(k==="*") ? (t.checked?["*"]:[])
+                           : (t.checked?cur.concat([k]):cur.filter(function(x){ return x!==k; }));
+      hazlo(tecnicos(n,nuevos));
+    }
+  }
+  function enClic(e){
+    var t=e.target, b=t&&t.closest&&t.closest("button"), row=b&&b.closest("[data-acal-row]"); if(!row||!cache) return;
+    var n=row.getAttribute("data-acal-row"), p=cache.people[n]||{};
+    if(b.hasAttribute("data-acal-copiar")&&p.token){
+      copia(url(p.token)).then(function(ok){
+        aviso(ok?L("Enlace de "+n+" copiado","Link for "+n+" copied"):L("No se pudo copiar el enlace","Could not copy the link"),ok?"":"err");
+      });
+      return;
+    }
+    if(b.hasAttribute("data-acal-nuevo")){
+      var pregunta=L("El enlace de ahora deja de funcionar y "+n+" tendrá que agregar el calendario otra vez desde su perfil.",
+                     "The current link stops working and "+n+" will have to add the calendar again from their profile.");
+      var pr=(typeof confirmDialog==="function")
+        ? confirmDialog(pregunta,{title:L("¿Hacer un enlace nuevo para "+n+"?","Make a new link for "+n+"?"),okLabel:L("Hacer enlace nuevo","Make new link"),tone:"warn"})
+        : Promise.resolve(window.confirm(pregunta));
+      pr.then(function(si){ if(si) hazlo(nuevo(n),L("Enlace nuevo para "+n+". El viejo ya no sirve.","New link for "+n+". The old one no longer works.")); });
+    }
+  }
+  function tarjeta(){
+    var c=document.getElementById("aspCalCard");
+    if(!c){
+      c=document.createElement("div"); c.className="card"; c.id="aspCalCard";
+      c.addEventListener("change",enCambio); c.addEventListener("click",enClic);
+    }
+    return c;
+  }
+  function textos(it){
+    var tt=it.querySelector("[data-acal-t]"), ss=it.querySelector("[data-acal-s]");
+    if(tt) tt.textContent=L("Calendario de iCloud","iCloud Calendar");
+    if(ss) ss.textContent=L("Quién recibe las citas en el Calendario de su iPhone","Who gets the appointments in their iPhone Calendar");
+    var sub=document.querySelector("#admBSecConfig .admBSecSub");
+    if(sub) sub.textContent=L("Ocho herramientas · se abre una a la vez","Eight tools · one opens at a time");
+  }
+  function fila(card){
+    var it=document.createElement("div"); it.className="admBItem"; it.setAttribute("data-id","aspCalCard");
+    var hd=document.createElement("button"); hd.type="button"; hd.className="admBItemHd"; hd.setAttribute("aria-expanded","false");
+    hd.innerHTML='<span class="admBItemIco">📅</span><div class="admBItemTxt"><b data-acal-t></b><span data-acal-s></span></div>'+
+                 '<span class="admBItemCnt" data-acal-n style="display:none"></span><span class="admBItemArr">❯</span>';
+    var bd=document.createElement("div"); bd.className="admBItemBody"; bd.appendChild(card);
+    it.appendChild(hd); it.appendChild(bd);
+    /* se abre como las demás filas de Settings: una a la vez */
+    hd.onclick=function(){
+      var abrir=!it.classList.contains("on"), its=document.querySelectorAll(".admBItem"), i;
+      for(i=0;i<its.length;i++){
+        var on=abrir&&its[i]===it; its[i].classList.toggle("on",on);
+        var h=its[i].querySelector(".admBItemHd"); if(h) h.setAttribute("aria-expanded",on?"true":"false");
+      }
+      try{ localStorage.setItem("admAjuste",abrir?"aspCalCard":""); }catch(_e){}
+      if(abrir) cargar();
+    };
+    return it;
+  }
+  function colocar(){
+    var it=document.querySelector('.admBItem[data-id="aspCalCard"]'), card=document.getElementById("aspCalCard");
+    if(!esAdmin()){ if(it) it.remove(); else if(card) card.remove(); return; }
+    var lst=document.querySelector("#admBSecConfig .admBList");
+    card=tarjeta();
+    if(lst){
+      if(!it){
+        it=fila(card);
+        var u=lst.querySelector('.admBItem[data-id="adminUserBody"]');
+        lst.insertBefore(it,u?u.nextSibling:null);
+      }
+      textos(it);
+      if(it.classList.contains("on")&&cache) pinta();      // se dio de alta o baja a alguien
+      return;
+    }
+    /* sin el organizador de Admin (no debería pasar): debajo de Technicians / Users & PINs */
+    if(!card.parentNode){
+      var tb=document.getElementById("adminTechBody"), tc=tb&&tb.closest(".card"), grid=tc&&tc.parentNode;
+      if(grid&&grid.parentNode){ grid.parentNode.insertBefore(card,grid.nextSibling); cargar(); }
+    }
+  }
+  var orig=window.rndrAdmin;
+  if(typeof orig==="function"){
+    window.rndrAdmin=function(){
+      var r=orig.apply(this,arguments);
+      try{ colocar(); }catch(e){ console.warn("[aspCal] colocar",e); }
+      return r;
+    };
+  }
+
+  /* ── la fila del perfil ────────────────────────────────────────────── */
+  function esApple(){
+    var ua=navigator.userAgent||"";
+    return /iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  }
+  function miToken(){ return mio||""; }
+  function pasos(t,copiado){
+    var x=document.getElementById("aspCalPasos");
+    if(!x){
+      x=document.createElement("div"); x.id="aspCalPasos"; x.hidden=true;
+      x.setAttribute("role","dialog"); x.setAttribute("aria-modal","true");
+      x.addEventListener("click",function(e){ if(e.target===x||(e.target.closest&&e.target.closest("[data-acal-ok]"))) cierraPasos(); });
+      document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!x.hidden) cierraPasos(); });
+      document.body.appendChild(x);
+    }
+    var h='<div class="acal-dlg"><h3>'+esc(copiado?L("Enlace copiado","Link copied"):L("Tu enlace","Your link"))+'</h3>';
+    if(!copiado) h+='<input type="text" readonly value="'+esc(url(t))+'" onclick="this.select()">';
+    h+='<ol><li>'+esc(L("Lo más fácil: abre TECH-TICKETS en tu iPhone, toca tu perfil y esta misma opción. Se agrega con un toque.",
+                       "Easiest: open TECH-TICKETS on your iPhone, tap your profile and this same option. It adds itself in one tap."))+'</li>';
+    h+='<li>'+esc(L("O en el iPhone: Ajustes › Apps › Calendario › Cuentas de calendario › Agregar cuenta › Otra › Agregar calendario suscrito; pega el enlace y toca Siguiente.",
+                    "Or on the iPhone: Settings › Apps › Calendar › Calendar Accounts › Add Account › Other › Add Subscribed Calendar; paste the link and tap Next."))+'</li>';
+    h+='<li>'+esc(L("En una Mac: app Calendario › Archivo › Nueva suscripción a calendario; pega el enlace y haz clic en Suscribirse.",
+                    "On a Mac: Calendar app › File › New Calendar Subscription; paste the link and click Subscribe."))+'</li></ol>';
+    h+='<button type="button" class="acal-ok" data-acal-ok>'+esc(L("Entendido","Got it"))+'</button></div>';
+    x.innerHTML=h; x.hidden=false;
+    /* el foco entra a la ventana (teclado y lector de pantalla) y al cerrar vuelve al botón del perfil */
+    try{ x.querySelector("[data-acal-ok]").focus(); }catch(_e){}
+  }
+  function cierraPasos(){
+    var x=document.getElementById("aspCalPasos"); if(!x||x.hidden) return;
+    x.hidden=true;
+    try{ var b=document.getElementById("lockBtn"); if(b) b.focus(); }catch(_e){}
+  }
+  function usar(){
+    var t=miToken(), m=document.getElementById("aspProfile");
+    if(m) m.hidden=true;
+    if(!t) return;
+    if(esApple()){ location.href=webcal(t); return; }     // el iPhone abre «¿Suscribirse a este calendario?»
+    copia(url(t)).then(function(ok){ pasos(t,ok); });
+  }
+  function filaPerfil(){
+    var m=document.getElementById("aspProfile"); if(!m||m.hidden) return;
+    var f=m.querySelector("[data-acal]");
+    if(!miToken()){ if(f) f.remove(); return; }
+    if(f) return;
+    var ic=""; try{ if(typeof icon==="function") ic=icon("calendar-plus",16)||""; }catch(_e){}
+    f=document.createElement("button"); f.type="button"; f.className="asp-pf-row"; f.setAttribute("data-acal","");
+    f.innerHTML='<span>'+(ic||"📅 ")+esc(L("Agregar mis citas a mi Calendario","Add my appointments to my Calendar"))+'</span>';
+    f.addEventListener("click",function(ev){ ev.stopPropagation(); usar(); });
+    m.insertBefore(f,m.querySelector('button[data-act="logout"]'));
+  }
+  function alAbrir(){
+    var m=document.getElementById("aspProfile"); if(!m||m.hidden||!yo()) return;
+    filaPerfil();                                            // con lo que ya se sabe, sin esperar
+    if(mio===null||Date.now()-mioMs>120000) miEnlace().then(filaPerfil,function(e){ console.warn("[aspCal] perfil",e); });
+  }
+  function vigila(m){
+    if(!m||m.__acal) return; m.__acal=true;
+    new MutationObserver(alAbrir).observe(m,{childList:true,attributes:true,attributeFilter:["hidden"]});
+    alAbrir();
+  }
+  /* #aspProfile nace la primera vez que se abre el menú */
+  var ya=document.getElementById("aspProfile");
+  if(ya) vigila(ya);
+  else new MutationObserver(function(_l,obs){
+    var m=document.getElementById("aspProfile"); if(m){ obs.disconnect(); vigila(m); }
+  }).observe(document.body,{childList:true});
+})();
+</script>
+<style id="aspRevision2940">
+/* ══ REVISIÓN 2.94.0 (19 nov 2026) · defectos visuales que ya venían de antes ══════════════
+   Ficha del cliente en el teléfono: la zona, el teléfono y la dirección van en «píldoras» de una
+   línea con «…», pero cada píldora es inline-flex y ahí el navegador no pone los «…»: la dirección
+   se cortaba en seco («600 Granham Road, Floris»). Ahora la píldora parte el texto en dos líneas. */
+.qb-cust-hero-sub>span{white-space:normal;overflow-wrap:anywhere}
+
+/* Calendario · Mes. En computadora, las zonas largas («64 East (Illinois)») se salían de la tarjeta: ahora llevan «…».
+   En el teléfono (y el Duo) cada día mide ~48 px y la tarjeta ~33: salían pedazos («08:», «We», «55»). Ahí la tarjeta
+   enseña solo la hora, entera (a 80 %: el tamaño de letra lo fija el acabado en línea y no se puede bajar con CSS); el resto se ve al tocarla. (El selector largo es para ganarle a las reglas de tamaño de 2.91.) */
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-meta{min-width:0!important}
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-meta>span{max-width:100%!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-zone{display:block!important}
+/* las etiquetas de garantía eran inline-flex (ícono + texto) y ahí el «…» no sale: en bloque, con el ícono en línea */
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-meta>span{display:block!important;text-align:left!important}
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-meta>span>.asp-ico{display:inline-flex!important;vertical-align:-2px;margin-right:3px}
+@media (max-width:600px){
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-day{padding-left:1px!important;padding-right:1px!important}
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event{padding:2px 2px!important}
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-time{margin-right:0!important;display:block!important;width:max-content!important;transform:scale(.8);transform-origin:left center}
+html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-name,html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-meta{display:none!important}
+}
+</style>
 </body>
 </html>
