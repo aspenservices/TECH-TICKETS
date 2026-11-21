@@ -2961,7 +2961,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)!important;box-sha
   <div id="editBanner" style="display:none;padding:12px 16px;background:var(--acl);border:2px solid var(--ac);border-radius:12px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:var(--fs-md);font-weight:700;color:var(--acd);display:inline-flex;align-items:center;gap:6px"><span class="lucide-mount" data-lucide="pencil" data-size="14" data-color="var(--acd)"></span>Editing Ticket</span><span id="editCustName" style="font-size:var(--fs-base);color:var(--i2)"></span></div><button onclick="resetForm();setMode('ticket');toast('Edit cancelled')" style="padding:6px 14px;background:none;border:1.5px solid var(--ac);border-radius:8px;font-size:var(--fs-sm);font-weight:600;color:var(--ac);cursor:pointer">Cancel</button></div><div style="font-size:var(--fs-sm);color:var(--acd);margin-top:8px;line-height:1.4;opacity:.85"><b>Note:</b> If you change arrival/departure times, labor will recalculate automatically.</div></div>
   <div class="progress" id="uploadProg"><div class="progress-bar" id="uploadBar"></div></div>
   <div class="card" id="cardCust"><div class="card-summary"></div><div class="g2"><div class="field" style="position:relative"><div class="lbl">Customer<span class="req">*</span></div><input type="text" id="fCust" placeholder="Customer name" autocomplete="off" oninput="_suggestFor('fCust')" onblur="frAutoFillCustWarranty();_hideSuggestSoon('fCust')"><div class="cust-suggest" id="fCustSuggest"></div></div><div class="field"><div class="lbl">Date</div><input type="date" id="fDate"></div></div></div>
-  <div class="card" id="cardTech"><div class="card-summary"></div><div class="lbl">Technician<span class="req">*</span> <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="pill-row" id="techRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddTech()" title="Add a new technician"><span class="qadd-plus">+</span><span>Add tech</span></button></div><div class="g2" style="margin-top:14px"><div class="field"><div class="lbl">Arrival<span class="req">*</span></div><input type="time" id="fArr" onchange="_timeSanity()"></div><div class="field"><div class="lbl">Departure<span class="req">*</span></div><input type="time" id="fDep" onchange="_timeSanity()"></div></div><div id="timeSanity"></div></div>
+  <div class="card" id="cardTech"><div class="card-summary"></div><div class="lbl">Technician<span class="req">*</span> <span class="sub">(select all)</span></div><div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><div class="pill-row" id="techRow" style="flex:1;min-width:0"></div><button class="qadd" onclick="quickAddTech()" title="Add a new technician"><span class="qadd-plus">+</span><span>Add tech</span></button></div><div class="g2" style="margin-top:14px"><div class="field"><div class="lbl">Arrival<span class="req">*</span></div><input type="time" id="fArr" onchange="_timeSanity()"></div><div class="field"><div class="lbl">Departure<span class="req">*</span></div><input type="time" id="fDep" onchange="_timeSanity()"></div></div><div id="timeSanity"></div><div id="fPausaBox" class="asp-pausa-box" hidden><label for="fPausa">⏸ Paused time — not billed</label><span class="asp-pausa-val"><input type="number" id="fPausa" min="0" max="600" step="5" inputmode="numeric" placeholder="0" oninput="_aspPausaForm()"><span>min</span></span><small>Time away from the customer (e.g. went to the shop for a part). It is subtracted from labor.</small></div><button type="button" class="asp-pausa-add" data-asp-pausa-add onclick="_aspPausaAgregar()">+ Paused time</button></div>
   <div id="gateHint" style="text-align:center;padding:20px;color:var(--i3);font-size:var(--fs-base);font-weight:500">⏱ Enter <b>Arrival</b> time to continue</div>
   <div id="formGate" style="display:none">
   <div class="card"><div class="lbl">Visit Type</div><div class="w-row" style="flex-wrap:wrap;gap:6px"><button class="wb yes" id="visitBtn1" onclick="setVisit(1)">1st Visit</button><button class="wb no" id="visitBtn2" onclick="setVisit(2)">2nd Visit</button><button class="wb" id="visitBtn3" onclick="setVisit(3)" style="flex:1;background:var(--c-paid-tint);border-color:var(--c-success-border);color:var(--c-success-fg)">CM</button><button class="wb" id="visitBtn4" onclick="setVisit(4)" style="flex:1;background:var(--c-danger-bg);border-color:var(--c-danger-border);color:var(--c-danger-fg)">Repeat</button><button class="wb" id="visitBtn5" onclick="setVisit(5)" style="flex:1;background:var(--c-info-bg);border-color:var(--c-info-border);color:var(--c-info-fg);display:inline-flex;align-items:center;justify-content:center;gap:6px"><span class="lucide-mount" data-lucide="package" data-size="14" data-color="var(--c-info-fg)"></span>Delivery</button><button class="wb" id="visitBtn6" onclick="setVisit(6)" style="flex:1 1 100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px">🚚 Spa Move</button></div><div class="w-result rda-cov" id="visitInfo" style="margin-top:8px;display:none"></div></div>
@@ -6569,6 +6569,19 @@ function _visitMins(a,d){
   if(m<0)m+=1440; // genuine past-midnight visit only — NOT equal times
   return m;
 }
+/* v2.95.0 — PAUSA: la salida «para cobrar» = salida − minutos en pausa, nunca antes de la llegada */
+function _aspMenosMin(dep,min){
+  var pd=/^\s*(\d{1,2}):(\d{2})\s*$/.exec(dep||""); if(!pd)return dep;
+  var m=((+pd[1]*60+ +pd[2]-Math.round(min))%1440+1440)%1440;
+  return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+}
+function _aspDepPagada(arr,dep,min){
+  var p=Math.max(0,Number(min)||0); if(!p)return dep;
+  var v=_visitMins(arr,dep); if(v===null)return dep;
+  return _aspMenosMin(dep,Math.min(p,v));
+}
+function aspDepCobro(t){ return t?_aspDepPagada(t.arrival,t.departure,t.pauseMin):""; }
+function _aspDepForm(){ var g=function(id){ var e=document.getElementById(id); return e?e.value:""; }; return _aspDepPagada(g("fArr"),g("fDep"),g("fPausa")); }
 async function loadBilling(){if(!db)return;try{const doc=await db.collection("config").doc("billing").get();if(doc.exists&&doc.data()&&doc.data().roundMode){BILLING.roundMode=doc.data().roundMode;try{rndrBillingCard()}catch(_e){}}}catch(e){}}
 async function saveBilling(){if(!db)return;try{await db.collection("config").doc("billing").set({roundMode:BILLING.roundMode})}catch(e){console.warn("[saveBilling]",e);if(typeof toast==="function")toast("Could not save billing rule","err")}}
 function setBillingRound(mode){
@@ -6614,15 +6627,17 @@ async function loadWarrantyLog(){
   if(!db)return;
   try{
     const doc=await db.collection("config").doc("warrantyLog").get();
+    _aspCfgLeido("warrantyLog",doc.exists?doc.data():null);
     if(doc.exists&&doc.data()&&Array.isArray(doc.data().entries)){
-      WAR_LOG=doc.data().entries;
+      /* v2.95.1 — las entradas llegan con arrayUnion (al final): se muestran de la más nueva a la más vieja */
+      WAR_LOG=doc.data().entries.slice().sort(function(a,b){return String(b&&b.when||"").localeCompare(String(a&&a.when||""))}).slice(0,300);
       try{rndrWarrantyLog()}catch(_e){}
     }
   }catch(e){}
 }
 async function saveWarrantyLog(){
   if(!db)return;
-  try{await db.collection("config").doc("warrantyLog").set({entries:WAR_LOG.slice(0,300)})}
+  try{await _aspCfgBitacora()}
   catch(e){console.warn("[saveWarrantyLog]",e)}
 }
 // Called at Field Report submit. Logs ONLY when Override was used AND the
@@ -7081,12 +7096,12 @@ TECHS.push(n);saveTechs();buildTechPills();toast(n+" added ✓");
 }
 
 // Work type management
-async function loadWT(){if(!db)return;try{const doc=await db.collection("config").doc("workTypes").get();if(doc.exists&&doc.data().list){WT=doc.data().list;buildWTPills()}}catch(e){}}
-async function saveWT(){if(!db)return;try{await db.collection("config").doc("workTypes").set({list:WT})}catch(e){console.warn("[saveWT]",e);if(typeof toast==="function")toast("Could not save work types","err")}}
+async function loadWT(){if(!db)return;try{const doc=await db.collection("config").doc("workTypes").get();_aspCfgLeido("workTypes",doc.exists?doc.data():null);if(doc.exists&&doc.data().list){WT=doc.data().list;buildWTPills()}}catch(e){}}
+async function saveWT(){if(!db)return;try{await _aspCfgGuardar("workTypes")}catch(e){console.warn("[saveWT]",e);if(typeof toast==="function")toast("Could not save work types","err")}}
 // ═══════════ Technician time off (vacation / PTO) ═══════════
 let TIMEOFF=[];
-async function loadTimeOff(){if(!db)return;try{const doc=await db.collection("config").doc("timeOff").get();if(doc.exists&&Array.isArray((doc.data()||{}).entries)){TIMEOFF=doc.data().entries;try{if(document.getElementById("pg4")&&document.getElementById("pg4").classList.contains("show"))rndrCal();}catch(_e){}}}catch(e){}}
-async function saveTimeOff(){if(!db)return;try{await db.collection("config").doc("timeOff").set({entries:TIMEOFF})}catch(e){console.warn("[saveTimeOff]",e);if(typeof toast==="function")toast("Could not save time off","err")}}
+async function loadTimeOff(){if(!db)return;try{const doc=await db.collection("config").doc("timeOff").get();_aspCfgLeido("timeOff",doc.exists?doc.data():null);if(doc.exists&&Array.isArray((doc.data()||{}).entries)){TIMEOFF=doc.data().entries;try{if(document.getElementById("pg4")&&document.getElementById("pg4").classList.contains("show"))rndrCal();}catch(_e){}}}catch(e){}}
+async function saveTimeOff(){if(!db)return;try{await _aspCfgGuardar("timeOff")}catch(e){console.warn("[saveTimeOff]",e);if(typeof toast==="function")toast("Could not save time off","err")}}
 function _techsOffOn(ds){
   if(!ds||!TIMEOFF.length)return [];
   var out=[];
@@ -7250,6 +7265,11 @@ try{
 // ═══ ADMIN ═══
 // ═══ AUTH ═══
 let currentUser=null; // {name,pin,role}
+/* v2.95.0 — MODO CAMPO: un admin/organizer que sale al campo se ve como técnico EN ESTE APARATO (localStorage aspCampo = su nombre) */
+function _aspCampoUser(u){
+  try{ if(u&&(u.role==="admin"||u.role==="organizer")&&localStorage.getItem("aspCampo")===u.name)return Object.assign({},u,{role:"tech",_rolReal:u.role,_campo:true}); }catch(_e){}
+  return u;
+}
 let allUsers=[]; // from Firestore
 /* v2.94.0 — junta calle, ciudad y ZIP sin repetir lo que la calle ya trae (muchas direcciones vienen completas) */
 function aspUneDir(address,city,zip,sepZip){
@@ -7285,7 +7305,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.94.0";
+var APP_VERSION="2.95.1";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -7441,16 +7461,152 @@ const CORE_USERS=[
   {name:"Celia",pin:"2222",role:"organizer"},
   {name:"Nela",pin:"3333",role:"organizer"}
 ];
+/* ═══ 2.95.1 — LA CONFIGURACIÓN YA NO SE PISA ENTRE APARATOS ══════════════════
+   Antes: cada aparato leía config/* al arrancar y, al guardar, escribía el documento
+   ENTERO desde esa copia. Lo que otro aparato guardó entretanto se perdía (un PIN nuevo,
+   una entrada de la bitácora de garantía, un día libre, un código postal), y si la
+   lectura había fallado (sin señal y sin caché) se escribían los valores por defecto:
+   usuarios con PIN 0000.
+   Ahora: _aspCfgLeido(doc, datos) recuerda lo último que este aparato LEYÓ del servidor
+   (la «base»). Al guardar, _aspCfgGuardar(doc) lee el servidor dentro de una transacción
+   y, si alguien lo cambió, aplica encima SOLO lo que este aparato cambió desde su base.
+   Sin escuchadores nuevos. Si no hay conexión, la transacción falla y no se escribe nada
+   a ciegas (aviso de siempre). La bitácora de garantía y los códigos postales siguen
+   funcionando sin señal (arrayUnion / set con merge). */
+var _ASP_CFG={base:{},listo:{}};
+var _ASP_TECHS_DEF=TECHS.slice(), _ASP_WT_DEF=WT.slice();   /* los de fábrica, antes de leer */
+function _aspCfgClon(v){ return v==null?null:JSON.parse(JSON.stringify(v)); }
+function _aspCfgJ(v){ /* JSON estable: mismas llaves en el mismo orden */
+  if(v===undefined)v=null;
+  if(v===null||typeof v!=="object")return JSON.stringify(v);
+  if(Array.isArray(v))return "["+v.map(_aspCfgJ).join(",")+"]";
+  return "{"+Object.keys(v).filter(function(k){return v[k]!==undefined}).sort().map(function(k){return JSON.stringify(k)+":"+_aspCfgJ(v[k])}).join(",")+"}";
+}
+function _aspCfgLeido(doc,datos){ try{ _ASP_CFG.base[doc]=_aspCfgClon(datos); _ASP_CFG.listo[doc]=true; }catch(_e){} }
+function _aspCfgListo(doc){ return !!_ASP_CFG.listo[doc]; }
+/* listas de texto: orden del servidor, fuera lo que este aparato quitó, al final lo que agregó */
+function _aspCfgTexto(s,b,l){
+  s=Array.isArray(s)?s:[]; b=Array.isArray(b)?b:[]; l=Array.isArray(l)?l:[];
+  var fuera=b.filter(function(x){return l.indexOf(x)<0}), nuevos=l.filter(function(x){return b.indexOf(x)<0});
+  var out=s.filter(function(x){return fuera.indexOf(x)<0});
+  nuevos.forEach(function(x){ if(out.indexOf(x)<0)out.push(x); });
+  return out;
+}
+/* listas de objetos con clave: solo los campos que este aparato cambió; lo que otro aparato
+   borró no se revive; renombre de usuario = misma entrada con otro nombre */
+function _aspCfgPorClave(s,b,l,clave,conNombre){
+  s=Array.isArray(s)?s:[]; b=Array.isArray(b)?b:[]; l=Array.isArray(l)?l:[];
+  var B={}, L={};
+  b.forEach(function(x){ var c=clave(x); if(c)B[c]=x; });
+  l.forEach(function(x){ var c=clave(x); if(c)L[c]=x; });
+  var fuera=Object.keys(B).filter(function(c){return !(c in L)}), nuevos=Object.keys(L).filter(function(c){return !(c in B)});
+  var ren={}, usados={};
+  if(conNombre)fuera.forEach(function(c){
+    var sin=_aspCfgJ(Object.assign({},B[c],{name:null}));
+    var n=nuevos.filter(function(d){return !usados[d]&&_aspCfgJ(Object.assign({},L[d],{name:null}))===sin})[0];
+    if(n){ ren[c]=n; usados[n]=1; }
+  });
+  var out=[], puestos={};
+  s.forEach(function(x){
+    var c=clave(x);
+    if(!c){ out.push(x); return; }
+    if(puestos[c])return;
+    if(ren[c]){ var r=_aspCfgClon(x); r.name=L[ren[c]].name; out.push(r); puestos[ren[c]]=1; puestos[c]=1; return; }
+    if(fuera.indexOf(c)>=0)return;
+    if((c in B)&&(c in L)&&_aspCfgJ(B[c])!==_aspCfgJ(L[c])){
+      var y=_aspCfgClon(x), a=B[c], n2=L[c], ks={};
+      Object.keys(a).concat(Object.keys(n2)).forEach(function(f){ks[f]=1});
+      Object.keys(ks).forEach(function(f){ if(_aspCfgJ(a[f])!==_aspCfgJ(n2[f])){ if(n2[f]!==undefined)y[f]=_aspCfgClon(n2[f]); else delete y[f]; } });
+      out.push(y); puestos[c]=1; return;
+    }
+    if((c in L)&&!(c in B)){ out.push(Object.assign(_aspCfgClon(x),_aspCfgClon(L[c]))); puestos[c]=1; return; }
+    out.push(x); puestos[c]=1;
+  });
+  nuevos.forEach(function(c){ if(!puestos[c])out.push(_aspCfgClon(L[c])); });
+  return out;
+}
+var _ASP_CFG_DOCS={
+  users:{ local:function(){ return {list:allUsers} },
+    /* sin reordenar: las pantallas de Admin usan el índice de cada usuario justo después de guardar */
+    poner:function(d){ var l=(d&&Array.isArray(d.list))?d.list.slice():[]; allUsers.splice(0,allUsers.length); Array.prototype.push.apply(allUsers,l); },
+    mezcla:function(s,b,l){ return {list:_aspCfgPorClave(s&&s.list,b&&b.list,l.list,function(u){return String(u&&u.name||"").trim().toLowerCase()},true)} } },
+  techs:{ local:function(){ return {list:TECHS.slice(),hidden:Array.from(HIDDEN_TECHS)} },
+    poner:function(d){ d=d||{}; if(Array.isArray(d.list))TECHS=d.list.slice(); HIDDEN_TECHS=new Set(Array.isArray(d.hidden)?d.hidden:[]); try{buildTechPills()}catch(_e){} },
+    mezcla:function(s,b,l){ s=s||{}; b=b||{}; return {list:_aspCfgTexto(s.list,b.list,l.list),hidden:_aspCfgTexto(s.hidden,b.hidden,l.hidden)} } },
+  workTypes:{ local:function(){ return {list:WT.slice()} },
+    poner:function(d){ if(d&&Array.isArray(d.list)){ WT=d.list.slice(); try{buildWTPills()}catch(_e){} } },
+    mezcla:function(s,b,l){ return {list:_aspCfgTexto(s&&s.list,b&&b.list,l.list)} } },
+  timeOff:{ local:function(){ return {entries:TIMEOFF.slice()} },
+    poner:function(d){ var e=(d&&Array.isArray(d.entries))?d.entries.slice():[]; e.sort(function(a,b){return String(a&&a.start||"").localeCompare(String(b&&b.start||""))}); TIMEOFF=e; },
+    mezcla:function(s,b,l){ return {entries:_aspCfgPorClave(s&&s.entries,b&&b.entries,l.entries,function(x){return x&&x.id})} } },
+  messageTemplates:{ local:function(){ return {list:(MSG_TEMPLATES||[]).slice()} },
+    poner:function(d){ if(d&&Array.isArray(d.list))MSG_TEMPLATES=d.list.slice(); },
+    mezcla:function(s,b,l){ return {list:_aspCfgPorClave(s&&s.list,b&&b.list,l.list,function(x){return x&&(x.id||_aspCfgJ(x))})} } }
+};
+/* base inicial = lo que el aparato tiene ANTES de leer (los valores por defecto): si la lectura
+   falla y luego se guarda, solo viajan los cambios hechos aquí, nunca la lista por defecto entera */
+function _aspCfgBaseInicial(doc){
+  if(doc in _ASP_CFG.base)return _ASP_CFG.base[doc];
+  if(doc==="messageTemplates")return {list:TEMPLATE_DEFAULTS.slice()};
+  if(doc==="techs")return {list:_ASP_TECHS_DEF.slice(),hidden:[]};
+  if(doc==="workTypes")return {list:_ASP_WT_DEF.slice()};
+  return doc==="timeOff"?{entries:[]}:{list:[]};
+}
+async function _aspCfgGuardar(doc){
+  if(!db)return false;
+  var D=_ASP_CFG_DOCS[doc], ref=db.collection("config").doc(doc);
+  var base=_aspCfgBaseInicial(doc), local=_aspCfgClon(D.local());
+  var res=await db.runTransaction(async function(tx){
+    var snap=await tx.get(ref), server=snap.exists?(snap.data()||{}):null;
+    var m=(_aspCfgJ(server)===_aspCfgJ(base))?local:D.mezcla(server,base,local);
+    m=_aspCfgClon(m); tx.set(ref,m); return m;
+  });
+  _ASP_CFG.base[doc]=_aspCfgClon(res); _ASP_CFG.listo[doc]=true; D.poner(_aspCfgClon(res));
+  return true;
+}
+/* bitácora de garantía: solo se AGREGAN entradas (arrayUnion), también sin señal */
+async function _aspCfgBitacora(){
+  if(!db)return;
+  var base=(_ASP_CFG.base.warrantyLog&&Array.isArray(_ASP_CFG.base.warrantyLog.entries))?_ASP_CFG.base.warrantyLog.entries:[];
+  var vistos={}; base.forEach(function(e){vistos[_aspCfgJ(e)]=1});
+  var nuevas=WAR_LOG.filter(function(e){return e&&!vistos[_aspCfgJ(e)]}).map(_aspCfgClon);
+  if(!nuevas.length)return;
+  var fv=firebase.firestore.FieldValue;
+  var ref=db.collection("config").doc("warrantyLog");
+  await ref.set({entries:fv.arrayUnion.apply(fv,nuevas)},{merge:true});
+  var todas=nuevas.concat(base); _ASP_CFG.base.warrantyLog={entries:todas};
+  /* el documento ya no se recorta al escribir: cuando pasa de 400 se dejan las 300 más nuevas (con señal; si falla, otro día) */
+  if(todas.length>400){ try{ await db.runTransaction(async function(tx){ var d=await tx.get(ref), e=(d.exists&&Array.isArray((d.data()||{}).entries))?d.data().entries.slice():[];
+    if(e.length<=400)return; e.sort(function(a,b){return String(b&&b.when||"").localeCompare(String(a&&a.when||""))}); tx.set(ref,{entries:e.slice(0,300)}); }); }catch(_e){} }
+}
+/* códigos postales: solo las llaves que cambiaron (set con merge; borrar = FieldValue.delete) */
+async function _aspCfgZips(){
+  if(!db)return;
+  var base=_ASP_CFG.base.customZips||{}, cz=customZips||{}, delta={}, n=0, fv=firebase.firestore.FieldValue;
+  Object.keys(cz).forEach(function(k){ if(cz[k]!==undefined&&_aspCfgJ(cz[k])!==_aspCfgJ(base[k])){ delta[k]=_aspCfgClon(cz[k]); n++; } });
+  Object.keys(base).forEach(function(k){ if(!(k in cz)){ delta[k]=fv.delete(); n++; } });
+  if(!n)return;
+  await db.collection("config").doc("customZips").set(delta,{merge:true});
+  _ASP_CFG.base.customZips=_aspCfgClon(cz);
+}
 async function loadUsers(){
   if(!db)return;
   try{
     const doc=await db.collection("config").doc("users").get();
+    _aspCfgLeido("users",doc.exists?doc.data():null);
     if(doc.exists&&doc.data().list&&doc.data().list.length){allUsers=doc.data().list}
     else{allUsers=[]}
-  }catch(e){allUsers=[]}
-  // Ensure core users exist (Alberto admin, Celia + Nela organizers)
+  }catch(e){
+    /* v2.95.1 — sin lectura no se escribe nada: antes quedaba la lista vacía, se metían los
+       usuarios base y se GUARDABA, y luego cada técnico volvía con PIN 0000 */
+    console.warn("[loadUsers] no se pudo leer config/users — se reintenta",e);
+    _aspUsuariosReintento();
+    return;
+  }
+  // Usuarios base (Alberto, Celia, Nela): SOLO en una instalación nueva (lista vacía). Antes se
+  // re-creaban cada vez que faltaban, así que a quien se quitaba volvía con su PIN de fábrica.
   let changed=false;
-  CORE_USERS.forEach(c=>{
+  if(!allUsers.length)CORE_USERS.forEach(c=>{
     if(!allUsers.find(u=>(u.name||"").toLowerCase()===c.name.toLowerCase())){
       allUsers.push({name:c.name,pin:c.pin,role:c.role});
       changed=true;
@@ -7470,7 +7626,21 @@ async function loadUsers(){
   });
   if(changed)await saveUsers();
 }
-async function saveUsers(){if(!db)return;try{await db.collection("config").doc("users").set({list:allUsers})}catch(e){console.warn("[saveUsers]",e);if(typeof toast==="function")toast("Could not save users","err")}}
+/* v2.95.1 — si la lista de usuarios no se pudo leer al arrancar, se reintenta; cuando llega y
+   nadie ha entrado todavía, se recarga para entrar por el camino normal */
+var _aspUsrIntentos=0;
+function _aspUsuariosReintento(){
+  _aspUsrIntentos++;
+  setTimeout(async function(){
+    try{
+      const doc=await db.collection("config").doc("users").get();
+      _aspCfgLeido("users",doc.exists?doc.data():null);
+      if(typeof currentUser!=="undefined"&&currentUser){ if(doc.exists&&Array.isArray((doc.data()||{}).list))_ASP_CFG_DOCS.users.poner(doc.data()); return; }
+      location.reload();
+    }catch(e){ _aspUsuariosReintento(); }
+  },_aspUsrIntentos<40?3000:15000);
+}
+async function saveUsers(){if(!db)return;try{await _aspCfgGuardar("users")}catch(e){console.warn("[saveUsers]",e);if(typeof toast==="function")toast("Could not save users","err")}}
 function _lgIni(name){var p=String(name||"?").trim().split(/\s+/);if(p.length>=2)return (p[0][0]+p[p.length-1][0]).toUpperCase();return (p[0]||"?").slice(0,2).toUpperCase();}
 var _LG_PAL=["#134A63","#1C8FA8","#B5733A","#7A4FBF","#2E8B57","#C0492F","#0e7490","#6B4C3B"];
 function _lgCol(n){var h=0;n=String(n||"");for(var i2=0;i2<n.length;i2++)h=(h*31+n.charCodeAt(i2))>>>0;return _LG_PAL[h%_LG_PAL.length];}
@@ -7614,7 +7784,7 @@ async function doLogin(){
     toast("Couldn't start your staff session. Check your connection and try again.","err");
     return false;
   }
-  currentUser=selectedLoginUser;
+  currentUser=_aspCampoUser(selectedLoginUser);   /* v2.95.0 */
   isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
   /* v1.9.8: la sesión guarda SOLO identidad (nunca pin ni pinHash). La CONFIANZA
      vive en el token de personal de Firebase (claim staff) — _staffGuard la
@@ -7749,7 +7919,7 @@ function tryAutoLogin(){
     if(ss){
       const u=JSON.parse(ss);
       const found=allUsers.find(x=>x.name===u.name&&!x.hidden);
-      if(found){currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";try{if(typeof _calHiddenLoad==="function"&&typeof calHiddenTechs!=="undefined")calHiddenTechs=_calHiddenLoad()}catch(_e){}return true}
+      if(found){currentUser=_aspCampoUser(found);isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";try{if(typeof _calHiddenLoad==="function"&&typeof calHiddenTechs!=="undefined")calHiddenTechs=_calHiddenLoad()}catch(_e){}return true}
     }
   }catch(_e){}
   // 2) sesión persistente 12h (sobrevive a que iOS mate la PWA)
@@ -7760,7 +7930,7 @@ function tryAutoLogin(){
       if(!p2||!p2.exp||Date.now()>p2.exp){localStorage.removeItem("aspSessPersist");return false;}
       const found=allUsers.find(x=>x.name===p2.n&&!x.hidden);
       if(found){
-        currentUser=found;isAdmin=found.role==="admin"||found.role==="organizer";
+        currentUser=_aspCampoUser(found);isAdmin=currentUser.role==="admin"||currentUser.role==="organizer";
         try{var _s2=Object.assign({},found);delete _s2.pin;delete _s2.pinHash;sessionStorage.setItem("aspUser",JSON.stringify(_s2));}catch(_e){}
         // v2.2.0: renovar la ventana en cada apertura. Quien usa la app todos
         // los dias no vuelve a ver el pinpad; quien la abandona 30 dias, si.
@@ -7916,7 +8086,7 @@ function _metricsMoney(t){
   try{
     var parts=Array.isArray(t.parts)?t.parts:[];
     var pt=parts.reduce(function(sm,p){return sm+((((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1))},0);
-    var lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):undefined),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0)):null;
+    var lb=(typeof calcLabor==="function")?calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):undefined),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0)):null;
     return pt+(lb?(lb.amount||0):0);
   }catch(_e){return Number(t.total)||0;}
 }
@@ -9313,14 +9483,14 @@ var TEMPLATE_DEFAULTS=[
 async function loadTemplates(force){
   if(MSG_TEMPLATES&&!force)return MSG_TEMPLATES;
   try{
-    if(db){var doc=await db.collection("config").doc("messageTemplates").get();
+    if(db){var doc=await db.collection("config").doc("messageTemplates").get();_aspCfgLeido("messageTemplates",doc.exists?doc.data():null);
       if(doc.exists&&Array.isArray((doc.data()||{}).list)&&doc.data().list.length){MSG_TEMPLATES=doc.data().list;return MSG_TEMPLATES;}}
   }catch(e){console.warn("[templates load]",e);}
   MSG_TEMPLATES=TEMPLATE_DEFAULTS.slice();
   return MSG_TEMPLATES;
 }
 async function saveTemplates(){
-  try{if(db)await db.collection("config").doc("messageTemplates").set({list:MSG_TEMPLATES||[]});
+  try{if(db)await _aspCfgGuardar("messageTemplates");
     if(typeof toast==="function")toast("Templates saved \u2713");}
   catch(e){console.warn("[templates save]",e);if(typeof toast==="function")toast("Could not save templates","err");}
 }
@@ -10060,12 +10230,15 @@ function _aspIdTokens(s){
     return w.length>=2 && w!=="and" && w!=="the";
   });
 }
+var _cgkMemo=new Map();   /* v2.94.1 */
 function _custGroupKey(s){
   if(!s)return "";
-  var sig=_aspIdTokens(s);
-  if(!sig.length)return _aspIdNorm(s).replace(/[^a-z0-9]/g,"");
-  sig.sort();
-  return "fam:"+sig.join("|");
+  var str=String(s), m=_cgkMemo.get(str); if(m!==undefined)return m;
+  var sig=_aspIdTokens(str), out;
+  if(!sig.length)out=_aspIdNorm(str).replace(/[^a-z0-9]/g,"");
+  else { sig.sort(); out="fam:"+sig.join("|"); }
+  if(_cgkMemo.size>20000)_cgkMemo.clear();
+  _cgkMemo.set(str,out); return out;
 }
 /* _custKeys = matcher por pares (dedup, auto-cierre de dispatch, alertas
    cross-app). Emite el nombre completo normalizado (compatibilidad con los
@@ -12035,7 +12208,13 @@ async function toggleUserRole(i){
 }
 async function removeUser(i){
   if(!(await confirmDialog(`Remove ${allUsers[i].name}?`)))return;
-  const name=allUsers[i].name;allUsers.splice(i,1);await saveUsers();rndrAdmin();toast(name+" removed");
+  const name=allUsers[i].name;allUsers.splice(i,1);await saveUsers();
+  /* v2.95.1 — si también era técnico: con historial se oculta, sin historial sale de la lista (como removeTech) */
+  try{var _ti=TECHS.findIndex(function(t){return String(t).toLowerCase()===String(name).toLowerCase()});
+    if(_ti>=0){var _pool=(typeof active!=="undefined"?active:[]).concat(typeof done!=="undefined"?done:[]);
+      if(_pool.some(function(t){return t.techs&&t.techs.indexOf(TECHS[_ti])>=0}))HIDDEN_TECHS.add(TECHS[_ti]);else TECHS.splice(_ti,1);
+      await saveTechs();try{buildTechPills()}catch(_e){}}}catch(_e){console.warn("[removeUser→techs]",_e)}
+  rndrAdmin();toast(name+" removed");
 }
 // Hide/show a user on the login screen WITHOUT deleting them — keeps their past
 // ticket history intact for ex-employees that no longer work here.
@@ -13649,6 +13828,7 @@ function closeMoreSheet(){
 async function loadTechs(){
   if(!db)return;
   try{const doc=await db.collection("config").doc("techs").get();
+  _aspCfgLeido("techs",doc.exists?doc.data():null);
   if(doc.exists){
     var d=doc.data()||{};
     if(d.list)TECHS=d.list;
@@ -13657,7 +13837,7 @@ async function loadTechs(){
 }
 async function saveTechs(){
   if(!db)return;
-  try{await db.collection("config").doc("techs").set({list:TECHS,hidden:Array.from(HIDDEN_TECHS)})}catch(e){toast("Error saving","err")}
+  try{await _aspCfgGuardar("techs")}catch(e){console.warn("[saveTechs]",e);toast("Error saving","err")}
 }
 function buildTechPills(){
   const tr=document.getElementById("techRow");tr.innerHTML="";
@@ -14357,7 +14537,7 @@ async function init(){
   await loadUsers();
   // Sync: ensure all technicians exist as users
   let synced=false;
-  TECHS.forEach(t=>{if(!allUsers.find(u=>u.name===t)){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});
+  if(_aspCfgListo("users")&&_aspCfgListo("techs"))TECHS.forEach(t=>{if(HIDDEN_TECHS.has(t))return;if(!allUsers.find(u=>String(u.name||"").trim().toLowerCase()===String(t).trim().toLowerCase())){allUsers.push({name:t,pin:"0000",role:"tech"});synced=true}});   /* v2.95.1 */
   if(synced)await saveUsers();
   initTodoCollapse();
   if(tryAutoLogin()){document.getElementById("loginScreen").style.display="none";updAdmin();try{_presenceOnLogin()}catch(_e){}try{if(typeof initFirebase==="function")initFirebase()}catch(e){console.warn("[initFirebase]",e)}try{_staffGuard()}catch(_e){} /* v1.11.5: el guardián existía pero NUNCA se llamaba — auto-login con sesión staff perdida = escrituras denegadas en silencio */try{if(typeof slRndrMedia==="function")slRndrMedia()}catch(_e){}
@@ -15455,7 +15635,7 @@ function pk(i){if(!_f[i])return;if(estPicker){eSel.push({..._f[i],qty:1,id:Date.
 
 // ═══ PARTS RENDER ═══
 function rndr(){sel=sel.filter(p=>p&&typeof p==="object"&&p.n);const el=document.getElementById("pL"),ct=document.getElementById("pCt"),tr=document.getElementById("pT"),tv=document.getElementById("pTV"),tl=document.getElementById("pTL");ct.textContent=sel.length+" item"+(sel.length!==1?"s":"");if(!sel.length){el.innerHTML="";tr.style.display="none";if(typeof scheduleDraftSave==="function")scheduleDraftSave();return}const wt=gWT();el.innerHTML=sel.map((p,i)=>{const pr=gPr(p),rt=gRet(p),sh=wt==="half"&&p.c!=="Service",pc=gPCFor(p);return`<div class="pi"><div class="pi-info"><div class="pi-n">${esc(p.n)}</div><div class="pi-d">${esc(p.d)} · <b>${esc(p.c)}</b></div>${sh?`<div class="pi-og">Retail: $${(rt*p.qty).toFixed(2)}</div>`:""}</div><div class="qw"><button class="qb" onclick="chg(${i},-1)">−</button><span class="qv">${p.qty}</span><button class="qb" onclick="chg(${i},1)">+</button></div><div class="pp ${pc}">$${(pr*p.qty).toFixed(2)}</div><button class="prm" onclick="rem(${i})">×</button></div>`}).join("");
-const ptot=sel.reduce((s,p)=>s+gPr(p)*p.qty,0);const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value,undefined,undefined,undefined,(typeof aspRate15Form==="function"?aspRate15Form():1),(typeof aspTech2Form==="function"?aspTech2Form():0));const lbAmt=lb?lb.amount:0;const grand=ptot+lbAmt;
+const ptot=sel.reduce((s,p)=>s+gPr(p)*p.qty,0);const lb=calcLabor(document.getElementById("fArr").value,_aspDepForm(),undefined,undefined,undefined,(typeof aspRate15Form==="function"?aspRate15Form():1),(typeof aspTech2Form==="function"?aspTech2Form():0));const lbAmt=lb?lb.amount:0;const grand=ptot+lbAmt;
 let lh="";if(lb&&lb.free)lh=`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:var(--fs-base);color:var(--c-info-strong);font-weight:600"><span>${lb.label}</span><span>$0.00</span></div>`;else if(lb)lh=`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:var(--fs-base);color:var(--ac);font-weight:600"><span>${lb.label}</span><span>$${lb.amount.toFixed(2)}</span></div>`;
 tr.style.display="flex";tr.style.flexDirection="column";tl.textContent="";tv.innerHTML=lh+`<div style="display:flex;justify-content:space-between;width:100%"><span>${gPL()}</span><span style="color:var(--br);font-weight:700">$${grand.toFixed(2)}</span></div>`;if(typeof scheduleDraftSave==="function")scheduleDraftSave()}
 function chg(i,d){if(!sel[i])return;sel[i].qty=Math.min(99,Math.max(1,(sel[i].qty||1)+d));rndr();if(typeof _autoSyncPart90==="function")_autoSyncPart90()}
@@ -15641,6 +15821,11 @@ async function submitTkt(st){
     try{_reschedInfo=await _askReschedReason({origen:"reporte",modo:"noterminada",id:editingDocId||""})}catch(_e){_reschedInfo=null}
     if(!_reschedInfo)return; // tech canceled the reschedule
   }
+  /* v2.94.1 — corregir un «Couldn't finish» con «Update ✓»: ¿ya quedó terminado? (no = sigue como estaba) */
+  var _siTermino=false;
+  if(editingDocId&&st!=="reschedule"&&typeof window.aspPreguntaSiTermino==="function"){
+    try{_siTermino=await window.aspPreguntaSiTermino(editingDocId)}catch(_e){_siTermino=false}
+  }
 
   /* v2.67.0 — PUERTA DE SESIÓN HONESTA. Antes de tocar nada: si estamos ONLINE y la
      sesión no tiene token vivo, la escritura se guardaría solo en la caché del
@@ -15687,7 +15872,7 @@ async function submitTkt(st){
     const validParts=sel.filter(p=>p&&typeof p==="object"&&p.n);
     const ptot=validParts.reduce((s,p)=>s+(gPr(p)||0)*(p.qty||1),0);
     const totR=validParts.reduce((s,p)=>s+(p.p||0)*(p.qty||1),0);
-    const lb=calcLabor(document.getElementById("fArr").value,document.getElementById("fDep").value,undefined,undefined,undefined,(typeof aspRate15Form==="function"?aspRate15Form():1),(typeof aspTech2Form==="function"?aspTech2Form():0));
+    const lb=calcLabor(document.getElementById("fArr").value,_aspDepForm(),undefined,undefined,undefined,(typeof aspRate15Form==="function"?aspRate15Form():1),(typeof aspTech2Form==="function"?aspTech2Form():0));
     const grand=(ptot||0)+(lb?lb.amount||0:0);
 
     // Warranty Override Log (Batch 3 #1): record if office overrode & actually changed the warranty.
@@ -15707,6 +15892,7 @@ async function submitTkt(st){
       wcType:wcType||"",
       arrival:document.getElementById("fArr").value||"",
       departure:document.getElementById("fDep").value||"",
+      pauseMin:(function(){var v=(typeof _aspPausaValor==="function")?_aspPausaValor():0;if(v>0)return v;var o=editingDocId?[...active,...done].find(function(x){return x.id===editingDocId}):null;return (o&&Number(o.pauseMin)>0)?0:undefined})(),   /* v2.95.0 */
       parts:validParts.map(p=>({n:p.n||"",d:p.d||"",c:p.c||"",p:p.p||0,r:gRet(p)||0,qty:p.qty||1,ch:gPr(p)||0})),
       total:grand||0,partsCost:ptot||0,
       labor:lb?{amount:lb.amount||0,label:lb.label||"",tc:lb.tc||0,extra:lb.extra||0,extraAmt:lb.extraAmt||0,hours:lb.hours||0,mins:lb.mins||0,tech2Amt:lb.tech2Amt||0,tech2Mins:lb.tech2Mins||0}:null,
@@ -15729,6 +15915,7 @@ async function submitTkt(st){
       tktData.reschedAtMs=Date.now();
     }
 
+    try{var _pzc=(typeof _aspPausasDeCita==="function")?_aspPausasDeCita():null;if(_pzc&&_pzc.length&&!editingDocId)tktData.pauses=_pzc;}catch(_e){}   /* v2.95.0 */
     // Sanitize: remove any undefined values that Firestore rejects
     function sanitize(obj){if(!obj||typeof obj!=="object")return obj;if(Array.isArray(obj))return obj.map(sanitize);var o={};Object.keys(obj).forEach(function(k){if(obj[k]!==undefined)o[k]=typeof obj[k]==="object"&&obj[k]!==null&&!Array.isArray(obj[k])?sanitize(obj[k]):obj[k]});return o}
     const cleanData=sanitize(tktData);
@@ -15814,6 +16001,7 @@ async function submitTkt(st){
         try{await _autoCreateReschedDispatch(editingDocId,cleanData)}catch(_re){console.warn("[resched auto-dispatch edit]",_re)}
       }
       toast(!navigator.onLine?"Saved offline ✓ — will sync when back online":"Ticket updated ✓",!navigator.onLine?"warn":undefined);
+      if(_siTermino&&typeof window.aspSiSeTermino==="function"){try{await window.aspSiSeTermino(editingDocId,{preguntar:false,desde:"tecnico"})}catch(_e){console.warn("[siTermino]",_e)}}
     }else{
       // Create new ticket
       cleanData.media=Array.isArray(compressedMedia)?compressedMedia.slice():[];
@@ -16081,6 +16269,7 @@ function resetForm(){
   document.getElementById("fDate").value=localDateStr();
   document.getElementById("fArr").value="";
   document.getElementById("fDep").value="";
+  try{if(typeof _aspPausaLimpia==="function")_aspPausaLimpia()}catch(_e){}   /* v2.95.0 */
   document.getElementById("fNotes").value="";
 
   // Re-render
@@ -17342,6 +17531,7 @@ function editTkt(i,isDone){
   document.getElementById("fDate").value=t.date||localDateStr();
   document.getElementById("fArr").value=t.arrival||"";
   document.getElementById("fDep").value=t.departure||"";
+  try{if(typeof _aspPausaAlFormulario==="function")_aspPausaAlFormulario(t,true)}catch(_e){}   /* v2.95.0 */
   document.getElementById("fNotes").value=t.notes||"";
 
   // Techs
@@ -18428,12 +18618,13 @@ function _dailyAIReviewLaunch(t,isDone){
 
 function tktHTML(list,i,isDone){
   const t=list[i],w=t.warranty||{};
-  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
+  const lb=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   const timeOnSiteMin=_visitMins(t.arrival,t.departure)||0; // AUDIT FIX Jun 2026: NaN-safe; equal times = 0, not a 24h wrap
   const timeOnSite=timeOnSiteMin?fmtTime(timeOnSiteMin):"";
   // Billable hours = time on site rounded to the nearest 15-min increment, shown in
   // decimal (e.g. 6h19m → 6.25 hrs). Matches the quarter-hour rule the office bills by.
-  const billMin=billableMins(timeOnSiteMin);
+  const _pzMin=Math.max(0,Number(t.pauseMin)||0);   /* v2.95.0 — la pausa no se cobra */
+  const billMin=billableMins(_pzMin?(_visitMins(t.arrival,aspDepCobro(t))||0):timeOnSiteMin);
   const billHH=Math.floor(billMin/60),billMM=billMin%60;
   const billLabel=(billMin/60).toFixed(2)+" hrs ("+(billHH?billHH+"h"+(billMM?" "+billMM+"m":""):billMM+"m")+")";
   // ── Warranty discrepancy flag (#5) — office-only. Compares the warranty the tech
@@ -18459,7 +18650,7 @@ function tktHTML(list,i,isDone){
   const grandTotal=partsTotal+laborAmt;
 
   return`<div class="tkt${isDone?" completed":""}${t.reportSent?" report-sent":""}${(t.status==='complete'||isDone)&&!t.qbCopied?' qb-pending':''}" style="border-left:4px solid ${_dailyRail(t)}"><div class="tkt-h" onclick="tog('${isDone?"d":"a"}',${i})"><div class="tkt-left"><h4 data-cust="${esc(t.customer)}">${esc(t.customer)}<span class="cust-copy" onclick="event.stopPropagation();_copyCustName(this)" title="${L2('Copiar nombre','Copy name')}" style="display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:1px;border-radius:5px;cursor:pointer;vertical-align:middle">${icon("clipboard",13,{})}</span></h4><p class="tkt-techline">${(t.techs||[]).map(n=>_avatarHTML(n,18)).join("")}<span class="tkt-techtxt">${(t.techs||[]).join(", ")} · ${t.date||""}${t.arrival?" · "+t.arrival:""}</span></p><div class="tkt-tiers">${_dailyTags3(t,w,_warMismatchBadge)}</div>${(t.source!=="dispatch"&&aspReagendo(t)&&typeof aspEstadoCadenaHTML==="function")?aspEstadoCadenaHTML(t):""}</div><span class="tkt-status ${isDone?"st-complete":t.status==="complete"?"st-done":"st-resched"}">${isDone?"Completed":t.status==="complete"?"Submitted":t.status==="pending"?"Pending":"Reschedule"}</span></div><div class="tkt-body" id="${isDone?"d":"a"}b${i}">
-${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:var(--c-info-bg);border-radius:8px;color:var(--c-info-strong);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:8px">${icon("clock",14,{style:"vertical-align:-2px"})} Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})<span style="padding:2px 9px;border-radius:6px;background:var(--c-money-bg,#dcfce7);color:var(--c-money-fg,#166534);font-weight:800;font-size:var(--fs-sm)" title="Time on site rounded to the nearest 15 min — bill the customer this many hours">${icon("banknote",13,{style:"vertical-align:-2px"})} Bill: ${billLabel}</span></div>`:""}
+${timeOnSite?`<div style="font-size:var(--fs-base);margin-bottom:10px;padding:8px 12px;background:var(--c-info-bg);border-radius:8px;color:var(--c-info-strong);font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:8px">${icon("clock",14,{style:"vertical-align:-2px"})} Time on site: ${timeOnSite} (${t.arrival} → ${t.departure})${_pzMin?`<span class="asp-pausa-chip" title="${esc(L2("Tiempo en pausa: no se cobra","Paused time: not billed"))}">⏸ ${_pzMin} min ${esc(L2("sin cobrar","not billed"))}</span>`:""}<span style="padding:2px 9px;border-radius:6px;background:var(--c-money-bg,#dcfce7);color:var(--c-money-fg,#166534);font-weight:800;font-size:var(--fs-sm)" title="Time on site rounded to the nearest 15 min — bill the customer this many hours">${icon("banknote",13,{style:"vertical-align:-2px"})} Bill: ${billLabel}</span></div>`:""}
 ${(typeof _slPriorContextHTML==="function")?_slPriorContextHTML(t):""}
 ${(t.parts||[]).map(p=>`<div class="tkt-row"><span>${p.qty}x ${esc(p.n)} <span style="color:var(--i3);font-size:var(--fs-sm)">${esc(p.c)}</span></span><span>$${((p.ch!=null?p.ch:p.p)*p.qty).toFixed(2)}</span></div>`).join("")}
 ${t.parts&&t.parts.length?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-base);padding:4px 0;color:var(--i3)"><span>Parts subtotal</span><span>$${partsTotal.toFixed(2)}</span></div>`:""}
@@ -18476,7 +18667,7 @@ ${!isDone?(isAdmin?`<div style="display:flex;gap:8px;margin-top:10px"><button cl
 function copyTkt(isDone,i){
   const t=isDone?done[i]:active[i];if(!t)return;
   const w=t.warranty||{};
-  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
+  const lb=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   const partsTotal=(t.parts||[]).reduce((s,p)=>s+((p.ch!=null?p.ch:p.p)*p.qty),0);
   const laborAmt=lb?lb.amount:0;
   const timeMin=_visitMins(t.arrival,t.departure)||0; // AUDIT FIX Jun 2026: NaN-safe; equal times = 0, not a 24h wrap
@@ -18911,7 +19102,7 @@ async function undoAIImprove(){
 // ── Build the report content ────────────────────────────────────────────────
 function buildCustomerReport(t,notesOverride){
   const w=t.warranty||{};
-  const lb=calcLabor(t.arrival,t.departure,t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
+  const lb=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,_labTypeFromWarranty(w,t),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   // Use override notes if provided (e.g. user-edited or AI-improved version),
   // otherwise fall back to the raw technician notes saved on the ticket.
   const notesToUse=(notesOverride!==undefined&&notesOverride!==null)?notesOverride:_reportNarrative(t);
@@ -23548,7 +23739,7 @@ function rndrCalQueue(){
         h+=`<div class="tkt-preview">`;
         h+=`<div class="tp-row"><span>Customer</span><span>${esc(t.customer)}</span></div>`;
         if(t.phone)h+=`<div class="tp-row"><span>Phone</span><span><a href="tel:${esc(t.phone)}" style="color:var(--ac);text-decoration:underline">${esc(t.phone)}</a></span></div>`;
-        if(t.address){var _ec=effectiveCity(t);const _fullA=esc(t.address)+(_ec?", "+esc(_ec):"")+(t.zip?" "+t.zip:"");h+=`<div class="tp-row"><span>Address</span><span><a href="https://maps.apple.com/?q=${encodeURIComponent(t.address+(_ec?", "+_ec:"")+(t.zip?" "+t.zip:""))}" target="_blank" style="color:var(--ac);text-decoration:underline">${_fullA}</a></span></div>`}
+        if(t.address){var _ec=effectiveCity(t);const _fullA=esc(t.address)+(_ec?", "+esc(_ec):"")+(t.zip?" "+esc(t.zip):"");h+=`<div class="tp-row"><span>Address</span><span><a href="https://maps.apple.com/?q=${encodeURIComponent(t.address+(_ec?", "+_ec:"")+(t.zip?" "+t.zip:""))}" target="_blank" style="color:var(--ac);text-decoration:underline">${_fullA}</a></span></div>`}
         if(_zEff)h+=`<div class="tp-row"><span>Zone</span><span>${_zEff}</span></div>`;
         if(t.date)h+=`<div class="tp-row"><span>Date</span><span>${t.date}</span></div>`;
         if(t.notes)h+=`<div style="margin-top:6px;padding:8px;background:var(--bg);border-radius:8px;font-size:var(--fs-sm);color:var(--i2);font-style:italic">${esc(t.notes)}</div>`;
@@ -24267,7 +24458,7 @@ function _c360ExpandBodyHTML(t){
   var idJS=String(t.id||"").replace(/'/g,"\\'");
   var w=t.warranty||{};
   var vLbl=(Number(t.visitNum)===6)?"\uD83D\uDE9A Spa Move":(Number(t.visitNum)===5)?"\uD83D\uDCE6 Delivery":(Number(t.visitNum)===4)?"Repeat":(Number(t.visitNum)===3)?"CM":(Number(t.visitNum)===2)?"2nd Visit":"1st Visit";
-  var lb=null;try{lb=(typeof calcLabor==="function")?calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(w,t):undefined),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0)):null;}catch(_le){lb=null;}
+  var lb=null;try{lb=(typeof calcLabor==="function")?calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(w,t):undefined),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0)):null;}catch(_le){lb=null;}
   var partsTotal=parts.reduce(function(sm,p){return sm+((((p.ch!=null)?p.ch:p.p)||0)*(p.qty||1))},0);
   var laborAmt=lb?(lb.amount||0):0;
   function rw(lbl,val){return '<div style="display:flex;gap:8px;font-size:var(--fs-sm);margin-bottom:3px"><span style="color:var(--i3);min-width:88px">'+lbl+'</span><span style="color:var(--ink);font-weight:600;flex:1;min-width:0">'+val+'</span></div>';}
@@ -26334,6 +26525,7 @@ function startTicketFrom(id){
       const depTime=_isoToLocalTimeInput(t.checkOutAt);
       if(depTime)document.getElementById("fDep").value=depTime;
     }
+    try{if(typeof _aspPausaAlFormulario==="function")_aspPausaAlFormulario(t)}catch(_e){}   /* v2.95.0 */
     // BUG FIX (Jun 2026 — reported by Alberto): setting .value programmatically
     // does NOT fire the "change" event, so the delegated listener that opens
     // the form gate (checkGate → shows the rest of the Field Report) never ran.
@@ -27212,8 +27404,8 @@ async function custSaveSpaDesc(){
   try{await batch.commit();toast("Spa description saved on "+count+" ticket"+(count!==1?"s":"")+" ✓");setTimeout(refreshAll,500)}catch(e){toast("Could not save the spa description · "+String((e&&(e.code||e.message))||"error").slice(0,90),"err");console.error("[Could not save the spa description]",e)}
 }
 
-async function saveCustomZips(){if(!db)return;try{await db.collection("config").doc("customZips").set(customZips)}catch(e){console.warn("[saveCustomZips]",e);if(typeof toast==="function")toast("Could not save ZIP overrides","err")}}
-async function loadCustomZips(){if(!db)return;try{var doc=await db.collection("config").doc("customZips").get();if(doc.exists)customZips=doc.data()||{}}catch(e){}}
+async function saveCustomZips(){if(!db)return;try{await _aspCfgZips()}catch(e){console.warn("[saveCustomZips]",e);if(typeof toast==="function")toast("Could not save ZIP overrides","err")}}
+async function loadCustomZips(){if(!db)return;try{var doc=await db.collection("config").doc("customZips").get();_aspCfgLeido("customZips",doc.exists?doc.data():{});if(doc.exists)customZips=doc.data()||{}}catch(e){}}
 function getCustData(name){if(!name)return null;var allTkts=[...active,...done];
 // AUDIT FIX (Jul 2026): match by the SAME family group key used by the
 // Customers tab, cleanup, and calendar (_custGroupKey) instead of the exact
@@ -29022,6 +29214,7 @@ async function _doCheckOut(ticketId){
   const inMs=new Date(t.checkInAt).getTime();
   const nowIso=new Date().toISOString();
   const durationMin=Math.round((Date.now()-inMs)/60000);
+  const _pz=(typeof _aspPausasCerradas==="function")?_aspPausasCerradas(t,nowIso):null;   /* v2.95.0 */
 
   const payload={
     checkOutAt:nowIso,
@@ -29033,6 +29226,7 @@ async function _doCheckOut(ticketId){
     checkOutDuration:durationMin,
     checkOutNoGps:!gps
   };
+  if(_pz){payload.pauses=_pz.pauses;payload.checkOutPauseMin=_pz.min;}
   try{
     await db.collection("tickets").doc(ticketId).update(payload);
     Object.assign(t,payload);
@@ -29086,14 +29280,15 @@ function _checkInPanelHTML(t){
         '<div><div style="font-size:var(--fs-xs);color:var(--c-success-strong);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Arrival</div>'+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkInDist>=0?' · '+t.checkInDist+'m':'')+'</div>'+
         '<div><div style="font-size:var(--fs-xs);color:var(--c-success-strong);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Departure</div>'+esc(outT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+(t.checkOutDist>=0?' · '+t.checkOutDist+'m':'')+'</div>'+
       '</div>'+
-      '<div style="margin-top:8px;font-size:var(--fs-sm);color:#15803d"><b>Duration:</b> '+esc(_fmtElapsed(dur))+' · Recorded by '+esc(t.checkInBy||"—")+'</div>'+
+      '<div style="margin-top:8px;font-size:var(--fs-sm);color:#15803d"><b>Duration:</b> '+esc(_fmtElapsed(dur))+' · Recorded by '+esc(t.checkInBy||"—")+(typeof _aspPausaResumen==="function"?_aspPausaResumen(t):"")+'</div>'+
     '</div>';
   }
 
   // Checked in but not out — show ongoing visit
   if(_ticketIsCheckedIn(t)){
     const inT=new Date(t.checkInAt);
-    const elapsedMin=Math.round((Date.now()-inT.getTime())/60000);
+    const elapsedMin=Math.max(0,Math.round((Date.now()-inT.getTime())/60000)-(typeof _aspPausaMin==="function"?_aspPausaMin(t):0));   /* v2.95.0 — sin las pausas */
+    if(typeof _aspPausaPanel==="function"){const _pp=_aspPausaPanel(t,elapsedMin);if(_pp)return _pp;}
     const distInfo=t.checkInDist>=0?(t.checkInDist+'m from address'):"";
     const distColor=t.checkInVerified?"var(--c-success-fg)":"var(--c-warning-fg)";
     return '<div style="margin-bottom:14px;padding:14px 16px;background:#fefce8;border:2px solid #fde047;border-radius:12px">'+
@@ -29102,7 +29297,7 @@ function _checkInPanelHTML(t){
         '<div style="font-size:var(--fs-base);color:var(--c-warning-fg)">since '+esc(inT.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))+' · '+esc(_fmtElapsed(elapsedMin))+'</div>'+
       '</div>'+
       (distInfo?'<div style="font-size:var(--fs-sm);color:'+distColor+';margin-bottom:10px">📍 '+esc(distInfo)+(t.checkInVerified?' · ✓ verified':' · ⚠ not verified')+'</div>':'')+
-      '<button id="checkOutBtn_'+esc(t.id)+'" onclick="_doCheckOut(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:var(--c-danger-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:var(--fs-xl)">⏹</span> CHECK OUT — I\'m leaving</button>'+
+      (typeof _aspPausaBoton==="function"?_aspPausaBoton(t):"")+'<button id="checkOutBtn_'+esc(t.id)+'" onclick="_doCheckOut(\''+esc(t.id)+'\')" style="width:100%;padding:14px;background:var(--c-danger-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:var(--fs-xl)">⏹</span> CHECK OUT — I\'m leaving</button>'+
     '</div>';
   }
 
@@ -30157,7 +30352,7 @@ function _billingRowsFor(dateStr){
         var lb=null;
         try{
           sel=Array.isArray(t.parts)?t.parts:[];
-          lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
+          lb=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
         }catch(_e){}
         var labor=lb&&typeof lb.amount==="number"?lb.amount:0;
         partsOut=+parts.toFixed(2);laborOut=+labor.toFixed(2);totalOut=+(parts+labor+tax).toFixed(2);
@@ -30995,10 +31190,10 @@ function showTicketDetail(p,i){
   }
   // Billable hours — same quarter-hour rule the office bills by (native helpers).
   function billHrsShort(t){
-    try{if(!t.arrival||!t.departure)return "";var raw=_visitMins(t.arrival,t.departure)||0;if(!raw)return "";return (billableMins(raw)/60).toFixed(2)+"h";}catch(e){return "";}
+    try{if(!t.arrival||!t.departure)return "";var raw=_visitMins(t.arrival,aspDepCobro(t))||0;if(!raw)return "";return (billableMins(raw)/60).toFixed(2)+"h";}catch(e){return "";}
   }
   function billHrsFull(t){
-    try{if(!t.arrival||!t.departure)return "";var raw=_visitMins(t.arrival,t.departure)||0;if(!raw)return "\u2014";
+    try{if(!t.arrival||!t.departure)return "";var raw=_visitMins(t.arrival,aspDepCobro(t))||0;if(!raw)return "\u2014";
       var bm=billableMins(raw),hh=Math.floor(bm/60),mm=bm%60;
       return (bm/60).toFixed(2)+" hrs ("+(hh?hh+"h"+(mm?" "+mm+"m":""):mm+"m")+")";}catch(e){return "";}
   }
@@ -31197,7 +31392,7 @@ function showTicketDetail(p,i){
   function invBreakdown(t,c){
     if(c.covered)return "";
     var lb=null;
-    try{lb=calcLabor(t.arrival,t.departure,Number(t.visitNum)||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty((t&&t.warranty)||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));}catch(e){}
+    try{lb=calcLabor(t.arrival,aspDepCobro(t),Number(t.visitNum)||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty((t&&t.warranty)||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));}catch(e){}
     var tc=(lb&&!lb.free)?(Number(lb.tc)||0):0;
     var lab=(lb&&!lb.free)?(Number(lb.extraAmt)||0):0; var t2=(lb&&!lb.free)?(Number(lb.tech2Amt)||0):0;
     var parts=0;try{parts=(t.parts||[]).reduce(function(s,p){return s+(((p.ch!=null?p.ch:p.p)||0)*(p.qty||0));},0);}catch(e){}
@@ -31660,7 +31855,7 @@ function moneyFor(t){
   var lb=null,_s;
   try{
     _s=sel;sel=Array.isArray(t.parts)?t.parts:[];
-    lb=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
+    lb=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none"),t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));
   }catch(e){}finally{try{sel=_s;}catch(e2){}}
   var labor=lb&&typeof lb.amount==="number"?lb.amount:0;
   return{parts:+parts.toFixed(2),labor:+labor.toFixed(2),tax:tax,total:+(parts+labor+tax).toFixed(2)};
@@ -31736,7 +31931,7 @@ function qbTextFor(t){
    Tax = "S/C for Missouri Installed Sale" at the end (QB adds it). ── */
 function _hrsAll(mins){return mins>0?Math.ceil(mins/15)/4:0;}
 function _hrsExtra(mins){return mins>60?Math.ceil((mins-60)/15)/4:0;}
-function _qMins(t){try{return _visitMins(t.arrival,t.departure)||0;}catch(e){return 0;}}
+function _qMins(t){try{return _visitMins(t.arrival,aspDepCobro(t))||0;}catch(e){return 0;}}
 function _fq(n){return String(Math.round(n*100)/100);}
 function qbLinesFor(t){
   var vn=Number(t.visitNum)||1,b=null,mins=_qMins(t),L=[];
@@ -32126,16 +32321,23 @@ window.bsAskAI=async function(){
    from the spa description (delivered date, series, year — same engine:
    _parseSpaDescription + _autoWarrantyFromSpec, longest spaDesc per customer
    wins, like rndrWarByYear). If they disagree, flag it BEFORE billing. ── */
+var _csdTabla=null,_csdA=null,_csdD=null,_csdN=-1;   /* v2.94.1 — una tabla por cada llegada de datos, no una vuelta entera por pregunta */
+function _csdClave(c){ return (typeof _custGroupKey==="function")?_custGroupKey(c):String(c||"").trim().toLowerCase(); }
+function _custSpaDescTabla(){
+  var a=(typeof active!=="undefined"&&active)||[], d=(typeof done!=="undefined"&&done)||[], n=a.length+d.length;
+  if(_csdTabla&&_csdA===a&&_csdD===d&&_csdN===n)return _csdTabla;
+  var m=new Map();
+  [a,d].forEach(function(arr){ for(var i=0;i<arr.length;i++){ var x=arr[i];
+    if(!x||!x.customer||!x.spaDesc)continue;
+    var xk=_csdClave(x.customer), b=m.get(xk);
+    if(b===undefined||x.spaDesc.length>b.length)m.set(xk,x.spaDesc); } });
+  _csdTabla=m;_csdA=a;_csdD=d;_csdN=n;
+  return m;
+}
 function _custSpaDesc(t){
   try{
-    var k=(typeof _custGroupKey==="function")?_custGroupKey(t.customer):String(t.customer||"").trim().toLowerCase();
-    var best="";
-    [].concat((typeof active!=="undefined"&&active)||[],(typeof done!=="undefined"&&done)||[]).forEach(function(x){
-      if(!x||!x.customer||!x.spaDesc)return;
-      var xk=(typeof _custGroupKey==="function")?_custGroupKey(x.customer):String(x.customer||"").trim().toLowerCase();
-      if(xk===k&&x.spaDesc.length>best.length)best=x.spaDesc;
-    });
-    return best;
+    var b=_custSpaDescTabla().get(_csdClave(t.customer));
+    return b||"";
   }catch(e){return "";}
 }
 window.bsSyncW=async function(){
@@ -34450,7 +34652,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   function report(t){var c=[t.aiReportNotes,t.servicePerformed,t.report,t.summary];try{c.push(typeof _aspVisitNotes==='function'?_aspVisitNotes(t):'')}catch(_){}for(var i=0;i<c.length;i++){if(typeof c[i]!=='string')continue;var s=_v7Txt(c[i]);if(s&&_v7HasMeat(s))return _v7Clean(s)}var pooled=_v7PoolFor(t);if(pooled)return pooled;try{if(typeof _aspCleanTechNotes==='function'){var cl=String(_aspCleanTechNotes(t.notes||'')||'').trim();if(cl){var e=_v7Entry(cl,t);if(e)return _v7Clean(e)}}}catch(_){}var raw=(typeof _aspCleanTechNotes==='function')?'':String(t.notes||'').trim();/* v2.88.3 — con el limpiador al alcance, las notas crudas ya no van al papel */if(raw){var e2=_v7Entry(raw,t);if(e2)return _v7Clean(e2)}return''}
   function isDone(t){if(!t)return false;var st=String(t.status||'').toLowerCase();return (_v7D().indexOf(t)>=0)||/done|complete|completed/.test(st)||!!(t.completedAt||t.fieldReportSubmitted)}
   function isVisit(t){if(!t)return false;var st=String(t.status||'').toLowerCase();if(/cancel/.test(st))return false;return true}
-  function total(t){try{var ex=Number(t.total||0);if(ex>0)return ex;var p=(t.parts||[]).reduce(function(s,x){return s+Number((((x.ch!=null)?x.ch:x.p)||0)*(x.qty||1))},0),l=0;if(typeof calcLabor==='function'){var w=t.warranty||{},b=calcLabor(t.arrival,t.departure,t.visitNum||1,typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(w,t):undefined,t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));l=Number(b&&b.amount||0)}return p+l}catch(_){return Number(t.total||0)||0}}
+  function total(t){try{var ex=Number(t.total||0);if(ex>0)return ex;var p=(t.parts||[]).reduce(function(s,x){return s+Number((((x.ch!=null)?x.ch:x.p)||0)*(x.qty||1))},0),l=0;if(typeof calcLabor==='function'){var w=t.warranty||{},b=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(w,t):undefined,t.noLabor||false,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));l=Number(b&&b.amount||0)}return p+l}catch(_){return Number(t.total||0)||0}}
   function dparts(s){try{var d=new Date(String(s||'')+'T00:00:00');if(isNaN(d))throw 0;return{m:d.toLocaleDateString('en-US',{month:'short'}),d:d.getDate(),y:d.getFullYear()}}catch(_){return{m:'',d:s||'—',y:''}}}
   function counts(t){var m=Array.isArray(t.media)?t.media:[];return{photos:(t.photoUrls||[]).filter(Boolean).length+m.filter(function(x){return x&&x.type!=='pdf'&&(x.url||x.data||x.dataUrl)}).length,pdfs:m.filter(function(x){return x&&x.type==='pdf'}).length}}
   function work(t){var a=(t.workTypes||[]).filter(function(x){return x&&!/^service call$/i.test(x)});return a.join(', ')||'Technician Visit'}
@@ -34872,7 +35074,7 @@ body.dark-mode #pg6 .v7-panel,body.dark-mode #pg6 .v7-visit,body.dark-mode #pg6 
   function duration(m){if(!m)return 'Not recorded';return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'}
   function parts(t){return Array.isArray(t.parts)?t.parts:[]}
   function partTotal(t){return parts(t).reduce(function(s,p){var q=N(p.qty||1),u=N(p.ch!=null?p.ch:p.p);return s+q*u},0)}
-  function labor(t){try{if(typeof calcLabor==='function'){var r=calcLabor(t.arrival,t.departure,t.visitNum||1,(typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(t.warranty||{},t):undefined),!!t.noLabor,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));return r||{}}}catch(_){}return{amount:N(t.laborCharge||t.labor||0),label:t.laborLabel||''}}
+  function labor(t){try{if(typeof calcLabor==='function'){var r=calcLabor(t.arrival,aspDepCobro(t),t.visitNum||1,(typeof _labTypeFromWarranty==='function'?_labTypeFromWarranty(t.warranty||{},t):undefined),!!t.noLabor,(typeof aspRate15==="function"?aspRate15(t):1),(typeof aspTech2==="function"?aspTech2(t):0));return r||{}}}catch(_){}return{amount:N(t.laborCharge||t.labor||0),label:t.laborLabel||''}}
   function charges(t){var l=labor(t),pt=partTotal(t),trip=N(t.tripCharge||t.serviceCallCharge||0),tax=N(t.tax||t.salesTax||0),laborAmt=N(l.amount),total=N(t.total||t.amountCollected||t.collected||0);if(!total)total=pt+laborAmt+trip+tax;var paid=N(t.amountCollected||t.collected||t.paidAmount||0);if(!paid&&t.paid===true)paid=total;var bal=N(t.balanceDue);if(!bal)bal=Math.max(0,total-paid);return{parts:pt,labor:laborAmt,trip:trip,tax:tax,total:total,paid:paid,balance:bal,laborLabel:l.label||''}}
   function customer(t){return{name:t.customer||((document.getElementById('custName')||{}).value)||'Customer',phone:t.phone||((document.getElementById('custPhone')||document.getElementById('custMainPhone')||{}).value)||'',email:t.email||((document.getElementById('custEmail')||{}).value)||'',address:t.address||((document.getElementById('custAddr')||document.getElementById('custAddress')||{}).value)||'',spa:t.spaDesc||t.spaModel||t.model||'',serial:t.serial||t.serialNumber||''}}
   function workStatus(t){if(t.status==='canceled')return'Canceled';if(t.paid===true)return'Completed · Paid';return'Completed'}
@@ -57286,7 +57488,8 @@ window._invoiceModuleCargar=function(){
   }catch(e){console.error("[invoice module]",e);return Promise.resolve(false)}
   return _invMod;
 };
-function esTecnico(){ try{ return !!(currentUser&&currentUser.role==="tech") }catch(_e){ return false } }
+/* v2.95.1 — «no es técnico» no basta: un viewer (solo Tech Tools) cargaba todas las facturas */
+function esTecnico(){ try{ return !(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")) }catch(_e){ return true } }
 (function(){
   /* v2.78.6 — Invoice Tracker loads on demand (tabs 3/6/8/15).
      v2.80.0 — plus ONE quiet warm-up for office users 8 s after login, so payment
@@ -66005,7 +66208,7 @@ function fraseTkt(t){
   if(/resched|reag|not finished|no se termin/i.test(stc+" "+stx))r=[T("Not finished · return visit","No se terminó · vuelta"),"aviso"];
   else if(/PART|PIEZA|PARTE/i.test(estx))r=[T("Waiting for a part","Esperando pieza"),"aviso"];
   else if(cub)r=[T("Warranty · don't charge","Garantía · no cobrar"),"bien"];
-  else if(qb&&qb.getClientRects().length!==undefined&&/qb|quickbooks/i.test(qb.textContent||""))r=[T("Ready for QuickBooks","Lista para QuickBooks"),"info"];
+  else if(qb&&/qb|quickbooks/i.test(qb.textContent||""))r=[T("Ready for QuickBooks","Lista para QuickBooks"),"info"];
   else if(/done|submit|complet|enviad/i.test(stc+" "+stx))r=[T("All set","Todo listo"),"bien"];
   else r=[stx||T("Pending","Pendiente"),"info"];
   return {txt:r[0],tono:r[1],n:m?+m[1]:null,tot:m?+m[2]:null,firma:stc+stx+raw+estx+(qb?qb.textContent:"")+(cub?"c":"")};
@@ -69550,5 +69753,294 @@ html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not
 html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-name,html:not(.asp-hd-off) body:not(#_r1):not(#_r2):not(#_r3):not(#_r4):not(#_r5):not(#_r6):not(#_r7):not(#_r8):not(#_r9) #calGrid .cal-event .ev-meta{display:none!important}
 }
 </style>
+<style id="aspTermino2941Css">
+.asp-cadena .asp-termino{color:var(--c-success-fg,#1f7a3a)!important;border-color:currentColor!important;font-weight:700}
+</style>
+<script id="aspTermino2941">
+/* ══ v2.94.1 · «SÍ SE TERMINÓ» ═════════════════════════════════════════════
+   Alberto (20 nov): un «Couldn't finish» que al final sí se terminó tiene que poder quitarse.
+   · El técnico corrige su reporte y lo manda («Update ✓»): la app le pregunta si ya quedó terminado.
+   · La oficina (admin/organizer) tiene «Sí se terminó» en la línea de la cadena (Daily, la hoja).
+   Quitarlo: el reporte deja de decir «no se terminó» (se borran los campos resched*; queda reschedCorregido
+   con quién, cuándo, desde dónde y qué decía antes), su vuelta ABIERTA se cancela («Job completed — report
+   corrected») y la cita deja de apuntar a una vuelta. El reporte sigue ENVIADO y cobrable (regla del 2 nov).
+   Si su vuelta ya se hizo, no se ofrece: ese reporte es el que cuenta. Las notas del reporte no se tocan. */
+(function(){
+  "use strict";
+  function L(es,en){ try{ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }catch(_e){ return en; } }
+  function pool(){ try{ return [].concat(active||[],done||[]); }catch(_e){ return []; } }
+  function byId(id){ if(!id)return null; var p=pool(); for(var i=0;i<p.length;i++){ if(p[i]&&p[i].id===id)return p[i]; } return null; }
+  function quien(){ try{ return (currentUser&&currentUser.name)||""; }catch(_e){ return ""; } }
+  function oficina(){ try{ return !!(currentUser&&(currentUser.role==="admin"||currentUser.role==="organizer")); }catch(_e){ return false; } }
+  function escA(v){ return String(v==null?"":v).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function avisa(m,k){ try{ toast(m,k); }catch(_e){} }
+
+  /* el reporte, la cita y la vuelta de un trabajo, se pregunte por la cita o por el reporte */
+  function partes(t){
+    if(!t)return null;
+    var rep=null, dis=null;
+    if(t.source==="dispatch"){ dis=t; rep=byId(t.fieldReportId)||byId("rep_"+t.id); }
+    else { rep=t; dis=byId(t.dispatchId)||pool().filter(function(x){ return x&&x.source==="dispatch"&&x.fieldReportId===t.id; })[0]||null; }
+    if(!rep||rep.source==="dispatch"||typeof aspReagendo!=="function"||!aspReagendo(rep))return null;
+    var vr=(typeof window.aspVueltaReal==="function")?window.aspVueltaReal(rep):{c:null,estado:"ninguna"};
+    if(!vr.c&&dis&&dis.reschedDispatchId&&typeof window.aspVueltaReal==="function"){ var v2=window.aspVueltaReal(dis); if(v2&&v2.c)vr=v2; }
+    return {rep:rep,dis:dis,rc:vr.c,estado:vr.estado};
+  }
+  function sePuede(x){ return !!(x&&x.estado!=="hecha"&&!(x.rc&&(x.rc.fieldReportSubmitted||x.rc.status==="done"))); }
+  function abierta(rc){ return !!(rc&&rc.status!=="canceled"&&rc.status!=="done"&&!rc.fieldReportSubmitted); }
+  window.aspPuedeTerminar=function(t){ return sePuede(partes(t)); };
+
+  /* quitar «no se terminó»: opts.preguntar (default sí), opts.desde = "tecnico" | "oficina" */
+  window.aspSiSeTermino=async function(id,opts){
+    opts=opts||{};
+    var x=partes(byId(id));
+    if(!x)return false;
+    if(!sePuede(x)){ avisa(L("Su vuelta ya se hizo: ese reporte es el que cuenta","Its return visit already happened — that report is the one that counts"),"warn"); return false; }
+    var rc=x.rc, abre=abierta(rc), r=x.rep;
+    if(opts.preguntar!==false){
+      var cuando=(abre&&String(rc.date||"").trim())?L(" del "+rc.date," on "+rc.date):"";
+      var msg=L("Se quita «No se terminó» de "+(r.customer||"este trabajo")+". El reporte queda enviado y se cobra igual.",
+                "«Couldn't finish» comes off "+(r.customer||"this job")+". The report stays sent and billable.")
+        +(abre?"\n\n"+L("Su vuelta"+cuando+" se cancela (trabajo terminado).","Its return visit"+cuando+" is canceled (job completed)."):"");
+      var si=await confirmDialog(msg,{title:L("¿Sí se terminó?","Was it finished?"),okLabel:L("Sí se terminó","It was finished"),cancelLabel:L("Cancelar","Cancel"),tone:"success",icon:"✓"});
+      if(!si)return false;
+    }
+    if(typeof db==="undefined"||!db)return false;
+    var FV=firebase.firestore.FieldValue, ahora=new Date();
+    var marca={at:ahora.toLocaleString(),atMs:ahora.getTime(),by:quien(),desde:opts.desde||(oficina()?"oficina":"tecnico"),
+      era:{reason:r.reschedReason||"",note:r.reschedNote||"",atMs:Number(r.reschedAtMs)||0,blocker:r.reschedBlocker||"",part:r.reschedBlockerPart||""},vuelta:rc?rc.id:""};
+    var up={reschedCorregido:marca};
+    ["reschedAtMs","reschedAt","reschedReason","reschedNote","reschedBlocker","reschedBlockerPart","reschedNotBefore","reschedAvailability",
+     "reschedUrgent","reschedDispatchId","reschedOutcome","needsOtherTech","needsOtherTechReason"].forEach(function(k){ if(r[k]!==undefined)up[k]=FV.delete(); });
+    if(r.status==="reschedule"||r._eraReschedule)up.status="complete";   /* modelo viejo: el resultado vivía en status */
+    try{
+      if(abre)await db.collection("tickets").doc(rc.id).update({status:"canceled",canceledAt:ahora.toLocaleString(),canceledBy:quien(),
+        canceledReason:L("Trabajo terminado — se corrigió el reporte","Job completed — report corrected")});
+      await db.collection("tickets").doc(r.id).update(up);
+      var dp=x.dis&&x.dis.reschedDispatchId;
+      if(dp&&(!rc||dp===rc.id||!byId(dp)))await db.collection("tickets").doc(x.dis.id).update({reschedDispatchId:FV.delete()});
+      try{ if(typeof _audit==="function")_audit("resched-corrected",{ticketId:r.id,customer:r.customer||"",returnTicketId:rc?rc.id:"",note:marca.desde+" · "+(marca.era.reason||"")}); }catch(_a){}
+      avisa(L("✓ Listo: ya no aparece como no terminado","✓ Done — it no longer shows as not finished"));
+      setTimeout(function(){ try{ refreshAll(); }catch(_e){} },300);
+      return true;
+    }catch(e){
+      console.warn("[aspSiSeTermino]",e);
+      avisa(L("No se pudo guardar: ","Could not save: ")+String((e&&(e.message||e.code))||e).slice(0,90),"err");
+      return false;
+    }
+  };
+
+  /* el técnico manda la corrección de un reporte que decía «no se terminó»: ¿ya quedó? (sí = se quita; no = sigue igual) */
+  window.aspPreguntaSiTermino=async function(id){
+    var x=partes(byId(id));
+    if(!x||!sePuede(x)||x.rep.reschedOutcome)return false;
+    var por=String(x.rep.reschedReason||"").trim();
+    return !!(await confirmDialog(L("Este reporte decía que NO se terminó"+(por?" ("+por+")":"")+". Si ya lo terminaste, se quita y su vuelta sale del Registro.",
+                                    "This report said the job was NOT finished"+(por?" ("+por+")":"")+". If you finished it, that comes off and its return visit leaves the Service Log."),
+      {title:L("¿Ya quedó terminado?","Is the job finished now?"),okLabel:L("Sí, quedó terminado","Yes, it's finished"),
+       cancelLabel:L("No, sigue sin terminar","No, still not finished"),tone:"success",icon:"✓"}));
+  };
+
+  /* la línea de la cadena trae «Sí se terminó» para la oficina */
+  function conBoton(){
+    var orig=window.aspEstadoCadenaHTML; if(typeof orig!=="function"||orig.__termino)return;
+    var w=function(t){
+      var h=orig.apply(this,arguments);
+      try{ if(h&&oficina()&&window.aspPuedeTerminar(t)){
+        var b='<button type="button" class="asp-vu-job asp-termino" data-asp-termino="'+escA(t.id)+'" onclick="event.stopPropagation();aspSiSeTermino(this.getAttribute(\'data-asp-termino\'),{desde:\'oficina\'})">✓ '+escA(L("Sí se terminó","It was finished"))+'</button>';
+        var k=h.lastIndexOf("</div>"); if(k>=0)h=h.slice(0,k)+b+h.slice(k);
+      } }catch(_e){}
+      return h;
+    };
+    w.__termino=true; window.aspEstadoCadenaHTML=w;
+  }
+  conBoton();
+  document.addEventListener("DOMContentLoaded",conBoton);
+})();
+</script>
+<style id="aspPausa2950Css">
+.asp-pausa-chip{padding:2px 9px;border-radius:6px;background:var(--c-info-bg,#eff6ff);color:var(--c-info-fg,#1e3a8a);font-weight:700;font-size:var(--fs-sm)}
+.asp-pausa-btn{width:100%;padding:12px;margin:0 0 10px;background:#fff;color:#78350f;border:2px solid #f59e0b;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.asp-pausa-box{margin-top:12px;padding:10px 12px;border:1.5px solid var(--c-info-border,#93c5fd);background:var(--c-info-bg,#eff6ff);border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.asp-pausa-box[hidden]{display:none!important}
+.asp-pausa-box label{font-weight:700;color:var(--c-info-fg,#1e3a8a);font-size:var(--fs-base);flex:1 1 150px}
+.asp-pausa-box .asp-pausa-val{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap;font-weight:700;color:var(--c-info-fg,#1e3a8a);font-size:var(--fs-base)}
+.asp-pausa-box input{width:92px;flex:0 0 auto}
+.asp-pausa-box small{flex:1 1 100%;color:var(--i3,#938A7E);font-size:var(--fs-xs)}
+.asp-pausa-add{margin-top:10px;background:none;border:0;padding:6px 0;color:var(--acd,#A85C1F);font-weight:700;font-size:var(--fs-sm);cursor:pointer}
+.asp-pausa-add[hidden]{display:none!important}
+body.dark-mode .asp-pausa-btn{background:transparent;color:#fbbf24}
+</style>
+<script id="aspPausa2950">
+/* ══ v2.95.0 · PAUSAR EL TIEMPO EN CASA DEL CLIENTE ══════════════════════════════
+   Alberto (20 nov): el técnico hizo check-in, se le olvidó una parte y tiene que ir a la empresa y volver.
+   «⏸ Pausar» → «▶ Continuar». El tiempo en pausa NO se cobra (decisión de Alberto) y la oficina lo ve.
+   · La cita guarda pauses:[{from,to,why,by}] (ISO). CHECK OUT en pausa la cierra a esa hora (checkOutPauseMin).
+   · El reporte guarda pauseMin (minutos) y copia pauses; aspDepCobro(t) descuenta pauseMin de la mano de obra.
+   · «Time on site» sigue siendo la hora real. El reporte del cliente no cambia de forma. */
+(function(){
+  "use strict";
+  function L(es,en){ try{ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }catch(_e){ return en; } }
+  function escH(v){ return String(v==null?"":v).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function byId(id){ try{ return [].concat(active||[],done||[]).find(function(x){ return x&&x.id===id; })||null; }catch(_e){ return null; } }
+  function hora(iso){ try{ return new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }catch(_e){ return ""; } }
+  function avisa(m,k){ try{ toast(m,k); }catch(_e){} }
+  function pausas(t){ return Array.isArray(t&&t.pauses)?t.pauses:[]; }
+  function abierta(t){ var a=pausas(t); var u=a[a.length-1]; return (u&&u.from&&!u.to)?u:null; }
+  function minDe(p,hasta){ var a=new Date(p.from).getTime(), b=new Date(p.to||hasta||Date.now()).getTime(); return (isFinite(a)&&isFinite(b)&&b>a)?(b-a)/60000:0; }
+  /* minutos en pausa (la abierta cuenta hasta ahora, o hasta la salida si ya salió) */
+  window._aspPausaMin=function(t,hasta){ var h=hasta||(t&&t.checkOutAt)||null; return Math.round(pausas(t).reduce(function(s,p){ return s+minDe(p,h); },0)); };
+  window._aspPausaAbierta=function(t){ return abierta(t); };
+  /* al salir: la pausa abierta se cierra a la hora de salida */
+  window._aspPausasCerradas=function(t,nowIso){
+    var a=pausas(t); if(!a.length)return null;
+    var c=a.map(function(p){ return Object.assign({},p,{to:p.to||nowIso}); });
+    return {pauses:c,min:Math.round(c.reduce(function(s,p){ return s+minDe(p); },0))};
+  };
+  window._aspPausaBoton=function(t){
+    return '<button type="button" class="asp-pausa-btn" data-asp-pausar="'+escH(t.id)+'" onclick="_aspPausar(this.getAttribute(\'data-asp-pausar\'))">⏸ '
+      +escH(L("Pausar — voy por una parte","Pause — going for a part"))+'</button>';
+  };
+  window._aspPausaResumen=function(t){
+    var m=window._aspPausaMin(t); if(!m)return "";
+    return ' · ⏸ '+escH(L(m+" min en pausa (sin cobrar)",m+" min paused (not billed)"));
+  };
+  /* el panel mientras está en pausa */
+  window._aspPausaPanel=function(t,neto){
+    var p=abierta(t); if(!p)return "";
+    var lleva=Math.round(minDe(p));
+    var fmt=(typeof _fmtElapsed==="function")?_fmtElapsed:function(m){ return m+" min"; };
+    return '<div style="margin-bottom:14px;padding:14px 16px;background:#fff7ed;border:2px solid #f59e0b;border-radius:12px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><div style="font-weight:800;font-size:var(--fs-md);color:#78350f">⏸ '+escH(L("En pausa","Paused"))+'</div>'
+      +'<div style="font-size:var(--fs-base);color:#92400e">'+escH(L("desde ","since "))+escH(hora(p.from))+' · '+escH(fmt(lleva))+'</div></div>'
+      +(p.why?'<div style="font-size:var(--fs-sm);color:#92400e;margin-bottom:10px">'+escH(p.why)+'</div>':'')
+      +'<div style="font-size:var(--fs-sm);color:#92400e;margin-bottom:10px">'+escH(L("Este tiempo no se cobra. En casa del cliente van ","This time is not billed. Time at the customer so far: "))+escH(fmt(neto))+'.</div>'
+      +'<button type="button" data-asp-continuar="'+escH(t.id)+'" onclick="_aspContinuar(this.getAttribute(\'data-asp-continuar\'))" style="width:100%;padding:14px;margin-bottom:10px;background:var(--c-success-strong);color:#fff;border:none;border-radius:10px;font-size:var(--fs-md);font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:var(--fs-xl)">▶</span> '+escH(L("CONTINUAR — ya volví","RESUME — I'm back"))+'</button>'
+      +'<button id="checkOutBtn_'+escH(t.id)+'" onclick="_doCheckOut(\''+escH(t.id)+'\')" style="width:100%;padding:11px;background:none;color:var(--c-danger-strong);border:2px solid var(--c-danger-strong);border-radius:10px;font-size:var(--fs-base);font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">⏹ '+escH(L("CHECK OUT — ya terminé","CHECK OUT — I'm done"))+'</button>'
+      +'</div>';
+  };
+  async function guarda(t,lista){
+    if(typeof db==="undefined"||!db)return false;
+    await db.collection("tickets").doc(t.id).update({pauses:lista});
+    t.pauses=lista;
+    try{ if(typeof openTktDetail==="function")openTktDetail(t.id); }catch(_e){}
+    try{ rndrA(); if(typeof rndrCal==="function")rndrCal(); }catch(_e){}
+    return true;
+  }
+  window._aspPausar=async function(id){
+    var t=byId(id); if(!t)return;
+    if(!t.checkInAt||t.checkOutAt){ avisa(L("Primero haz check-in","Check in first"),"warn"); return; }
+    if(abierta(t)){ avisa(L("Ya está en pausa","Already paused"),"warn"); return; }
+    var why=await promptDialog(L("¿A qué vas? (este tiempo no se le cobra al cliente)","What for? (this time is not billed to the customer)"),
+      {title:L("Pausar el tiempo","Pause the time"),defaultValue:L("Voy por una parte a la empresa","Going to the shop for a part"),okLabel:L("Pausar","Pause")});
+    if(why===null||why===undefined)return;
+    var lista=pausas(t).concat([{from:new Date().toISOString(),to:null,why:String(why).trim().slice(0,140),by:(currentUser&&currentUser.name)||""}]);
+    try{ await guarda(t,lista); avisa("⏸ "+L("En pausa — toca CONTINUAR cuando vuelvas","Paused — tap RESUME when you're back")); }
+    catch(e){ console.warn("[pausa]",e); avisa(L("No se pudo pausar: ","Could not pause: ")+String((e&&e.message)||e).slice(0,80),"err"); }
+  };
+  window._aspContinuar=async function(id){
+    var t=byId(id); if(!t)return;
+    var a=pausas(t); if(!abierta(t))return;
+    var lista=a.map(function(p,i){ return (i===a.length-1)?Object.assign({},p,{to:new Date().toISOString()}):p; });
+    try{ await guarda(t,lista); avisa("▶ "+L("De vuelta — "+Math.round(minDe(lista[lista.length-1]))+" min en pausa, sin cobrar","Back — "+Math.round(minDe(lista[lista.length-1]))+" min paused, not billed")); }
+    catch(e){ console.warn("[continuar]",e); avisa(L("No se pudo guardar: ","Could not save: ")+String((e&&e.message)||e).slice(0,80),"err"); }
+  };
+
+  /* ── el reporte: «Pausa sin cobrar (min)» ── */
+  var pausasCita=null;
+  function caja(){ return document.getElementById("fPausaBox"); }
+  function campo(){ return document.getElementById("fPausa"); }
+  function mostrar(v){
+    var b=caja(), a=document.querySelector("[data-asp-pausa-add]"), i=campo(); if(!b||!i)return;
+    if(v!==undefined)i.value=(v>0)?String(v):"";
+    var con=(Number(i.value)||0)>0||b.__abierta;
+    b.hidden=!con; if(a)a.hidden=!!con;
+  }
+  window._aspPausaValor=function(){ var i=campo(); var v=i?Math.round(Number(i.value)||0):0; return v>0?v:0; };
+  window._aspPausasDeCita=function(){ return pausasCita?pausasCita.slice():null; };
+  /* desde la cita (reporte nuevo) o desde el reporte (corrección) */
+  window._aspPausaAlFormulario=function(t,esReporte){
+    var b=caja(); if(b)b.__abierta=false;
+    if(esReporte){ pausasCita=null; mostrar(Math.round(Number(t&&t.pauseMin)||0)); return; }
+    var m=window._aspPausaMin(t); pausasCita=(m>0)?window._aspPausasCerradas(t,t.checkOutAt||new Date().toISOString()).pauses:null;
+    mostrar(m);
+    try{ if(typeof rndr==="function")rndr(); }catch(_e){}
+  };
+  window._aspPausaLimpia=function(){ pausasCita=null; var b=caja(); if(b)b.__abierta=false; mostrar(0); };
+  window._aspPausaAgregar=function(){ var b=caja(); if(!b)return; b.__abierta=true; mostrar(); try{ campo().focus(); }catch(_e){} };
+  window._aspPausaForm=function(){ try{ if(typeof rndr==="function")rndr(); }catch(_e){} };
+  /* lo que vive en el HTML fijo del formulario, en español (EN→ES) */
+  try{ if(typeof TR==="object"&&TR){
+    TR["⏸ Paused time — not billed"]="⏸ Pausa — no se cobra";
+    TR["Time away from the customer (e.g. went to the shop for a part). It is subtracted from labor."]="Tiempo fuera de la casa del cliente (ej. fue a la empresa por una parte). Se descuenta de la mano de obra.";
+    TR["+ Paused time"]="+ Pausa sin cobrar";
+  } }catch(_e){}
+})();
+</script>
+<style id="aspCampo2950Css">
+html.asp-campo #lockBtn{position:relative;overflow:visible}
+html.asp-campo #lockBtn::after{content:attr(data-campo);position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);padding:2px 5px;border-radius:6px;
+  background:#f59e0b;color:#3D2B1F;font:800 9px/1 system-ui,-apple-system,sans-serif;letter-spacing:.05em;white-space:nowrap;pointer-events:none}
+.asp-pf-row.asp-campo-on{color:#92400e;font-weight:800}
+</style>
+<script id="aspCampo2950">
+/* ══ v2.95.0 · MODO CAMPO ══════════════════════════════════════════════════════
+   Alberto (20 nov) sale al campo a hacer tickets y la app lo trataba como admin. Opción A (la que eligió):
+   mismo usuario, un interruptor en su perfil; CADA APARATO SE ACUERDA (localStorage aspCampo = su nombre).
+   Encendido: _aspCampoUser (al entrar y al restaurar la sesión) le pone una COPIA con role "tech" → pestañas de
+   técnico, check-in, reporte de técnico, sin dinero ni botones de admin. Sus citas y puntajes siguen a nombre de él.
+   allUsers / config/users NO cambian nunca; el claim del token sigue siendo el suyo. Solo lo ve quien es admin u
+   organizer de verdad. Cambiar de modo recarga la app (la sesión de 12 h sigue, no pide PIN). */
+(function(){
+  "use strict";
+  function L(es,en){ try{ return (typeof APP_LANG!=="undefined"&&APP_LANG==="es")?es:en; }catch(_e){ return en; } }
+  function escH(v){ return String(v==null?"":v).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function yo(){ try{ return (typeof currentUser!=="undefined"&&currentUser)||null; }catch(_e){ return null; } }
+  function rolReal(u){ return u?(u._rolReal||u.role):""; }
+  function puede(u){ var r=rolReal(u); return r==="admin"||r==="organizer"; }
+  window._aspRecargar=function(){ try{ location.reload(); }catch(_e){} };
+  window.aspModoCampo=function(on){
+    var u=yo(); if(!u||!puede(u))return;
+    try{ if(on)localStorage.setItem("aspCampo",u.name); else localStorage.removeItem("aspCampo"); }catch(_e){}
+    try{ toast(on?L("Modo campo: la app te trata como técnico","Field mode: the app treats you as a technician"):L("De vuelta a admin","Back to admin")); }catch(_e){}
+    setTimeout(window._aspRecargar,350);
+  };
+  function marca(){
+    var u=yo(), on=!!(u&&u._campo);
+    document.documentElement.classList.toggle("asp-campo",on);
+    var lb=document.getElementById("lockBtn"); if(lb){ if(on)lb.setAttribute("data-campo",L("CAMPO","FIELD")); else lb.removeAttribute("data-campo"); }
+  }
+  /* updAdmin decide pestañas y cabecera en cada entrada: la señal va después */
+  var orig=window.updAdmin;
+  if(typeof orig==="function"&&!orig.__campo){
+    var w=function(){ var r=orig.apply(this,arguments); try{ marca(); }catch(_e){} return r; };
+    w.__campo=true; window.updAdmin=w;
+  }
+  /* la fila del perfil */
+  function fila(){
+    var m=document.getElementById("aspProfile"); if(!m||m.hidden)return;
+    var u=yo(), f=m.querySelector("[data-asp-campo]");
+    if(!u||!puede(u)){ if(f)f.remove(); return; }
+    var on=!!u._campo, ic=""; try{ if(typeof icon==="function")ic=icon("hard-hat",16)||icon("wrench",16)||""; }catch(_e){}
+    var txt=on?L("Modo campo encendido · volver a admin","Field mode is on · back to admin"):L("Modo campo · usar la app como técnico","Field mode · use the app as a technician");
+    if(f&&f.getAttribute("data-asp-campo")===(on?"1":"0"))return;
+    if(f)f.remove();
+    f=document.createElement("button"); f.type="button"; f.className="asp-pf-row"+(on?" asp-campo-on":""); f.setAttribute("data-asp-campo",on?"1":"0");
+    f.innerHTML='<span>'+(ic||"🧰 ")+escH(txt)+'</span>';
+    f.addEventListener("click",function(ev){ ev.stopPropagation(); window.aspModoCampo(!on); });
+    m.insertBefore(f,m.querySelector('button[data-act="logout"]'));
+  }
+  function vigila(m){
+    if(!m||m.__campo)return; m.__campo=true;
+    new MutationObserver(fila).observe(m,{childList:true,attributes:true,attributeFilter:["hidden"]});
+    fila();
+  }
+  var ya=document.getElementById("aspProfile");
+  if(ya)vigila(ya);
+  else new MutationObserver(function(_l,obs){ var m=document.getElementById("aspProfile"); if(m){ obs.disconnect(); vigila(m); } }).observe(document.body,{childList:true});
+  try{ marca(); }catch(_e){}
+  document.addEventListener("DOMContentLoaded",function(){ try{ marca(); }catch(_e){} });
+})();
+</script>
 </body>
 </html>

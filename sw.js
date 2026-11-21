@@ -33,7 +33,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.94.0";  // 19 nov 2026 · Calendario de iCloud: Admin › Settings › «iCloud Calendar» y la fila del perfil «Add my appointments to my Calendar» · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.95.1";  // 20 nov 2026 · auditoría: la configuración ya no se pisa entre aparatos, usuarios quitados no vuelven, Invoice Tracker solo oficina · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell
