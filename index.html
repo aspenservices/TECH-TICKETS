@@ -7305,7 +7305,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.95.1";
+var APP_VERSION="2.95.4";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -9360,7 +9360,7 @@ function _dmRenderList(){
   function ini(n){var pp=String(n||"?").trim().split(/\s+/);return ((pp[0]||"?")[0]+((pp[1]||"")[0]||"")).toUpperCase();}
   function isOn(nm){try{return !!_presIsOnline(_presenceUsers[nm]);}catch(_e){return false;}}
   var roster=_dmRoster();
-  var h='<div style="padding:12px 12px 2px"><div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Nuevo mensaje</div>'
+  var h='<div class="dm-roster" style="padding:12px 12px 2px"><div style="font-size:var(--fs-xs);font-weight:800;color:var(--i3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Nuevo mensaje</div>'
    +'<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">'
    +roster.map(function(n){return '<div data-p="'+esc(n)+'" onclick="_dmOpenThread(this.dataset.p)" style="flex:none;width:58px;text-align:center;cursor:pointer;position:relative"><div style="width:48px;height:48px;margin:0 auto;border-radius:50%;background:'+colOf(n)+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.14)'+(isOn(n)?';outline:2.5px solid #2fbf71;outline-offset:2px':'')+'">'+esc(ini(n))+'</div>'+(isOn(n)?'<span style="position:absolute;top:36px;right:4px;width:12px;height:12px;border-radius:50%;background:#2fbf71;border:2.5px solid #fff"></span>':'')+'<div style="font-size:11px;color:var(--i2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(n)+'</div></div>';}).join("")
    +'</div></div>';
@@ -25543,19 +25543,39 @@ function _isChemWaterChange(t){
 }
 /* v2.93.5 — el saludo sale de la hora del aparato al abrir el mensaje (misma regla que el saludo de inicio) */
 function aspSaludoHora(d){ var h=(d||new Date()).getHours(); return h<12?"Good morning":h<18?"Good afternoon":"Good evening"; }
+/* v2.95.3 — el nombre del cliente como está guardado: «Stokes, Jennifer & David» → «Jennifer & David»;
+   sin coma, el nombre completo («Lisa & Michael Small»). Sin nombre → "". */
+function _aspNombreCliente(c){
+  var s=String(c||"").replace(/\s+/g," ").trim(); if(!s)return "";
+  var i=s.indexOf(","); if(i>=0)s=s.slice(i+1).trim();
+  return s;
+}
+/* v2.95.3 — la fecha y la hora en una sola línea que el iPhone y Android subrayan solos (al tocarla, el
+   teléfono ofrece guardarla en el calendario): «Monday, November 23, 2026 from 10:00 AM to 12:00 PM».
+   Fin = llegada + 2 h, igual que la ventana de siempre. Sin hora, solo la fecha. */
+function _aspFechaCita(date,arrival){
+  var d=new Date(String(date||"")+"T12:00:00"); if(isNaN(d))return String(date||"");
+  var DIAS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var MESES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var f=DIAS[d.getDay()]+", "+MESES[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear();
+  var m=String(arrival||"").match(/^(\d{1,2}):(\d{2})/); if(!m)return f;
+  var h=parseInt(m[1],10), fin=String((h+2)%24).padStart(2,"0")+":"+m[2];
+  return f+" from "+_fmt12h(m[1].padStart(2,"0")+":"+m[2])+" to "+_fmt12h(fin);
+}
 // Build the appointment notification SMS body
 function buildAppointmentSMS(t,techs,date,arrival){
   var techList=(techs||[]).filter(Boolean);
   var techNames=techList.length?techList.join(" / "):"a technician";
   var isDelivery=(t.workTypes||[]).some(function(w){return /deliver/i.test(w)});
   var isChemWC=_isChemWaterChange(t);
+  /* v2.95.3 — la frase termina en «on:» y la fecha/hora va sola en su línea (ver _aspFechaCita) */
   var actionLine=isDelivery
-    ?"we have availability to deliver to your home on "+_fmtMD(date)
+    ?"we have availability to deliver to your home on:"
     :isChemWC
-      ?"on "+_fmtMD(date)+" we will be sending "+techNames+" to perform the water change included as part of your Chemical Maintenance program"
-      :"we have availability to send "+techNames+" to service your spa on "+_fmtMD(date);
-  if(arrival)actionLine+=" between "+_arrivalWindow(arrival);
-  var body=aspSaludoHora()+",\n\nMy name is "+SERVICE_MGR_NAME+",\n"+SERVICE_MGR_TITLE+" at Aspen Spas.\nI am reaching out to let you know that "+actionLine+".\n\nTo confirm your appointment, there is no need to call us — simply replying by text message to "+SERVICE_MGR_PHONE+" is enough.\n\nIf this date or time does not work for you, please let us know by text message at the same number, and we will be glad to reschedule for a day that fits your availability.\n\nOnce your appointment is confirmed, our technician will contact you with a reminder call before heading to your home.\nPlease note that if the technician is unable to arrive within the scheduled window, you will be notified in advance of a delayed arrival or a possible rescheduling of your appointment.\n\nWe appreciate your patience and look forward to servicing your spa.\nKind regards,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
+      ?"we will be sending "+techNames+" to perform the water change included as part of your Chemical Maintenance program on:"
+      :"we have availability to send "+techNames+" to service your spa on:";
+  var _nom=_aspNombreCliente(t&&t.customer);
+  var body=aspSaludoHora()+(_nom?" "+_nom:"")+",\n\nMy name is "+SERVICE_MGR_NAME+",\n"+SERVICE_MGR_TITLE+" at Aspen Spas.\nI am reaching out to let you know that "+actionLine+"\n\n"+_aspFechaCita(date,arrival)+"\n\nTo confirm your appointment, there is no need to call us — simply replying by text message to "+SERVICE_MGR_PHONE+" is enough.\n\nIf this date or time does not work for you, please let us know by text message at the same number, and we will be glad to reschedule for a day that fits your availability.\n\nOnce your appointment is confirmed, our technician will contact you with a reminder call before heading to your home.\nPlease note that if the technician is unable to arrive within the scheduled window, you will be notified in advance of a delayed arrival or a possible rescheduling of your appointment.\n\nWe appreciate your patience and look forward to servicing your spa.\nKind regards,\n"+SERVICE_MGR_NAME+"\n"+SERVICE_MGR_TITLE+"\nAspen Spas";
   return body;
 }
 // Did the assignment meaningfully change? (techs added, date set/changed, or arrival set/changed)
@@ -31933,7 +31953,31 @@ function _hrsAll(mins){return mins>0?Math.ceil(mins/15)/4:0;}
 function _hrsExtra(mins){return mins>60?Math.ceil((mins-60)/15)/4:0;}
 function _qMins(t){try{return _visitMins(t.arrival,aspDepCobro(t))||0;}catch(e){return 0;}}
 function _fq(n){return String(Math.round(n*100)/100);}
-function qbLinesFor(t){
+/* v2.95.4 — CAUSA RAÍZ: esta lista (jul 2026) trae los precios $150/$100 escritos a mano; cuando llegaron el ⚡1.5
+   (2.93.5) y el 2.º técnico (2.93.6) se cambió el dinero (calcLabor) pero no esta lista, y QB recibía $275 en un
+   ticket de $412.50. Ahora la lista se ajusta al dinero del ticket: ⚡1.5 sube el PRECIO de la mano de obra
+   (Basic $150→$225, Additional Hour $100→$150; el tiempo sigue siendo el real) y el 2.º técnico sale como línea
+   aparte (Service-Additional Hour a $50/hr, $75 con ⚡1.5), con el tiempo y el monto que ya calculó calcLabor.
+   Lo que va en $0 sigue en $0. */
+var _QB_LAB={"Service-Basic Service Call":"Basic","Service-Additional Hour":"Additional Hour"};
+function _qbTarifa(t,ql){
+  if(!t||!ql||!Array.isArray(ql.lines))return ql;
+  var r15=(typeof aspRate15==="function"&&aspRate15(t)===1.5), lb=null;
+  try{ lb=calcLabor(t.arrival,aspDepCobro(t),Number(t.visitNum)||1,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty((t&&t.warranty)||{},t):"none"),t.noLabor||false,(r15?1.5:1),(typeof aspTech2==="function"?aspTech2(t):0)); }catch(e){}
+  var t2=(lb&&!lb.free&&Number(lb.tech2Amt)>0&&Number(lb.tech2Mins)>0)?lb:null;
+  if(!r15&&!t2)return ql;
+  var L=ql.lines.map(function(x){ var o={},k; for(k in x)o[k]=x[k]; return o; }), ult=-1, sube=[];
+  L.forEach(function(x,ix){ if(!_QB_LAB[x.i])return; ult=ix;
+    var pr=parseFloat(String(x.r).replace(/[^0-9.\-]/g,""));
+    if(r15&&String(x.r).indexOf("$")===0&&pr>0){ x.r="$"+(Math.round(pr*150)/100).toFixed(2); var et=_QB_LAB[x.i]+" "+x.r.replace(/\.00$/,""); if(sube.indexOf(et)<0)sube.push(et); } });
+  if(t2){ var h=Number(t2.tech2Mins)/60;
+    L.splice(ult+1,0,{i:"Service-Additional Hour",q:_fq(h),r:"$"+(Number(t2.tech2Amt)/h).toFixed(2),n:TT("2.º técnico — la mitad de la hora adicional","2nd tech — half the additional hour rate")}); }
+  var o={},k; for(k in ql)o[k]=ql[k]; o.lines=L;
+  if(sube.length)o.foot=TT("⚡ Rate 1.5× — en QB cambia el precio: ","⚡ Rate 1.5× — change the price in QB: ")+sube.join(" · ")+". "+(ql.foot||"");
+  return o;
+}
+function qbLinesFor(t){ var ql=_qbLinesForBase(t); try{ return _qbTarifa(t,ql); }catch(e){ return ql; } }
+function _qbLinesForBase(t){
   var vn=Number(t.visitNum)||1,b=null,mins=_qMins(t),L=[];
   try{b=(typeof _billingFor==="function")?_billingFor(t):null;}catch(e){}
   var parts=(t.parts||[]).filter(function(p){return p&&p.n;});
@@ -70040,6 +70084,48 @@ html.asp-campo #lockBtn::after{content:attr(data-campo);position:absolute;left:5
   else new MutationObserver(function(_l,obs){ var m=document.getElementById("aspProfile"); if(m){ obs.disconnect(); vigila(m); } }).observe(document.body,{childList:true});
   try{ marca(); }catch(_e){}
   document.addEventListener("DOMContentLoaded",function(){ try{ marca(); }catch(_e){} });
+})();
+</script>
+<style id="aspenDuo2952">
+/* v2.95.2 — iPhone Duo CERRADO (vertical): arriba a la derecha están la cámara y la hora del iPhone
+   (el margen seguro derecho, ~90 px de ancho, y ~170 px de alto). Desde la 2.93.8 la app usa todo el
+   ancho para no dejar esa franja vacía, pero quedaban botones debajo — el chat y tu perfil arriba, la ✕
+   de las hojas, «View Ticket» del reporte, la fila de personas del chat, y lo que cada pestaña tiene
+   arriba a la derecha — y no se podían tocar. Ahora la franja sigue llena más abajo, pero en esa
+   esquina no queda nada que se toque. Solo en el Duo cerrado (html.asp-duo-cerrado). Los :not(#_d…) le ganan
+   a las capas del acabado, que se refuerzan igual con :not(#_a…). */
+html.asp-duo-cerrado:not(#_d1):not(#_d2):not(#_d3):not(#_d4) body .hdr{padding-right:calc(12px + env(safe-area-inset-right,0px))!important}
+html.asp-duo-cerrado:not(#_d1):not(#_d2):not(#_d3):not(#_d4) body #presenceStrip{margin-right:env(safe-area-inset-right,0px)!important}
+html.asp-duo-cerrado:not(#_d1):not(#_d2):not(#_d3):not(#_d4) .mbg .mt{padding-right:calc(16px + env(safe-area-inset-right,0px))!important}
+/* hojas que suben desde abajo: empiezan a 110 px, así su encabezado (con la ✕ corrida) tapa la columna y lo que sigue queda debajo */
+html.asp-duo-cerrado:not(#_d1):not(#_d2):not(#_d3):not(#_d4) .mbg > .modal{max-height:calc(100dvh - 110px)!important}
+html.asp-duo-cerrado:not(#_d1):not(#_d2):not(#_d3):not(#_d4) #v8ReportOverlay .v8r-topbar{padding-right:calc(10px + env(safe-area-inset-right,0px))!important}
+html.asp-duo-cerrado:not(#_d1):not(#_d2):not(#_d3):not(#_d4) .dm-roster{padding-right:calc(12px + env(safe-area-inset-right,0px))!important}
+/* cada pestaña empieza debajo de la columna (unos 40–60 px más abajo) y sigue usando todo el ancho */
+html.asp-duo-cerrado .wrap.show::before{content:"";display:block;height:var(--asp-duo-hueco,0px);pointer-events:none}
+html.asp-duo-cerrado .wrap.show[style*="display:flex"]::before,html.asp-duo-cerrado #pg9.show::before{display:none}
+html.asp-duo-cerrado #pg9.show{padding-top:max(14px,var(--asp-duo-hueco,0px))}
+</style>
+<script id="aspenDuo2952Script">
+/* v2.95.2 — alto del espacio arriba de cada pestaña = lo que la columna de la cámara y la hora baja más allá
+   del comienzo de la pestaña (la columna llega a ~170 px desde arriba en el Duo cerrado). */
+(function(){
+  var H=document.documentElement, COL=170;
+  function hueco(pg){
+    if(!pg||!pg.classList.contains("show"))return;
+    if(!H.classList.contains("asp-duo-cerrado")){ pg.style.removeProperty("--asp-duo-hueco"); return; }
+    var cs=getComputedStyle(pg), top=pg.offsetTop+(parseFloat(cs.paddingTop)||0);
+    var h=Math.max(0,Math.round(COL-top));
+    if(pg.id==="pg9")h=Math.max(0,Math.round(COL-pg.offsetTop));
+    pg.style.setProperty("--asp-duo-hueco",h+"px");
+  }
+  function todos(){ try{ Array.prototype.forEach.call(document.querySelectorAll(".wrap.show"),hueco); }catch(_e){} }
+  var t=0; function pronto(){ clearTimeout(t); t=setTimeout(todos,60); }
+  try{ new MutationObserver(function(ms){ for(var i=0;i<ms.length;i++){ var e=ms[i].target; if(e&&e.classList&&e.classList.contains("wrap")){ pronto(); return; } if(e===H){ pronto(); return; } } })
+    .observe(document.body,{subtree:true,attributes:true,attributeFilter:["class"]}); }catch(_e){}
+  try{ new MutationObserver(pronto).observe(H,{attributes:true,attributeFilter:["class"]}); }catch(_e){}
+  window.addEventListener("resize",pronto); window.addEventListener("orientationchange",pronto);
+  todos(); setTimeout(todos,1500);
 })();
 </script>
 </body>
