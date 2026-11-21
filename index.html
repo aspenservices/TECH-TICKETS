@@ -7040,6 +7040,36 @@ _billingFor=function(t){ var b=_aspBillingForT2.apply(this,arguments);
   return b; };
 window.aspTech2=aspTech2; window.aspTech2Aplica=aspTech2Aplica; window.aspTech2Quita=aspTech2Quita; window.aspTech2Cola=aspTech2Cola; window.aspTech2Form=aspTech2Form;
  window.aspRate15Texto=aspRate15Texto; window.aspRate15Aplica=aspRate15Aplica; window.aspRate15Quita=aspRate15Quita; window.aspRate15Form=aspRate15Form;
+/* v2.95.5 — CAUSA RAÍZ (Gilb, Ken, 21 nov): el ⚡1.5 (rate15) y el 2.º técnico (tech2Bill) se marcan en la CITA, pero el
+   reporte del técnico es OTRO documento (rep_<cita>, o el que apunta cita.fieldReportId). El reporte se guardaba sin las
+   banderas y todo lo que recalcula con el reporte (tarjeta de Daily, veredicto, items de QB) cobraba normal; marcar el ⚡
+   en la cita después del reporte tampoco llegaba al reporte. Ahora el reporte lleva las banderas al enviarse, los
+   reportes viejos las heredan de su cita al armar las listas, y marcar/quitar en uno lo repite en el otro. */
+function _aspDocDelForm(){ try{ var id=(typeof _formTarget!=="undefined"&&_formTarget&&(_formTarget.editDocId||_formTarget.dispatchId))||(typeof editingDocId!=="undefined"?editingDocId:null); if(!id)return null;
+  var L=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]); for(var i=0;i<L.length;i++)if(L[i]&&L[i].id===id)return L[i]; }catch(_e){} return null; }
+/* la pareja de cobro: de una cita, su reporte; de un reporte, su cita */
+function _aspParCobro(t){ try{ if(!t||!t.id||t.source==="coaching")return null; var id=String(t.id), L=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]), i, d;
+  if(t.source==="dispatch"){ var rid=String(t.fieldReportId||""); for(i=0;i<L.length;i++){ d=L[i]; if(d&&d.source!=="dispatch"&&d.source!=="coaching"&&((rid&&d.id===rid)||d.id==="rep_"+id))return d; } return null; }
+  var cid=id.indexOf("rep_")===0?id.slice(4):""; for(i=0;i<L.length;i++){ d=L[i]; if(d&&d.source==="dispatch"&&((cid&&d.id===cid)||(d.fieldReportId&&d.fieldReportId===id)))return d; } }catch(_e){} return null; }
+/* reportes que no traen la bandera (los de antes de 2.95.5): la heredan de su cita EN MEMORIA, con su mano de obra y su
+   total guardados ajustados como lo habría hecho aspRate15Set. No escribe nada; aspRate15Aplica/aspTech2Aplica no
+   aplican dos veces. Un reporte con la bandera escrita (true o false) manda sobre la cita. */
+function _aspHeredaCobro(){
+  var L=[].concat(typeof active!=="undefined"?active:[],typeof done!=="undefined"?done:[]), porId={}, porRep={}, i, t, c;
+  for(i=0;i<L.length;i++){ t=L[i]; if(!t||!t.id)continue; porId[t.id]=t; if(t.source==="dispatch"&&t.fieldReportId&&!porRep[t.fieldReportId])porRep[t.fieldReportId]=t; }
+  for(i=0;i<L.length;i++){ t=L[i]; if(!t||!t.id||t.source==="dispatch"||t.source==="coaching")continue;
+    var h15=(typeof t.rate15!=="boolean"), h2=(typeof t.tech2Bill!=="boolean"); if(!h15&&!h2)continue;
+    c=porRep[t.id]||(String(t.id).indexOf("rep_")===0?porId[String(t.id).slice(4)]:null);
+    if(!c||c.source!=="dispatch"||(c.rate15!==true&&c.tech2Bill!==true))continue;
+    try{
+      var lb=t.labor, cobra=!!(lb&&typeof lb==="object"&&!lb.free&&Number(lb.amount)>0), nuevo=lb;
+      if(h2&&c.tech2Bill===true){ t.tech2Bill=true; if(cobra&&aspTech2(t)===1)nuevo=aspTech2Aplica(nuevo,(typeof _labTypeFromWarranty==="function"?_labTypeFromWarranty(t.warranty||{},t):"none")); }
+      if(h15&&c.rate15===true){ t.rate15=true; if(cobra)nuevo=aspRate15Aplica(nuevo); }
+      if(nuevo!==lb){ t.labor=nuevo; if(t.total!=null&&t.total!==""&&!isNaN(Number(t.total)))t.total=Math.round((Number(t.total)-Number(lb.amount)+Number(nuevo.amount))*100)/100; }
+    }catch(_e){ try{console.warn("[cobro cita→reporte]",t.id,_e)}catch(_x){} }
+  }
+}
+window._aspParCobro=_aspParCobro;
 
 // Visit toggle — 1=1st Visit, 2=2nd Visit, 3=CM, 4=Repeat, 5=Delivery
 function setVisit(v){visitNum=v;
@@ -7305,7 +7335,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.95.4";
+var APP_VERSION="2.95.5";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -12292,6 +12322,7 @@ function _mergeTicketSources(){
   _liveDocs.forEach(take);_staleActiveDocs.forEach(take);_archiveDocs.forEach(take);
   function _mtsSort(a,b){var am=a.createdAtMs||0,bm=b.createdAtMs||0;if(am!==bm)return bm-am;return String(b.date||"").localeCompare(String(a.date||""));}
   try{active.sort(_mtsSort);done.sort(_mtsSort);}catch(_e){}
+  try{ if(typeof _aspHeredaCobro==="function")_aspHeredaCobro(); }catch(_e){ try{console.warn("[cobro cita→reporte]",_e)}catch(_x){} }   /* v2.95.5 */
 }
 async function _sweepStaleActive(){
   try{
@@ -15902,6 +15933,9 @@ async function submitTkt(st){
       phone:"",address:"",city:"",zip:"",zone:"",
       status:(st==="reschedule")?"complete":(st||"complete")   // v2.92.0: el resultado va en resched*, el reporte queda ENVIADO y cobrable
     };
+    /* v2.95.5 — el ⚡1.5 y el 2.º técnico viven en la cita: el reporte los lleva consigo (la mano de obra de arriba ya
+       se calculó con ellos). Solo se escriben en true: sin bandera, el reporte sigue heredando de su cita. */
+    try{ var _dstC=_aspDocDelForm(); if(_dstC){ if(_dstC.rate15===true)tktData.rate15=true; if(_dstC.tech2Bill===true)tktData.tech2Bill=true; } }catch(_e){}
     if(st==="reschedule"&&_reschedInfo){
       tktData.reschedReason=_reschedInfo.reason||"";
       tktData.reschedNote=_reschedInfo.note||"";
@@ -69142,7 +69176,7 @@ html:not(.asp-casco) body.outdoor > #aspR15Barra{max-width:calc((100vw - 32px)/1
   function quien(){ try{ return (currentUser&&currentUser.name)||""; }catch(_e){ return ""; } }
 
   /* ── poner / quitar la marca (y, si ya hay reporte guardado, el total guardado) ── */
-  window.aspRate15Set=async function(id,on){
+  window.aspRate15Set=async function(id,on,eco){   /* eco (v2.95.5): repetido en la pareja — sin aviso ni otra vuelta */
     on=!!on; var t=tkt(id); if(!t||typeof db==="undefined"||!db)return;
     if((t.rate15===true)===on)return;
     var upd={rate15:on,rate15At:new Date().toLocaleString(),rate15By:quien()};
@@ -69162,7 +69196,8 @@ html:not(.asp-casco) body.outdoor > #aspR15Barra{max-width:calc((100vw - 32px)/1
       return;
     }
     try{ if(typeof _audit==="function")_audit("rate15",{note:id+" "+(on?"on":"off")}); }catch(_a){}
-    try{ toast(on?L("⚡ Rate 1.5× — la mano de obra se cobra a 1.5×","⚡ Rate 1.5× — labor billed at 1.5×"):L("Tarifa normal","Normal rate")); }catch(_t){}
+    if(!eco){ try{ var _par=_aspParCobro(t); if(_par)await window.aspRate15Set(_par.id,on,true); }catch(_p){ try{console.warn("[rate15] cita↔reporte",_p)}catch(_x){} } }   /* v2.95.5 */
+    if(!eco)try{ toast(on?L("⚡ Rate 1.5× — la mano de obra se cobra a 1.5×","⚡ Rate 1.5× — labor billed at 1.5×"):L("Tarifa normal","Normal rate")); }catch(_t){}
     try{ if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
   };
   window.aspRate15Chip=function(id,el){ var on=!!(el&&el.checked); if(on){ var u=document.getElementById("dtUrgent"); if(u)u.checked=true; } return window.aspRate15Set(id,on); };
@@ -69236,7 +69271,7 @@ html:not(#_r1) .asp-t2-falta{display:inline-flex;align-items:center;gap:4px;padd
   var SUF=(typeof ASP_R15_SUF!=="undefined")?ASP_R15_SUF:" \u00b7 \u26A11.5\u00d7";
 
   /* ── poner / quitar el clic (y, si ya hay reporte guardado, el total guardado) ── */
-  window.aspTech2Set=async function(id,on){
+  window.aspTech2Set=async function(id,on,eco){   /* eco (v2.95.5): repetido en la pareja — sin aviso ni otra vuelta */
     on=!!on; var t=tkt(id); if(!t||typeof db==="undefined"||!db)return;
     if((t.tech2Bill===true)===on)return;
     var upd={tech2Bill:on,tech2At:new Date().toLocaleString(),tech2By:quien()};
@@ -69255,7 +69290,8 @@ html:not(#_r1) .asp-t2-falta{display:inline-flex;align-items:center;gap:4px;padd
       return;
     }
     try{ if(typeof _audit==="function")_audit("tech2Bill",{note:id+" "+(on?"on":"off")}); }catch(_a){}
-    try{ toast(on?(cuenta?L("👥 Se cobra el 2.º técnico ($50/hr)","👥 2nd tech billed ($50/hr)"):L("👥 Marcado — falta el 2.º técnico en el ticket","👥 Marked — 2nd tech missing on the ticket")):L("2.º técnico sin cobrar","2nd tech not billed"),on&&!cuenta?"warn":""); }catch(_t){}
+    if(!eco){ try{ var _par=_aspParCobro(t); if(_par)await window.aspTech2Set(_par.id,on,true); }catch(_p){ try{console.warn("[tech2] cita↔reporte",_p)}catch(_x){} } }   /* v2.95.5 */
+    if(!eco)try{ toast(on?(cuenta?L("👥 Se cobra el 2.º técnico ($50/hr)","👥 2nd tech billed ($50/hr)"):L("👥 Marcado — falta el 2.º técnico en el ticket","👥 Marked — 2nd tech missing on the ticket")):L("2.º técnico sin cobrar","2nd tech not billed"),on&&!cuenta?"warn":""); }catch(_t){}
     try{ if(typeof refreshAll==="function")refreshAll(); }catch(_r){}
   };
   window.aspTech2Chip=function(id,el){ return window.aspTech2Set(id,!!(el&&el.checked)); };

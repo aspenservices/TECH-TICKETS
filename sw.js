@@ -33,7 +33,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.95.4";  // 21 nov 2026 · items para QuickBooks con ⚡1.5 y 2.º técnico (incluye 2.95.2 y 2.95.3) · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.95.5";  // 21 nov 2026 · el ⚡1.5 y el 2.º técnico de la cita llegan al reporte (incluye 2.95.2–2.95.4) · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell
