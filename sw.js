@@ -33,7 +33,7 @@ try{
  * To force update: bump CACHE_VERSION below.
  */
 
-const CACHE_VERSION = "v2.95.5";  // 21 nov 2026 · el ⚡1.5 y el 2.º técnico de la cita llegan al reporte (incluye 2.95.2–2.95.4) · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
+const CACHE_VERSION = "v2.96.0";  // 23 nov 2026 · VIDRIO: tema claro «Día», tema oscuro «Ámbar» · same number as APP_VERSION in index.html — bump BOTH together. History: CHANGELOG-sw.md
 const CACHE_NAME = "aspen-spas-" + CACHE_VERSION;
 
 // Cap for runtime-cached entries (fonts, images, CDN extras). The app-shell

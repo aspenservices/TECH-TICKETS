@@ -7335,7 +7335,7 @@ var STAFF_REQUIRED=true;   // v1.11.1 — candado activo: la app confía solo en
    El SW anuncia la suya por SW_ACTIVATED y abajo se comparan: si difieren,
    hay una mezcla de versiones instalada (el dolor de siempre: sw v1.9.x con
    index "v1.11.x"). Se acabaron los números paralelos por feature. */
-var APP_VERSION="2.95.5";
+var APP_VERSION="2.96.0";
 var BUILD_DATE="2026-11-03";
 /* v2.90.0 — LA regla de «termino en vuelta» (no se termino, o la oficina la movio). `status` cambia si alguien
    edita el reporte; el vinculo a la vuelta (`reschedDispatchId` en el REPORTE) no. Una cita (dispatch) vieja que
@@ -70164,5 +70164,233 @@ html.asp-duo-cerrado #pg9.show{padding-top:max(14px,var(--asp-duo-hueco,0px))}
   todos(); setTimeout(todos,1500);
 })();
 </script>
+<style id="aspenIphone2956">
+/* v2.95.6 — iPhone normal (app del inicio): arriba están la hora, la señal y la batería, y iOS no deja tocar lo que
+   queda debajo. Captura de Rafael (23 nov): el chat y su avatar estaban ahí y no se podían tocar.
+   CAUSA RAÍZ: el acabado 2.88.0 («37 · la hoja y el nombre de la pantalla») puso en el teléfono
+   .hdr{padding:8px 12px!important}, que borró el padding-top con env(safe-area-inset-top) que traía el encabezado.
+   Desde el 16 oct el encabezado empezaba en 0. Ahora vuelve a dejar ese margen y su color sigue llenando detrás de
+   la hora. En el Duo cerrado el margen de arriba es el que dé el iPhone (la columna de la derecha la cuida la 2.95.2).
+   Y el reporte de oficina a pantalla completa medía 100dvh; con el modo exterior (zoom 1.08 en el body, para todos
+   desde la 2.92.5) salía 8 % más alto que la pantalla y su ✕ quedaba arriba, fuera. Ahora mide lo que mide su fondo. */
+@media (max-width:900px){
+  body.asp-acabado:not(#_a1):not(#_a2):not(#_a3):not(#_i1) .hdr{padding-top:calc(8px + env(safe-area-inset-top,0px))!important}
+}
+@media (max-width:680px){
+  #repMBg .rep-modal{height:100%!important}
+  #repMBg .rep-modal > .mt{padding-top:calc(16px + env(safe-area-inset-top,0px))!important}   /* y su ✕ baja de la hora */
+}
+</style>
+<style id="aspenVidrio">
+/* v2.96.0 — VIDRIO. Tema claro = «Día» (vidrio claro sobre crema y durazno); tema oscuro (body.dark-mode) = «Ámbar»
+   (vidrio oscuro cálido con luces de lámpara naranjas). Lo eligió Alberto el 23 nov 2026 viendo sus pantallas con las
+   tres pruebas. Spec: docs/superpowers/specs/2026-11-23-vidrio-design.md.
+   Reglas: sin JS que repinte después de pintar (nada de parpadeo); difuminado solo en piezas grandes (el iPhone no se
+   traba al deslizar listas largas); el papel del reporte del cliente sigue blanco; los colores de estado no cambian.
+   El tema se sigue eligiendo en el avatar: Claro / Oscuro / Auto. */
+
+/* ── 1 · tokens ──────────────────────────────────────────────────────────────────────────────────────── */
+body:not(#_v1){
+  --vz-base:#f3e6d8;
+  --vz-fondo:radial-gradient(55% 45% at 90% 5%,rgba(255,170,100,.55),transparent 70%),
+             radial-gradient(50% 45% at 0% 70%,rgba(255,214,170,.75),transparent 70%),
+             radial-gradient(60% 50% at 70% 100%,rgba(240,190,160,.55),transparent 70%),
+             linear-gradient(160deg,#fbf3ea 0%,#f3e6d8 55%,#efdcca 100%);
+  --vz-glass:linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.44));
+  --vz-glass-2:rgba(255,255,255,.55);
+  --vz-border:rgba(255,255,255,.85);
+  --vz-shadow:inset 0 0 0 1px rgba(255,255,255,.85),inset 0 1px 0 rgba(255,255,255,.95),0 10px 30px rgba(120,70,30,.14);
+  --vz-bar:rgba(255,250,245,.55);
+  --vz-side:linear-gradient(180deg,rgba(52,34,24,.82),rgba(30,20,14,.86));
+  --vz-blur:blur(20px) saturate(150%);
+  --vz-blur-bar:blur(26px) saturate(160%);
+  --vz-glow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 22px rgba(240,138,60,.45);
+  --bg:#f7ede3; --cd:rgba(255,255,255,.6); --ln:rgba(255,255,255,.75);   /* --bg sólido: hojas, cajones y chips lo usan; la PÁGINA se vacía aparte (abajo) */
+  --ink:#2A1F18; --i2:#5A4C40; --i3:#6E5E51;          /* sólidos: sobre el vidrio claro dan 6,7:1 y 5:1 (medido) */
+  --c-ash:rgba(255,255,255,.5); --c-ash-2:rgba(255,255,255,.62); --c-neutral-bg:rgba(255,255,255,.5);
+  --ac:#C2621C; --acd:#A85C1F;                         /* en Día el naranja va un tono más hondo (el cobre de marca): el #F08A3C sobre crema da 2:1 */
+  background:transparent!important;
+}
+body.dark-mode:not(#_v1){
+  --vz-base:#17100c;
+  --vz-fondo:radial-gradient(60% 45% at 82% 8%,rgba(255,150,60,.55),transparent 70%),
+             radial-gradient(45% 40% at 8% 78%,rgba(214,108,40,.40),transparent 70%),
+             radial-gradient(70% 55% at 50% 110%,rgba(120,70,40,.55),transparent 70%),
+             repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 46px),
+             linear-gradient(160deg,#2a1c14 0%,#17100c 45%,#0d0907 100%);
+  --vz-glass:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+  --vz-glass-2:rgba(255,255,255,.07);
+  --vz-border:rgba(255,255,255,.13);
+  --vz-shadow:inset 0 0 0 1px rgba(255,255,255,.13),inset 0 1px 0 rgba(255,255,255,.14),0 10px 34px rgba(0,0,0,.38);
+  --vz-bar:rgba(18,13,10,.40);
+  --vz-side:rgba(18,13,10,.46);
+  --bg:#1d1510; --cd:rgba(255,255,255,.06); --ln:rgba(255,255,255,.12);
+  --ink:#F6EEE6; --i2:rgba(246,238,230,.84); --i3:rgba(246,238,230,.68);   /* medido: AA sobre el vidrio oscuro */
+  --c-ash:rgba(255,255,255,.07); --c-ash-2:rgba(255,255,255,.10); --c-neutral-bg:rgba(255,255,255,.07);
+  --ac:#F08A3C; --acd:#D9702A;
+}
+
+/* ── 2 · el fondo: una capa fija detrás de todo (no background-attachment:fixed, que iOS pinta mal) ─────── */
+html{background:#f3e6d8!important}
+html:has(body.dark-mode){background:#17100c!important}
+html::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(55% 45% at 90% 5%,rgba(255,170,100,.55),transparent 70%),
+             radial-gradient(50% 45% at 0% 70%,rgba(255,214,170,.75),transparent 70%),
+             radial-gradient(60% 50% at 70% 100%,rgba(240,190,160,.55),transparent 70%),
+             linear-gradient(160deg,#fbf3ea 0%,#f3e6d8 55%,#efdcca 100%)}
+html:has(body.dark-mode)::before{
+  background:radial-gradient(60% 45% at 82% 8%,rgba(255,150,60,.55),transparent 70%),
+             radial-gradient(45% 40% at 8% 78%,rgba(214,108,40,.40),transparent 70%),
+             radial-gradient(70% 55% at 50% 110%,rgba(120,70,40,.55),transparent 70%),
+             repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 46px),
+             linear-gradient(160deg,#2a1c14 0%,#17100c 45%,#0d0907 100%)}
+body:not(#_v1) .pg,body:not(#_v1) [id^="pg"]:not(#pgBar):not([id^="pgn"]),body:not(#_v1) .wrap,body:not(#_v1) .cust-page{background:transparent!important}
+
+/* Por qué tantos :not(#_vN): las capas anteriores (acabado, limpia, simple) ganan con hasta 9 ids y !important;
+   este bloque tiene que ganarles a todas sin tocarlas. 10 ids + html. */
+/* ── 3 · barras: encabezado, barra de abajo (teléfono), barra lateral (computadora) — con difuminado ─────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .hdr{background:var(--vz-bar)!important;
+  -webkit-backdrop-filter:var(--vz-blur-bar)!important;backdrop-filter:var(--vz-blur-bar)!important;
+  border-bottom:1px solid var(--vz-border)!important;box-shadow:none!important}
+@media(max-width:900px){
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspShell{background:var(--vz-bar)!important;
+    -webkit-backdrop-filter:var(--vz-blur-bar)!important;backdrop-filter:var(--vz-blur-bar)!important;
+    border-top:1px solid var(--vz-border)!important;box-shadow:0 -8px 26px rgba(60,35,20,.10)!important}
+  /* en Día la barra de abajo es clara: sus íconos pasan a tinta café; el activo, naranja */
+  html body:not(.dark-mode):not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspShell .as-i{color:var(--i2)!important}
+  html body:not(.dark-mode):not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspShell .as-i.on{color:var(--ink)!important;background:rgba(194,98,28,.12)!important}
+  html body:not(.dark-mode):not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspShell .as-i.on .as-ico{color:var(--ac)!important}   /* la palabra en tinta (se lee), el ícono en naranja */
+}
+@media(min-width:901px){
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspShell{background:var(--vz-side)!important;
+    -webkit-backdrop-filter:var(--vz-blur-bar)!important;backdrop-filter:var(--vz-blur-bar)!important;
+    border-right:1px solid var(--vz-border)!important;box-shadow:inset -1px 0 0 var(--vz-border)!important}
+}
+
+/* ── 4 · piezas grandes con difuminado (lista cerrada: hojas, paneles de arriba, chat) ────────────────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .mbg>.modal,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #moreSheet,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspMore .as-sheet,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #dmPanel,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #dailyOfficeBg .daily-office-drawer,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-next,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspCAhora{
+  background:var(--vz-glass)!important;-webkit-backdrop-filter:var(--vz-blur)!important;backdrop-filter:var(--vz-blur)!important;
+  box-shadow:var(--vz-shadow)!important;border-color:var(--vz-border)!important}
+/* las hojas son de un color sólido por debajo del vidrio: si no, el texto de atrás se cuela */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .mbg>.modal,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #moreSheet,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspMore .as-sheet,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #dmPanel,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #dailyOfficeBg .daily-office-drawer{
+  background:var(--vz-glass),var(--vz-hoja)!important}
+body:not(#_v1){--vz-hoja:rgba(250,242,234,.78)}
+body.dark-mode:not(#_v1){--vz-hoja:rgba(28,20,15,.80)}
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-next,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #aspCAhora{border-radius:18px!important}
+
+/* ── 5 · tarjetas de las listas: vidrio SIN difuminado (el iPhone no se traba con cientos) ──────────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tkt,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .card,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .usr-card,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-card,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-col,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-none,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .zone-card-item,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .trem-row,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .qb-cust-side,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tech-col-hdr{
+  background:var(--vz-glass)!important;box-shadow:var(--vz-shadow)!important;
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tkt,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-card,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .tdy-none{border-radius:18px!important}
+
+/* ── 6 · piezas chicas: campos, buscadores, selectores, pestañas internas ───────────────────────────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not(#v8ReportPaper *),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) select:not(#v8ReportPaper *),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) textarea:not(#v8ReportPaper *):not(.sig-canvas),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .search-bar,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .cal-vb,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .slog-subtabs,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .asp-c-filtros,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .qb-cust-search,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .qb-cust-sort,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .dt-sec,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .asp-l-sec{
+  background-color:var(--vz-glass-2)!important;border-color:var(--vz-border)!important}
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) input::placeholder,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) textarea::placeholder{color:var(--i3)!important}
+
+/* ── 7 · botón principal naranja: brillo suave (su color no cambia) ────────────────────────────────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) button[style*="background:var(--ac)"],
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) a[style*="background:var(--ac)"],
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .btn-primary,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) .asp-dt-cta{box-shadow:var(--vz-glow)!important}
+
+/* ── 7b · colores escritos a mano por el código (style="background:#fff" y parecidos): pasan a vidrio
+   chico. Medido en Chromium sobre las pantallas principales: quedaban pocos a la vista (el botón To-Do del
+   Calendario, la pastilla «Completed» de la hoja); la regla cubre también las pantallas menos usadas.
+   En Ámbar la pasada vieja aspenOscuro ya los cambia a oscuro y deja data-osc-b: esos también. Se excluyen avatares,
+   fotos, la firma y el papel del cliente. */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:#fff;"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background: #fff;"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:#ffffff;"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:#fff!"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background-color:#fff;"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:white;"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:#f8fafc"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:#f1f5f9"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style*="background:#f9fafb"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [style$="background:#fff"]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]),
+html body.dark-mode:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) [data-osc-b]:not(#v8ReportPaper *):not(#repPreviewBox *):not(#v7OwnReport *):not(.app-av):not(.sig-canvas):not(canvas):not(img):not(.media-thumb):not([style*="border-radius:50%"]){
+  background:var(--vz-glass-2)!important}
+
+/* ── 8 · el papel del reporte del cliente se queda blanco, pase lo que pase arriba ─────────────────── */
+#v8ReportPaper,#repPreviewBox,#v7OwnReport{background:#fff!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* ── 9 · login: el mismo fondo que la app (sin el halo blanco, que en Ámbar se veía como un foco gris),
+   teclas del PIN de vidrio. En Día la marca ASPEN SPAS es crema y no se leía sobre el claro: va sobre una
+   placa café de vidrio, como la barra lateral. El login cubre la app, así que pinta él mismo el fondo. ──── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #loginScreen{background:var(--vz-fondo)!important}
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #loginScreen .lgKey{background:var(--vz-glass)!important;box-shadow:var(--vz-shadow)!important;border-color:var(--vz-border)!important}
+html body:not(.dark-mode):not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #loginLogo{background:var(--vz-side)!important;padding:9px 16px!important;border-radius:14px!important;box-sizing:content-box!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 22px rgba(60,35,20,.22)!important;opacity:1!important}
+html body:not(.dark-mode):not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #loginScreen .lgHint{color:var(--i2)!important}   /* el gris claro con opacidad .85 quedaba en 4,4:1 sobre la luz durazno de abajo */
+
+/* ── 10 · calendario: la cuadrícula es una tarjeta de vidrio (sin difuminado); los días de la semana y el
+   selector Mes/Equipo/Ruta dejan el crema sólido. En Día, el nombre del técnico en su pastilla va en tinta
+   (su color queda en el punto y el borde): el color del técnico como texto chico no llegaba a 3:1. ────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #pg4 .cal-grid{background:var(--vz-glass)!important;box-shadow:var(--vz-shadow)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #pg4 .cal-dow,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #pg4 .cal-views{background:var(--vz-glass-2)!important}
+html body:not(.dark-mode):not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #pg4 .cal-tech-pill.on{color:var(--ink)!important}
+
+/* ── 11 · Billing Sprint y panel del ticket (oficina): hojas de vidrio como las demás; sus cajitas
+   (style="background:var(--bg,…)") pasan a vidrio chico. ─────────────────────────────────────────────── */
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #bsOv .bs-box,
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #nvPanel{background:var(--vz-glass),var(--vz-hoja)!important;-webkit-backdrop-filter:var(--vz-blur)!important;backdrop-filter:var(--vz-blur)!important;
+  box-shadow:var(--vz-shadow)!important;border-color:var(--vz-border)!important}
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #bsOv .bs-box [style*="background:var(--bg"],
+html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #nvPanel [style*="background:var(--bg"]{background:var(--vz-glass-2)!important}
+
+/* ── 12 · visor del reporte del cliente: el marco era azul marino; pasa a vidrio Ámbar cálido en los dos
+   temas (su texto es claro). Solo en pantalla: al imprimir manda su propia regla. El PAPEL no se toca. ── */
+@media screen{
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay{background:rgba(23,16,12,.90)!important}
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-topbar{background:rgba(18,13,10,.55)!important;border-bottom-color:rgba(255,255,255,.12)!important}
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-btn:not(.gold):not(.primary){background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.16)!important;color:#F6EEE6!important}
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-preview-wrap{background:rgba(255,255,255,.04)!important;border-color:rgba(255,255,255,.10)!important}
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-side-card{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.035))!important;border-color:rgba(255,255,255,.13)!important}
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-email-kpi,
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-email-body{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.12)!important}
+  html body:not(#_v1):not(#_v2):not(#_v3):not(#_v4):not(#_v5):not(#_v6):not(#_v7):not(#_v8):not(#_v9):not(#_v10) #v8ReportOverlay .v8r-notice{background:rgba(240,138,60,.12)!important;border-color:rgba(240,138,60,.35)!important;color:#FBD9B8!important}
+}
+
+/* ── 13 · imprimir: sin la capa de colores (saldría detrás de la hoja si la impresora imprime fondos) ── */
+@media print{
+  html::before{content:none!important;display:none!important}
+  html,html:has(body.dark-mode){background:#fff!important}
+}
+</style>
 </body>
 </html>
